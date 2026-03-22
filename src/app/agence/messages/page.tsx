@@ -25,9 +25,9 @@ interface Review {
 const TIER_COLORS: Record<string, string> = {
   vip: "#F43F5E", gold: "#F59E0B", diamond: "#6366F1", platinum: "#A78BFA",
 };
-const REVIEWS_KEY = "heaven_yumi_reviews";
-function loadReviews(): Review[] { try { return JSON.parse(localStorage.getItem(REVIEWS_KEY) || "[]"); } catch { return []; } }
-function saveReviews(reviews: Review[]) { localStorage.setItem(REVIEWS_KEY, JSON.stringify(reviews)); }
+function getReviewsKey(model: string) { return `heaven_${model}_reviews`; }
+function loadReviews(model: string): Review[] { try { return JSON.parse(localStorage.getItem(getReviewsKey(model)) || "[]"); } catch { return []; } }
+function saveReviews(reviews: Review[], model: string) { localStorage.setItem(getReviewsKey(model), JSON.stringify(reviews)); }
 
 export default function MessagesPage() {
   const { currentModel, authHeaders } = useModel();
@@ -40,22 +40,22 @@ export default function MessagesPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
 
   // Load reviews
-  useEffect(() => { setReviews(loadReviews()); }, []);
+  useEffect(() => { setReviews(loadReviews(currentModel || "yumi")); }, [currentModel]);
 
   const pendingReviews = useMemo(() => reviews.filter(r => !r.validated), [reviews]);
   const validatedReviews = useMemo(() => reviews.filter(r => r.validated), [reviews]);
 
   const handleValidateReview = useCallback((id: string) => {
     const u = reviews.map(r => r.id === id ? { ...r, validated: true } : r);
-    setReviews(u); saveReviews(u);
-  }, [reviews]);
+    setReviews(u); saveReviews(u, currentModel || "yumi");
+  }, [reviews, currentModel]);
   const handleRejectReview = useCallback((id: string) => {
-    const u = reviews.filter(r => r.id !== id); setReviews(u); saveReviews(u);
-  }, [reviews]);
+    const u = reviews.filter(r => r.id !== id); setReviews(u); saveReviews(u, currentModel || "yumi");
+  }, [reviews, currentModel]);
 
   const fetchMessages = useCallback(() => {
-    const model = currentModel || "";
-    const params = model ? `?model=${model}` : "";
+    const model = currentModel || "yumi";
+    const params = `?model=${model}`;
     Promise.all([
       fetch(`/api/messages${params}`, { headers: authHeaders() }).then(r => r.json()),
       fetch(`/api/clients${params}`, { headers: authHeaders() }).then(r => r.json()),

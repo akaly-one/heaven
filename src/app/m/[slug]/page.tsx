@@ -386,17 +386,27 @@ export default function ModelPage() {
   // ── Edit mode: update media ──
   const handleUpdateMedia = useCallback(async (id: string, updates: Partial<UploadedContent>) => {
     try {
-      await fetch("/api/uploads", {
+      const res = await fetch("/api/uploads", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: slug, id, updates }),
       });
-      setUploads(prev => prev.map(u => u.id === id ? { ...u, ...updates } : u));
-      setEditingUploadId(null);
-      setEditUploadData({});
-      setEditToast("Média mis à jour");
+      if (res.ok) {
+        setUploads(prev => prev.map(u => u.id === id ? { ...u, ...updates } : u));
+        setEditingUploadId(null);
+        setEditUploadData({});
+        setEditToast("Média mis à jour");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        console.error("[EditMode] Update failed:", data);
+        setEditToast("Erreur mise à jour");
+      }
       setTimeout(() => setEditToast(null), 2000);
-    } catch {}
+    } catch (err) {
+      console.error("[EditMode] Update error:", err);
+      setEditToast("Erreur réseau");
+      setTimeout(() => setEditToast(null), 2000);
+    }
   }, [slug]);
 
   // ── Edit mode: update pack ──
@@ -441,20 +451,28 @@ export default function ModelPage() {
     try {
       // Save profile changes
       if (Object.keys(editProfile).length > 0) {
-        await fetch(`/api/models/${slug}`, {
+        const profileRes = await fetch(`/api/models/${slug}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(editProfile),
         });
+        if (!profileRes.ok) {
+          const err = await profileRes.json().catch(() => ({}));
+          throw new Error(err.error || "Erreur profil");
+        }
         setModel(prev => prev ? { ...prev, ...editProfile } : prev);
       }
       // Save pack changes
       if (editPacks) {
-        await fetch("/api/packs", {
+        const packsRes = await fetch("/api/packs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ model: slug, packs: editPacks }),
         });
+        if (!packsRes.ok) {
+          const err = await packsRes.json().catch(() => ({}));
+          throw new Error(err.error || "Erreur packs");
+        }
         setPacks(editPacks);
       }
       setEditProfile({});
@@ -462,8 +480,9 @@ export default function ModelPage() {
       setEditDirty(false);
       setEditToast("Modifications sauvegardées !");
       setTimeout(() => setEditToast(null), 3000);
-    } catch {
-      setEditToast("Erreur lors de la sauvegarde");
+    } catch (err) {
+      console.error("[EditMode] saveAll error:", err);
+      setEditToast(err instanceof Error ? err.message : "Erreur lors de la sauvegarde");
       setTimeout(() => setEditToast(null), 3000);
     }
     setEditSaving(false);
@@ -589,12 +608,12 @@ export default function ModelPage() {
   useEffect(() => {
     if (!clientId || !chatOpen) return;
     const fetchChat = () => {
-      fetch(`/api/messages?model=${slug}`)
+      fetch(`/api/messages?model=${slug}&client_id=${clientId}`)
         .then(r => r.json())
         .then(d => {
-          setChatMessages(((d.messages || []) as typeof chatMessages).filter(m => m.client_id === clientId).reverse());
+          setChatMessages(((d.messages || []) as typeof chatMessages).reverse());
         })
-        .catch(() => {});
+        .catch(e => console.error("[Chat] poll error:", e));
     };
     fetchChat();
     const iv = setInterval(fetchChat, 5000);
@@ -608,15 +627,19 @@ export default function ModelPage() {
 
   const sendMessage = async () => {
     if (!chatInput.trim() || !clientId) return;
-    await fetch("/api/messages", {
+    const msgRes = await fetch("/api/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model: slug, client_id: clientId, sender_type: "client", content: chatInput.trim() }),
     });
+    if (!msgRes.ok) {
+      console.error("[Chat] send failed:", await msgRes.text());
+      return;
+    }
     setChatInput("");
-    const res = await fetch(`/api/messages?model=${slug}`);
+    const res = await fetch(`/api/messages?model=${slug}&client_id=${clientId}`);
     const d = await res.json();
-    setChatMessages(((d.messages || []) as typeof chatMessages).filter(m => m.client_id === clientId).reverse());
+    setChatMessages(((d.messages || []) as typeof chatMessages).reverse());
   };
 
   // ── Wall: post ──

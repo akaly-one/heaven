@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
         ? ["*"]
         : account.model_slug
           ? [`/agence`]
-          : ["*"];
+          : [];
 
     return NextResponse.json({
       role: account.role,

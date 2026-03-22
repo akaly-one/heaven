@@ -10,21 +10,28 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
-// GET /api/messages?model=yumi — List messages
+// GET /api/messages?model=yumi&client_id=xxx — List messages
 export async function GET(req: NextRequest) {
   try {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ messages: [] }, { headers: cors });
 
     const modelFilter = getModelScope(req) || req.nextUrl.searchParams.get("model");
+    const clientIdFilter = req.nextUrl.searchParams.get("client_id");
+
+    // Require at least a model filter to prevent full table dump
+    if (!modelFilter) {
+      return NextResponse.json({ error: "model parameter required" }, { status: 400, headers: cors });
+    }
 
     let q = supabase
       .from("agence_messages")
       .select("*")
+      .eq("model", modelFilter)
       .order("created_at", { ascending: false })
       .limit(500);
 
-    if (modelFilter) q = q.eq("model", modelFilter);
+    if (clientIdFilter) q = q.eq("client_id", clientIdFilter);
 
     const { data, error } = await q;
     if (error) throw error;

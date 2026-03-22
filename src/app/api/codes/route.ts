@@ -74,7 +74,11 @@ export async function POST(req: NextRequest) {
       if (!found.active) return NextResponse.json({ error: "Code desactive." }, { status: 403, headers: cors });
       if (new Date(found.expires_at).getTime() <= Date.now()) return NextResponse.json({ error: "Code expire." }, { status: 410, headers: cors });
 
-      await supabase.from("agence_codes").update({ used: true, last_used: new Date().toISOString() }).eq("id", found.id);
+      const { error: updateErr } = await supabase.from("agence_codes").update({ used: true, last_used: new Date().toISOString() }).eq("id", found.id);
+      if (updateErr) {
+        console.error("[API/codes] validate update error:", updateErr);
+        return NextResponse.json({ error: "Database error", detail: updateErr.message }, { status: 502, headers: cors });
+      }
       const mapped = mapFromDb({ ...found, used: true, last_used: new Date().toISOString() });
       return NextResponse.json({ code: mapped }, { headers: cors });
     }

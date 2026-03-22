@@ -116,9 +116,13 @@ export async function PUT(req: NextRequest) {
 
     const supabase = requireSupabase();
     const dbUpdates: Record<string, unknown> = {};
-    const keyMap: Record<string, string> = { dataUrl: "data_url", tokenPrice: "token_price", isNew: "is_new" };
+    const allowedFields: Record<string, string> = {
+      tier: "tier", label: "label", visibility: "visibility", type: "type",
+      dataUrl: "data_url", tokenPrice: "token_price", isNew: "is_new",
+    };
     for (const [k, v] of Object.entries(body.updates || {})) {
-      dbUpdates[keyMap[k] || k] = v;
+      const dbKey = allowedFields[k];
+      if (dbKey) dbUpdates[dbKey] = v;
     }
 
     const { data, error } = await supabase

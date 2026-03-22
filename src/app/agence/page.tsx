@@ -46,10 +46,11 @@ async function apiUpdateCode(code: string, action: string, extra?: Record<string
 async function apiDeleteCode(code: string): Promise<boolean> {
   try { const r = await fetch(`/api/codes?code=${encodeURIComponent(code)}`, { method: "DELETE" }); return r.ok; } catch { return false; }
 }
-function generateCodeString(): string {
+function generateCodeString(model: string): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let r = ""; for (let i = 0; i < 4; i++) r += chars[Math.floor(Math.random() * chars.length)];
-  return `YUM-${new Date().getFullYear()}-${r}`;
+  const prefix = model.slice(0, 3).toUpperCase();
+  return `${prefix}-${new Date().getFullYear()}-${r}`;
 }
 
 function isExpired(expiresAt: string): boolean { return new Date(expiresAt).getTime() <= Date.now(); }
@@ -95,10 +96,11 @@ export default function AgenceDashboard() {
       return sum + (pack?.price || 0);
     }, 0);
   }, [modelCodes, packs]);
+  const uniqueClients = useMemo(() => new Set(modelCodes.filter(c => !c.revoked).map(c => c.client.toLowerCase())).size, [modelCodes]);
 
   // ── Actions ──
   const handleGenerate = useCallback((data: { client: string; platform: string; tier: string; duration: number; type: "paid" | "promo" | "gift" }) => {
-    const code = generateCodeString();
+    const code = generateCodeString(modelSlug);
     const pack = packs.find(p => p.id === data.tier);
     const newCode: AccessCode = {
       code, model: modelSlug, client: data.client, platform: data.platform,
@@ -176,6 +178,7 @@ export default function AgenceDashboard() {
               totalCodes={modelCodes.length}
               revenue={revenue}
               pendingCount={0}
+              uniqueClients={uniqueClients}
             />
           </div>
 

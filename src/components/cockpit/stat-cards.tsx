@@ -44,9 +44,10 @@ interface StatCardsProps {
   totalCodes: number;
   revenue: number;
   pendingCount: number;
+  uniqueClients?: number;
 }
 
-export function StatCards({ activeCodes, totalCodes, revenue, pendingCount }: StatCardsProps) {
+export function StatCards({ activeCodes, totalCodes, revenue, pendingCount, uniqueClients }: StatCardsProps) {
   return (
     <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-4">
       <StatCard
@@ -58,7 +59,7 @@ export function StatCards({ activeCodes, totalCodes, revenue, pendingCount }: St
       />
       <StatCard
         label="Abonnés"
-        value={activeCodes}
+        value={uniqueClients ?? activeCodes}
         icon={Users}
         color="#F43F5E"
       />
