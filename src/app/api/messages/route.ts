@@ -10,13 +10,19 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
+// Sanitize text: strip HTML tags
+function sanitize(text: string): string {
+  return text.replace(/<[^>]*>/g, "").trim();
+}
+
 // GET /api/messages?model=yumi&client_id=xxx — List messages
 export async function GET(req: NextRequest) {
   try {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ messages: [] }, { headers: cors });
 
-    const modelFilter = getModelScope(req) || req.nextUrl.searchParams.get("model");
+    const modelScope = await getModelScope(req);
+    const modelFilter = modelScope || req.nextUrl.searchParams.get("model");
     const clientIdFilter = req.nextUrl.searchParams.get("client_id");
 
     // Require at least a model filter to prevent full table dump
@@ -53,12 +59,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "model, client_id, sender_type, content requis" }, { status: 400, headers: cors });
     }
 
+    // Auth check: model/root sending messages must be authenticated
+    if (sender_type === "model") {
+      const denied = await requireRole(req, "root", "model");
+      if (denied) return denied;
+    } else if (sender_type === "client") {
+      // Verify client_id exists in DB
+      const supabase = getServerSupabase();
+      if (supabase) {
+        const { data: clientExists } = await supabase
+          .from("agence_clients")
+          .select("id")
+          .eq("id", client_id)
+          .maybeSingle();
+        if (!clientExists) {
+          return NextResponse.json({ error: "client_id invalide" }, { status: 400, headers: cors });
+        }
+      }
+    }
+
     const supabase = getServerSupabase();
-    if (!supabase) return NextResponse.json({ error: "DB non configurée" }, { status: 500, headers: cors });
+    if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
+
+    const cleanContent = sanitize(content);
+    if (!cleanContent) return NextResponse.json({ error: "Contenu vide" }, { status: 400, headers: cors });
 
     const { data, error } = await supabase
       .from("agence_messages")
-      .insert({ model, client_id, sender_type, content })
+      .insert({ model, client_id, sender_type, content: cleanContent })
       .select()
       .single();
 
@@ -83,7 +111,7 @@ export async function POST(req: NextRequest) {
 
 // DELETE /api/messages?id=xxx — Delete a message (root or model)
 export async function DELETE(req: NextRequest) {
-  const denied = requireRole(req, "root", "model");
+  const denied = await requireRole(req, "root", "model");
   if (denied) return denied;
 
   const id = req.nextUrl.searchParams.get("id");
@@ -91,9 +119,9 @@ export async function DELETE(req: NextRequest) {
 
   try {
     const supabase = getServerSupabase();
-    if (!supabase) return NextResponse.json({ error: "DB non configurée" }, { status: 500, headers: cors });
+    if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    const modelScope = getModelScope(req);
+    const modelScope = await getModelScope(req);
     let q = supabase.from("agence_messages").delete().eq("id", id);
     if (modelScope) q = q.eq("model", modelScope);
 

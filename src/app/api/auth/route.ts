@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateCode, getCorsHeaders } from "@/lib/auth";
+import { authenticateCode, getCorsHeaders, signToken } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-const cors = getCorsHeaders();
-
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: cors });
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, { status: 204, headers: getCorsHeaders(req) });
 }
 
-// POST /api/auth — { code: "heaven" } → session payload
+// POST /api/auth — { code: "heaven" } → session payload + JWT token
 export async function POST(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const { code } = await req.json();
     if (!code || typeof code !== "string") {
@@ -29,7 +28,15 @@ export async function POST(req: NextRequest) {
           ? [`/agence`]
           : [];
 
+    // Sign JWT token
+    const token = await signToken({
+      role: account.role,
+      model_slug: account.model_slug || null,
+      display_name: account.display_name,
+    });
+
     return NextResponse.json({
+      token,
       role: account.role,
       scope,
       model_slug: account.model_slug || null,

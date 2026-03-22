@@ -29,6 +29,7 @@ export default function LoginPage() {
         sessionStorage.setItem(
           "heaven_auth",
           JSON.stringify({
+            token: data.token,
             role: data.role,
             scope: data.scope,
             model_slug: data.model_slug,

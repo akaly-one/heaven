@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
+import { getCorsHeaders } from "@/lib/auth";
 
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET,PUT,OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type,x-heaven-role,x-heaven-model",
-};
+const cors = getCorsHeaders();
 
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: cors });

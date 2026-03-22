@@ -9,6 +9,7 @@ export interface HeavenAuth {
   model_slug: string | null;
   display_name: string;
   loggedAt: string;
+  token?: string;
 }
 
 export function getHeavenAuth(): HeavenAuth | null {

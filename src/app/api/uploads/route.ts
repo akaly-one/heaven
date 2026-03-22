@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
+import { getCorsHeaders } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,7 @@ interface UploadRow {
   visibility?: string; tokenPrice?: number;
 }
 
-const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS", "Access-Control-Allow-Headers": "Content-Type" };
+const cors = getCorsHeaders();
 
 function requireSupabase() {
   const supabase = getServerSupabase();

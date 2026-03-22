@@ -70,23 +70,22 @@ function saveData(key: string, data: unknown) {
   localStorage.setItem(key, JSON.stringify(data));
 }
 
-/* ── CMS Auth Gate ── */
+/* ── CMS Auth Gate — uses main heaven_auth session (JWT) ── */
 function CmsAuthGate({ onAuth }: { onAuth: () => void }) {
-  const [code, setCode] = useState("");
-  const [error, setError] = useState(false);
-
-  const CMS_CODE = "agence2026";
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (code.trim().toLowerCase() === CMS_CODE) {
-      sessionStorage.setItem("heaven_cms_auth", "1");
-      onAuth();
-    } else {
-      setError(true);
-      setTimeout(() => setError(false), 2000);
-    }
-  };
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("heaven_auth");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.role === "root" || parsed.role === "model") {
+          onAuth();
+          return;
+        }
+      }
+    } catch { /* ignore */ }
+    // Not authenticated — redirect to login
+    window.location.href = "/login";
+  }, [onAuth]);
 
   return (
     <OsLayout cpId="agence" showChat={false}>
@@ -98,38 +97,9 @@ function CmsAuthGate({ onAuth }: { onAuth: () => void }) {
               style={{ background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.2)" }}>
               <Lock className="w-7 h-7" style={{ color: "#C9A84C" }} />
             </div>
-            <h1 className="text-lg font-bold mb-1" style={{ color: "var(--text)" }}>
-              Cockpit Agence
-            </h1>
-            <p className="text-xs mb-6" style={{ color: "var(--text-muted)" }}>
-              Acces reserve aux gestionnaires et photographes.
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+              Redirection vers le login...
             </p>
-            <form onSubmit={handleSubmit}>
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="Code d'acces"
-                className="w-full text-center text-sm rounded-lg px-4 py-3 outline-none mb-3 tracking-wider"
-                style={{
-                  background: "var(--surface)",
-                  border: `1px solid ${error ? "#FF4D6A" : "var(--border)"}`,
-                  color: "var(--text)",
-                }}
-                autoFocus
-              />
-              {error && (
-                <p className="text-[11px] mb-3" style={{ color: "#FF4D6A" }}>Code incorrect</p>
-              )}
-              <button type="submit"
-                className="w-full text-sm py-3 rounded-lg font-semibold transition-all hover:scale-[1.02]"
-                style={{ background: "linear-gradient(135deg, #C9A84C, #B8941F)", color: "#0A0A0F" }}>
-                Entrer
-              </button>
-            </form>
-            <Link href="/agence" className="inline-block text-xs mt-4 transition-colors hover:text-[#C9A84C]"
-              style={{ color: "var(--text-muted)" }}>
-              &larr; Retour a l&apos;agence
-            </Link>
           </div>
         </div>
       </div>
@@ -150,7 +120,15 @@ export default function AgenceCmsPage() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   useEffect(() => {
-    if (sessionStorage.getItem("heaven_cms_auth")) setAuthed(true);
+    try {
+      const raw = sessionStorage.getItem("heaven_auth");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.role === "root" || parsed.role === "model") {
+          setAuthed(true);
+        }
+      }
+    } catch { /* ignore */ }
   }, []);
 
   useEffect(() => {

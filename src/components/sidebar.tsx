@@ -1,13 +1,12 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Camera, Users, DollarSign, MessageSquare, Settings, ChevronLeft, ChevronRight, Zap } from "lucide-react";
+import { Camera, DollarSign, MessageSquare, Settings, ChevronLeft, ChevronRight, Zap } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { HeavenAuth } from "./auth-guard";
 
 const NAV_ITEMS = [
   { id: "cockpit", label: "Cockpit", icon: Camera, href: "/agence", color: "var(--accent)" },
-  { id: "clients", label: "Clients", icon: Users, href: "/agence/clients", color: "var(--accent)" },
   { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances", color: "var(--success)" },
   { id: "messages", label: "Messages", icon: MessageSquare, href: "/agence/messages", color: "var(--accent)" },
   { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings", color: "var(--text-muted)" },
@@ -35,7 +34,7 @@ export function Sidebar() {
   const visibleItems = NAV_ITEMS.filter(item => {
     if (isAdmin) return true;
     if (auth?.role === "model") {
-      return ["cockpit", "clients", "messages", "settings"].includes(item.id);
+      return ["cockpit", "messages", "settings"].includes(item.id);
     }
     return scope.some(s => item.href === s || item.href.startsWith(s + "/"));
   });

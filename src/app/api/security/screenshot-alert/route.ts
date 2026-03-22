@@ -5,6 +5,9 @@ import { getCorsHeaders } from "@/lib/auth";
 export const runtime = "nodejs";
 const cors = getCorsHeaders();
 
+// Allowed page values
+const VALID_PAGES = ["profile", "gallery", "chat", "wall", "shop"];
+
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: cors });
 }
@@ -13,18 +16,12 @@ export async function OPTIONS() {
  * POST /api/security/screenshot-alert
  *
  * Called when a screenshot attempt is detected on a model's profile.
- *
- * Repeat offender system:
- * - 1st detection: log only
- * - 2nd detection: auto-send warning message to subscriber
- * - 3rd+: alert model with recommendation to revoke
- *
- * Body: { subscriberId, modelId, timestamp, page }
+ * Body: { subscriberId, modelId, page }
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { subscriberId, modelId, timestamp, page } = body;
+    const { subscriberId, modelId, page } = body;
 
     if (!subscriberId || !modelId) {
       return NextResponse.json({ error: "subscriberId and modelId required" }, { status: 400, headers: cors });
@@ -34,6 +31,23 @@ export async function POST(req: NextRequest) {
     if (!supabase) {
       return NextResponse.json({ error: "DB not configured" }, { status: 500, headers: cors });
     }
+
+    // Validate modelId exists
+    const { data: modelExists } = await supabase
+      .from("agence_accounts")
+      .select("id")
+      .eq("model_slug", modelId)
+      .maybeSingle();
+
+    if (!modelExists) {
+      return NextResponse.json({ error: "Invalid modelId" }, { status: 400, headers: cors });
+    }
+
+    // Use server timestamp (never trust client)
+    const serverTimestamp = new Date().toISOString();
+
+    // Validate page
+    const validPage = VALID_PAGES.includes(page) ? page : "profile";
 
     // 1. Fetch subscriber info
     const { data: client } = await supabase
@@ -54,7 +68,7 @@ export async function POST(req: NextRequest) {
       .from("agence_clients")
       .update({
         screenshot_count: newCount,
-        last_screenshot_at: timestamp || new Date().toISOString(),
+        last_screenshot_at: serverTimestamp,
       })
       .eq("id", subscriberId);
 
@@ -65,7 +79,7 @@ export async function POST(req: NextRequest) {
       client_pseudo: clientPseudo,
       client_tier: client.tier || null,
       alert_type: "screenshot",
-      page: page || "profile",
+      page: validPage,
       action_taken: newCount === 1 ? "logged" : newCount === 2 ? "warning_sent" : "escalated",
     });
 
@@ -73,7 +87,6 @@ export async function POST(req: NextRequest) {
     let action = "logged";
 
     if (newCount >= 2) {
-      // Auto-send warning message
       const warningMessages: Record<number, string> = {
         2: `⚠️ Screenshot detected. All content is watermarked with your identity. Further attempts may result in access revocation.`,
         3: `🚫 Multiple screenshot attempts detected. Your access is at risk of being revoked. This has been reported to the creator.`,
@@ -104,7 +117,7 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * GET /api/security/screenshot-alert?model=yumi — List security alerts for cockpit feed
+ * GET /api/security/screenshot-alert?model=yumi — List security alerts (auth required)
  */
 export async function GET(req: NextRequest) {
   try {

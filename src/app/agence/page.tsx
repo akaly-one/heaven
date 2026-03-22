@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Plus, KeyRound, UserPlus, Pencil } from "lucide-react";
+import { Plus, KeyRound, Pencil, Eye } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
@@ -23,6 +23,23 @@ interface AccessCode {
   used: boolean; active: boolean; revoked: boolean; isTrial: boolean; lastUsed: string | null;
 }
 
+interface ClientInfo {
+  id: string;
+  pseudo_snap?: string;
+  pseudo_insta?: string;
+  tier?: string;
+  is_verified?: boolean;
+  is_blocked?: boolean;
+  notes?: string;
+  tag?: string;
+  preferences?: string;
+  total_spent?: number;
+  total_tokens_bought?: number;
+  total_tokens_spent?: number;
+  firstname?: string;
+  last_active?: string;
+}
+
 // ── Defaults ──
 const DEFAULT_PACKS: PackConfig[] = [
   { id: "vip", name: "VIP Glamour", price: 150, color: "#F43F5E", features: ["Pieds glamour/sales + accessoires", "Lingerie sexy + haul", "Teasing + demandes custom", "Dedicaces personnalisees"], bonuses: { fanvueAccess: false, freeNudeExpress: true, nudeDedicaceLevres: false, freeVideoOffer: false }, face: false, badge: null, active: true },
@@ -31,21 +48,7 @@ const DEFAULT_PACKS: PackConfig[] = [
   { id: "platinum", name: "Platinum All-Access", price: 320, color: "#A78BFA", features: ["Acces TOTAL aux 3 packs", "Demandes personnalisees", "Video calls prives", "Contenu exclusif illimite"], bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: true }, face: true, badge: "Ultimate", active: true },
 ];
 
-// ── No localStorage — API-only ──
-
 // ── API helpers ──
-async function apiFetchCodes(model: string): Promise<AccessCode[]> {
-  try { const r = await fetch(`/api/codes?model=${model}`); if (!r.ok) return []; const d = await r.json(); return d.codes || []; } catch { return []; }
-}
-async function apiCreateCode(code: AccessCode): Promise<boolean> {
-  try { const r = await fetch("/api/codes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(code) }); return r.ok; } catch { return false; }
-}
-async function apiUpdateCode(code: string, action: string, extra?: Record<string, unknown>): Promise<boolean> {
-  try { const r = await fetch("/api/codes", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, action, ...extra }) }); return r.ok; } catch { return false; }
-}
-async function apiDeleteCode(code: string): Promise<boolean> {
-  try { const r = await fetch(`/api/codes?code=${encodeURIComponent(code)}`, { method: "DELETE" }); return r.ok; } catch { return false; }
-}
 function generateCodeString(model: string): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let r = ""; for (let i = 0; i < 4; i++) r += chars[Math.floor(Math.random() * chars.length)];
@@ -57,10 +60,11 @@ function isExpired(expiresAt: string): boolean { return new Date(expiresAt).getT
 
 // ══════════ MAIN ══════════
 export default function AgenceDashboard() {
-  const { currentModel, auth } = useModel();
+  const { currentModel, auth, authHeaders } = useModel();
   const modelSlug = currentModel || auth?.model_slug || "yumi";
 
   const [codes, setCodes] = useState<AccessCode[]>([]);
+  const [clients, setClients] = useState<ClientInfo[]>([]);
   const [packs, setPacks] = useState<PackConfig[]>(DEFAULT_PACKS);
   const [modelInfo, setModelInfo] = useState<{ avatar?: string; online?: boolean; display_name?: string } | null>(null);
 
@@ -72,18 +76,32 @@ export default function AgenceDashboard() {
 
   // ── Load data ──
   useEffect(() => {
-    apiFetchCodes(modelSlug).then(apiCodes => {
-      setCodes(apiCodes);
-    }).catch(err => console.error("[Cockpit] Failed to fetch codes:", err));
+    const headers = authHeaders();
 
-    fetch(`/api/packs?model=${modelSlug}`).then(r => r.json()).then(d => {
-      if (d.packs?.length > 0) setPacks(d.packs);
-    }).catch(() => {});
+    // Fetch codes
+    fetch(`/api/codes?model=${modelSlug}`)
+      .then(r => r.json())
+      .then(d => setCodes(d.codes || []))
+      .catch(err => console.error("[Cockpit] Failed to fetch codes:", err));
 
-    fetch(`/api/models/${modelSlug}`).then(r => r.json()).then(d => {
-      setModelInfo(d);
-    }).catch(() => {});
-  }, [modelSlug]);
+    // Fetch clients
+    fetch(`/api/clients?model=${modelSlug}`, { headers })
+      .then(r => r.json())
+      .then(d => setClients(d.clients || []))
+      .catch(() => {});
+
+    // Fetch packs
+    fetch(`/api/packs?model=${modelSlug}`)
+      .then(r => r.json())
+      .then(d => { if (d.packs?.length > 0) setPacks(d.packs); })
+      .catch(() => {});
+
+    // Fetch model info
+    fetch(`/api/models/${modelSlug}`)
+      .then(r => r.json())
+      .then(d => setModelInfo(d))
+      .catch(() => {});
+  }, [modelSlug, authHeaders]);
 
   useEffect(() => { const iv = setInterval(() => setTick(t => t + 1), 60000); return () => clearInterval(iv); }, []);
 
@@ -108,29 +126,44 @@ export default function AgenceDashboard() {
       type: data.type, duration: data.duration, expiresAt: new Date(Date.now() + data.duration * 3600000).toISOString(),
       created: new Date().toISOString(), used: false, active: true, revoked: false, isTrial: false, lastUsed: null,
     };
-    const updated = [...codes, newCode];
-    setCodes(updated);
-    apiCreateCode(newCode);
+    setCodes(prev => [...prev, newCode]);
+    fetch("/api/codes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newCode) });
     return code;
-  }, [codes, packs, modelSlug]);
+  }, [packs, modelSlug]);
 
   const handleCopy = useCallback((code: string) => { navigator.clipboard.writeText(code); }, []);
   const handleRevoke = useCallback((code: string) => {
-    const u = codes.map(c => c.code === code ? { ...c, revoked: true, active: false } : c);
-    setCodes(u); apiUpdateCode(code, "revoke");
-  }, [codes]);
+    setCodes(prev => prev.map(c => c.code === code ? { ...c, revoked: true, active: false } : c));
+    fetch("/api/codes", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, action: "revoke" }) });
+  }, []);
   const handlePause = useCallback((code: string) => {
-    const u = codes.map(c => c.code === code ? { ...c, active: false } : c);
-    setCodes(u); apiUpdateCode(code, "pause");
-  }, [codes]);
+    setCodes(prev => prev.map(c => c.code === code ? { ...c, active: false } : c));
+    fetch("/api/codes", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, action: "pause" }) });
+  }, []);
   const handleReactivate = useCallback((code: string) => {
-    const u = codes.map(c => c.code === code ? { ...c, active: true, revoked: false } : c);
-    setCodes(u); apiUpdateCode(code, "reactivate");
-  }, [codes]);
+    setCodes(prev => prev.map(c => c.code === code ? { ...c, active: true, revoked: false } : c));
+    fetch("/api/codes", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, action: "reactivate" }) });
+  }, []);
   const handleDelete = useCallback((code: string) => {
-    const u = codes.filter(c => c.code !== code);
-    setCodes(u); apiDeleteCode(code);
-  }, [codes]);
+    setCodes(prev => prev.filter(c => c.code !== code));
+    fetch(`/api/codes?code=${encodeURIComponent(code)}`, { method: "DELETE" });
+  }, []);
+
+  // ── Client actions ──
+  const handleUpdateClient = useCallback((id: string, updates: Record<string, unknown>) => {
+    const headers = authHeaders();
+    setClients(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+    fetch("/api/clients", { method: "PUT", headers, body: JSON.stringify({ id, ...updates }) });
+  }, [authHeaders]);
+
+  const handleSendMessage = useCallback((clientId: string, content: string) => {
+    const headers = authHeaders();
+    fetch("/api/messages", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ model: modelSlug, client_id: clientId, sender_type: "model", content }),
+    });
+  }, [authHeaders, modelSlug]);
 
   return (
     <OsLayout cpId="agence">
@@ -159,15 +192,21 @@ export default function AgenceDashboard() {
                 {modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase()}
               </h1>
               <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                {auth?.role === "root" ? "Root Admin" : "Créatrice exclusive"}
+                {auth?.role === "root" ? "Root Admin" : "Creatrice exclusive"}
               </p>
             </div>
-            {/* Edit Profile button */}
+            {/* View Profile + Edit Profile buttons */}
+            <a href={`/m/${modelSlug}`} target="_blank"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-transform no-underline"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--border2)" }}>
+              <Eye className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+              <span className="text-[11px] font-semibold hidden md:inline" style={{ color: "var(--text-muted)" }}>Profil</span>
+            </a>
             <a href={`/m/${modelSlug}?edit=true`}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-transform no-underline"
               style={{ background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.25)" }}>
               <Pencil className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
-              <span className="text-[11px] font-semibold" style={{ color: "var(--accent)" }}>Edit Profile</span>
+              <span className="text-[11px] font-semibold hidden md:inline" style={{ color: "var(--accent)" }}>Edit</span>
             </a>
           </div>
 
@@ -182,19 +221,24 @@ export default function AgenceDashboard() {
             />
           </div>
 
-          {/* ── Codes List (no tabs needed) ── */}
+          {/* ── Codes + Clients unified list ── */}
           <div className="fade-up-2">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold" style={{ color: "var(--text)" }}>Codes d&apos;accès</h2>
-              <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>{activeCodes.length} actif{activeCodes.length > 1 ? "s" : ""}</span>
+              <h2 className="text-sm font-bold" style={{ color: "var(--text)" }}>Codes &amp; Clients</h2>
+              <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>
+                {activeCodes.length} actif{activeCodes.length > 1 ? "s" : ""} · {clients.length} client{clients.length > 1 ? "s" : ""}
+              </span>
             </div>
             <CodesList
               codes={modelCodes}
+              clients={clients}
               onCopy={handleCopy}
               onRevoke={handleRevoke}
               onPause={handlePause}
               onReactivate={handleReactivate}
               onDelete={handleDelete}
+              onUpdateClient={handleUpdateClient}
+              onSendMessage={handleSendMessage}
             />
           </div>
 
@@ -211,9 +255,7 @@ export default function AgenceDashboard() {
             <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm animate-fade-in" onClick={() => setFabOpen(false)} />
           )}
           <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-3">
-            {/* FAB menu items */}
             <div className={`flex flex-col items-center gap-2.5 transition-all duration-300 ${fabOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"}`}>
-              {/* Add Code */}
               <button
                 onClick={() => { setShowGenerator(true); setFabOpen(false); }}
                 className="fab-item flex items-center gap-2.5 pl-3 pr-4 py-2.5 rounded-full shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition-transform"
@@ -221,15 +263,7 @@ export default function AgenceDashboard() {
                 <KeyRound className="w-4 h-4" />
                 <span className="text-xs font-semibold whitespace-nowrap">Code</span>
               </button>
-              {/* Add Client */}
-              <a href="/agence/clients"
-                className="fab-item flex items-center gap-2.5 pl-3 pr-4 py-2.5 rounded-full shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition-transform"
-                style={{ background: "var(--success)", color: "#fff", transitionDelay: "100ms", textDecoration: "none" }}>
-                <UserPlus className="w-4 h-4" />
-                <span className="text-xs font-semibold whitespace-nowrap">Client</span>
-              </a>
             </div>
-            {/* FAB button */}
             <button
               onClick={() => setFabOpen(!fabOpen)}
               className="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(201,168,76,0.4)]"
@@ -240,7 +274,6 @@ export default function AgenceDashboard() {
               <Plus className="w-6 h-6 text-white" />
             </button>
           </div>
-
 
         </div>
       </div>

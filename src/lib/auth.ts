@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { SignJWT, jwtVerify } from "jose";
 import { getServerSupabase } from "./supabase-server";
 
 export type HeavenRole = "root" | "model" | "client";
@@ -11,34 +12,103 @@ export interface HeavenSession {
   loggedAt: string;
 }
 
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type,x-heaven-role,x-heaven-model",
-};
+// ── JWT helpers ──
 
-export function getCorsHeaders() {
-  return cors;
+const JWT_SECRET_RAW = process.env.HEAVEN_JWT_SECRET || "";
+
+function getJwtSecret(): Uint8Array {
+  if (!JWT_SECRET_RAW) throw new Error("HEAVEN_JWT_SECRET not set");
+  return new TextEncoder().encode(JWT_SECRET_RAW);
+}
+
+/** Sign a JWT token for a logged-in user. Expires in 7 days. */
+export async function signToken(payload: {
+  role: HeavenRole;
+  model_slug: string | null;
+  display_name: string;
+}): Promise<string> {
+  return new SignJWT({ ...payload })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("7d")
+    .sign(getJwtSecret());
+}
+
+/** Verify a JWT token and return the payload, or null if invalid/expired. */
+export async function verifyToken(
+  token: string
+): Promise<{ role: HeavenRole; model_slug: string | null; display_name: string } | null> {
+  try {
+    const { payload } = await jwtVerify(token, getJwtSecret());
+    return {
+      role: payload.role as HeavenRole,
+      model_slug: (payload.model_slug as string) || null,
+      display_name: (payload.display_name as string) || "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ── CORS ──
+
+const ALLOWED_ORIGINS = [
+  "https://heaven-os.vercel.app",
+  "http://localhost:3000",
+  "http://localhost:3001",
+];
+
+export function getCorsHeaders(req?: NextRequest): Record<string, string> {
+  let origin = "*";
+  if (req) {
+    const requestOrigin = req.headers.get("origin") || "";
+    if (ALLOWED_ORIGINS.includes(requestOrigin)) {
+      origin = requestOrigin;
+    } else if (process.env.NODE_ENV === "development") {
+      origin = requestOrigin || "*";
+    } else {
+      origin = ALLOWED_ORIGINS[0]; // default to prod
+    }
+  }
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization",
+    "Access-Control-Allow-Credentials": "true",
+  };
 }
 
 /**
- * Extract role + model from request headers (set by client from sessionStorage).
- * Returns null if no auth headers present.
+ * Extract role + model from Authorization Bearer token.
+ * Returns null if no valid token present.
  */
-export function getSessionFromHeaders(req: NextRequest): { role: HeavenRole; model: string | null } | null {
-  const role = req.headers.get("x-heaven-role") as HeavenRole | null;
-  if (!role) return null;
-  const model = req.headers.get("x-heaven-model") || null;
-  return { role, model };
+export async function getSessionFromHeaders(
+  req: NextRequest
+): Promise<{ role: HeavenRole; model: string | null } | null> {
+  const authHeader = req.headers.get("authorization") || "";
+  if (!authHeader.startsWith("Bearer ")) return null;
+
+  const token = authHeader.slice(7);
+  const payload = await verifyToken(token);
+  if (!payload) return null;
+
+  return { role: payload.role, model: payload.model_slug };
 }
 
 /**
- * Require a specific role. Returns a 403 response if not authorized, or null if OK.
+ * Require a specific role. Returns a 403/401 response if not authorized, or null if OK.
  */
-export function requireRole(req: NextRequest, ...allowed: HeavenRole[]): NextResponse | null {
-  const session = getSessionFromHeaders(req);
-  if (!session || !allowed.includes(session.role)) {
-    return NextResponse.json({ error: "Accès non autorisé" }, { status: 403, headers: cors });
+export async function requireRole(
+  req: NextRequest,
+  ...allowed: HeavenRole[]
+): Promise<NextResponse | null> {
+  const cors = getCorsHeaders(req);
+  const session = await getSessionFromHeaders(req);
+  if (!session) {
+    return NextResponse.json({ error: "Non authentifie" }, { status: 401, headers: cors });
+  }
+  if (!allowed.includes(session.role)) {
+    return NextResponse.json({ error: "Acces non autorise" }, { status: 403, headers: cors });
   }
   return null;
 }
@@ -48,11 +118,11 @@ export function requireRole(req: NextRequest, ...allowed: HeavenRole[]): NextRes
  * Root sees all models (returns null = no filter).
  * Model sees only their own slug.
  */
-export function getModelScope(req: NextRequest): string | null {
-  const session = getSessionFromHeaders(req);
+export async function getModelScope(req: NextRequest): Promise<string | null> {
+  const session = await getSessionFromHeaders(req);
   if (!session) return null;
-  if (session.role === "root") return null; // no filter — sees everything
-  return session.model; // model sees only their own
+  if (session.role === "root") return null;
+  return session.model;
 }
 
 /**
@@ -71,7 +141,6 @@ export async function authenticateCode(code: string) {
     .maybeSingle();
 
   if (data) {
-    // Update last_login
     await supabase
       .from("agence_accounts")
       .update({ last_login: new Date().toISOString() })

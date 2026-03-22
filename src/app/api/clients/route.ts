@@ -12,14 +12,14 @@ export async function OPTIONS() {
 
 // GET /api/clients?model=yumi — List clients (root sees all, model sees own)
 export async function GET(req: NextRequest) {
-  const denied = requireRole(req, "root", "model");
+  const denied = await requireRole(req, "root", "model");
   if (denied) return denied;
 
   try {
     const supabase = getServerSupabase();
-    if (!supabase) return NextResponse.json({ error: "DB non configurée" }, { status: 500, headers: cors });
+    if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    const modelFilter = getModelScope(req) || req.nextUrl.searchParams.get("model");
+    const modelFilter = (await getModelScope(req)) || req.nextUrl.searchParams.get("model");
 
     let q = supabase
       .from("agence_clients")
@@ -53,9 +53,9 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = getServerSupabase();
-    if (!supabase) return NextResponse.json({ error: "DB non configurée" }, { status: 500, headers: cors });
+    if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    // Case-insensitive lookup to merge duplicates (e.g. "Toto" and "toto" = same client)
+    // Case-insensitive lookup to merge duplicates
     let existing = null;
     if (pseudo_snap) {
       const { data } = await supabase
@@ -77,7 +77,6 @@ export async function POST(req: NextRequest) {
     }
 
     if (existing) {
-      // Update last_active + normalize stored pseudos to lowercase
       const updates: Record<string, unknown> = { last_active: new Date().toISOString() };
       if (pseudo_snap) updates.pseudo_snap = pseudo_snap;
       if (pseudo_insta && !existing.pseudo_insta) updates.pseudo_insta = pseudo_insta;
@@ -114,7 +113,7 @@ export async function POST(req: NextRequest) {
 
 // PUT /api/clients — Update client (root or model)
 export async function PUT(req: NextRequest) {
-  const denied = requireRole(req, "root", "model");
+  const denied = await requireRole(req, "root", "model");
   if (denied) return denied;
 
   try {
@@ -123,16 +122,16 @@ export async function PUT(req: NextRequest) {
     if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
 
     const supabase = getServerSupabase();
-    if (!supabase) return NextResponse.json({ error: "DB non configurée" }, { status: 500, headers: cors });
+    if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    // Sanitize
+    // Whitelist allowed fields
     const allowed: Record<string, unknown> = {};
     const fields = ["pseudo_snap", "pseudo_insta", "nickname", "tier", "total_spent", "total_tokens_bought", "total_tokens_spent", "is_verified", "is_blocked", "notes", "firstname", "tag", "preferences", "delivery_platform"];
     for (const f of fields) {
       if (updates[f] !== undefined) allowed[f] = updates[f];
     }
 
-    const modelScope = getModelScope(req);
+    const modelScope = await getModelScope(req);
     let q = supabase.from("agence_clients").update(allowed).eq("id", id);
     if (modelScope) q = q.eq("model", modelScope);
 

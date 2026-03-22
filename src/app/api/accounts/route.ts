@@ -12,12 +12,12 @@ export async function OPTIONS() {
 
 // GET /api/accounts — List all accounts (root only)
 export async function GET(req: NextRequest) {
-  const denied = requireRole(req, "root");
+  const denied = await requireRole(req, "root");
   if (denied) return denied;
 
   try {
     const supabase = getServerSupabase();
-    if (!supabase) return NextResponse.json({ error: "DB non configurée" }, { status: 500, headers: cors });
+    if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
     const { data, error } = await supabase
       .from("agence_accounts")
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 
 // POST /api/accounts — Create account (root only)
 export async function POST(req: NextRequest) {
-  const denied = requireRole(req, "root");
+  const denied = await requireRole(req, "root");
   if (denied) return denied;
 
   try {
@@ -45,11 +45,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "code, role, display_name requis" }, { status: 400, headers: cors });
     }
     if (!["root", "model"].includes(role)) {
-      return NextResponse.json({ error: "role doit être 'root' ou 'model'" }, { status: 400, headers: cors });
+      return NextResponse.json({ error: "role doit etre 'root' ou 'model'" }, { status: 400, headers: cors });
     }
 
     const supabase = getServerSupabase();
-    if (!supabase) return NextResponse.json({ error: "DB non configurée" }, { status: 500, headers: cors });
+    if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
     const { data, error } = await supabase
       .from("agence_accounts")
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error?.code === "23505") {
-      return NextResponse.json({ error: "Code déjà existant" }, { status: 409, headers: cors });
+      return NextResponse.json({ error: "Code deja existant" }, { status: 409, headers: cors });
     }
     if (error) throw error;
 
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
 
 // PUT /api/accounts — Update account (root only)
 export async function PUT(req: NextRequest) {
-  const denied = requireRole(req, "root");
+  const denied = await requireRole(req, "root");
   if (denied) return denied;
 
   try {
@@ -81,7 +81,7 @@ export async function PUT(req: NextRequest) {
     if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
 
     const supabase = getServerSupabase();
-    if (!supabase) return NextResponse.json({ error: "DB non configurée" }, { status: 500, headers: cors });
+    if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
     // Sanitize allowed fields
     const allowed: Record<string, unknown> = {};
@@ -105,9 +105,9 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE /api/accounts?id=xxx — Delete account (root only)
+// DELETE /api/accounts?id=xxx — Delete account + cascade (root only)
 export async function DELETE(req: NextRequest) {
-  const denied = requireRole(req, "root");
+  const denied = await requireRole(req, "root");
   if (denied) return denied;
 
   const id = req.nextUrl.searchParams.get("id");
@@ -115,7 +115,28 @@ export async function DELETE(req: NextRequest) {
 
   try {
     const supabase = getServerSupabase();
-    if (!supabase) return NextResponse.json({ error: "DB non configurée" }, { status: 500, headers: cors });
+    if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
+
+    // Get account to find model_slug for cascade
+    const { data: account } = await supabase
+      .from("agence_accounts")
+      .select("model_slug")
+      .eq("id", id)
+      .single();
+
+    if (account?.model_slug) {
+      const model = account.model_slug;
+      // Cascade delete related records
+      await Promise.all([
+        supabase.from("agence_codes").delete().eq("model", model),
+        supabase.from("agence_clients").delete().eq("model", model),
+        supabase.from("agence_messages").delete().eq("model", model),
+        supabase.from("agence_posts").delete().eq("model", model),
+        supabase.from("agence_uploads").delete().eq("model", model),
+        supabase.from("agence_wall_posts").delete().eq("model", model),
+        supabase.from("agence_security_alerts").delete().eq("model", model),
+      ]);
+    }
 
     const { error } = await supabase.from("agence_accounts").delete().eq("id", id);
     if (error) throw error;

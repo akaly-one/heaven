@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
+import { getCorsHeaders } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -26,7 +27,7 @@ const DEFAULT_PACKS = [
     face: true, badge: "Ultimate", active: true },
 ];
 
-const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS", "Access-Control-Allow-Headers": "Content-Type" };
+const cors = getCorsHeaders();
 
 function requireSupabase() {
   const supabase = getServerSupabase();

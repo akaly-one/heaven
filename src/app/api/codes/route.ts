@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
+import { getCorsHeaders } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,7 @@ interface CodeRow {
   isTrial: boolean; lastUsed: string | null;
 }
 
-const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS", "Access-Control-Allow-Headers": "Content-Type" };
+const cors = getCorsHeaders();
 
 function requireSupabase() {
   const supabase = getServerSupabase();
@@ -105,20 +106,32 @@ export async function POST(req: NextRequest) {
       lastUsed: null,
     };
 
-    // Auto-link to agence_clients
+    // Auto-link to agence_clients (search both pseudo fields)
     let clientId: string | null = null;
     if (normalizedClient) {
-      const pseudoField = platform === "instagram" ? "pseudo_insta" : "pseudo_snap";
-      const { data: existingClient } = await supabase
+      const primaryField = platform === "instagram" ? "pseudo_insta" : "pseudo_snap";
+      const secondaryField = platform === "instagram" ? "pseudo_snap" : "pseudo_insta";
+
+      // Try primary field first
+      let { data: existingClient } = await supabase
         .from("agence_clients").select("id")
-        .eq("model", model).ilike(pseudoField, normalizedClient)
+        .eq("model", model).ilike(primaryField, normalizedClient)
         .maybeSingle();
+
+      // Fallback: try secondary field
+      if (!existingClient) {
+        const { data: fallback } = await supabase
+          .from("agence_clients").select("id")
+          .eq("model", model).ilike(secondaryField, normalizedClient)
+          .maybeSingle();
+        existingClient = fallback;
+      }
 
       if (existingClient) {
         clientId = existingClient.id;
       } else {
         const insertData: Record<string, unknown> = { model, last_active: new Date().toISOString() };
-        insertData[pseudoField] = normalizedClient;
+        insertData[primaryField] = normalizedClient;
         const { data: newClient } = await supabase
           .from("agence_clients").insert(insertData).select("id").single();
         if (newClient) clientId = newClient.id;

@@ -50,8 +50,11 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (auth?.role !== "root") return;
 
+    const token = auth?.token;
+    if (!token) return;
+
     fetch("/api/accounts", {
-      headers: { "x-heaven-role": "root" },
+      headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.json())
       .then(d => {
@@ -66,19 +69,17 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(() => {});
-  }, [auth?.role]);
+  }, [auth?.role, auth?.token]);
 
   const isRoot = auth?.role === "root";
 
   const authHeaders = useCallback(() => {
     const h: Record<string, string> = { "Content-Type": "application/json" };
-    if (auth) {
-      h["x-heaven-role"] = auth.role;
-      if (currentModel) h["x-heaven-model"] = currentModel;
-      else if (auth.model_slug) h["x-heaven-model"] = auth.model_slug;
+    if (auth?.token) {
+      h["Authorization"] = `Bearer ${auth.token}`;
     }
     return h;
-  }, [auth, currentModel]);
+  }, [auth]);
 
   return (
     <ModelContext.Provider value={{ currentModel, setCurrentModel, auth, isRoot, models, authHeaders }}>
