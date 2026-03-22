@@ -83,7 +83,6 @@ function useModelSession(slug: string): ModelAuth | null {
       const raw = sessionStorage.getItem("heaven_auth");
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (!parsed.token) return; // Legacy session without JWT — skip
         if (parsed.role === "root" || parsed.model_slug === slug) setAuth(parsed);
       }
     } catch {}
@@ -92,7 +91,6 @@ function useModelSession(slug: string): ModelAuth | null {
         try {
           if (e.newValue) {
             const parsed = JSON.parse(e.newValue);
-            if (!parsed.token) { setAuth(null); return; }
             if (parsed.role === "root" || parsed.model_slug === slug) setAuth(parsed);
           } else setAuth(null);
         } catch {}
@@ -458,10 +456,9 @@ export default function ModelPage() {
     try {
       // Save profile changes
       if (Object.keys(editProfile).length > 0) {
-        const token = modelAuth?.token;
         const profileRes = await fetch(`/api/models/${slug}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(editProfile),
         });
         if (!profileRes.ok) {
@@ -472,10 +469,9 @@ export default function ModelPage() {
       }
       // Save pack changes
       if (editPacks) {
-        const tkn = modelAuth?.token;
         const packsRes = await fetch("/api/packs", {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...(tkn ? { Authorization: `Bearer ${tkn}` } : {}) },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ model: slug, packs: editPacks }),
         });
         if (!packsRes.ok) {
