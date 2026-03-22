@@ -5,19 +5,28 @@ import { Shield, ArrowRight, Zap } from "lucide-react";
 
 export default function LoginPage() {
   const [code, setCode] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [shake, setShake] = useState(false);
 
-  // Clear any stale/legacy sessions on login page load
+  // Clear any stale session on mount
   useEffect(() => {
-    try { sessionStorage.removeItem("heaven_auth"); } catch {}
+    try {
+      sessionStorage.removeItem("heaven_auth");
+    } catch {}
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  function triggerShake(msg: string) {
+    setError(msg);
+    setShake(true);
+    setTimeout(() => setShake(false), 600);
+  }
+
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
+    if (!code.trim()) return;
     setError("");
-    setIsLoading(true);
+    setLoading(true);
 
     try {
       const res = await fetch("/api/auth", {
@@ -26,54 +35,65 @@ export default function LoginPage() {
         body: JSON.stringify({ code: code.trim() }),
       });
 
-      // Check if response is JSON (Vercel protection can return HTML)
-      const contentType = res.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        setError(`Erreur ${res.status} — recharge la page`);
-        setShake(true);
-        setTimeout(() => setShake(false), 600);
+      // Guard against non-JSON responses (Vercel protection pages, etc.)
+      const ct = res.headers.get("content-type") || "";
+      if (!ct.includes("application/json")) {
+        triggerShake(`Erreur ${res.status} — recharge la page`);
+        setLoading(false);
         return;
       }
 
       const data = await res.json();
 
-      if (res.ok && data.token && data.role) {
-        sessionStorage.setItem(
-          "heaven_auth",
-          JSON.stringify({
-            token: data.token,
-            role: data.role,
-            scope: data.scope,
-            model_slug: data.model_slug,
-            display_name: data.display_name,
-            loggedAt: data.loggedAt,
-          })
-        );
-        window.location.href = "/agence";
-      } else {
-        setError(data.error || "Code invalide");
-        setShake(true);
-        setTimeout(() => setShake(false), 600);
+      if (!res.ok) {
+        triggerShake(data.error || `Erreur ${res.status}`);
+        setLoading(false);
+        return;
       }
+
+      if (!data.token || !data.role) {
+        triggerShake("Reponse serveur incomplete");
+        setLoading(false);
+        return;
+      }
+
+      // Store auth and redirect (full reload to remount providers)
+      sessionStorage.setItem(
+        "heaven_auth",
+        JSON.stringify({
+          token: data.token,
+          role: data.role,
+          scope: data.scope,
+          model_slug: data.model_slug,
+          display_name: data.display_name,
+          loggedAt: data.loggedAt,
+        })
+      );
+      window.location.href = "/agence";
     } catch (err) {
-      setError(`Connexion echouee: ${err instanceof Error ? err.message : "reseau"}`);
-      setShake(true);
-      setTimeout(() => setShake(false), 600);
-    } finally {
-      setIsLoading(false);
+      triggerShake(
+        `Connexion echouee: ${err instanceof Error ? err.message : "erreur reseau"}`
+      );
+      setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="flex items-center justify-center min-h-screen px-4 relative overflow-hidden" style={{ background: "var(--bg)" }}>
+    <div
+      className="flex items-center justify-center min-h-screen px-4 relative overflow-hidden"
+      style={{ background: "var(--bg)" }}
+    >
       {/* Ambient gradient mesh */}
-      <div className="fixed inset-0 pointer-events-none" style={{
-        background: `
-          radial-gradient(ellipse 800px 600px at 20% 20%, rgba(201,168,76,0.08), transparent),
-          radial-gradient(ellipse 600px 500px at 80% 80%, rgba(244,63,94,0.06), transparent),
-          radial-gradient(ellipse 400px 400px at 50% 50%, rgba(167,139,250,0.04), transparent)
-        `,
-      }} />
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          background: `
+            radial-gradient(ellipse 800px 600px at 20% 20%, rgba(201,168,76,0.08), transparent),
+            radial-gradient(ellipse 600px 500px at 80% 80%, rgba(244,63,94,0.06), transparent),
+            radial-gradient(ellipse 400px 400px at 50% 50%, rgba(167,139,250,0.04), transparent)
+          `,
+        }}
+      />
 
       <style>{`
         @keyframes shakeX {
@@ -86,41 +106,67 @@ export default function LoginPage() {
         .shake { animation: shakeX 0.5s ease; }
       `}</style>
 
-      <div className={`fade-up glass rounded-2xl p-10 max-w-sm w-full relative z-10 ${shake ? "shake" : ""}`}
-        style={{ boxShadow: "0 0 80px rgba(201,168,76,0.08), 0 20px 60px rgba(0,0,0,0.4)" }}>
-
+      <div
+        className={`fade-up glass rounded-2xl p-10 max-w-sm w-full relative z-10 ${shake ? "shake" : ""}`}
+        style={{
+          boxShadow:
+            "0 0 80px rgba(201,168,76,0.08), 0 20px 60px rgba(0,0,0,0.4)",
+        }}
+      >
         {/* Logo */}
         <div className="flex justify-center mb-6">
-          <div className="w-20 h-20 rounded-2xl flex items-center justify-center relative"
+          <div
+            className="w-20 h-20 rounded-2xl flex items-center justify-center relative"
             style={{
-              background: "linear-gradient(135deg, var(--rose), var(--accent))",
-              boxShadow: "0 0 40px rgba(201,168,76,0.3), 0 8px 24px rgba(0,0,0,0.3)",
-            }}>
+              background:
+                "linear-gradient(135deg, var(--rose), var(--accent))",
+              boxShadow:
+                "0 0 40px rgba(201,168,76,0.3), 0 8px 24px rgba(0,0,0,0.3)",
+            }}
+          >
             <Zap className="w-8 h-8" style={{ color: "#fff" }} />
-            <div className="absolute inset-0 rounded-2xl" style={{
-              border: "2px solid rgba(201,168,76,0.3)",
-              animation: "pulse-glow 3s ease-in-out infinite",
-            }} />
+            <div
+              className="absolute inset-0 rounded-2xl"
+              style={{
+                border: "2px solid rgba(201,168,76,0.3)",
+                animation: "pulse-glow 3s ease-in-out infinite",
+              }}
+            />
           </div>
         </div>
 
-        <h1 className="text-2xl font-black text-center mb-1 tracking-wide" style={{ color: "var(--text)" }}>
+        <h1
+          className="text-2xl font-black text-center mb-1 tracking-wide"
+          style={{ color: "var(--text)" }}
+        >
           Heaven Studio
         </h1>
-        <p className="text-center mb-8 text-sm" style={{ color: "var(--text-muted)" }}>
+        <p
+          className="text-center mb-8 text-sm"
+          style={{ color: "var(--text-muted)" }}
+        >
           Cockpit administrateur
         </p>
 
         {error && (
-          <div className="mb-4 px-4 py-3 rounded-xl text-sm font-medium text-center"
-            style={{ background: "rgba(244,63,94,0.1)", color: "var(--danger)", border: "1px solid rgba(244,63,94,0.2)" }}>
+          <div
+            className="mb-4 px-4 py-3 rounded-xl text-sm font-medium text-center"
+            style={{
+              background: "rgba(244,63,94,0.1)",
+              color: "var(--danger)",
+              border: "1px solid rgba(244,63,94,0.2)",
+            }}
+          >
             {error}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div className="relative">
-            <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--accent)" }} />
+            <Shield
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4"
+              style={{ color: "var(--accent)" }}
+            />
             <input
               type="password"
               value={code}
@@ -137,9 +183,12 @@ export default function LoginPage() {
             />
           </div>
 
-          <button type="submit" disabled={isLoading}
-            className="w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-300 hover:shadow-[0_0_24px_rgba(201,168,76,0.3)] hover:-translate-y-0.5 disabled:opacity-50 cursor-pointer btn-gradient">
-            {isLoading ? (
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-300 hover:shadow-[0_0_24px_rgba(201,168,76,0.3)] hover:-translate-y-0.5 disabled:opacity-50 cursor-pointer btn-gradient"
+          >
+            {loading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <>
@@ -151,7 +200,10 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 flex flex-col items-center gap-3">
-          <p className="text-[10px] tracking-widest uppercase" style={{ color: "var(--text-muted)" }}>
+          <p
+            className="text-[10px] tracking-widest uppercase"
+            style={{ color: "var(--text-muted)" }}
+          >
             Heaven Studio &middot; Benelux
           </p>
         </div>
