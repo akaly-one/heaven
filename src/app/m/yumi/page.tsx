@@ -535,51 +535,35 @@ export default function YumiPublicPage() {
   // Load data
   useEffect(() => {
     setMounted(true);
-    fetch("/api/packs")
-      .then(res => { if (!res.ok) throw new Error(); return res.json(); })
-      .then((data: { packs: PackConfig[] }) => {
-        if (Array.isArray(data.packs) && data.packs.length > 0) setPacks(data.packs);
-        else setPacks(loadPacks());
-      })
-      .catch(() => setPacks(loadPacks()));
-    // Detect admin session (model visited cockpit)
+
+    // Detect admin session
     try {
       const sess = JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY) || "{}");
       if (sess.active && Date.now() - (sess.ts || 0) < 24 * 3600000) setIsAdmin(true);
     } catch { /* not admin */ }
+
+    // API = source of truth for everything
+    fetch("/api/packs?model=yumi")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.packs?.length > 0) { setPacks(d.packs); try { localStorage.setItem(PACKS_KEY, JSON.stringify(d.packs)); } catch {} } else setPacks(loadPacks()); })
+      .catch(() => setPacks(loadPacks()));
+
+    apiFetchUploads("yumi").then(apiUploads => {
+      setUploads(apiUploads);
+      try { localStorage.setItem(CONTENT_KEY, JSON.stringify(apiUploads)); } catch {}
+    }).catch(() => setUploads(loadUploads()));
+
     setReviews(loadReviews());
     setServices(loadServices());
     setPresence(loadPresence());
 
-    // Load uploads: merge API (cross-browser) + localStorage
-    const localUploads = loadUploads();
-    setUploads(localUploads);
-    apiFetchUploads("yumi").then(apiUploads => {
-      if (apiUploads.length === 0 && localUploads.length > 0) {
-        apiSyncUploads("yumi", localUploads);
-      } else if (apiUploads.length > 0) {
-        const apiSet = new Set(apiUploads.map(u => u.id));
-        const localOnly = localUploads.filter(u => !apiSet.has(u.id));
-        localOnly.forEach(u => apiCreateUpload("yumi", u));
-        const merged = [...apiUploads, ...localOnly];
-        setUploads(merged);
-        try { localStorage.setItem(CONTENT_KEY, JSON.stringify(merged)); } catch { /* */ }
-      }
-    });
-
-    // Sync when cockpit updates in another tab
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === CONTENT_KEY) setUploads(loadUploads());
-      if (e.key === REVIEWS_KEY) setReviews(loadReviews());
-      if (e.key === PACKS_KEY) setPacks(loadPacks());
-      if (e.key === SERVICES_KEY) setServices(loadServices());
-      if (e.key === PRESENCE_KEY) setPresence(loadPresence());
+    // Refresh from API on tab focus (cross-browser sync)
+    const onFocus = () => {
+      apiFetchUploads("yumi").then(u => { setUploads(u); try { localStorage.setItem(CONTENT_KEY, JSON.stringify(u)); } catch {} }).catch(() => {});
+      fetch("/api/packs?model=yumi").then(r => r.json()).then(d => { if (d?.packs?.length > 0) setPacks(d.packs); }).catch(() => {});
     };
-    window.addEventListener("storage", onStorage);
-    // Also reload on tab focus (same-origin navigation won't trigger storage event)
-    const onFocus = () => { setUploads(loadUploads()); setReviews(loadReviews()); setServices(loadServices()); setPresence(loadPresence()); };
     window.addEventListener("focus", onFocus);
-    return () => { window.removeEventListener("storage", onStorage); window.removeEventListener("focus", onFocus); };
+    return () => { window.removeEventListener("focus", onFocus); };
   }, []);
 
   // Countdown timer

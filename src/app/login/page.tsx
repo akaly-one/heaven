@@ -7,6 +7,8 @@ import { Shield, ArrowRight, Zap } from "lucide-react";
 // Access codes — Phase 0 (hardcoded). Phase prod: Supabase dynamic codes.
 const ACCESS_CODES: Record<string, { role: string; redirect: string; scope: string[] }> = {
   one: { role: "admin", redirect: "/agence", scope: ["*"] },
+  yumi: { role: "model", redirect: "/agence", scope: ["/agence"] },
+  heaven: { role: "admin", redirect: "/agence", scope: ["*"] },
 };
 
 export default function LoginPage() {

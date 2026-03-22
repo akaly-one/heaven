@@ -334,43 +334,30 @@ export default function AgenceDashboard() {
   const [editStatus, setEditStatus] = useState("");
 
   useEffect(() => {
-    // Load local data first (instant)
-    const localCodes = loadCodes();
-    setCodes(localCodes);
-    setOrders(loadOrders()); setPacks(loadPacks()); setUploads(loadUploads()); setReviewsList(loadReviews()); setModelServices(loadServices()); setPresence(loadPresence()); setExclusions(loadExclusions()); setSsLog(loadScreenshotLog());
+    // API = source of truth, localStorage = local cache only
     localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({ active: true, ts: Date.now() }));
 
-    // Then merge with API (shared server store)
-    apiFetchCodes("yumi").then(apiCodes => {
-      if (apiCodes.length === 0 && localCodes.length > 0) {
-        // First run: push local codes to API
-        localCodes.filter(c => c.model === "yumi").forEach(c => apiCreateCode(c));
-      } else if (apiCodes.length > 0) {
-        // Merge: API is source of truth, add any local-only codes
-        const apiSet = new Set(apiCodes.map(c => c.code));
-        const localOnly = localCodes.filter(c => c.model === "yumi" && !apiSet.has(c.code));
-        localOnly.forEach(c => apiCreateCode(c));
-        const nonYumi = localCodes.filter(c => c.model !== "yumi");
-        const merged = [...nonYumi, ...apiCodes, ...localOnly];
-        setCodes(merged);
-        saveCodes(merged);
-      }
-    });
+    // Load local cache instantly for fast render
+    setOrders(loadOrders()); setPresence(loadPresence()); setExclusions(loadExclusions()); setSsLog(loadScreenshotLog());
 
-    // Sync uploads with API
-    const localUploads = loadUploads();
+    // Fetch everything from API (cloud = truth)
+    apiFetchCodes("yumi").then(apiCodes => {
+      setCodes(apiCodes);
+      saveCodes(apiCodes);
+    }).catch(() => setCodes(loadCodes()));
+
     apiFetchUploads("yumi").then(apiUploads => {
-      if (apiUploads.length === 0 && localUploads.length > 0) {
-        apiSyncUploads("yumi", localUploads);
-      } else if (apiUploads.length > 0) {
-        const apiSet = new Set(apiUploads.map(u => u.id));
-        const localOnly = localUploads.filter(u => !apiSet.has(u.id));
-        localOnly.forEach(u => apiCreateUpload("yumi", u));
-        const merged = [...apiUploads, ...localOnly];
-        setUploads(merged);
-        saveUploads(merged);
-      }
-    });
+      setUploads(apiUploads);
+      saveUploads(apiUploads);
+    }).catch(() => setUploads(loadUploads()));
+
+    fetch("/api/packs?model=yumi").then(r => r.json()).then(d => {
+      if (d.packs?.length > 0) { setPacks(d.packs); savePacks(d.packs); }
+      else setPacks(loadPacks());
+    }).catch(() => setPacks(loadPacks()));
+
+    setReviewsList(loadReviews());
+    setModelServices(loadServices());
   }, []);
   useEffect(() => { const iv = setInterval(() => setTick(t => t + 1), 60000); return () => clearInterval(iv); }, []);
 
