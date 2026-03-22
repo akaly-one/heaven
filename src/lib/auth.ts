@@ -6,11 +6,10 @@ export type HeavenRole = "root" | "model" | "client";
 
 // ── JWT helpers ──
 
-const JWT_SECRET_RAW = process.env.HEAVEN_JWT_SECRET || "";
-
 function getJwtSecret(): Uint8Array {
-  if (!JWT_SECRET_RAW) throw new Error("HEAVEN_JWT_SECRET not set");
-  return new TextEncoder().encode(JWT_SECRET_RAW);
+  const secret = process.env.HEAVEN_JWT_SECRET || "";
+  if (!secret) throw new Error("HEAVEN_JWT_SECRET not set");
+  return new TextEncoder().encode(secret);
 }
 
 /** Sign a JWT token for a logged-in user. Expires in 7 days. */
