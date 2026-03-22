@@ -115,15 +115,33 @@ export function GenerateModal({ open, onClose, onGenerate, modelSlug }: Generate
                 {copied ? "Lien copié !" : "Copier le lien"}
               </button>
               <div className="flex gap-2">
-                <button onClick={() => { handleCopyLink(); window.open(`https://www.snapchat.com/`, "_blank"); }}
-                  className="flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-medium cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                <button onClick={() => {
+                    handleCopyLink();
+                    const username = client.trim().replace(/^@/, "");
+                    // Snapchat deep link: opens chat with user directly
+                    const snapUrl = platform === "snapchat" && username
+                      ? `https://www.snapchat.com/add/${encodeURIComponent(username)}`
+                      : `https://www.snapchat.com/`;
+                    window.open(snapUrl, "_blank");
+                  }}
+                  className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-medium cursor-pointer hover:scale-105 active:scale-95 transition-transform ${platform === "snapchat" ? "ring-1 ring-[#FFFC00]/40" : ""}`}
                   style={{ background: "rgba(255,252,0,0.08)", color: "#FFFC00", border: "1px solid rgba(255,252,0,0.2)" }}>
                   <Send className="w-3.5 h-3.5" /> Snap
+                  {platform === "snapchat" && client.trim() && <span className="text-[9px] opacity-70">@{client.trim().replace(/^@/, "").slice(0, 10)}</span>}
                 </button>
-                <button onClick={() => { handleCopyLink(); window.open(`https://www.instagram.com/`, "_blank"); }}
-                  className="flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-medium cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                <button onClick={() => {
+                    handleCopyLink();
+                    const username = client.trim().replace(/^@/, "");
+                    // Instagram deep link: opens DM with user directly
+                    const instaUrl = platform === "instagram" && username
+                      ? `https://ig.me/m/${encodeURIComponent(username)}`
+                      : `https://www.instagram.com/${username ? encodeURIComponent(username) + "/" : ""}`;
+                    window.open(instaUrl, "_blank");
+                  }}
+                  className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-medium cursor-pointer hover:scale-105 active:scale-95 transition-transform ${platform === "instagram" ? "ring-1 ring-[#E1306C]/40" : ""}`}
                   style={{ background: "rgba(225,48,108,0.08)", color: "#E1306C", border: "1px solid rgba(225,48,108,0.2)" }}>
                   <Send className="w-3.5 h-3.5" /> Insta
+                  {platform === "instagram" && client.trim() && <span className="text-[9px] opacity-70">@{client.trim().replace(/^@/, "").slice(0, 10)}</span>}
                 </button>
               </div>
               <button onClick={handleClose} className="w-full py-2.5 rounded-xl text-xs font-medium cursor-pointer"
