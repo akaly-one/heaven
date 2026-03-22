@@ -55,6 +55,7 @@ const TABS = [
   { id: "wall", label: "Wall", icon: Newspaper },
   { id: "gallery", label: "Gallery", icon: Image },
   { id: "shop", label: "Shop", icon: ShoppingBag },
+  { id: "chat", label: "Chat", icon: MessageCircle },
 ] as const;
 type TabId = typeof TABS[number]["id"];
 
@@ -137,8 +138,7 @@ export default function ModelPage() {
   const [wallPosting, setWallPosting] = useState(false);
   const wallFileRef = useRef<HTMLInputElement>(null);
 
-  // Chat bubble
-  const [chatOpen, setChatOpen] = useState(false);
+  // Chat
   const [clientId, setClientId] = useState<string | null>(null);
   const [pseudo, setPseudo] = useState({ snap: "", insta: "" });
   const [chatMessages, setChatMessages] = useState<{ id: string; client_id: string; sender_type: string; content: string; created_at: string }[]>([]);
@@ -300,8 +300,10 @@ export default function ModelPage() {
     if (url) {
       updateEditField("avatar", url);
       setEditToast("Avatar mis à jour");
-      setTimeout(() => setEditToast(null), 2000);
+    } else {
+      setEditToast("Erreur upload avatar");
     }
+    setTimeout(() => setEditToast(null), 2000);
     setUploading(false);
   }, [slug, uploadToCloudinary, updateEditField]);
 
@@ -314,8 +316,10 @@ export default function ModelPage() {
     if (url) {
       updateEditField("banner", url);
       setEditToast("Bannière mise à jour");
-      setTimeout(() => setEditToast(null), 2000);
+    } else {
+      setEditToast("Erreur upload bannière");
     }
+    setTimeout(() => setEditToast(null), 2000);
     setUploading(false);
   }, [slug, uploadToCloudinary, updateEditField]);
 
@@ -349,6 +353,7 @@ export default function ModelPage() {
           setUploads(prev => [data.upload || newUpload, ...prev]);
           setEditToast("Média ajouté");
           setTimeout(() => setEditToast(null), 2000);
+          setTab("gallery");
         } else {
           console.error("[EditMode] Upload save failed:", data);
           setEditToast("Erreur: " + (data.error || "upload échoué"));
@@ -606,7 +611,7 @@ export default function ModelPage() {
 
   // ── Chat: poll messages ──
   useEffect(() => {
-    if (!clientId || !chatOpen) return;
+    if (!clientId) return;
     const fetchChat = () => {
       fetch(`/api/messages?model=${slug}&client_id=${clientId}`)
         .then(r => r.json())
@@ -616,9 +621,10 @@ export default function ModelPage() {
         .catch(e => console.error("[Chat] poll error:", e));
     };
     fetchChat();
-    const iv = setInterval(fetchChat, 5000);
+    const interval = tab === "chat" ? 5000 : 15000;
+    const iv = setInterval(fetchChat, interval);
     return () => clearInterval(iv);
-  }, [clientId, chatOpen, slug]);
+  }, [clientId, slug, tab]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -705,8 +711,22 @@ export default function ModelPage() {
     return `${Math.floor(h / 24)}d`;
   };
 
-  const galleryItems = uploads.filter(u => galleryTier === "all" || u.tier === galleryTier);
-  const tierCounts = uploads.reduce((acc, u) => { acc[u.tier] = (acc[u.tier] || 0) + 1; return acc; }, {} as Record<string, number>);
+  // Merge uploads + posts-with-media into gallery
+  const postsAsGalleryItems: UploadedContent[] = posts
+    .filter(p => p.media_url)
+    .map(p => ({
+      id: `post-${p.id}`,
+      tier: (!p.tier_required || p.tier_required === "public") ? "promo" : p.tier_required,
+      type: (p.media_type === "video" ? "video" : "photo") as "photo" | "video" | "reel",
+      label: p.content || "",
+      dataUrl: p.media_url!,
+      uploadedAt: p.created_at,
+      visibility: (!p.tier_required || p.tier_required === "public") ? "promo" as const : "pack" as const,
+      tokenPrice: 0,
+    }));
+  const allGalleryItems = [...uploads, ...postsAsGalleryItems];
+  const galleryItems = allGalleryItems.filter(u => galleryTier === "all" || u.tier === galleryTier || (galleryTier === "promo" && u.visibility === "promo"));
+  const tierCounts = allGalleryItems.reduce((acc, u) => { acc[u.tier] = (acc[u.tier] || 0) + 1; return acc; }, {} as Record<string, number>);
 
   // ── Loading / 404 ──
   if (notFound) {
@@ -997,8 +1017,12 @@ export default function ModelPage() {
                 </div>
               </div>
 
-              {/* Model posts (pinned first) */}
-              {posts.filter(p => p.tier_required === "public").map((post, i) => {
+              {/* Model posts (all — media gated by tier) */}
+              {posts.map((post, i) => {
+                const postTier = post.tier_required || "public";
+                const mediaUnlocked = postTier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, postTier));
+                const tierMeta = TIER_META[postTier];
+                const tierHex = TIER_HEX[postTier] || "#64748B";
                 return (
                   <div key={post.id} className="card-premium overflow-hidden" style={{ animationDelay: `${i * 40}ms` }}>
                     <div className="flex items-center gap-3 p-4 pb-0">
@@ -1010,6 +1034,11 @@ export default function ModelPage() {
                         <div className="flex items-center gap-1.5">
                           <p className="text-xs font-semibold" style={{ color: "var(--text)" }}>{model.display_name}</p>
                           <span className="badge badge-success text-[7px]">Creator</span>
+                          {postTier !== "public" && (
+                            <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${tierHex}20`, color: tierHex }}>
+                              {tierMeta?.label || postTier}
+                            </span>
+                          )}
                         </div>
                         <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{timeAgo(post.created_at)}</p>
                       </div>
@@ -1023,11 +1052,23 @@ export default function ModelPage() {
                     )}
 
                     {post.media_url && (
-                      <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
-                        <div className="mx-4 my-2 rounded-xl overflow-hidden">
-                          <img src={post.media_url} alt="" className="w-full" />
+                      mediaUnlocked ? (
+                        <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
+                          <div className="mx-4 my-2 rounded-xl overflow-hidden">
+                            <img src={post.media_url} alt="" className="w-full" />
+                          </div>
+                        </ContentProtection>
+                      ) : (
+                        <div className="mx-4 my-2 rounded-xl overflow-hidden relative cursor-pointer" onClick={() => setShowUnlock(true)}>
+                          <img src={post.media_url} alt="" className="w-full content-locked" />
+                          <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(16px)" }}>
+                            <div className="text-center">
+                              <Lock className="w-5 h-5 mx-auto mb-1" style={{ color: tierHex }} />
+                              <span className="text-[10px] font-bold" style={{ color: tierHex }}>{tierMeta?.label || postTier} Only</span>
+                            </div>
+                          </div>
                         </div>
-                      </ContentProtection>
+                      )
                     )}
 
                     <div className="flex items-center gap-4 px-4 py-3">
@@ -1068,7 +1109,7 @@ export default function ModelPage() {
                 </div>
               ))}
 
-              {wallPosts.length === 0 && posts.filter(p => p.tier_required === "public").length === 0 && (
+              {wallPosts.length === 0 && posts.length === 0 && (
                 <EmptyState icon={Newspaper} text="Be the first to leave a message!" />
               )}
             </div>
@@ -1077,30 +1118,30 @@ export default function ModelPage() {
           {/* ── GALLERY ── */}
           {tab === "gallery" && (
             <div className="fade-up">
-              {/* Tier filter (hidden in edit mode — show all) */}
+              {/* Pack folders — Instagram-style tab bar */}
               {!isEditMode && (
-                <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-4 -mx-4 px-4">
+                <div className="flex mb-4 -mx-4 px-4" style={{ borderBottom: "1px solid var(--border2)" }}>
                   <button onClick={() => setGalleryTier("all")}
-                    className="px-3.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap cursor-pointer transition-all"
-                    style={{
-                      background: galleryTier === "all" ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
-                      color: galleryTier === "all" ? "var(--text)" : "var(--text-muted)",
-                      border: `1px solid ${galleryTier === "all" ? "var(--border3)" : "var(--border2)"}`,
-                    }}>
-                    All {uploads.length}
+                    className="flex-1 py-2.5 text-center text-[11px] font-semibold cursor-pointer transition-all relative"
+                    style={{ color: galleryTier === "all" ? "var(--text)" : "var(--text-muted)" }}>
+                    All
+                    {galleryTier === "all" && (
+                      <div className="absolute bottom-0 left-1/4 right-1/4 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />
+                    )}
                   </button>
-                  {Object.entries(TIER_HEX).filter(([k]) => tierCounts[k]).map(([tier, hex]) => (
-                    <button key={tier} onClick={() => setGalleryTier(tier)}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap cursor-pointer transition-all"
-                      style={{
-                        background: galleryTier === tier ? `${hex}20` : "rgba(255,255,255,0.03)",
-                        color: galleryTier === tier ? hex : "var(--text-muted)",
-                        border: `1px solid ${galleryTier === tier ? `${hex}40` : "var(--border2)"}`,
-                      }}>
-                      <span className={`tier-dot ${tier}`} style={{ width: 6, height: 6 }} />
-                      {TIER_META[tier]?.label} {tierCounts[tier]}
-                    </button>
-                  ))}
+                  {(["vip", "gold", "diamond", "platinum"] as const).filter(k => tierCounts[k]).map(tier => {
+                    const hex = TIER_HEX[tier];
+                    return (
+                      <button key={tier} onClick={() => setGalleryTier(tier)}
+                        className="flex-1 py-2.5 text-center text-[11px] font-semibold cursor-pointer transition-all relative"
+                        style={{ color: galleryTier === tier ? hex : "var(--text-muted)" }}>
+                        {TIER_META[tier]?.symbol} {TIER_META[tier]?.label}
+                        {galleryTier === tier && (
+                          <div className="absolute bottom-0 left-1/4 right-1/4 h-[2px] rounded-full" style={{ background: hex }} />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 
@@ -1585,7 +1626,7 @@ export default function ModelPage() {
                     <div className="card-premium p-5 text-center">
                       <Coins className="w-8 h-8 mx-auto mb-3" style={{ color: "var(--gold)", opacity: 0.5 }} />
                       <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>Identifie-toi pour acheter des crédits</p>
-                      <button onClick={() => setChatOpen(true)}
+                      <button onClick={() => setTab("chat")}
                         className="px-6 py-2.5 rounded-xl text-xs font-semibold cursor-pointer btn-gradient">
                         S&apos;identifier
                       </button>
@@ -1672,7 +1713,7 @@ export default function ModelPage() {
                 {!clientId ? (
                   <div className="space-y-3">
                     <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>Identifie-toi d&apos;abord pour acheter</p>
-                    <button onClick={() => { setCreditPurchaseModal(null); setChatOpen(true); }}
+                    <button onClick={() => { setCreditPurchaseModal(null); setTab("chat"); }}
                       className="w-full py-3 rounded-xl text-sm font-semibold cursor-pointer btn-gradient">
                       S&apos;identifier
                     </button>
@@ -1801,7 +1842,7 @@ export default function ModelPage() {
                   <button onClick={() => {
                     // Copy payment info or open chat for payment
                     setSelectedPack(null);
-                    setChatOpen(true);
+                    setTab("chat");
                     setChatInput(`Je veux le pack ${selectedPack.name} à ${selectedPack.price}€`);
                   }}
                     className="w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
@@ -1823,102 +1864,80 @@ export default function ModelPage() {
           );
         })()}
 
-        {/* ═══ FLOATING CHAT BUBBLE ═══ */}
-        {!isModelLoggedIn && !isEditMode && (
-          <>
-            {/* FAB button */}
-            {!chatOpen && (
-              <button
-                onClick={() => setChatOpen(true)}
-                className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer shadow-lg transition-transform hover:scale-105"
-                style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))" }}>
-                <MessageCircle className="w-5 h-5 text-white" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[9px] font-bold flex items-center justify-center"
-                    style={{ background: "var(--danger)", color: "#fff" }}>
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
-                )}
-              </button>
-            )}
+        {/* ═══ CHAT TAB CONTENT ═══ */}
+        {tab === "chat" && !isModelLoggedIn && model && (
+          <div className="fade-up" style={{ minHeight: "60vh" }}>
+            {/* Chat header */}
+            <div className="flex items-center gap-3 p-4 rounded-2xl mb-4" style={{ background: "var(--surface)", border: "1px solid var(--border2)" }}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
+                style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff" }}>
+                {model.display_name.charAt(0)}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{model.display_name}</p>
+                <p className="text-[10px]" style={{ color: model.online ? "var(--success)" : "var(--text-muted)" }}>
+                  {model.online ? "Online" : "Offline"}
+                </p>
+              </div>
+            </div>
 
-            {/* Chat popup */}
-            {chatOpen && (
-              <div className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-2xl overflow-hidden shadow-2xl flex flex-col"
-                style={{ background: "var(--surface)", border: "1px solid var(--border2)", maxHeight: "min(420px, 60vh)" }}>
-                {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border2)" }}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold"
-                      style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff" }}>
-                      {model.display_name.charAt(0)}
+            {!clientId ? (
+              <div className="card-premium p-6 space-y-3">
+                <p className="text-xs text-center font-medium" style={{ color: "var(--text-muted)" }}>Enter your username to start chatting</p>
+                <div className="relative">
+                  <Ghost className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                  <input value={pseudo.snap} onChange={e => setPseudo(p => ({ ...p, snap: e.target.value }))}
+                    placeholder="Snapchat username" className="w-full pl-10 pr-3 py-2.5 rounded-xl text-xs outline-none"
+                    style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
+                </div>
+                <div className="relative">
+                  <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                  <input value={pseudo.insta} onChange={e => setPseudo(p => ({ ...p, insta: e.target.value }))}
+                    placeholder="Instagram username" className="w-full pl-10 pr-3 py-2.5 rounded-xl text-xs outline-none"
+                    style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
+                </div>
+                <button onClick={registerClient} disabled={!pseudo.snap && !pseudo.insta}
+                  className="w-full py-2.5 rounded-xl text-xs font-semibold cursor-pointer btn-gradient disabled:opacity-30">
+                  Start Chatting
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border2)", height: "calc(100vh - 340px)", minHeight: 300 }}>
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                  {chatMessages.length === 0 ? (
+                    <div className="text-center py-12">
+                      <MessageCircle className="w-8 h-8 mx-auto mb-2" style={{ color: "var(--text-muted)" }} />
+                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>Say hello to {model.display_name}!</p>
                     </div>
-                    <div>
-                      <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>{model.display_name}</span>
-                      {model.online && <span className="text-[9px] ml-1.5" style={{ color: "var(--success)" }}>Online</span>}
+                  ) : chatMessages.map(msg => (
+                    <div key={msg.id} className={`flex ${msg.sender_type === "client" ? "justify-end" : "justify-start"}`}>
+                      <div className="max-w-[75%] rounded-2xl px-3.5 py-2 text-[12px]"
+                        style={{
+                          background: msg.sender_type === "client" ? "rgba(201,168,76,0.15)" : "var(--bg3)",
+                          color: "var(--text)",
+                        }}>
+                        {msg.content}
+                        <p className="text-[8px] mt-0.5 opacity-40">{timeAgo(msg.created_at)}</p>
+                      </div>
                     </div>
-                  </div>
-                  <button onClick={() => setChatOpen(false)} className="w-6 h-6 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-80"
-                    style={{ background: "rgba(255,255,255,0.05)" }}>
-                    <X className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
+                  ))}
+                  <div ref={chatEndRef} />
+                </div>
+                {/* Input */}
+                <div className="p-3 flex gap-2 shrink-0" style={{ borderTop: "1px solid var(--border2)" }}>
+                  <input value={chatInput} onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && sendMessage()}
+                    placeholder="Message..." className="flex-1 px-4 py-2.5 rounded-xl text-xs outline-none"
+                    style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
+                  <button onClick={sendMessage}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer btn-gradient shrink-0">
+                    <Send className="w-4 h-4" />
                   </button>
                 </div>
-
-                {/* Body */}
-                {!clientId ? (
-                  <div className="p-4 space-y-2.5">
-                    <p className="text-[11px] text-center" style={{ color: "var(--text-muted)" }}>Enter your username to chat</p>
-                    <div className="relative">
-                      <Ghost className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
-                      <input value={pseudo.snap} onChange={e => setPseudo(p => ({ ...p, snap: e.target.value }))}
-                        placeholder="Snapchat" className="w-full pl-9 pr-3 py-2 rounded-lg text-xs outline-none"
-                        style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
-                    </div>
-                    <div className="relative">
-                      <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
-                      <input value={pseudo.insta} onChange={e => setPseudo(p => ({ ...p, insta: e.target.value }))}
-                        placeholder="Instagram" className="w-full pl-9 pr-3 py-2 rounded-lg text-xs outline-none"
-                        style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
-                    </div>
-                    <button onClick={registerClient} disabled={!pseudo.snap && !pseudo.insta}
-                      className="w-full py-2 rounded-lg text-xs font-semibold cursor-pointer btn-gradient disabled:opacity-30">
-                      Start Chatting
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex-1 overflow-y-auto p-3 space-y-1.5" style={{ minHeight: 150 }}>
-                      {chatMessages.length === 0 ? (
-                        <p className="text-center text-[10px] py-6" style={{ color: "var(--text-muted)" }}>Say hello!</p>
-                      ) : chatMessages.map(msg => (
-                        <div key={msg.id} className={`flex ${msg.sender_type === "client" ? "justify-end" : "justify-start"}`}>
-                          <div className="max-w-[80%] rounded-2xl px-3 py-1.5 text-[11px]"
-                            style={{
-                              background: msg.sender_type === "client" ? "rgba(201,168,76,0.12)" : "var(--bg3)",
-                              color: "var(--text)",
-                            }}>
-                            {msg.content}
-                            <p className="text-[7px] mt-0.5 opacity-40">{timeAgo(msg.created_at)}</p>
-                          </div>
-                        </div>
-                      ))}
-                      <div ref={chatEndRef} />
-                    </div>
-                    <div className="p-2.5 flex gap-1.5 shrink-0" style={{ borderTop: "1px solid var(--border2)" }}>
-                      <input value={chatInput} onChange={e => setChatInput(e.target.value)}
-                        onKeyDown={e => e.key === "Enter" && sendMessage()}
-                        placeholder="Message..." className="flex-1 px-3 py-2 rounded-lg text-[11px] outline-none"
-                        style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
-                      <button onClick={sendMessage}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer btn-gradient shrink-0">
-                        <Send className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </>
-                )}
               </div>
             )}
-          </>
+          </div>
         )}
 
         {/* ═══ SHOP TOAST ═══ */}
@@ -1985,10 +2004,16 @@ export default function ModelPage() {
             <div className="flex items-center justify-around py-2">
               {TABS.map(t => (
                 <button key={t.id} onClick={() => setTab(t.id)}
-                  className="flex flex-col items-center gap-0.5 px-3 py-1 cursor-pointer transition-all"
+                  className="relative flex flex-col items-center gap-0.5 px-3 py-1 cursor-pointer transition-all"
                   style={{ color: tab === t.id ? "var(--accent)" : "var(--text-muted)" }}>
                   <t.icon className="w-5 h-5" />
                   {tab === t.id && <span className="text-[10px] font-medium">{t.label}</span>}
+                  {t.id === "chat" && unreadCount > 0 && tab !== "chat" && (
+                    <span className="absolute -top-0.5 right-1 w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center"
+                      style={{ background: "var(--danger)", color: "#fff" }}>
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
