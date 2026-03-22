@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, ArrowRight, Zap } from "lucide-react";
 
@@ -10,6 +10,11 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [shake, setShake] = useState(false);
+
+  // Clear any stale/legacy sessions on login page load
+  useEffect(() => {
+    try { sessionStorage.removeItem("heaven_auth"); } catch {}
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
