@@ -124,7 +124,7 @@ export async function PUT(req: NextRequest) {
 
     // Sanitize
     const allowed: Record<string, unknown> = {};
-    const fields = ["pseudo_snap", "pseudo_insta", "tier", "total_spent", "total_tokens_bought", "total_tokens_spent", "is_verified", "is_blocked", "notes"];
+    const fields = ["pseudo_snap", "pseudo_insta", "tier", "total_spent", "total_tokens_bought", "total_tokens_spent", "is_verified", "is_blocked", "notes", "firstname", "tag", "preferences", "delivery_platform"];
     for (const f of fields) {
       if (updates[f] !== undefined) allowed[f] = updates[f];
     }

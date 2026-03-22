@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import {
   Heart, MessageCircle, Send, Lock, Image, Newspaper, ShoppingBag,
   Coins, Pin, Eye, Star, Camera, Video, Play, X,
-  Instagram, Ghost, MessageSquare, ChevronRight,
+  Instagram, Ghost, ChevronRight, Zap, Plus, Edit3, Wifi,
 } from "lucide-react";
 
 // ── Types ──
@@ -27,6 +27,9 @@ interface UploadedContent {
   id: string; tier: string; type: "photo" | "video" | "reel"; label: string;
   dataUrl: string; uploadedAt: string; visibility?: "pack" | "promo"; tokenPrice?: number; isNew?: boolean;
 }
+interface ModelAuth {
+  role: string; model_slug?: string; display_name?: string;
+}
 
 // ── Constants ──
 const TIER_META: Record<string, { color: string; symbol: string; label: string }> = {
@@ -36,11 +39,9 @@ const TIER_META: Record<string, { color: string; symbol: string; label: string }
   platinum: { color: "var(--tier-platinum)", symbol: "♛", label: "Platinum" },
   public: { color: "var(--text-muted)", symbol: "", label: "Public" },
 };
-
 const TIER_HEX: Record<string, string> = {
   vip: "#F43F5E", gold: "#F59E0B", diamond: "#6366F1", platinum: "#A78BFA",
 };
-
 const TABS = [
   { id: "feed", label: "Feed", icon: Newspaper },
   { id: "gallery", label: "Gallery", icon: Image },
@@ -49,9 +50,42 @@ const TABS = [
 ] as const;
 type TabId = typeof TABS[number]["id"];
 
+// ── Detect model session from another tab ──
+function useModelSession(slug: string): ModelAuth | null {
+  const [auth, setAuth] = useState<ModelAuth | null>(null);
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("heaven_auth");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // Root sees everything, model only sees own profile
+        if (parsed.role === "root" || parsed.model_slug === slug) {
+          setAuth(parsed);
+        }
+      }
+    } catch {}
+    // Listen for storage changes from other tabs
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "heaven_auth") {
+        try {
+          if (e.newValue) {
+            const parsed = JSON.parse(e.newValue);
+            if (parsed.role === "root" || parsed.model_slug === slug) setAuth(parsed);
+          } else setAuth(null);
+        } catch {}
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [slug]);
+  return auth;
+}
+
 export default function ModelPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const modelAuth = useModelSession(slug);
+  const isModelLoggedIn = !!modelAuth;
 
   const [model, setModel] = useState<ModelInfo | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -96,7 +130,6 @@ export default function ModelPage() {
     } catch {}
   }, [slug]);
 
-  // Refresh on focus
   useEffect(() => {
     const onFocus = () => {
       fetch(`/api/posts?model=${slug}`).then(r => r.json()).then(d => { if (d.posts) setPosts(d.posts); }).catch(() => {});
@@ -106,7 +139,6 @@ export default function ModelPage() {
     return () => window.removeEventListener("focus", onFocus);
   }, [slug]);
 
-  // Register client
   const registerClient = useCallback(async () => {
     if (!pseudo.snap && !pseudo.insta) return;
     const res = await fetch("/api/clients", {
@@ -121,7 +153,6 @@ export default function ModelPage() {
     }
   }, [pseudo, slug]);
 
-  // Chat polling
   useEffect(() => {
     if (!clientId || !showMessenger) return;
     const fetchChat = () => {
@@ -157,7 +188,6 @@ export default function ModelPage() {
     return `${Math.floor(h / 24)}d`;
   };
 
-  // Gallery
   const galleryItems = uploads.filter(u => galleryTier === "all" || u.tier === galleryTier);
   const tierCounts = uploads.reduce((acc, u) => { acc[u.tier] = (acc[u.tier] || 0) + 1; return acc; }, {} as Record<string, number>);
 
@@ -198,6 +228,37 @@ export default function ModelPage() {
 
       <div className="relative z-10">
 
+        {/* ═══ TOP BAR ═══ */}
+        <div className="fixed top-0 left-0 right-0 z-40 px-4 py-3 flex items-center justify-between">
+          {/* Cockpit logo — always visible */}
+          <a href={isModelLoggedIn ? "/agence" : "/login"}
+            className="w-8 h-8 rounded-lg flex items-center justify-center no-underline glass"
+            style={{ border: "1px solid var(--border2)" }}>
+            <Zap className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
+          </a>
+
+          {/* Model quick actions (only if logged in) */}
+          {isModelLoggedIn && (
+            <div className="flex items-center gap-1.5">
+              <a href="/agence?tab=content&upload=1"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium no-underline glass cursor-pointer"
+                style={{ border: "1px solid var(--border2)", color: "var(--text-secondary)" }}>
+                <Plus className="w-3 h-3" /> Post
+              </a>
+              <a href="/agence?tab=profile"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium no-underline glass cursor-pointer"
+                style={{ border: "1px solid var(--border2)", color: "var(--text-secondary)" }}>
+                <Edit3 className="w-3 h-3" /> Edit
+              </a>
+              <a href="/agence?tab=profile"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium no-underline glass cursor-pointer"
+                style={{ border: "1px solid var(--border2)", color: "var(--text-secondary)" }}>
+                <Wifi className="w-3 h-3" /> Status
+              </a>
+            </div>
+          )}
+        </div>
+
         {/* ═══ HERO ═══ */}
         <div className="relative">
           <div className="h-32 md:h-44" style={{
@@ -205,7 +266,6 @@ export default function ModelPage() {
           }} />
 
           <div className="max-w-xl mx-auto px-4 -mt-12 relative z-10">
-            {/* Avatar row */}
             <div className="flex items-end gap-4 mb-4 fade-up">
               <div className="relative">
                 <div className="w-24 h-24 rounded-2xl border-[3px] flex items-center justify-center text-2xl font-black overflow-hidden"
@@ -234,21 +294,20 @@ export default function ModelPage() {
               </div>
             </div>
 
-            {/* Bio */}
             {model.bio && (
               <p className="text-xs leading-relaxed mb-4 fade-up" style={{ color: "var(--text-secondary)" }}>{model.bio}</p>
             )}
 
-            {/* Action buttons */}
-            <div className="flex items-center gap-2.5 mb-6 fade-up-1">
+            {/* Action buttons — two equal buttons */}
+            <div className="grid grid-cols-2 gap-2.5 mb-6 fade-up-1">
               <button onClick={() => setShowUnlock(true)}
-                className="flex-1 btn-gradient py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer">
-                <Lock className="w-3.5 h-3.5" /> Unlock Content
+                className="btn-gradient py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer">
+                <Lock className="w-3.5 h-3.5" /> Unlock
               </button>
               <button onClick={() => setShowMessenger(true)}
-                className="w-10 h-10 rounded-xl glass flex items-center justify-center cursor-pointer hover:opacity-80"
-                style={{ border: "1px solid var(--border2)" }}>
-                <MessageSquare className="w-4 h-4" style={{ color: "var(--text-secondary)" }} />
+                className="py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer glass"
+                style={{ border: "1px solid var(--border2)", color: "var(--text-secondary)" }}>
+                <MessageCircle className="w-3.5 h-3.5" /> Message
               </button>
             </div>
           </div>
@@ -279,7 +338,6 @@ export default function ModelPage() {
                 const tierHex = TIER_HEX[post.tier_required];
                 return (
                   <div key={post.id} className="card-premium overflow-hidden" style={{ animationDelay: `${i * 40}ms` }}>
-                    {/* Header */}
                     <div className="flex items-center gap-3 p-4 pb-0">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold"
                         style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff" }}>
@@ -302,14 +360,12 @@ export default function ModelPage() {
                       </div>
                     </div>
 
-                    {/* Content */}
                     {post.content && (
                       <div className="px-4 pt-3 pb-2">
                         <p className="text-[13px] leading-relaxed" style={{ color: "var(--text)" }}>{post.content}</p>
                       </div>
                     )}
 
-                    {/* Media */}
                     {post.media_url && (
                       post.tier_required !== "public" ? (
                         <div className="mx-4 my-2 rounded-xl overflow-hidden aspect-video flex items-center justify-center content-locked"
@@ -326,7 +382,6 @@ export default function ModelPage() {
                       )
                     )}
 
-                    {/* Actions */}
                     <div className="flex items-center gap-4 px-4 py-3">
                       <button className="flex items-center gap-1.5 text-[11px] cursor-pointer hover:opacity-80" style={{ color: "var(--text-muted)" }}>
                         <Heart className="w-3.5 h-3.5" /> {post.likes_count}
@@ -344,7 +399,6 @@ export default function ModelPage() {
           {/* ── GALLERY ── */}
           {tab === "gallery" && (
             <div className="fade-up">
-              {/* Tier filter pills */}
               <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-4 -mx-4 px-4">
                 <button onClick={() => setGalleryTier("all")}
                   className="px-3.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap cursor-pointer transition-all"
@@ -369,7 +423,6 @@ export default function ModelPage() {
                 ))}
               </div>
 
-              {/* Grid */}
               {galleryItems.length === 0 ? (
                 <EmptyState icon={Image} text="No content available" />
               ) : (
@@ -382,10 +435,8 @@ export default function ModelPage() {
                         {item.visibility === "promo" ? (
                           <img src={item.dataUrl} alt={item.label} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center relative"
-                            style={{ background: `${hex}08` }}>
-                            <div className="absolute inset-0 content-locked"
-                              style={{ background: `linear-gradient(135deg, ${hex}12, rgba(0,0,0,0.25))` }} />
+                          <div className="w-full h-full flex items-center justify-center relative" style={{ background: `${hex}08` }}>
+                            <div className="absolute inset-0 content-locked" style={{ background: `linear-gradient(135deg, ${hex}12, rgba(0,0,0,0.25))` }} />
                             <div className="relative text-center z-10">
                               <Lock className="w-4 h-4 mx-auto mb-0.5" style={{ color: hex }} />
                               <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color: hex }}>
@@ -395,18 +446,15 @@ export default function ModelPage() {
                           </div>
                         )}
 
-                        {/* Hover */}
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
                           {item.type === "video" ? <Play className="w-5 h-5 text-white" /> :
                            item.type === "reel" ? <Camera className="w-4 h-4 text-white" /> :
                            <Eye className="w-4 h-4 text-white" />}
                         </div>
 
-                        {/* Type badge */}
                         {item.type !== "photo" && (
                           <div className="absolute top-1.5 right-1.5">
-                            <span className="px-1.5 py-0.5 rounded text-[7px] font-bold"
-                              style={{ background: "rgba(0,0,0,0.7)", color: "#fff" }}>
+                            <span className="px-1.5 py-0.5 rounded text-[7px] font-bold" style={{ background: "rgba(0,0,0,0.7)", color: "#fff" }}>
                               {item.type === "video" ? <Video className="w-2.5 h-2.5 inline" /> : "REEL"}
                             </span>
                           </div>
@@ -433,11 +481,8 @@ export default function ModelPage() {
               ) : activePacks.map((pack, i) => {
                 const hex = TIER_HEX[pack.id] || pack.color;
                 return (
-                  <div key={pack.id} className="card-premium p-5 relative overflow-hidden"
-                    style={{ animationDelay: `${i * 50}ms` }}>
-                    {/* Accent line */}
+                  <div key={pack.id} className="card-premium p-5 relative overflow-hidden" style={{ animationDelay: `${i * 50}ms` }}>
                     <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${hex}, transparent)`, opacity: 0.4 }} />
-
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2.5">
                         <span className={`tier-dot ${pack.id}`} />
@@ -446,16 +491,14 @@ export default function ModelPage() {
                       </div>
                       <span className="text-xl font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
                     </div>
-
                     <ul className="space-y-2 mb-4">
                       {pack.features.map((f, j) => (
                         <li key={j} className="flex items-center gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
-                          <Star className="w-3 h-3 flex-shrink-0" style={{ color: hex }} />
+                          <Star className="w-3 h-3 shrink-0" style={{ color: hex }} />
                           {f}
                         </li>
                       ))}
                     </ul>
-
                     <button onClick={() => setShowUnlock(true)}
                       className="w-full py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all hover:-translate-y-0.5 flex items-center justify-center gap-1.5"
                       style={{ background: `${hex}12`, color: hex, border: `1px solid ${hex}25` }}>
@@ -480,7 +523,6 @@ export default function ModelPage() {
                   Unlock exclusive content and premium services
                 </p>
               </div>
-
               <div className="grid grid-cols-2 gap-2.5">
                 {[
                   { tokens: 20, price: 10, bonus: 0 },
@@ -516,11 +558,9 @@ export default function ModelPage() {
             <div className="w-full max-w-md rounded-t-2xl md:rounded-2xl overflow-hidden"
               style={{ background: "var(--surface)", maxHeight: "85vh", border: "1px solid var(--border2)" }}
               onClick={e => e.stopPropagation()}>
-
               <div className="flex justify-center pt-3 md:hidden">
                 <div className="w-10 h-1 rounded-full" style={{ background: "var(--border3)" }} />
               </div>
-
               <div className="flex items-center justify-between px-6 py-4">
                 <h2 className="text-sm font-semibold" style={{ color: "var(--text)" }}>Choose your access</h2>
                 <button onClick={() => setShowUnlock(false)} className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-80"
@@ -528,7 +568,6 @@ export default function ModelPage() {
                   <X className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
                 </button>
               </div>
-
               <div className="px-6 pb-6 space-y-2.5 overflow-y-auto" style={{ maxHeight: "60vh" }}>
                 {activePacks.map(pack => {
                   const hex = TIER_HEX[pack.id] || pack.color;
@@ -548,7 +587,6 @@ export default function ModelPage() {
                     </button>
                   );
                 })}
-
                 <p className="text-[10px] text-center pt-2" style={{ color: "var(--text-muted)" }}>
                   After selection, you&apos;ll receive payment instructions.
                   Access activates within 15 minutes of confirmed payment.
@@ -564,11 +602,9 @@ export default function ModelPage() {
             <div className="w-full max-w-md rounded-t-2xl md:rounded-2xl overflow-hidden flex flex-col"
               style={{ background: "var(--surface)", maxHeight: "80vh", border: "1px solid var(--border2)" }}
               onClick={e => e.stopPropagation()}>
-
               <div className="flex justify-center pt-3 md:hidden">
                 <div className="w-10 h-1 rounded-full" style={{ background: "var(--border3)" }} />
               </div>
-
               <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: "1px solid var(--border2)" }}>
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold"
@@ -660,7 +696,6 @@ export default function ModelPage() {
   );
 }
 
-// ── Shared empty state ──
 function EmptyState({ icon: Icon, text }: { icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>; text: string }) {
   return (
     <div className="text-center py-16">
