@@ -256,6 +256,12 @@ body {
 .fade-up-3 { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both; }
 .fade-up-4 { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both; }
 
+/* ═══ FAB & modern effects ═══ */
+.animate-fade-in { animation: fadeIn 0.2s ease both; }
+.animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slide-down { animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.fab-item { will-change: transform, opacity; }
+
 /* ═══ Tabular numbers for stats ═══ */
 .tabular-nums {
   font-variant-numeric: tabular-nums;

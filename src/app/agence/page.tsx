@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { Upload, Image, Star, ThumbsUp, ThumbsDown, Wifi, WifiOff, Edit3, Trash2, ToggleLeft, ToggleRight, Save, Shield, Check, X, Eye } from "lucide-react";
+import { Upload, Image, Trash2, Edit3, Save, Check, X, Eye, Plus, KeyRound, UserPlus, Camera } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
-import { QuickActions } from "@/components/cockpit/quick-actions";
 import { CodesList } from "@/components/cockpit/codes-list";
 import { GenerateModal } from "@/components/cockpit/generate-modal";
-import { SecurityAlerts } from "@/components/cockpit/security-alerts";
 
 // ── Types ──
 interface PackConfig {
@@ -23,11 +21,6 @@ interface AccessCode {
   role: "client" | "admin"; tier: string; pack: string; type: "paid" | "promo" | "gift" | "trial";
   duration: number; expiresAt: string; created: string;
   used: boolean; active: boolean; revoked: boolean; isTrial: boolean; lastUsed: string | null;
-}
-
-interface Review {
-  id: string; tier: string; author: string; content: string;
-  rating: number; validated: boolean; createdAt: string; bonusGranted: boolean;
 }
 
 interface UploadedContent {
@@ -55,7 +48,6 @@ const TIER_COLORS: Record<string, string> = {
 // ── Storage ──
 const CODES_KEY = "heaven_gallery_codes";
 const PACKS_KEY = "heaven_yumi_packs";
-const REVIEWS_KEY = "heaven_yumi_reviews";
 const CONTENT_KEY = "heaven_yumi_uploads";
 const PRESENCE_KEY = "heaven_yumi_presence";
 
@@ -63,14 +55,11 @@ function loadCodes(): AccessCode[] { try { return JSON.parse(localStorage.getIte
 function saveCodes(codes: AccessCode[]) { localStorage.setItem(CODES_KEY, JSON.stringify(codes)); }
 function loadPacks(): PackConfig[] { try { const r = localStorage.getItem(PACKS_KEY); if (r) return JSON.parse(r); } catch {} return DEFAULT_PACKS; }
 function savePacks(packs: PackConfig[]) { localStorage.setItem(PACKS_KEY, JSON.stringify(packs)); fetch("/api/packs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ packs }) }).catch(() => {}); }
-function loadReviews(): Review[] { try { return JSON.parse(localStorage.getItem(REVIEWS_KEY) || "[]"); } catch { return []; } }
-function saveReviewsData(reviews: Review[]) { localStorage.setItem(REVIEWS_KEY, JSON.stringify(reviews)); }
 function loadUploads(): UploadedContent[] { try { return JSON.parse(localStorage.getItem(CONTENT_KEY) || "[]"); } catch { return []; } }
 function saveUploads(uploads: UploadedContent[]) { localStorage.setItem(CONTENT_KEY, JSON.stringify(uploads)); }
 function loadPresence(): ModelPresence { try { const r = localStorage.getItem(PRESENCE_KEY); if (r) { const p = JSON.parse(r); return { online: p.online ?? true, status: p.status ?? "", avatar: p.avatar ?? "" }; } } catch {} return { online: true, status: "", avatar: "" }; }
 function savePresence(p: ModelPresence, modelSlug?: string) {
   localStorage.setItem(PRESENCE_KEY, JSON.stringify(p));
-  // Sync to DB so profile page reads from API
   if (modelSlug) {
     fetch(`/api/models/${modelSlug}`, {
       method: "PUT",
@@ -126,18 +115,16 @@ export default function AgenceDashboard() {
   const [codes, setCodes] = useState<AccessCode[]>([]);
   const [packs, setPacks] = useState<PackConfig[]>(DEFAULT_PACKS);
   const [uploads, setUploads] = useState<UploadedContent[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
   const [presence, setPresence] = useState<ModelPresence>({ online: true, status: "", avatar: "" });
 
-  const [tab, setTab] = useState<"codes" | "packs" | "content" | "reviews" | "profile" | "security">("codes");
+  const [tab, setTab] = useState<"codes" | "content">("codes");
   const [showGenerator, setShowGenerator] = useState(false);
-  const [showUploadForm, setShowUploadForm] = useState(false);
   const [, setTick] = useState(0);
 
   // Upload form state
   const [uploadTier, setUploadTier] = useState("vip");
   const [uploadLabel, setUploadLabel] = useState("");
-  const [uploadType, setUploadType] = useState<"photo" | "video" | "reel">("photo");
+  const [uploadType] = useState<"photo" | "video" | "reel">("photo");
   const [uploadVisibility, setUploadVisibility] = useState<"pack" | "promo">("pack");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -149,8 +136,8 @@ export default function AgenceDashboard() {
   const [previewUpload, setPreviewUpload] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Pack editing
-  const [editingPack, setEditingPack] = useState<string | null>(null);
+  // FAB state
+  const [fabOpen, setFabOpen] = useState(false);
 
   // ── Load data ──
   useEffect(() => {
@@ -168,8 +155,6 @@ export default function AgenceDashboard() {
       if (d.packs?.length > 0) { setPacks(d.packs); savePacks(d.packs); }
       else setPacks(loadPacks());
     }).catch(() => setPacks(loadPacks()));
-
-    setReviews(loadReviews());
   }, [modelSlug]);
 
   useEffect(() => { const iv = setInterval(() => setTick(t => t + 1), 60000); return () => clearInterval(iv); }, []);
@@ -183,7 +168,6 @@ export default function AgenceDashboard() {
       return sum + (pack?.price || 0);
     }, 0);
   }, [modelCodes, packs]);
-  const pendingReviews = useMemo(() => reviews.filter(r => !r.validated), [reviews]);
 
   // ── Actions ──
   const handleGenerate = useCallback((data: { client: string; platform: string; tier: string; duration: number; type: "paid" | "promo" | "gift" }) => {
@@ -219,7 +203,7 @@ export default function AgenceDashboard() {
     setCodes(u); saveCodes(u); apiDeleteCode(code);
   }, [codes]);
 
-  // Upload handler — uploads to Cloudinary, stores URL
+  // Upload handler
   const [uploading, setUploading] = useState(false);
   const showToast = useCallback((message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
@@ -239,8 +223,6 @@ export default function AgenceDashboard() {
       const folder = `heaven/${modelSlug}/${isVideo ? "videos" : "gallery"}`;
 
       setUploadProgress(30);
-
-      // Upload to Cloudinary
       const cloud = await uploadToCloud(base64, folder);
       setUploadProgress(70);
       const url = cloud?.url || base64;
@@ -258,7 +240,6 @@ export default function AgenceDashboard() {
       const updated = [newUpload, ...uploads]; setUploads(updated); saveUploads(updated);
       await apiCreateUpload(modelSlug, newUpload);
       setUploadProgress(92);
-      // Also create a post so it appears on the profile feed
       await fetch("/api/posts", {
         method: "POST",
         headers: authHeaders(),
@@ -271,9 +252,10 @@ export default function AgenceDashboard() {
         }),
       }).catch(() => {});
       setUploadProgress(100);
-      setUploadLabel(""); setShowUploadForm(false);
+      setUploadLabel("");
       setUploading(false); setUploadProgress(0);
-      showToast(`${fileType === "video" ? "Vidéo" : "Photo"} uploadée avec succès`);
+      setFabOpen(false);
+      showToast(`${fileType === "video" ? "Vidéo" : "Photo"} uploadée`);
     };
     reader.readAsDataURL(file); e.target.value = "";
   }, [uploads, uploadTier, uploadType, uploadLabel, uploadVisibility, modelSlug, showToast, authHeaders]);
@@ -296,16 +278,7 @@ export default function AgenceDashboard() {
     setEditingUpload(null);
   }, [uploads, modelSlug, showToast]);
 
-  // Review handlers
-  const handleValidateReview = useCallback((id: string) => {
-    const u = reviews.map(r => r.id === id ? { ...r, validated: true } : r);
-    setReviews(u); saveReviewsData(u);
-  }, [reviews]);
-  const handleRejectReview = useCallback((id: string) => {
-    const u = reviews.filter(r => r.id !== id); setReviews(u); saveReviewsData(u);
-  }, [reviews]);
-
-  // Avatar — uploads to Cloudinary
+  // Avatar
   const handleAvatarChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
     const reader = new FileReader();
@@ -319,28 +292,24 @@ export default function AgenceDashboard() {
   }, [presence, modelSlug]);
 
   const TABS = [
-    { id: "codes" as const, label: "Codes" },
-    { id: "packs" as const, label: "Packs" },
-    { id: "content" as const, label: "Content" },
-    { id: "reviews" as const, label: "Reviews" },
-    { id: "security" as const, label: "Security" },
-    { id: "profile" as const, label: "Profile" },
+    { id: "codes" as const, label: "Codes", count: activeCodes.length },
+    { id: "content" as const, label: "Content", count: uploads.length },
   ];
 
   return (
     <OsLayout cpId="agence">
-      <div className="min-h-screen p-4 md:p-8 pb-24 md:pb-8">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <div className="min-h-screen p-4 md:p-8 pb-28 md:pb-8">
+        <div className="max-w-4xl mx-auto space-y-5">
 
           {/* ── Header ── */}
-          <div className="flex items-center gap-4 fade-up">
+          <div className="flex items-center gap-3 fade-up">
             <div className="relative">
-              <div className="w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center text-xl font-black cursor-pointer"
+              <div className="w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center text-lg font-black cursor-pointer hover:scale-105 transition-transform"
                 onClick={() => avatarInputRef.current?.click()}
                 style={{
                   background: presence.avatar ? "transparent" : "linear-gradient(135deg, var(--rose), var(--accent))",
                   color: "#fff",
-                  boxShadow: "0 0 24px rgba(244,63,94,0.2)",
+                  boxShadow: "0 0 20px rgba(244,63,94,0.15)",
                 }}>
                 {presence.avatar ? (
                   <img src={presence.avatar} alt="" className="w-full h-full object-cover" />
@@ -348,28 +317,23 @@ export default function AgenceDashboard() {
                   modelSlug.charAt(0).toUpperCase()
                 )}
               </div>
-              {presence.online && (
-                <span className="online-dot absolute -bottom-0.5 -right-0.5" />
-              )}
+              {presence.online && <span className="online-dot absolute -bottom-0.5 -right-0.5" />}
               <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
             </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold" style={{ color: "var(--text)" }}>
-                  {auth?.display_name || modelSlug.toUpperCase()}
-                </h1>
-                <span className="badge badge-success text-[9px]">Verified</span>
-              </div>
-              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base font-bold truncate" style={{ color: "var(--text)" }}>
+                {auth?.display_name || modelSlug.toUpperCase()}
+              </h1>
+              <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                 {auth?.role === "root" ? "Root Admin" : "Créatrice exclusive"}
               </p>
             </div>
-            <button
-              onClick={() => setShowGenerator(true)}
-              className="btn-gradient px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer"
-            >
-              + New Code
-            </button>
+            {/* View profile mini button */}
+            <a href={`/m/${modelSlug}`} target="_blank" rel="noopener noreferrer"
+              className="w-9 h-9 rounded-xl glass flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 transition-transform"
+              title="Voir le profil">
+              <Eye className="w-4 h-4" style={{ color: "var(--accent)" }} />
+            </a>
           </div>
 
           {/* ── Stats ── */}
@@ -378,30 +342,18 @@ export default function AgenceDashboard() {
               activeCodes={activeCodes.length}
               totalCodes={modelCodes.length}
               revenue={revenue}
-              pendingCount={pendingReviews.length}
+              pendingCount={0}
             />
           </div>
 
-          {/* ── Quick Actions ── */}
+          {/* ── Tabs ── */}
           <div className="fade-up-2">
-            <QuickActions
-              onGenerateCode={() => setShowGenerator(true)}
-              onUploadContent={() => { setTab("content"); setShowUploadForm(true); }}
-              modelSlug={modelSlug}
-            />
-          </div>
-
-          {/* ── Tab Section ── */}
-          <div className="fade-up-3">
-            <div className="segmented-control mb-6">
+            <div className="segmented-control mb-5">
               {TABS.map(t => (
                 <button key={t.id} onClick={() => setTab(t.id)} className={tab === t.id ? "active" : ""}>
                   {t.label}
-                  {t.id === "reviews" && pendingReviews.length > 0 && (
-                    <span className="ml-1 w-4 h-4 inline-flex items-center justify-center rounded-full text-[9px] font-bold"
-                      style={{ background: "var(--danger)", color: "#fff" }}>
-                      {pendingReviews.length}
-                    </span>
+                  {t.count > 0 && (
+                    <span className="ml-1.5 text-[9px] opacity-60">{t.count}</span>
                   )}
                 </button>
               ))}
@@ -419,78 +371,18 @@ export default function AgenceDashboard() {
               />
             )}
 
-            {/* PACKS TAB */}
-            {tab === "packs" && (
-              <div className="space-y-3">
-                {packs.map(pack => (
-                  <div key={pack.id} className="card-premium p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <span className={`tier-dot ${pack.id}`} />
-                        <h3 className="text-sm font-bold" style={{ color: pack.color }}>{pack.name}</h3>
-                        {pack.badge && (
-                          <span className="badge" style={{ background: `${pack.color}15`, color: pack.color }}>{pack.badge}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg font-black tabular-nums" style={{ color: pack.color }}>{pack.price}€</span>
-                        <button onClick={() => setEditingPack(editingPack === pack.id ? null : pack.id)}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer"
-                          style={{ background: "rgba(255,255,255,0.04)" }}>
-                          <Edit3 className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
-                        </button>
-                      </div>
-                    </div>
-                    <ul className="space-y-1.5">
-                      {pack.features.map((f, i) => (
-                        <li key={i} className="flex items-center gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
-                          <Star className="w-3 h-3 flex-shrink-0" style={{ color: pack.color }} />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-
-                    {editingPack === pack.id && (
-                      <div className="mt-4 pt-4 space-y-3" style={{ borderTop: "1px solid var(--border2)" }}>
-                        <div>
-                          <label className="text-[10px] font-medium uppercase mb-1 block" style={{ color: "var(--text-muted)" }}>Price (€)</label>
-                          <input type="number" value={pack.price}
-                            onChange={e => { const u = packs.map(p => p.id === pack.id ? { ...p, price: Number(e.target.value) } : p); setPacks(u); }}
-                            className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                            style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Active</span>
-                          <button onClick={() => { const u = packs.map(p => p.id === pack.id ? { ...p, active: !p.active } : p); setPacks(u); }}
-                            className="cursor-pointer" style={{ color: pack.active ? "var(--success)" : "var(--text-muted)" }}>
-                            {pack.active ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
-                          </button>
-                        </div>
-                        <button onClick={() => { savePacks(packs); setEditingPack(null); }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer"
-                          style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)" }}>
-                          <Save className="w-3 h-3" /> Save
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
             {/* CONTENT TAB */}
             {tab === "content" && (
               <div className="space-y-4">
-                {/* Upload zone — always visible at top */}
+                {/* Upload zone */}
                 <div className="card-premium p-5">
                   <div className="space-y-3">
-                    {/* Tier = dossier/pack destination */}
                     <div>
                       <label className="text-[10px] font-medium uppercase mb-2 block" style={{ color: "var(--text-muted)" }}>Dossier</label>
                       <div className="flex gap-2">
                         {Object.entries(TIER_COLORS).filter(([k]) => k !== "trial").map(([t, c]) => (
                           <button key={t} onClick={() => setUploadTier(t)}
-                            className="flex-1 py-2 rounded-lg text-xs font-medium cursor-pointer capitalize"
+                            className="flex-1 py-2 rounded-lg text-xs font-medium cursor-pointer capitalize transition-all"
                             style={{
                               background: uploadTier === t ? `${c}20` : "rgba(255,255,255,0.03)",
                               color: uploadTier === t ? c : "var(--text-muted)",
@@ -500,34 +392,32 @@ export default function AgenceDashboard() {
                       </div>
                     </div>
 
-                    {/* Visibility toggle */}
                     <div className="flex gap-2">
                       <button onClick={() => setUploadVisibility("pack")}
-                        className="flex-1 py-2 rounded-lg text-[11px] font-medium cursor-pointer"
+                        className="flex-1 py-2 rounded-lg text-[11px] font-medium cursor-pointer transition-all"
                         style={{ background: uploadVisibility === "pack" ? "var(--accent)" : "rgba(255,255,255,0.03)", color: uploadVisibility === "pack" ? "#fff" : "var(--text-muted)" }}>
                         Privé (abonnés)
                       </button>
                       <button onClick={() => setUploadVisibility("promo")}
-                        className="flex-1 py-2 rounded-lg text-[11px] font-medium cursor-pointer"
+                        className="flex-1 py-2 rounded-lg text-[11px] font-medium cursor-pointer transition-all"
                         style={{ background: uploadVisibility === "promo" ? "var(--success)" : "rgba(255,255,255,0.03)", color: uploadVisibility === "promo" ? "#fff" : "var(--text-muted)" }}>
                         Public (promo)
                       </button>
                     </div>
 
-                    {/* Progress bar */}
                     {uploading && (
                       <div className="space-y-1.5">
                         <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--bg3)" }}>
-                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${uploadProgress}%`, background: "var(--accent)" }} />
+                          <div className="h-full rounded-full transition-all duration-500 ease-out" style={{ width: `${uploadProgress}%`, background: "var(--accent)" }} />
                         </div>
                         <p className="text-[10px] text-center" style={{ color: "var(--accent)" }}>
-                          {uploadProgress < 30 ? "Lecture du fichier..." : uploadProgress < 70 ? "Upload vers le cloud..." : uploadProgress < 100 ? "Sauvegarde..." : "Terminé !"}
+                          {uploadProgress < 30 ? "Lecture..." : uploadProgress < 70 ? "Upload cloud..." : uploadProgress < 100 ? "Sauvegarde..." : "Terminé !"}
                         </p>
                       </div>
                     )}
 
                     <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-                      className="w-full py-3 rounded-xl text-sm font-semibold cursor-pointer btn-gradient flex items-center justify-center gap-2 disabled:opacity-50">
+                      className="w-full py-3 rounded-xl text-sm font-semibold cursor-pointer btn-gradient flex items-center justify-center gap-2 disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99] transition-transform">
                       {uploading ? (
                         <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(255,255,255,0.3)", borderTopColor: "#fff" }} /> Upload en cours...</>
                       ) : (
@@ -542,22 +432,21 @@ export default function AgenceDashboard() {
                 {uploads.length === 0 ? (
                   <div className="text-center py-12">
                     <Image className="w-10 h-10 mx-auto mb-3 opacity-20" style={{ color: "var(--text-muted)" }} />
-                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>Aucun contenu — uploadez votre premier fichier ci-dessus</p>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>Aucun contenu</p>
                   </div>
                 ) : (
                   <>
                   <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                    {uploads.length} contenu{uploads.length > 1 ? "s" : ""} · Cliquer pour gérer
+                    {uploads.length} contenu{uploads.length > 1 ? "s" : ""}
                   </p>
                   <div className="grid grid-cols-3 gap-2">
                     {uploads.map(item => {
                       const tierColor = TIER_COLORS[item.tier] || "#64748B";
                       return (
                         <div key={item.id}
-                          className="relative aspect-square rounded-xl overflow-hidden group cursor-pointer"
+                          className="relative aspect-square rounded-xl overflow-hidden group cursor-pointer hover:scale-[1.02] transition-transform"
                           onClick={() => setPreviewUpload(item.id)}>
                           <img src={item.dataUrl} alt={item.label} className="w-full h-full object-cover" />
-                          {/* Hover overlay with info — NOT delete */}
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
                             <div className="w-full">
                               <p className="text-[10px] font-medium text-white truncate">{item.label || "Sans titre"}</p>
@@ -565,9 +454,7 @@ export default function AgenceDashboard() {
                             </div>
                           </div>
                           <div className="absolute top-1.5 left-1.5">
-                            <span className="badge text-[8px]" style={{ background: `${tierColor}20`, color: tierColor }}>
-                              {item.tier}
-                            </span>
+                            <span className="badge text-[8px]" style={{ background: `${tierColor}20`, color: tierColor }}>{item.tier}</span>
                           </div>
                           {item.isNew && (
                             <div className="absolute top-1.5 right-1.5">
@@ -589,43 +476,35 @@ export default function AgenceDashboard() {
                   const isEditing = editingUpload === item.id;
                   return (
                     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center sheet-backdrop" onClick={() => { setPreviewUpload(null); setEditingUpload(null); }}>
-                      <div className="w-full max-w-lg rounded-t-2xl md:rounded-2xl overflow-hidden"
+                      <div className="w-full max-w-lg rounded-t-2xl md:rounded-2xl overflow-hidden animate-slide-up"
                         style={{ background: "var(--surface)", maxHeight: "90vh", border: "1px solid var(--border2)" }}
                         onClick={e => e.stopPropagation()}>
-                        {/* Drag handle mobile */}
                         <div className="flex justify-center pt-3 md:hidden">
                           <div className="w-10 h-1 rounded-full" style={{ background: "var(--border3)" }} />
                         </div>
-
-                        {/* Image */}
                         <div className="relative" style={{ maxHeight: "50vh" }}>
                           <img src={item.dataUrl} alt={item.label} className="w-full object-contain" style={{ maxHeight: "50vh" }} />
-                          <div className="absolute top-3 right-3 flex gap-1.5">
+                          <div className="absolute top-3 right-3">
                             <button onClick={() => { setPreviewUpload(null); setEditingUpload(null); }}
-                              className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
+                              className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
                               style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}>
                               <X className="w-4 h-4" />
                             </button>
                           </div>
                         </div>
 
-                        {/* Info + Actions */}
                         <div className="p-5 space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{item.label || "Sans titre"}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="badge text-[9px]" style={{ background: `${tierColor}15`, color: tierColor }}>{item.tier.toUpperCase()}</span>
-                                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{item.type}</span>
-                                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>·</span>
-                                <span className="text-[10px]" style={{ color: item.visibility === "promo" ? "var(--success)" : "var(--text-muted)" }}>
-                                  {item.visibility === "promo" ? "Visible" : "Pack only"}
-                                </span>
-                              </div>
+                          <div>
+                            <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{item.label || "Sans titre"}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="badge text-[9px]" style={{ background: `${tierColor}15`, color: tierColor }}>{item.tier.toUpperCase()}</span>
+                              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{item.type}</span>
+                              <span className="text-[10px]" style={{ color: item.visibility === "promo" ? "var(--success)" : "var(--text-muted)" }}>
+                                {item.visibility === "promo" ? "Visible" : "Pack only"}
+                              </span>
                             </div>
                           </div>
 
-                          {/* Edit mode */}
                           {isEditing && (
                             <div className="space-y-3 pt-2" style={{ borderTop: "1px solid var(--border2)" }}>
                               <div>
@@ -638,9 +517,8 @@ export default function AgenceDashboard() {
                                 <label className="text-[10px] font-medium uppercase mb-1 block" style={{ color: "var(--text-muted)" }}>Tier</label>
                                 <div className="flex gap-2">
                                   {Object.entries(TIER_COLORS).filter(([k]) => k !== "trial").map(([t, c]) => (
-                                    <button key={t}
-                                      onClick={() => handleEditUpload(item.id, { tier: t })}
-                                      className="flex-1 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer capitalize"
+                                    <button key={t} onClick={() => handleEditUpload(item.id, { tier: t })}
+                                      className="flex-1 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer capitalize transition-all"
                                       style={{
                                         background: item.tier === t ? `${c}20` : "rgba(255,255,255,0.03)",
                                         color: item.tier === t ? c : "var(--text-muted)",
@@ -653,12 +531,12 @@ export default function AgenceDashboard() {
                                 <label className="text-[10px] font-medium uppercase mb-1 block" style={{ color: "var(--text-muted)" }}>Visibilité</label>
                                 <div className="flex gap-2">
                                   <button onClick={() => handleEditUpload(item.id, { visibility: "pack" })}
-                                    className="flex-1 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer"
+                                    className="flex-1 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer transition-all"
                                     style={{ background: item.visibility === "pack" ? "rgba(99,102,241,0.12)" : "rgba(255,255,255,0.03)", color: item.visibility === "pack" ? "var(--accent)" : "var(--text-muted)" }}>
                                     Pack only
                                   </button>
                                   <button onClick={() => handleEditUpload(item.id, { visibility: "promo" })}
-                                    className="flex-1 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer"
+                                    className="flex-1 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer transition-all"
                                     style={{ background: item.visibility === "promo" ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", color: item.visibility === "promo" ? "var(--success)" : "var(--text-muted)" }}>
                                     Visible (promo)
                                   </button>
@@ -669,17 +547,16 @@ export default function AgenceDashboard() {
                                 if (labelInput) handleEditUpload(item.id, { label: labelInput.value });
                                 setEditingUpload(null);
                               }}
-                                className="w-full py-2 rounded-lg text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5"
+                                className="w-full py-2 rounded-lg text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:scale-[1.01] active:scale-[0.99] transition-transform"
                                 style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)" }}>
                                 <Save className="w-3 h-3" /> Sauvegarder
                               </button>
                             </div>
                           )}
 
-                          {/* Action buttons */}
                           <div className="flex gap-2">
                             <button onClick={() => setEditingUpload(isEditing ? null : item.id)}
-                              className="flex-1 py-2.5 rounded-xl text-xs font-medium cursor-pointer flex items-center justify-center gap-1.5"
+                              className="flex-1 py-2.5 rounded-xl text-xs font-medium cursor-pointer flex items-center justify-center gap-1.5 hover:scale-[1.01] active:scale-[0.99] transition-transform"
                               style={{ background: "rgba(99,102,241,0.08)", color: "var(--accent)", border: "1px solid rgba(99,102,241,0.15)" }}>
                               <Edit3 className="w-3 h-3" /> {isEditing ? "Annuler" : "Modifier"}
                             </button>
@@ -698,7 +575,7 @@ export default function AgenceDashboard() {
                               </div>
                             ) : (
                               <button onClick={() => setConfirmDelete(item.id)}
-                                className="flex-1 py-2.5 rounded-xl text-xs font-medium cursor-pointer flex items-center justify-center gap-1.5"
+                                className="flex-1 py-2.5 rounded-xl text-xs font-medium cursor-pointer flex items-center justify-center gap-1.5 hover:scale-[1.01] active:scale-[0.99] transition-transform"
                                 style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.15)" }}>
                                 <Trash2 className="w-3 h-3" /> Supprimer
                               </button>
@@ -711,96 +588,6 @@ export default function AgenceDashboard() {
                 })()}
               </div>
             )}
-
-            {/* REVIEWS TAB */}
-            {tab === "reviews" && (
-              <div className="space-y-3">
-                {pendingReviews.length > 0 && (
-                  <div className="mb-4">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--text-muted)" }}>Pending</h3>
-                    {pendingReviews.map(r => (
-                      <div key={r.id} className="card-premium p-4 mb-2 gradient-border">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>{r.author}</span>
-                            <span className="badge" style={{ background: `${TIER_COLORS[r.tier]}15`, color: TIER_COLORS[r.tier] }}>{r.tier}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <Star key={i} className="w-3 h-3" style={{ color: i < r.rating ? "#F59E0B" : "var(--border)" }} fill={i < r.rating ? "#F59E0B" : "none"} />
-                            ))}
-                          </div>
-                        </div>
-                        <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>{r.content}</p>
-                        <div className="flex gap-2">
-                          <button onClick={() => handleValidateReview(r.id)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer"
-                            style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)" }}>
-                            <ThumbsUp className="w-3 h-3" /> Approve
-                          </button>
-                          <button onClick={() => handleRejectReview(r.id)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer"
-                            style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}>
-                            <ThumbsDown className="w-3 h-3" /> Reject
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {reviews.filter(r => r.validated).length === 0 && pendingReviews.length === 0 ? (
-                  <div className="text-center py-16">
-                    <Star className="w-12 h-12 mx-auto mb-3 opacity-20" style={{ color: "var(--text-muted)" }} />
-                    <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No reviews yet</p>
-                  </div>
-                ) : (
-                  reviews.filter(r => r.validated).map(r => (
-                    <div key={r.id} className="card-premium p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>{r.author}</span>
-                        <div className="flex items-center gap-1">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <Star key={i} className="w-3 h-3" style={{ color: i < r.rating ? "#F59E0B" : "var(--border)" }} fill={i < r.rating ? "#F59E0B" : "none"} />
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{r.content}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-
-            {/* SECURITY TAB */}
-            {tab === "security" && (
-              <SecurityAlerts modelSlug={modelSlug} authHeaders={authHeaders} />
-            )}
-
-            {/* PROFILE TAB */}
-            {tab === "profile" && (
-              <div className="space-y-4">
-                <div className="card-premium p-5">
-                  <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text)" }}>Presence</h3>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Online status</span>
-                    <button onClick={() => { const p = { ...presence, online: !presence.online }; setPresence(p); savePresence(p, modelSlug); }}
-                      className="flex items-center gap-2 cursor-pointer" style={{ color: presence.online ? "var(--success)" : "var(--text-muted)" }}>
-                      {presence.online ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-                      <span className="text-xs font-medium">{presence.online ? "Online" : "Offline"}</span>
-                    </button>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-medium uppercase mb-1 block" style={{ color: "var(--text-muted)" }}>Status message</label>
-                    <input value={presence.status}
-                      onChange={e => { const p = { ...presence, status: e.target.value }; setPresence(p); savePresence(p, modelSlug); }}
-                      placeholder="What's happening..."
-                      className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                      style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* ── Generate Modal ── */}
@@ -810,13 +597,55 @@ export default function AgenceDashboard() {
             onGenerate={handleGenerate}
           />
 
-          {/* ── Toast notification ── */}
+          {/* ── FAB (Floating Action Button) ── */}
+          {fabOpen && (
+            <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm animate-fade-in" onClick={() => setFabOpen(false)} />
+          )}
+          <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-3">
+            {/* FAB menu items */}
+            <div className={`flex flex-col items-center gap-2.5 transition-all duration-300 ${fabOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"}`}>
+              {/* Add Media */}
+              <button
+                onClick={() => { setTab("content"); fileInputRef.current?.click(); setFabOpen(false); }}
+                className="fab-item flex items-center gap-2.5 pl-3 pr-4 py-2.5 rounded-full shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                style={{ background: "var(--rose)", color: "#fff", transitionDelay: "50ms" }}>
+                <Camera className="w-4 h-4" />
+                <span className="text-xs font-semibold whitespace-nowrap">Média</span>
+              </button>
+              {/* Add Code */}
+              <button
+                onClick={() => { setShowGenerator(true); setFabOpen(false); }}
+                className="fab-item flex items-center gap-2.5 pl-3 pr-4 py-2.5 rounded-full shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                style={{ background: "var(--accent)", color: "#fff", transitionDelay: "100ms" }}>
+                <KeyRound className="w-4 h-4" />
+                <span className="text-xs font-semibold whitespace-nowrap">Code</span>
+              </button>
+              {/* Add Client */}
+              <a href="/agence/clients"
+                className="fab-item flex items-center gap-2.5 pl-3 pr-4 py-2.5 rounded-full shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                style={{ background: "var(--success)", color: "#fff", transitionDelay: "150ms", textDecoration: "none" }}>
+                <UserPlus className="w-4 h-4" />
+                <span className="text-xs font-semibold whitespace-nowrap">Client</span>
+              </a>
+            </div>
+            {/* FAB button */}
+            <button
+              onClick={() => setFabOpen(!fabOpen)}
+              className="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(99,102,241,0.4)]"
+              style={{
+                background: "linear-gradient(135deg, var(--rose), var(--accent))",
+                transform: fabOpen ? "rotate(45deg)" : "rotate(0deg)",
+              }}>
+              <Plus className="w-6 h-6 text-white" />
+            </button>
+          </div>
+
+          {/* ── Toast ── */}
           {toast && (
-            <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-lg"
+            <div className="fixed bottom-24 md:bottom-8 right-4 md:right-8 z-50 px-5 py-3 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-lg animate-slide-up"
               style={{
                 background: toast.type === "success" ? "var(--success)" : "var(--danger)",
                 color: "#fff",
-                animation: "fadeUp 0.3s ease",
               }}>
               {toast.type === "success" ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
               {toast.message}
