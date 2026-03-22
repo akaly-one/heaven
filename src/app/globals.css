@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  /* SQWENSY OS — V1 Color Palette */
-  --sq-bg: #06060B;
+  /* Heaven Studio — Dark Theme */
+  --sq-bg: #0A0A0F;
   --sq-bg2: #0C0C14;
   --sq-bg3: #12121D;
   --sq-bg4: #1A1A28;
-  --sq-surface: #0C0C14;
-  --sq-surface-hover: #12121D;
-  --sq-border: rgba(255,255,255,0.06);
+  --sq-surface: #12121A;
+  --sq-surface-hover: #1A1A25;
+  --sq-border: #1E1E2E;
   --sq-border2: rgba(255,255,255,0.1);
   --sq-gold: #C9A84C;
   --sq-gold2: #E8C76A;

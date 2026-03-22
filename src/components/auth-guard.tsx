@@ -13,7 +13,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       setChecked(true);
       return;
     }
-    const raw = sessionStorage.getItem("sqwensy_auth");
+    const raw = sessionStorage.getItem("heaven_auth");
     if (!raw) {
       router.replace("/login");
       return;

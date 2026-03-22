@@ -26,7 +26,7 @@ export default function LoginPage() {
 
     const access = ACCESS_CODES[code.trim().toLowerCase()];
     if (access) {
-      sessionStorage.setItem("sqwensy_auth", JSON.stringify({ role: access.role, scope: access.scope, loggedAt: new Date().toISOString() }));
+      sessionStorage.setItem("heaven_auth", JSON.stringify({ role: access.role, scope: access.scope, loggedAt: new Date().toISOString() }));
       router.push(access.redirect);
     } else {
       setError("Code invalide");
@@ -99,7 +99,7 @@ export default function LoginPage() {
         </div>
 
         <h1 className="text-2xl font-black text-center mb-1 shimmer-gold tracking-wide">
-          SQWENSY OS
+          Heaven Studio
         </h1>
         <p className="text-center mb-8 text-sm" style={{ color: "var(--sq-text-muted)" }}>
           Cockpit administrateur
@@ -150,7 +150,7 @@ export default function LoginPage() {
 
         <div className="mt-8 text-center">
           <p className="text-[10px] tracking-widest uppercase" style={{ color: "var(--sq-text-muted)" }}>
-            SQWENSY GROUP &middot; Benelux
+            Heaven Studio &middot; Benelux
           </p>
         </div>
       </div>

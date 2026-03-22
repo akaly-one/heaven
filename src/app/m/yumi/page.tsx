@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
-
 // ── Types ──
 interface PackConfig {
   id: string;
@@ -191,10 +190,21 @@ interface ModelPresence {
   avatar: string; // base64 data URL or empty
 }
 
-const SERVICES_KEY = "sqwensy_yumi_services";
-const PRESENCE_KEY = "sqwensy_yumi_presence";
-const SCREENSHOT_LOG_KEY = "sqwensy_yumi_screenshot_log";
-const EXCLUSIONS_KEY = "sqwensy_yumi_exclusions";
+const SERVICES_KEY = "heaven_yumi_services";
+
+// Live privé pricing: rate per minute per tier (with minimum = 5min price)
+const LIVE_RATES: Record<string, { rate: number; min5: number; color: string; label: string }> = {
+  gold:     { rate: 8,     min5: 45,  color: "#C9A84C", label: "Gold" },
+  diamond:  { rate: 10.67, min5: 55,  color: "#5B8DEF", label: "Diamond" },
+  platinum: { rate: 13.33, min5: 70,  color: "#A882FF", label: "Platinum" },
+};
+function calcLiveTokens(tier: string, minutes: number): number {
+  const r = LIVE_RATES[tier] || LIVE_RATES.gold;
+  return Math.max(r.min5, Math.round(minutes * r.rate));
+}
+const PRESENCE_KEY = "heaven_yumi_presence";
+const SCREENSHOT_LOG_KEY = "heaven_yumi_screenshot_log";
+const EXCLUSIONS_KEY = "heaven_yumi_exclusions";
 
 // ── Screenshot / Exclusion types ──
 interface ScreenshotAttempt {
@@ -217,15 +227,15 @@ interface Exclusion {
 }
 
 // ── Storage keys ──
-const ADMIN_SESSION_KEY = "sqwensy_yumi_admin_session";
-const CODES_KEY = "sqwensy_gallery_codes";
-const PACKS_KEY = "sqwensy_yumi_packs";
-const ORDERS_KEY = "sqwensy_agence_orders";
-const REVIEWS_KEY = "sqwensy_yumi_reviews";
-const CONTENT_KEY = "sqwensy_yumi_uploads";
-const TOKENS_BALANCE_KEY = "sqwensy_yumi_token_balances";
-const TOKENS_TX_KEY = "sqwensy_yumi_token_transactions";
-const UNLOCKED_KEY = "sqwensy_yumi_unlocked_images";
+const ADMIN_SESSION_KEY = "heaven_yumi_admin_session";
+const CODES_KEY = "heaven_gallery_codes";
+const PACKS_KEY = "heaven_yumi_packs";
+const ORDERS_KEY = "heaven_agence_orders";
+const REVIEWS_KEY = "heaven_yumi_reviews";
+const CONTENT_KEY = "heaven_yumi_uploads";
+const TOKENS_BALANCE_KEY = "heaven_yumi_token_balances";
+const TOKENS_TX_KEY = "heaven_yumi_token_transactions";
+const UNLOCKED_KEY = "heaven_yumi_unlocked_images";
 
 // ── Default packs ──
 const DEFAULT_PACKS: PackConfig[] = [
@@ -303,6 +313,21 @@ async function apiFetchCodes(model: string): Promise<AccessCode[]> {
     return data.codes || [];
   } catch { return []; }
 }
+
+// ── Upload API helpers (shared server store for cross-browser photos) ──
+async function apiSyncUploads(model: string, uploads: UploadedContent[]): Promise<boolean> {
+  try { const r = await fetch("/api/uploads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "sync", model, uploads }) }); return r.ok; } catch { return false; }
+}
+async function apiCreateUpload(model: string, upload: UploadedContent): Promise<boolean> {
+  try { const r = await fetch("/api/uploads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...upload, model }) }); return r.ok; } catch { return false; }
+}
+async function apiDeleteUpload(model: string, id: string): Promise<boolean> {
+  try { const r = await fetch(`/api/uploads?model=${model}&id=${encodeURIComponent(id)}`, { method: "DELETE" }); return r.ok; } catch { return false; }
+}
+async function apiFetchUploads(model: string): Promise<UploadedContent[]> {
+  try { const r = await fetch(`/api/uploads?model=${model}`); if (!r.ok) return []; const d = await r.json(); return d.uploads || []; } catch { return []; }
+}
+
 function loadReviews(): Review[] {
   try { return JSON.parse(localStorage.getItem(REVIEWS_KEY) || "[]"); } catch { return []; }
 }
@@ -366,7 +391,7 @@ function saveOrder(order: PendingOrder) {
 
 function saveNotification(title: string, subtitle: string, ref: string) {
   try {
-    const notifs = JSON.parse(localStorage.getItem("sqwensy_notifications") || "[]");
+    const notifs = JSON.parse(localStorage.getItem("heaven_notifications") || "[]");
     notifs.unshift({
       id: `notif-${Date.now()}`,
       type: "pack_request",
@@ -379,7 +404,7 @@ function saveNotification(title: string, subtitle: string, ref: string) {
       read: false,
       actionRequired: true,
     });
-    localStorage.setItem("sqwensy_notifications", JSON.stringify(notifs));
+    localStorage.setItem("heaven_notifications", JSON.stringify(notifs));
   } catch { /* ignore */ }
 }
 
@@ -488,6 +513,9 @@ export default function YumiPublicPage() {
   const [tokenBuyStep, setTokenBuyStep] = useState<"select" | "confirm" | "done">("select");
   const [showServiceModal, setShowServiceModal] = useState<string | null>(null);
   const [serviceRequested, setServiceRequested] = useState(false);
+  // Live privé slider
+  const [liveTier, setLiveTier] = useState<"gold" | "diamond" | "platinum">("gold");
+  const [liveMinutes, setLiveMinutes] = useState(10);
 
   // Per-image token unlocks (persisted per client)
   const [unlockedImages, setUnlockedImages] = useState<Set<string>>(new Set());
@@ -520,9 +548,24 @@ export default function YumiPublicPage() {
       if (sess.active && Date.now() - (sess.ts || 0) < 24 * 3600000) setIsAdmin(true);
     } catch { /* not admin */ }
     setReviews(loadReviews());
-    setUploads(loadUploads());
     setServices(loadServices());
     setPresence(loadPresence());
+
+    // Load uploads: merge API (cross-browser) + localStorage
+    const localUploads = loadUploads();
+    setUploads(localUploads);
+    apiFetchUploads("yumi").then(apiUploads => {
+      if (apiUploads.length === 0 && localUploads.length > 0) {
+        apiSyncUploads("yumi", localUploads);
+      } else if (apiUploads.length > 0) {
+        const apiSet = new Set(apiUploads.map(u => u.id));
+        const localOnly = localUploads.filter(u => !apiSet.has(u.id));
+        localOnly.forEach(u => apiCreateUpload("yumi", u));
+        const merged = [...apiUploads, ...localOnly];
+        setUploads(merged);
+        try { localStorage.setItem(CONTENT_KEY, JSON.stringify(merged)); } catch { /* */ }
+      }
+    });
 
     // Sync when cockpit updates in another tab
     const onStorage = (e: StorageEvent) => {
@@ -740,8 +783,8 @@ export default function YumiPublicPage() {
   // Load chat messages
   useEffect(() => {
     try {
-      setChatPublicMsgs(JSON.parse(localStorage.getItem("sqwensy_yumi_chat_public") || "[]"));
-      setChatPrivateMsgs(JSON.parse(localStorage.getItem("sqwensy_yumi_chat_private") || "[]"));
+      setChatPublicMsgs(JSON.parse(localStorage.getItem("heaven_yumi_chat_public") || "[]"));
+      setChatPrivateMsgs(JSON.parse(localStorage.getItem("heaven_yumi_chat_private") || "[]"));
       const nick = sessionStorage.getItem("yumi_pub_chat_nick");
       if (nick) { setChatNick(nick); setChatJoined(true); }
       const pu = sessionStorage.getItem("yumi_priv_chat_user");
@@ -782,7 +825,7 @@ export default function YumiPublicPage() {
     const msg = { id: `sys-${Date.now()}`, sender: "System", content: `${chatNick.trim()} a rejoint ! 1h d'acces gratuit.`, ts: new Date().toISOString() };
     const updated = [...chatPublicMsgs, msg];
     setChatPublicMsgs(updated);
-    localStorage.setItem("sqwensy_yumi_chat_public", JSON.stringify(updated));
+    localStorage.setItem("heaven_yumi_chat_public", JSON.stringify(updated));
   }, [chatNick, chatPublicMsgs]);
 
   const joinPrivateChat = useCallback(async () => {
@@ -803,7 +846,7 @@ export default function YumiPublicPage() {
       const msg = { id: `sys-${Date.now()}`, sender: "System", content: `${found.client} a rejoint (${found.pack}).`, ts: new Date().toISOString(), tier: found.tier };
       const updated = [...chatPrivateMsgs, msg];
       setChatPrivateMsgs(updated);
-      localStorage.setItem("sqwensy_yumi_chat_private", JSON.stringify(updated));
+      localStorage.setItem("heaven_yumi_chat_private", JSON.stringify(updated));
     } catch { setChatPrivErr("Erreur."); }
   }, [chatPrivCode, chatPrivateMsgs]);
 
@@ -812,7 +855,7 @@ export default function YumiPublicPage() {
     const isPublic = chatTab === "public";
     const sender = isPublic ? chatNick : (chatPrivUser?.client || "?");
     const msg = { id: `msg-${Date.now()}`, sender, content: chatInput.trim(), ts: new Date().toISOString(), tier: !isPublic ? chatPrivUser?.tier : undefined };
-    const key = isPublic ? "sqwensy_yumi_chat_public" : "sqwensy_yumi_chat_private";
+    const key = isPublic ? "heaven_yumi_chat_public" : "heaven_yumi_chat_private";
     if (isPublic) {
       const updated = [...chatPublicMsgs, msg];
       setChatPublicMsgs(updated);
@@ -863,10 +906,12 @@ export default function YumiPublicPage() {
   }, [validatedCode]);
 
   const handleBuyTokens = useCallback(() => {
-    if (!validatedCode || !tokenBuyPack) return;
+    if (!tokenBuyPack) return;
     const totalTokens = tokenBuyPack.tokens + tokenBuyPack.bonus;
+    const clientName = validatedCode?.client || checkoutPseudo.trim() || "Visiteur";
+    const platform = validatedCode ? "code" : checkoutPlatform;
     const newBalance: TokenBalance = {
-      client: validatedCode.client,
+      client: clientName,
       balance: tokenBalance.balance + totalTokens,
       totalBought: tokenBalance.totalBought + totalTokens,
       totalSpent: tokenBalance.totalSpent,
@@ -875,23 +920,33 @@ export default function YumiPublicPage() {
     saveTokenBalance(newBalance);
     addTokenTransaction({
       id: `tx-${Date.now()}`,
-      client: validatedCode.client,
+      client: clientName,
       type: "purchase",
       amount: totalTokens,
-      description: `Achat ${tokenBuyPack.tokens} jetons (+${tokenBuyPack.bonus} bonus) — ${tokenBuyPack.price}€`,
+      description: `Achat ${tokenBuyPack.tokens} jetons (+${tokenBuyPack.bonus} bonus) — ${tokenBuyPack.price}€ via ${platform}`,
       createdAt: new Date().toISOString(),
     });
     saveNotification(
       "Achat jetons YUMI",
-      `@${validatedCode.client} — ${totalTokens} jetons (${tokenBuyPack.price}€)`,
+      `@${clientName} (${platform}) — ${totalTokens} jetons (${tokenBuyPack.price}€) — EN ATTENTE PAIEMENT`,
       `TK-${Date.now()}`,
     );
     setTokenBuyStep("done");
-  }, [validatedCode, tokenBuyPack, tokenBalance]);
+  }, [validatedCode, tokenBuyPack, tokenBalance, checkoutPseudo, checkoutPlatform]);
 
   const handleRequestService = useCallback((serviceId: string) => {
     if (!validatedCode) return;
-    const service = services.find(s => s.id === serviceId);
+    let service: TokenService | undefined = services.find(s => s.id === serviceId);
+    // Handle dynamic live_custom_<tier>_<minutes> IDs
+    if (!service && serviceId.startsWith("live_custom_")) {
+      const parts = serviceId.split("_");
+      const tier = parts[2];
+      const mins = parseInt(parts[3], 10);
+      const r = LIVE_RATES[tier];
+      if (r && mins) {
+        service = { id: serviceId, label: `Live Snap ${r.label} (${mins}min)`, tokens: calcLiveTokens(tier, mins), icon: "cam", color: r.color, tier, active: true };
+      }
+    }
     if (!service || !service.active) return;
     if (tokenBalance.balance < service.tokens) return;
     const newBalance: TokenBalance = {
@@ -972,6 +1027,7 @@ export default function YumiPublicPage() {
       const all = [...uploads, newUpload];
       setUploads(all);
       try { localStorage.setItem(CONTENT_KEY, JSON.stringify(all)); } catch { /* */ }
+      apiCreateUpload("yumi", newUpload);
     };
     reader.readAsDataURL(file);
     e.target.value = "";
@@ -1148,28 +1204,23 @@ export default function YumiPublicPage() {
       <div className="w-full max-w-lg mx-auto pb-20">
 
         {/* ══════ HEADER BAR ══════ */}
-        <div className="flex items-center justify-between px-4 py-3 sticky top-0 z-30" style={{ background: "#06060BF0", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
-          <h1 className="text-sm font-bold tracking-wide" style={{ color: "#F0F0F5" }}>yumiii</h1>
-          <div className="flex items-center gap-2">
-            {validatedCode && (
+        {validatedCode && (
+          <div className="flex items-center justify-end px-4 py-3 sticky top-0 z-30" style={{ background: "#06060BF0", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
+            <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 text-[9px] font-semibold px-2.5 py-1 rounded-full" style={{ background: `${tierColor}20`, color: tierColor }}>
                 <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: tierColor }} />
                 {timeLeft(validatedCode.expiresAt)}
               </div>
-            )}
-            <button
-              onClick={() => { if (validatedCode) { setValidatedCode(null); } else { setShowCodeModal(true); } }}
-              className="text-[10px] font-semibold px-3 py-1.5 rounded-lg cursor-pointer transition-all active:scale-95"
-              style={{
-                background: validatedCode ? "rgba(142,142,163,0.1)" : "linear-gradient(135deg, #E84393, #C9A84C)",
-                color: validatedCode ? "#8E8EA3" : "#fff",
-                border: validatedCode ? "1px solid rgba(142,142,163,0.2)" : "none",
-              }}
-            >
-              {validatedCode ? "Deconnexion" : "Entrer un code"}
-            </button>
+              <button
+                onClick={() => setValidatedCode(null)}
+                className="text-[10px] font-semibold px-3 py-1.5 rounded-lg cursor-pointer transition-all active:scale-95"
+                style={{ background: "rgba(142,142,163,0.1)", color: "#8E8EA3", border: "1px solid rgba(142,142,163,0.2)" }}
+              >
+                Deconnexion
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ══════ ADMIN TOOLBAR — visible only when model is logged in from cockpit ══════ */}
         {isAdmin && (
@@ -1775,95 +1826,140 @@ export default function YumiPublicPage() {
               </div>
             )}
 
-            {/* Token packs for non-logged visitors */}
+            {/* Token intro for non-logged visitors */}
             {!validatedCode && (
               <div className="rounded-2xl p-4 text-center" style={{ background: "linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.02))", border: "1px solid rgba(201,168,76,0.15)" }}>
                 <p className="text-base font-bold mb-1" style={{ color: "#F0F0F5" }}>Jetons YUMI</p>
-                <p className="text-[11px] mb-3 leading-relaxed" style={{ color: "#8E8EA3" }}>
+                <p className="text-[11px] mb-1 leading-relaxed" style={{ color: "#8E8EA3" }}>
                   Achete des jetons pour debloquer des lives prives sur Snap, des photos custom, et plus encore.
                 </p>
-                <button onClick={() => setShowCodeModal(true)}
-                  className="text-xs font-semibold px-5 py-2 rounded-xl cursor-pointer"
-                  style={{ background: "linear-gradient(135deg, #E84393, #C9A84C)", color: "#fff" }}>
-                  Entre ton code pour commencer
-                </button>
               </div>
             )}
 
-            {/* Services catalogue — grouped */}
-            {[
-              { title: "Lives prives Snap", icon: "cam", services: services.filter(s => s.icon === "cam" && s.active) },
-              { title: "Contenu custom", icon: "other", services: services.filter(s => s.icon !== "cam" && s.active) },
-            ].map(group => (
-              <div key={group.title}>
-                <p className="text-xs font-bold mb-2 flex items-center gap-2" style={{ color: "#F0F0F5" }}>
-                  {group.icon === "cam" ? (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFC00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {/* ── Live Privé Snap — slider ── */}
+            {(() => {
+              const r = LIVE_RATES[liveTier];
+              const liveTokens = calcLiveTokens(liveTier, liveMinutes);
+              const liveEuros = (liveTokens * 0.5).toFixed(0);
+              const canAffordLive = validatedCode && tokenBalance.balance >= liveTokens;
+              return (
+                <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(12,12,20,0.8)", border: `1px solid ${r.color}20` }}>
+                  <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFC00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
                     </svg>
-                  ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" />
-                    </svg>
-                  )}
-                  {group.title}
-                </p>
-                <div className="space-y-1.5 mb-3">
-                  {group.services.map(service => {
-                    const canAffordSvc = validatedCode && tokenBalance.balance >= service.tokens;
-                    const euroEquiv = (service.tokens * 0.5).toFixed(0);
-                    return (
-                      <button key={service.id}
-                        onClick={() => {
-                          if (!validatedCode) { setShowCodeModal(true); return; }
-                          setShowServiceModal(service.id);
-                          setServiceRequested(false);
-                        }}
-                        className="w-full text-left rounded-xl p-3 cursor-pointer transition-all active:scale-[0.98]"
+                    <p className="text-xs font-bold" style={{ color: "#F0F0F5" }}>Live Prive Snap</p>
+                  </div>
+
+                  {/* Tier selector */}
+                  <div className="flex gap-1.5 px-4 mb-3">
+                    {(["gold", "diamond", "platinum"] as const).map(t => (
+                      <button key={t} onClick={() => setLiveTier(t)}
+                        className="flex-1 text-[10px] font-semibold py-1.5 rounded-lg cursor-pointer transition-all"
                         style={{
-                          background: "rgba(12,12,20,0.8)",
-                          border: `1px solid ${service.color}15`,
+                          background: liveTier === t ? `${LIVE_RATES[t].color}18` : "rgba(6,6,11,0.5)",
+                          border: `1px solid ${liveTier === t ? `${LIVE_RATES[t].color}40` : "rgba(142,142,163,0.08)"}`,
+                          color: liveTier === t ? LIVE_RATES[t].color : "#5A5A6A",
                         }}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${service.color}15` }}>
-                              {service.icon === "cam" && (
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={service.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                                </svg>
-                              )}
-                              {service.icon === "photo" && (
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={service.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
-                                </svg>
-                              )}
-                              {service.icon === "video" && (
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill={service.color}><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                              )}
-                              {service.icon === "chat" && (
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={service.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                                </svg>
-                              )}
-                            </div>
-                            <div>
-                              <p className="text-[11px] font-medium" style={{ color: "#F0F0F5" }}>{service.label}</p>
-                              <p className="text-[8px]" style={{ color: "#5A5A6A" }}>&asymp;{euroEquiv}&euro;</p>
-                            </div>
+                        {LIVE_RATES[t].label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Duration slider */}
+                  <div className="px-4 mb-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[10px]" style={{ color: "#8E8EA3" }}>Duree</p>
+                      <p className="text-sm font-black" style={{ color: r.color }}>{liveMinutes} min</p>
+                    </div>
+                    <input type="range" min={5} max={30} step={1} value={liveMinutes}
+                      onChange={e => setLiveMinutes(Number(e.target.value))}
+                      className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                      style={{
+                        background: `linear-gradient(to right, ${r.color} ${((liveMinutes - 5) / 25) * 100}%, rgba(142,142,163,0.15) ${((liveMinutes - 5) / 25) * 100}%)`,
+                        accentColor: r.color,
+                      }} />
+                    <div className="flex justify-between mt-0.5">
+                      <span className="text-[8px]" style={{ color: "#5A5A6A" }}>5 min</span>
+                      <span className="text-[8px]" style={{ color: "#5A5A6A" }}>30 min</span>
+                    </div>
+                  </div>
+
+                  {/* Price + CTA */}
+                  <div className="px-4 pb-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xl font-black" style={{ color: "#C9A84C" }}>{liveTokens} <span className="text-[10px] font-normal">jetons</span></p>
+                      <p className="text-[9px]" style={{ color: "#5A5A6A" }}>&asymp;{liveEuros}&euro;</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowServiceModal(`live_custom_${liveTier}_${liveMinutes}`);
+                        setServiceRequested(false);
+                      }}
+                      className="text-xs font-semibold px-5 py-2.5 rounded-xl cursor-pointer transition-all active:scale-[0.97]"
+                      style={{
+                        background: canAffordLive
+                          ? `linear-gradient(135deg, ${r.color}, ${r.color}CC)`
+                          : `${r.color}15`,
+                        color: canAffordLive ? "#fff" : r.color,
+                        border: `1px solid ${r.color}30`,
+                      }}>
+                      Demander
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ── Contenu custom services ── */}
+            <div>
+              <p className="text-xs font-bold mb-2 flex items-center gap-2" style={{ color: "#F0F0F5" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" />
+                </svg>
+                Contenu custom
+              </p>
+              <div className="space-y-1.5 mb-3">
+                {services.filter(s => s.icon !== "cam" && s.active).map(service => {
+                  const canAffordSvc = validatedCode && tokenBalance.balance >= service.tokens;
+                  const euroEquiv = (service.tokens * 0.5).toFixed(0);
+                  return (
+                    <button key={service.id}
+                      onClick={() => { setShowServiceModal(service.id); setServiceRequested(false); }}
+                      className="w-full text-left rounded-xl p-3 cursor-pointer transition-all active:scale-[0.98]"
+                      style={{ background: "rgba(12,12,20,0.8)", border: `1px solid ${service.color}15` }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${service.color}15` }}>
+                            {service.icon === "photo" && (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={service.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+                              </svg>
+                            )}
+                            {service.icon === "video" && (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill={service.color}><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                            )}
+                            {service.icon === "chat" && (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={service.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                              </svg>
+                            )}
                           </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-sm font-black" style={{ color: canAffordSvc ? "#C9A84C" : "#5A5A6A" }}>
-                              {service.tokens}
-                            </p>
-                            <p className="text-[8px]" style={{ color: "#5A5A6A" }}>jetons</p>
+                          <div>
+                            <p className="text-[11px] font-medium" style={{ color: "#F0F0F5" }}>{service.label}</p>
+                            <p className="text-[8px]" style={{ color: "#5A5A6A" }}>&asymp;{euroEquiv}&euro;</p>
                           </div>
                         </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-black" style={{ color: canAffordSvc ? "#C9A84C" : "#5A5A6A" }}>{service.tokens}</p>
+                          <p className="text-[8px]" style={{ color: "#5A5A6A" }}>jetons</p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-            ))}
+            </div>
 
             {/* Token packs display */}
             <div>
@@ -1872,7 +1968,6 @@ export default function YumiPublicPage() {
                 {TOKEN_PACKS.map(tp => (
                   <button key={tp.id}
                     onClick={() => {
-                      if (!validatedCode) { setShowCodeModal(true); return; }
                       setTokenBuyPack(tp);
                       setTokenBuyStep("confirm");
                       setShowTokenBuy(true);
@@ -1953,7 +2048,7 @@ export default function YumiPublicPage() {
         )}
 
         {/* ══════ FOOTER ══════ */}
-        <p className="text-center py-6 text-[9px]" style={{ color: "#2A2A3A" }}>SQWENSY Group</p>
+        <p className="text-center py-6 text-[9px]" style={{ color: "#2A2A3A" }}>Heaven Studio</p>
 
         {/* ══════ FLOATING CART BADGE ══════ */}
         {cart.length > 0 && !showCart && (
@@ -2581,16 +2676,50 @@ export default function YumiPublicPage() {
                   <p className="text-[10px]" style={{ color: "#8E8EA3" }}>jetons ({tokenBuyPack.tokens} + {tokenBuyPack.bonus} bonus)</p>
                   <p className="text-lg font-bold mt-2" style={{ color: "#F0F0F5" }}>{tokenBuyPack.price}&euro;</p>
                 </div>
-                <p className="text-[10px] text-center mb-4" style={{ color: "#8E8EA3" }}>
-                  Paiement via Snap/Instagram DM. Jetons credites des reception.
-                </p>
+
+                {/* Pseudo + plateforme si pas connecté */}
+                {!validatedCode && (
+                  <div className="space-y-3 mb-4">
+                    <div>
+                      <label className="text-[10px] block mb-1" style={{ color: "#8E8EA3" }}>Ton pseudo</label>
+                      <input value={checkoutPseudo} onChange={e => setCheckoutPseudo(e.target.value)}
+                        placeholder="Ex: @tonpseudo"
+                        className="w-full rounded-lg px-3 py-2 text-xs outline-none"
+                        style={{ background: "rgba(6,6,11,0.6)", border: "1px solid rgba(142,142,163,0.12)", color: "#F0F0F5" }} />
+                    </div>
+                    <div>
+                      <label className="text-[10px] block mb-1" style={{ color: "#8E8EA3" }}>Plateforme</label>
+                      <div className="flex gap-1.5">
+                        {[
+                          { id: "snapchat", label: "Snap", color: "#FFFC00" },
+                          { id: "instagram", label: "Insta", color: "#E1306C" },
+                          { id: "telegram", label: "Telegram", color: "#0088CC" },
+                        ].map(p => (
+                          <button key={p.id} onClick={() => setCheckoutPlatform(p.id)}
+                            className="flex-1 text-[10px] py-1.5 rounded-lg cursor-pointer transition-all"
+                            style={{
+                              background: checkoutPlatform === p.id ? `${p.color}15` : "rgba(6,6,11,0.6)",
+                              border: `1px solid ${checkoutPlatform === p.id ? `${p.color}40` : "rgba(142,142,163,0.08)"}`,
+                              color: checkoutPlatform === p.id ? p.color : "#8E8EA3",
+                            }}>{p.label}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   <button onClick={() => setTokenBuyStep("select")}
                     className="flex-1 text-xs py-2.5 rounded-xl cursor-pointer"
                     style={{ background: "rgba(142,142,163,0.08)", color: "#8E8EA3" }}>Retour</button>
                   <button onClick={handleBuyTokens}
+                    disabled={!validatedCode && !checkoutPseudo.trim()}
                     className="text-sm font-semibold py-2.5 rounded-xl cursor-pointer transition-all active:scale-[0.98]"
-                    style={{ background: "linear-gradient(135deg, #C9A84C, #E8B94C)", color: "#06060B", flex: 2 }}>
+                    style={{
+                      background: (!validatedCode && !checkoutPseudo.trim()) ? "rgba(142,142,163,0.15)" : "linear-gradient(135deg, #C9A84C, #E8B94C)",
+                      color: (!validatedCode && !checkoutPseudo.trim()) ? "#8E8EA3" : "#06060B",
+                      flex: 2,
+                    }}>
                     Confirmer — {tokenBuyPack.price}&euro;
                   </button>
                 </div>
@@ -2604,9 +2733,9 @@ export default function YumiPublicPage() {
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </div>
-                <h3 className="text-sm font-bold mb-1" style={{ color: "#F0F0F5" }}>Jetons credites !</h3>
+                <h3 className="text-sm font-bold mb-1" style={{ color: "#F0F0F5" }}>Paiement confirme !</h3>
                 <p className="text-[11px] mb-4" style={{ color: "#8E8EA3" }}>
-                  Envoie le paiement via DM pour finaliser. Nouveau solde : {tokenBalance.balance} jetons.
+                  {tokenBuyPack ? tokenBuyPack.tokens + tokenBuyPack.bonus : 0} jetons credites sur ton compte. Nouveau solde : {tokenBalance.balance} jetons.
                 </p>
                 <button onClick={() => setShowTokenBuy(false)}
                   className="w-full text-sm font-semibold py-3 rounded-xl cursor-pointer"
@@ -2621,7 +2750,25 @@ export default function YumiPublicPage() {
 
       {/* ══════ SERVICE REQUEST MODAL ══════ */}
       {showServiceModal && (() => {
-        const service = services.find(s => s.id === showServiceModal);
+        // Support dynamic live_custom_<tier>_<minutes> IDs from the slider
+        let service: TokenService | undefined = services.find(s => s.id === showServiceModal);
+        if (!service && showServiceModal.startsWith("live_custom_")) {
+          const parts = showServiceModal.split("_"); // live_custom_gold_10
+          const tier = parts[2];
+          const mins = parseInt(parts[3], 10);
+          const r = LIVE_RATES[tier];
+          if (r && mins) {
+            service = {
+              id: showServiceModal,
+              label: `Live Snap ${r.label} (${mins}min)`,
+              tokens: calcLiveTokens(tier, mins),
+              icon: "cam",
+              color: r.color,
+              tier,
+              active: true,
+            };
+          }
+        }
         if (!service) return null;
         const canAfford = tokenBalance.balance >= service.tokens;
         return (

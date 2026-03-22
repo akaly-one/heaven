@@ -1,20 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSupabase } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 
-interface PackConfig {
-  id: string;
-  name: string;
-  price: number;
-  color: string;
-  features: string[];
-  bonuses: Record<string, boolean>;
-  face: boolean;
-  badge: string | null;
-  active: boolean;
-}
+/* ══════════════════════════════════════════════
+   /api/packs — Supabase (agence_packs) + globalThis fallback
+   ══════════════════════════════════════════════ */
 
-const DEFAULT_PACKS: PackConfig[] = [
+const DEFAULT_PACKS = [
   { id: "vip", name: "VIP Glamour", price: 150, color: "#E84393",
     features: ["Pieds glamour/sales + accessoires", "Lingerie sexy + haul", "Teasing + demandes custom", "Dedicaces personnalisees"],
     bonuses: { fanvueAccess: false, freeNudeExpress: true, nudeDedicaceLevres: false, freeVideoOffer: false },
@@ -33,36 +26,63 @@ const DEFAULT_PACKS: PackConfig[] = [
     face: true, badge: "Ultimate", active: true },
 ];
 
-const g = globalThis as unknown as { _packs: PackConfig[] | null };
-if (!g._packs) g._packs = null;
+const g = globalThis as unknown as { _packs: Record<string, typeof DEFAULT_PACKS> };
+if (!g._packs) g._packs = {};
 
-export async function GET() {
-  return NextResponse.json({ packs: g._packs || DEFAULT_PACKS }, {
-    headers: { "Access-Control-Allow-Origin": "*" },
-  });
+const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS", "Access-Control-Allow-Headers": "Content-Type" };
+const sb = () => getServerSupabase();
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: cors });
+}
+
+export async function GET(req: NextRequest) {
+  const model = req.nextUrl.searchParams.get("model") || "yumi";
+  try {
+    const supabase = sb();
+    if (supabase) {
+      const { data, error } = await supabase.from("agence_packs").select("*").eq("model", model).order("sort_order", { ascending: true });
+      if (!error && data && data.length > 0) {
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        const mapped = data.map((r: any) => ({
+          id: r.pack_id, name: r.name, price: Number(r.price), color: r.color,
+          features: r.features || [], bonuses: r.bonuses || {},
+          face: r.face, badge: r.badge, active: r.active,
+        }));
+        g._packs[model] = mapped;
+        return NextResponse.json({ packs: mapped }, { headers: cors });
+      }
+    }
+    return NextResponse.json({ packs: g._packs[model] || DEFAULT_PACKS }, { headers: cors });
+  } catch (err) {
+    console.error("[API/packs] GET:", err);
+    return NextResponse.json({ packs: g._packs[model] || DEFAULT_PACKS }, { headers: cors });
+  }
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    if (Array.isArray(body.packs)) {
-      g._packs = body.packs;
-    }
-    return NextResponse.json({ success: true }, {
-      headers: { "Access-Control-Allow-Origin": "*" },
-    });
-  } catch {
-    return NextResponse.json({ error: "Invalid data" }, { status: 400 });
-  }
-}
+    const model = body.model || "yumi";
+    const packs = body.packs;
+    if (!Array.isArray(packs)) return NextResponse.json({ error: "packs array requis" }, { status: 400, headers: cors });
 
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    },
-  });
+    g._packs[model] = packs;
+
+    const supabase = sb();
+    if (supabase) {
+      await supabase.from("agence_packs").delete().eq("model", model);
+      const rows = packs.map((p: Record<string, unknown>, i: number) => ({
+        model, pack_id: p.id || `pack-${i}`, name: p.name || "", price: p.price || 0,
+        color: p.color || "#6366F1", features: p.features || [], bonuses: p.bonuses || {},
+        face: p.face || false, badge: p.badge || null, active: p.active !== false, sort_order: i,
+      }));
+      await supabase.from("agence_packs").insert(rows);
+    }
+
+    return NextResponse.json({ success: true, count: packs.length }, { headers: cors });
+  } catch (err) {
+    console.error("[API/packs] POST:", err);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });
+  }
 }

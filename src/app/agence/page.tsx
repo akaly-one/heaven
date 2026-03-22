@@ -133,14 +133,14 @@ interface ModelPresence {
 }
 
 // ── Storage ──
-const ADMIN_SESSION_KEY = "sqwensy_yumi_admin_session";
-const CODES_KEY = "sqwensy_gallery_codes";
-const ORDERS_KEY = "sqwensy_agence_orders";
-const PACKS_KEY = "sqwensy_yumi_packs";
-const SERVICES_KEY = "sqwensy_yumi_services";
-const PRESENCE_KEY = "sqwensy_yumi_presence";
-const SCREENSHOT_LOG_KEY = "sqwensy_yumi_screenshot_log";
-const EXCLUSIONS_KEY = "sqwensy_yumi_exclusions";
+const ADMIN_SESSION_KEY = "heaven_yumi_admin_session";
+const CODES_KEY = "heaven_gallery_codes";
+const ORDERS_KEY = "heaven_agence_orders";
+const PACKS_KEY = "heaven_yumi_packs";
+const SERVICES_KEY = "heaven_yumi_services";
+const PRESENCE_KEY = "heaven_yumi_presence";
+const SCREENSHOT_LOG_KEY = "heaven_yumi_screenshot_log";
+const EXCLUSIONS_KEY = "heaven_yumi_exclusions";
 
 interface ScreenshotAttempt {
   id: string;
@@ -179,6 +179,24 @@ async function apiDeleteCode(code: string): Promise<boolean> {
 async function apiFetchCodes(model: string): Promise<AccessCode[]> {
   try { const r = await fetch(`/api/codes?model=${model}`); if (!r.ok) return []; const d = await r.json(); return d.codes || []; } catch { return []; }
 }
+
+// ── Upload API helpers (shared server store) ──
+async function apiSyncUploads(model: string, uploads: UploadedContent[]): Promise<boolean> {
+  try { const r = await fetch("/api/uploads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "sync", model, uploads }) }); return r.ok; } catch { return false; }
+}
+async function apiCreateUpload(model: string, upload: UploadedContent): Promise<boolean> {
+  try { const r = await fetch("/api/uploads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...upload, model }) }); return r.ok; } catch { return false; }
+}
+async function apiUpdateUpload(model: string, id: string, updates: Record<string, unknown>): Promise<boolean> {
+  try { const r = await fetch("/api/uploads", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, id, updates }) }); return r.ok; } catch { return false; }
+}
+async function apiDeleteUpload(model: string, id: string): Promise<boolean> {
+  try { const r = await fetch(`/api/uploads?model=${model}&id=${encodeURIComponent(id)}`, { method: "DELETE" }); return r.ok; } catch { return false; }
+}
+async function apiFetchUploads(model: string): Promise<UploadedContent[]> {
+  try { const r = await fetch(`/api/uploads?model=${model}`); if (!r.ok) return []; const d = await r.json(); return d.uploads || []; } catch { return []; }
+}
+
 function loadOrders(): PendingOrder[] {
   try { return JSON.parse(localStorage.getItem(ORDERS_KEY) || "[]"); } catch { return []; }
 }
@@ -196,8 +214,8 @@ function savePacks(packs: PackConfig[]) {
 }
 
 // ── Reviews & Content ──
-const REVIEWS_KEY = "sqwensy_yumi_reviews";
-const CONTENT_KEY = "sqwensy_yumi_uploads";
+const REVIEWS_KEY = "heaven_yumi_reviews";
+const CONTENT_KEY = "heaven_yumi_uploads";
 
 interface Review {
   id: string;
@@ -338,6 +356,21 @@ export default function AgenceDashboard() {
         saveCodes(merged);
       }
     });
+
+    // Sync uploads with API
+    const localUploads = loadUploads();
+    apiFetchUploads("yumi").then(apiUploads => {
+      if (apiUploads.length === 0 && localUploads.length > 0) {
+        apiSyncUploads("yumi", localUploads);
+      } else if (apiUploads.length > 0) {
+        const apiSet = new Set(apiUploads.map(u => u.id));
+        const localOnly = localUploads.filter(u => !apiSet.has(u.id));
+        localOnly.forEach(u => apiCreateUpload("yumi", u));
+        const merged = [...apiUploads, ...localOnly];
+        setUploads(merged);
+        saveUploads(merged);
+      }
+    });
   }, []);
   useEffect(() => { const iv = setInterval(() => setTick(t => t + 1), 60000); return () => clearInterval(iv); }, []);
 
@@ -399,6 +432,7 @@ export default function AgenceDashboard() {
       const updated = [newUpload, ...uploads];
       setUploads(updated);
       saveUploads(updated);
+      apiCreateUpload("yumi", newUpload);
       setUploadLabel("");
     };
     reader.readAsDataURL(file);
@@ -409,6 +443,7 @@ export default function AgenceDashboard() {
     const updated = uploads.filter(u => u.id !== id);
     setUploads(updated);
     saveUploads(updated);
+    apiDeleteUpload("yumi", id);
   }, [uploads]);
 
   const [editingUpload, setEditingUpload] = useState<string | null>(null);
@@ -422,6 +457,7 @@ export default function AgenceDashboard() {
     } : u);
     setUploads(updated);
     saveUploads(updated);
+    apiUpdateUpload("yumi", id, { tier: newVisibility === "promo" ? "promo" : newTier, visibility: newVisibility, tokenPrice: newVisibility === "promo" ? 0 : (newTokenPrice ?? 15) });
     setEditingUpload(null);
   }, [uploads]);
 
@@ -698,65 +734,6 @@ export default function AgenceDashboard() {
                   style={{ background: presence.online ? "#10B981" : "#5A5A6A", borderColor: "var(--sq-bg)" }} />
               </button>
               <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { handleAvatarUpload(e); setShowAvatarEdit(false); }} />
-
-              {/* Avatar + Status edit popup */}
-              {showAvatarEdit && (
-                <div className="absolute top-full left-0 mt-2 w-64 rounded-xl p-3 space-y-3 z-50 shadow-xl"
-                  style={{ background: "var(--sq-surface)", border: "1px solid rgba(232,67,147,0.2)" }}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0" style={{ boxShadow: "0 0 0 2px #E84393" }}>
-                      {presence.avatar ? (
-                        <img src={presence.avatar} alt="YUMI" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center" style={{ background: "linear-gradient(135deg, #E84393, #C9A84C)" }}>
-                          <span className="text-lg font-bold" style={{ color: "#fff" }}>Y</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-1.5">
-                      <button onClick={() => avatarInputRef.current?.click()}
-                        className="flex items-center gap-1 text-[10px] font-medium px-2.5 py-1.5 rounded-lg cursor-pointer w-full"
-                        style={{ background: "rgba(232,67,147,0.1)", color: "#E84393", border: "1px solid rgba(232,67,147,0.2)" }}>
-                        <Camera className="w-3 h-3" /> Changer photo
-                      </button>
-                      {presence.avatar && (
-                        <button onClick={() => { const u = { ...presence, avatar: "" }; setPresence(u); savePresence(u); }}
-                          className="flex items-center gap-1 text-[9px] px-2.5 py-1 rounded-lg cursor-pointer w-full"
-                          style={{ background: "rgba(239,68,68,0.06)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.1)" }}>
-                          <Trash2 className="w-3 h-3" /> Retirer
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[9px] block mb-1" style={{ color: "var(--sq-text-muted)" }}>Statut (affiche a cote du nom)</label>
-                    <input value={editStatus} onChange={e => setEditStatus(e.target.value)} placeholder="Dispo pour lives..." maxLength={50}
-                      className="w-full text-xs rounded-lg px-3 py-2 outline-none"
-                      style={{ background: "var(--sq-bg3)", border: "1px solid var(--sq-border)", color: "var(--sq-text)" }} />
-                    <div className="flex gap-1 mt-1.5 flex-wrap">
-                      {["Dispo pour lives", "Nouveaux contenus", "Promo en cours", ""].map(s => (
-                        <button key={s || "clear"} onClick={() => setEditStatus(s)}
-                          className="text-[8px] px-1.5 py-0.5 rounded cursor-pointer"
-                          style={{ background: editStatus === s ? "rgba(232,67,147,0.12)" : "var(--sq-bg3)", color: editStatus === s ? "#E84393" : "var(--sq-text-muted)" }}>
-                          {s || "Aucun"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => { const u = { ...presence, status: editStatus }; setPresence(u); savePresence(u); setShowAvatarEdit(false); }}
-                      className="flex-1 text-[10px] font-medium py-2 rounded-lg cursor-pointer"
-                      style={{ background: "#E84393", color: "#fff" }}>
-                      Sauvegarder
-                    </button>
-                    <button onClick={() => setShowAvatarEdit(false)}
-                      className="text-[10px] px-3 py-2 rounded-lg cursor-pointer"
-                      style={{ background: "var(--sq-bg3)", color: "var(--sq-text-muted)" }}>
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
             <div className="min-w-0">
               <h1 className="text-base md:text-xl font-bold" style={{ color: "var(--sq-text)" }}>YUMI</h1>
@@ -1725,6 +1702,66 @@ export default function AgenceDashboard() {
           </div>
         )}
       </div>
+      {/* ══════ Avatar + Status edit modal — rendered at root to avoid stacking context issues ══════ */}
+      {showAvatarEdit && (
+        <>
+          <div className="fixed inset-0" style={{ zIndex: 9998, background: "rgba(6,6,11,0.7)", backdropFilter: "blur(6px)" }} onClick={() => setShowAvatarEdit(false)} />
+          <div className="fixed left-1/2 top-1/2 w-[min(300px,90vw)] rounded-2xl p-4 space-y-3"
+            style={{ zIndex: 9999, transform: "translate(-50%, -50%)", background: "#0C0C14", border: "1px solid rgba(232,67,147,0.25)", boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(232,67,147,0.08)" }}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-bold" style={{ color: "var(--sq-text)" }}>Modifier profil</span>
+              <button onClick={() => setShowAvatarEdit(false)} className="cursor-pointer" style={{ background: "transparent", border: "none" }}>
+                <X className="w-4 h-4" style={{ color: "var(--sq-text-muted)" }} />
+              </button>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0" style={{ boxShadow: "0 0 0 2px #E84393" }}>
+                {presence.avatar ? (
+                  <img src={presence.avatar} alt="YUMI" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center" style={{ background: "linear-gradient(135deg, #E84393, #C9A84C)" }}>
+                    <span className="text-lg font-bold" style={{ color: "#fff" }}>Y</span>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <button onClick={() => avatarInputRef.current?.click()}
+                  className="flex items-center gap-1 text-[10px] font-medium px-2.5 py-1.5 rounded-lg cursor-pointer w-full"
+                  style={{ background: "rgba(232,67,147,0.1)", color: "#E84393", border: "1px solid rgba(232,67,147,0.2)" }}>
+                  <Camera className="w-3 h-3" /> Changer photo
+                </button>
+                {presence.avatar && (
+                  <button onClick={() => { const u = { ...presence, avatar: "" }; setPresence(u); savePresence(u); }}
+                    className="flex items-center gap-1 text-[9px] px-2.5 py-1 rounded-lg cursor-pointer w-full"
+                    style={{ background: "rgba(239,68,68,0.06)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.1)" }}>
+                    <Trash2 className="w-3 h-3" /> Retirer
+                  </button>
+                )}
+              </div>
+            </div>
+            <div>
+              <label className="text-[9px] block mb-1" style={{ color: "var(--sq-text-muted)" }}>Statut (affiche a cote du nom)</label>
+              <input value={editStatus} onChange={e => setEditStatus(e.target.value)} placeholder="Dispo pour lives..." maxLength={50}
+                className="w-full text-xs rounded-lg px-3 py-2 outline-none"
+                style={{ background: "var(--sq-bg3)", border: "1px solid var(--sq-border)", color: "var(--sq-text)" }} />
+              <div className="flex gap-1 mt-1.5 flex-wrap">
+                {["Dispo pour lives", "Nouveaux contenus", "Promo en cours", ""].map(s => (
+                  <button key={s || "clear"} onClick={() => setEditStatus(s)}
+                    className="text-[8px] px-1.5 py-0.5 rounded cursor-pointer"
+                    style={{ background: editStatus === s ? "rgba(232,67,147,0.12)" : "var(--sq-bg3)", color: editStatus === s ? "#E84393" : "var(--sq-text-muted)" }}>
+                    {s || "Aucun"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button onClick={() => { const u = { ...presence, status: editStatus }; setPresence(u); savePresence(u); setShowAvatarEdit(false); }}
+              className="w-full text-[11px] font-semibold py-2.5 rounded-xl cursor-pointer"
+              style={{ background: "#E84393", color: "#fff" }}>
+              Sauvegarder
+            </button>
+          </div>
+        </>
+      )}
     </OsLayout>
   );
 }

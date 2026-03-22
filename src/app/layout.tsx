@@ -12,8 +12,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "SQWENSY OS",
-  description: "Multi-cockpit business management system — SQWENSY Group",
+  title: "Heaven Studio",
+  description: "Heaven Studio — Private platform",
 };
 
 export default function RootLayout({
