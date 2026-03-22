@@ -26,9 +26,18 @@ export default function LoginPage() {
         body: JSON.stringify({ code: code.trim() }),
       });
 
+      // Check if response is JSON (Vercel protection can return HTML)
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        setError(`Erreur ${res.status} — recharge la page`);
+        setShake(true);
+        setTimeout(() => setShake(false), 600);
+        return;
+      }
+
       const data = await res.json();
 
-      if (res.ok && data.role) {
+      if (res.ok && data.token && data.role) {
         sessionStorage.setItem(
           "heaven_auth",
           JSON.stringify({
@@ -40,15 +49,14 @@ export default function LoginPage() {
             loggedAt: data.loggedAt,
           })
         );
-        // Full reload to remount ModelProvider with fresh session
         window.location.href = "/agence";
       } else {
         setError(data.error || "Code invalide");
         setShake(true);
         setTimeout(() => setShake(false), 600);
       }
-    } catch {
-      setError("Erreur de connexion");
+    } catch (err) {
+      setError(`Connexion echouee: ${err instanceof Error ? err.message : "reseau"}`);
       setShake(true);
       setTimeout(() => setShake(false), 600);
     } finally {
