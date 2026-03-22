@@ -595,6 +595,7 @@ export default function AgenceDashboard() {
             open={showGenerator}
             onClose={() => setShowGenerator(false)}
             onGenerate={handleGenerate}
+            modelSlug={modelSlug}
           />
 
           {/* ── FAB (Floating Action Button) ── */}

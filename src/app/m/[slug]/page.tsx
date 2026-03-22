@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import {
   Heart, MessageCircle, Send, Lock, Image, Newspaper, ShoppingBag,
-  Coins, Pin, Eye, Star, Camera, Video, Play, X,
+  Coins, Pin, Eye, Star, Camera, Video, Play, X, Check,
   Instagram, Ghost, ChevronRight, Zap, Plus, Edit3, Wifi,
   ImagePlus,
 } from "lucide-react";
@@ -83,8 +83,18 @@ function useModelSession(slug: string): ModelAuth | null {
   return auth;
 }
 
+// ── Tier hierarchy: higher index = more access ──
+const TIER_HIERARCHY = ["vip", "gold", "diamond", "platinum"];
+function tierIncludes(unlockedTier: string, contentTier: string): boolean {
+  const ui = TIER_HIERARCHY.indexOf(unlockedTier);
+  const ci = TIER_HIERARCHY.indexOf(contentTier);
+  if (ui === -1 || ci === -1) return false;
+  return ui >= ci;
+}
+
 export default function ModelPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const slug = params.slug as string;
   const modelAuth = useModelSession(slug);
   const isModelLoggedIn = !!modelAuth;
@@ -96,6 +106,10 @@ export default function ModelPage() {
   const [tab, setTab] = useState<TabId>("wall");
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  // Access link system: ?access=TOKEN unlocks content
+  const [unlockedTier, setUnlockedTier] = useState<string | null>(null);
+  const [accessChecked, setAccessChecked] = useState(false);
 
   // Wall (public posts by visitors)
   const [wallPosts, setWallPosts] = useState<WallPost[]>([]);
@@ -165,8 +179,45 @@ export default function ModelPage() {
       if (saved) setClientId(JSON.parse(saved).id);
       const savedPseudo = sessionStorage.getItem(`heaven_wall_pseudo_${slug}`);
       if (savedPseudo) setWallPseudo(savedPseudo);
+      // Check for saved access tier
+      const savedAccess = sessionStorage.getItem(`heaven_access_${slug}`);
+      if (savedAccess) {
+        const parsed = JSON.parse(savedAccess);
+        if (parsed.tier && parsed.expiresAt && new Date(parsed.expiresAt).getTime() > Date.now()) {
+          setUnlockedTier(parsed.tier);
+        } else {
+          sessionStorage.removeItem(`heaven_access_${slug}`);
+        }
+      }
     } catch {}
   }, [slug]);
+
+  // ── Validate access token from URL ──
+  useEffect(() => {
+    const accessToken = searchParams.get("access");
+    if (!accessToken || !slug || accessChecked) return;
+    setAccessChecked(true);
+
+    fetch("/api/codes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "validate", code: accessToken, model: slug }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.code?.tier) {
+          setUnlockedTier(data.code.tier);
+          setTab("gallery");
+          // Save in session so refresh doesn't lose access
+          sessionStorage.setItem(`heaven_access_${slug}`, JSON.stringify({
+            tier: data.code.tier,
+            expiresAt: data.code.expiresAt,
+            code: data.code.code,
+          }));
+        }
+      })
+      .catch(() => {});
+  }, [searchParams, slug, accessChecked]);
 
   // Refresh on focus
   useEffect(() => {
@@ -341,17 +392,12 @@ export default function ModelPage() {
 
           {isModelLoggedIn && (
             <div className="flex items-center gap-1.5">
-              <a href="/agence?tab=content&upload=1"
+              <a href="/agence"
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium no-underline glass cursor-pointer"
                 style={{ border: "1px solid var(--border2)", color: "var(--text-secondary)" }}>
-                <Plus className="w-3 h-3" /> Post
+                <Edit3 className="w-3 h-3" /> Cockpit
               </a>
-              <a href="/agence?tab=profile"
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium no-underline glass cursor-pointer"
-                style={{ border: "1px solid var(--border2)", color: "var(--text-secondary)" }}>
-                <Edit3 className="w-3 h-3" /> Edit
-              </a>
-              <a href="/agence?tab=profile"
+              <a href="/agence/settings"
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium no-underline glass cursor-pointer"
                 style={{ border: "1px solid var(--border2)", color: "var(--text-secondary)" }}>
                 <Wifi className="w-3 h-3" /> Status
@@ -399,12 +445,20 @@ export default function ModelPage() {
               <p className="text-xs leading-relaxed mb-4 fade-up" style={{ color: "var(--text-secondary)" }}>{model.bio}</p>
             )}
 
-            {/* Single action button — Unlock */}
+            {/* Access status or unlock button */}
             <div className="mb-6 fade-up-1">
-              <button onClick={() => setShowUnlock(true)}
-                className="w-full btn-gradient py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer">
-                <Lock className="w-3.5 h-3.5" /> Unlock Exclusive Content
-              </button>
+              {unlockedTier ? (
+                <div className="w-full py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2"
+                  style={{ background: `${TIER_HEX[unlockedTier] || "var(--accent)"}15`, color: TIER_HEX[unlockedTier] || "var(--accent)", border: `1px solid ${TIER_HEX[unlockedTier] || "var(--accent)"}30` }}>
+                  <Check className="w-3.5 h-3.5" />
+                  Accès {TIER_META[unlockedTier]?.label || unlockedTier.toUpperCase()} actif
+                </div>
+              ) : (
+                <button onClick={() => setShowUnlock(true)}
+                  className="w-full btn-gradient py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-transform">
+                  <Lock className="w-3.5 h-3.5" /> Unlock Exclusive Content
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -605,12 +659,12 @@ export default function ModelPage() {
                     return (
                       <div key={item.id} className="relative aspect-square group cursor-pointer overflow-hidden rounded-lg"
                         style={{ animationDelay: `${i * 20}ms` }}>
-                        {item.visibility === "promo" ? (
+                        {item.visibility === "promo" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, item.tier)) ? (
                           <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">
                             <img src={item.dataUrl} alt={item.label} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                           </ContentProtection>
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center relative" style={{ background: `${hex}08` }}>
+                          <div className="w-full h-full flex items-center justify-center relative cursor-pointer" onClick={() => setShowUnlock(true)} style={{ background: `${hex}08` }}>
                             <div className="absolute inset-0 content-locked" style={{ background: `linear-gradient(135deg, ${hex}12, rgba(0,0,0,0.25))` }} />
                             <div className="relative text-center z-10">
                               <Lock className="w-4 h-4 mx-auto mb-0.5" style={{ color: hex }} />
