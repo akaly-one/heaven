@@ -86,6 +86,13 @@ async function apiDeleteCode(code: string): Promise<boolean> {
 async function apiFetchUploads(model: string): Promise<UploadedContent[]> {
   try { const r = await fetch(`/api/uploads?model=${model}`); if (!r.ok) return []; const d = await r.json(); return d.uploads || []; } catch { return []; }
 }
+async function uploadToCloud(file: string, folder: string): Promise<{ url: string; public_id: string } | null> {
+  try {
+    const r = await fetch("/api/upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file, folder }) });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
 async function apiCreateUpload(model: string, upload: UploadedContent): Promise<boolean> {
   try { const r = await fetch("/api/uploads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...upload, model }) }); return r.ok; } catch { return false; }
 }
@@ -195,20 +202,34 @@ export default function AgenceDashboard() {
     setCodes(u); saveCodes(u); apiDeleteCode(code);
   }, [codes]);
 
-  // Upload handler
-  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload handler — uploads to Cloudinary, stores URL
+  const [uploading, setUploading] = useState(false);
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert("Max 5MB"); return; }
+    if (file.size > 10 * 1024 * 1024) { alert("Max 10MB"); return; }
+    setUploading(true);
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      const isVideo = file.type.startsWith("video/");
+      const folder = `heaven/${modelSlug}/${isVideo ? "videos" : "gallery"}`;
+
+      // Upload to Cloudinary
+      const cloud = await uploadToCloud(base64, folder);
+      const url = cloud?.url || base64; // fallback to base64 if cloud fails
+      const cloudinaryId = cloud?.public_id || undefined;
+
       const newUpload: UploadedContent = {
-        id: `upload-${Date.now()}`, tier: uploadVisibility === "promo" ? "promo" : uploadTier,
-        type: uploadType, label: uploadLabel.trim() || file.name.split(".")[0],
-        dataUrl: reader.result as string, uploadedAt: new Date().toISOString(),
+        id: cloudinaryId || `upload-${Date.now()}`,
+        tier: uploadVisibility === "promo" ? "promo" : uploadTier,
+        type: isVideo ? "video" : uploadType,
+        label: uploadLabel.trim() || file.name.split(".")[0],
+        dataUrl: url, uploadedAt: new Date().toISOString(),
         isNew: true, visibility: uploadVisibility,
       };
       const updated = [newUpload, ...uploads]; setUploads(updated); saveUploads(updated);
       apiCreateUpload(modelSlug, newUpload); setUploadLabel(""); setShowUploadForm(false);
+      setUploading(false);
     };
     reader.readAsDataURL(file); e.target.value = "";
   }, [uploads, uploadTier, uploadType, uploadLabel, uploadVisibility, modelSlug]);
@@ -226,13 +247,24 @@ export default function AgenceDashboard() {
     const u = reviews.filter(r => r.id !== id); setReviews(u); saveReviewsData(u);
   }, [reviews]);
 
-  // Avatar
-  const handleAvatarChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  // Avatar — uploads to Cloudinary
+  const handleAvatarChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => { const p = { ...presence, avatar: reader.result as string }; setPresence(p); savePresence(p); };
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      const cloud = await uploadToCloud(base64, `heaven/${modelSlug}/avatar`);
+      const url = cloud?.url || base64;
+      const p = { ...presence, avatar: url }; setPresence(p); savePresence(p);
+      // Also update model in DB
+      fetch(`/api/models/${modelSlug}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatar: url }),
+      }).catch(() => {});
+    };
     reader.readAsDataURL(file);
-  }, [presence]);
+  }, [presence, modelSlug]);
 
   const TABS = [
     { id: "codes" as const, label: "Codes" },
@@ -439,9 +471,13 @@ export default function AgenceDashboard() {
                           Promo (free)
                         </button>
                       </div>
-                      <button onClick={() => fileInputRef.current?.click()}
-                        className="w-full py-3 rounded-xl text-sm font-semibold cursor-pointer btn-gradient flex items-center justify-center gap-2">
-                        <Upload className="w-4 h-4" /> Choose File
+                      <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                        className="w-full py-3 rounded-xl text-sm font-semibold cursor-pointer btn-gradient flex items-center justify-center gap-2 disabled:opacity-50">
+                        {uploading ? (
+                          <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(255,255,255,0.3)", borderTopColor: "#fff" }} /> Uploading...</>
+                        ) : (
+                          <><Upload className="w-4 h-4" /> Choose File</>
+                        )}
                       </button>
                       <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileUpload} />
                     </div>

@@ -234,6 +234,23 @@ export default function ModelPage() {
     setWallPosting(true);
     try {
       sessionStorage.setItem(`heaven_wall_pseudo_${slug}`, wallPseudo.trim());
+
+      // Upload photo to Cloudinary if present
+      let photoUrl = wallPhoto;
+      if (wallPhoto && wallPhoto.startsWith("data:")) {
+        try {
+          const cloudRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ file: wallPhoto, folder: `heaven/${slug}/wall` }),
+          });
+          if (cloudRes.ok) {
+            const cloudData = await cloudRes.json();
+            photoUrl = cloudData.url;
+          }
+        } catch {}
+      }
+
       await fetch("/api/wall", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -241,7 +258,7 @@ export default function ModelPage() {
           model: slug,
           pseudo: wallPseudo.trim(),
           content: wallContent.trim() || null,
-          photo_url: wallPhoto || null,
+          photo_url: photoUrl || null,
         }),
       });
       setWallContent("");
