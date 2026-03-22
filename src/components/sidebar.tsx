@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Camera, DollarSign, MessageSquare, Settings, ChevronLeft, ChevronRight, Zap } from "lucide-react";
+import { Camera, DollarSign, MessageSquare, Settings, ChevronLeft, ChevronRight, Zap, Map } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { HeavenAuth } from "./auth-guard";
 
@@ -10,7 +10,8 @@ const NAV_ITEMS = [
   { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances", color: "var(--success)" },
   { id: "messages", label: "Messages", icon: MessageSquare, href: "/agence/messages", color: "var(--accent)" },
   { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings", color: "var(--text-muted)" },
-];
+  { id: "architecture", label: "Architecture", icon: Map, href: "/agence/architecture", color: "#6366F1", rootOnly: true },
+] as const;
 
 function useAuth(): HeavenAuth | null {
   const [auth, setAuth] = useState<HeavenAuth | null>(null);
@@ -35,6 +36,7 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(true);
 
   const visibleItems = NAV_ITEMS.filter(item => {
+    if ("rootOnly" in item && item.rootOnly && !isRoot) return false;
     if (isAdmin) return true;
     if (auth?.role === "model") {
       return ["cockpit", "messages", "settings"].includes(item.id);
