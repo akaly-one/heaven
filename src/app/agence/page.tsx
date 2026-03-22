@@ -68,7 +68,17 @@ function saveReviewsData(reviews: Review[]) { localStorage.setItem(REVIEWS_KEY, 
 function loadUploads(): UploadedContent[] { try { return JSON.parse(localStorage.getItem(CONTENT_KEY) || "[]"); } catch { return []; } }
 function saveUploads(uploads: UploadedContent[]) { localStorage.setItem(CONTENT_KEY, JSON.stringify(uploads)); }
 function loadPresence(): ModelPresence { try { const r = localStorage.getItem(PRESENCE_KEY); if (r) { const p = JSON.parse(r); return { online: p.online ?? true, status: p.status ?? "", avatar: p.avatar ?? "" }; } } catch {} return { online: true, status: "", avatar: "" }; }
-function savePresence(p: ModelPresence) { localStorage.setItem(PRESENCE_KEY, JSON.stringify(p)); }
+function savePresence(p: ModelPresence, modelSlug?: string) {
+  localStorage.setItem(PRESENCE_KEY, JSON.stringify(p));
+  // Sync to DB so profile page reads from API
+  if (modelSlug) {
+    fetch(`/api/models/${modelSlug}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ online: p.online, status: p.status, avatar: p.avatar }),
+    }).catch(() => {});
+  }
+}
 
 // ── API helpers ──
 async function apiFetchCodes(model: string): Promise<AccessCode[]> {
@@ -244,16 +254,29 @@ export default function AgenceDashboard() {
         dataUrl: url, uploadedAt: new Date().toISOString(),
         isNew: true, visibility: uploadVisibility,
       };
-      setUploadProgress(90);
+      setUploadProgress(85);
       const updated = [newUpload, ...uploads]; setUploads(updated); saveUploads(updated);
       await apiCreateUpload(modelSlug, newUpload);
+      setUploadProgress(92);
+      // Also create a post so it appears on the profile feed
+      await fetch("/api/posts", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          model: modelSlug,
+          content: newUpload.label || null,
+          media_url: url,
+          media_type: fileType === "video" ? "video" : "image",
+          tier_required: uploadVisibility === "promo" ? "public" : uploadTier,
+        }),
+      }).catch(() => {});
       setUploadProgress(100);
       setUploadLabel(""); setShowUploadForm(false);
       setUploading(false); setUploadProgress(0);
       showToast(`${fileType === "video" ? "Vidéo" : "Photo"} uploadée avec succès`);
     };
     reader.readAsDataURL(file); e.target.value = "";
-  }, [uploads, uploadTier, uploadType, uploadLabel, uploadVisibility, modelSlug, showToast]);
+  }, [uploads, uploadTier, uploadType, uploadLabel, uploadVisibility, modelSlug, showToast, authHeaders]);
 
   const handleDeleteUpload = useCallback((id: string) => {
     const u = uploads.filter(u => u.id !== id); setUploads(u); saveUploads(u); apiDeleteUpload(modelSlug, id);
@@ -290,13 +313,7 @@ export default function AgenceDashboard() {
       const base64 = reader.result as string;
       const cloud = await uploadToCloud(base64, `heaven/${modelSlug}/avatar`);
       const url = cloud?.url || base64;
-      const p = { ...presence, avatar: url }; setPresence(p); savePresence(p);
-      // Also update model in DB
-      fetch(`/api/models/${modelSlug}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatar: url }),
-      }).catch(() => {});
+      const p = { ...presence, avatar: url }; setPresence(p); savePresence(p, modelSlug);
     };
     reader.readAsDataURL(file);
   }, [presence, modelSlug]);
@@ -767,7 +784,7 @@ export default function AgenceDashboard() {
                   <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text)" }}>Presence</h3>
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Online status</span>
-                    <button onClick={() => { const p = { ...presence, online: !presence.online }; setPresence(p); savePresence(p); }}
+                    <button onClick={() => { const p = { ...presence, online: !presence.online }; setPresence(p); savePresence(p, modelSlug); }}
                       className="flex items-center gap-2 cursor-pointer" style={{ color: presence.online ? "var(--success)" : "var(--text-muted)" }}>
                       {presence.online ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
                       <span className="text-xs font-medium">{presence.online ? "Online" : "Offline"}</span>
@@ -776,7 +793,7 @@ export default function AgenceDashboard() {
                   <div>
                     <label className="text-[10px] font-medium uppercase mb-1 block" style={{ color: "var(--text-muted)" }}>Status message</label>
                     <input value={presence.status}
-                      onChange={e => { const p = { ...presence, status: e.target.value }; setPresence(p); savePresence(p); }}
+                      onChange={e => { const p = { ...presence, status: e.target.value }; setPresence(p); savePresence(p, modelSlug); }}
                       placeholder="What's happening..."
                       className="w-full px-3 py-2 rounded-lg text-sm outline-none"
                       style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />

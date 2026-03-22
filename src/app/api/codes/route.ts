@@ -93,11 +93,16 @@ export async function POST(req: NextRequest) {
     }
 
     // ── CREATE ──
+    // Normalize client pseudo to lowercase for consistent grouping
+    const normalizedClient = (body.client || "").trim().toLowerCase();
+    const model = body.model || "yumi";
+    const platform = body.platform || "snapchat";
+
     const newCode: CodeRow = {
       code: body.code,
-      model: body.model || "yumi",
-      client: body.client || "",
-      platform: body.platform || "snapchat",
+      model,
+      client: normalizedClient,
+      platform,
       role: body.role || "client",
       tier: body.tier || "vip",
       pack: body.pack || body.tier || "vip",
@@ -113,12 +118,40 @@ export async function POST(req: NextRequest) {
     // Try Supabase
     const supabase = sb();
     if (supabase) {
-      const { data, error } = await supabase.from("agence_codes").insert({
-        code: newCode.code, model: newCode.model, client: newCode.client,
+      // Auto-link to agence_clients: find or create client record
+      let clientId: string | null = null;
+      if (normalizedClient) {
+        const pseudoField = platform === "instagram" ? "pseudo_insta" : "pseudo_snap";
+        const { data: existingClient } = await supabase
+          .from("agence_clients")
+          .select("id")
+          .eq("model", model)
+          .ilike(pseudoField, normalizedClient)
+          .maybeSingle();
+
+        if (existingClient) {
+          clientId = existingClient.id;
+        } else {
+          const insertData: Record<string, unknown> = { model, last_active: new Date().toISOString() };
+          insertData[pseudoField] = normalizedClient;
+          const { data: newClient } = await supabase
+            .from("agence_clients")
+            .insert(insertData)
+            .select("id")
+            .single();
+          if (newClient) clientId = newClient.id;
+        }
+      }
+
+      const insertPayload: Record<string, unknown> = {
+        code: newCode.code, model: newCode.model, client: normalizedClient,
         platform: newCode.platform, role: newCode.role, tier: newCode.tier,
         pack: newCode.pack, type: newCode.type, duration: newCode.duration,
         expires_at: newCode.expiresAt, is_trial: newCode.isTrial,
-      }).select().single();
+      };
+      if (clientId) insertPayload.client_id = clientId;
+
+      const { data, error } = await supabase.from("agence_codes").insert(insertPayload).select().single();
       if (!error && data) {
         const mapped = mapFromDb(data);
         g._codes.push(mapped); // cache

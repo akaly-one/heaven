@@ -42,7 +42,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { pseudo_snap, pseudo_insta, model } = body;
+    const { model } = body;
+    // Normalize pseudos to lowercase for consistent matching
+    const pseudo_snap = body.pseudo_snap ? body.pseudo_snap.trim().toLowerCase() : null;
+    const pseudo_insta = body.pseudo_insta ? body.pseudo_insta.trim().toLowerCase() : null;
 
     if (!model) return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
     if (!pseudo_snap && !pseudo_insta) {
@@ -52,14 +55,14 @@ export async function POST(req: NextRequest) {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configurée" }, { status: 500, headers: cors });
 
-    // Try to find existing client by pseudo
+    // Case-insensitive lookup to merge duplicates (e.g. "Toto" and "toto" = same client)
     let existing = null;
     if (pseudo_snap) {
       const { data } = await supabase
         .from("agence_clients")
         .select("*")
         .eq("model", model)
-        .eq("pseudo_snap", pseudo_snap)
+        .ilike("pseudo_snap", pseudo_snap)
         .maybeSingle();
       existing = data;
     }
@@ -68,15 +71,15 @@ export async function POST(req: NextRequest) {
         .from("agence_clients")
         .select("*")
         .eq("model", model)
-        .eq("pseudo_insta", pseudo_insta)
+        .ilike("pseudo_insta", pseudo_insta)
         .maybeSingle();
       existing = data;
     }
 
     if (existing) {
-      // Update last_active
+      // Update last_active + normalize stored pseudos to lowercase
       const updates: Record<string, unknown> = { last_active: new Date().toISOString() };
-      if (pseudo_snap && !existing.pseudo_snap) updates.pseudo_snap = pseudo_snap;
+      if (pseudo_snap) updates.pseudo_snap = pseudo_snap;
       if (pseudo_insta && !existing.pseudo_insta) updates.pseudo_insta = pseudo_insta;
 
       const { data } = await supabase
@@ -124,7 +127,7 @@ export async function PUT(req: NextRequest) {
 
     // Sanitize
     const allowed: Record<string, unknown> = {};
-    const fields = ["pseudo_snap", "pseudo_insta", "tier", "total_spent", "total_tokens_bought", "total_tokens_spent", "is_verified", "is_blocked", "notes", "firstname", "tag", "preferences", "delivery_platform"];
+    const fields = ["pseudo_snap", "pseudo_insta", "nickname", "tier", "total_spent", "total_tokens_bought", "total_tokens_spent", "is_verified", "is_blocked", "notes", "firstname", "tag", "preferences", "delivery_platform"];
     for (const f of fields) {
       if (updates[f] !== undefined) allowed[f] = updates[f];
     }
