@@ -17,7 +17,10 @@ function useAuth(): HeavenAuth | null {
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("heaven_auth");
-      if (raw) setAuth(JSON.parse(raw));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.token) setAuth(parsed);
+      }
     } catch { /* default */ }
   }, []);
   return auth;

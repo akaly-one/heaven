@@ -37,6 +37,12 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
       const raw = sessionStorage.getItem("heaven_auth");
       if (raw) {
         const parsed: HeavenAuth = JSON.parse(raw);
+        // Legacy sessions without JWT token → force re-login
+        if (!parsed.token) {
+          sessionStorage.removeItem("heaven_auth");
+          window.location.href = "/login";
+          return;
+        }
         setAuth(parsed);
 
         if (parsed.role === "model" && parsed.model_slug) {

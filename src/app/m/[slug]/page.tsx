@@ -83,6 +83,7 @@ function useModelSession(slug: string): ModelAuth | null {
       const raw = sessionStorage.getItem("heaven_auth");
       if (raw) {
         const parsed = JSON.parse(raw);
+        if (!parsed.token) return; // Legacy session without JWT — skip
         if (parsed.role === "root" || parsed.model_slug === slug) setAuth(parsed);
       }
     } catch {}
@@ -91,6 +92,7 @@ function useModelSession(slug: string): ModelAuth | null {
         try {
           if (e.newValue) {
             const parsed = JSON.parse(e.newValue);
+            if (!parsed.token) { setAuth(null); return; }
             if (parsed.role === "root" || parsed.model_slug === slug) setAuth(parsed);
           } else setAuth(null);
         } catch {}

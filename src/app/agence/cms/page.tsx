@@ -77,13 +77,14 @@ function CmsAuthGate({ onAuth }: { onAuth: () => void }) {
       const raw = sessionStorage.getItem("heaven_auth");
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed.role === "root" || parsed.role === "model") {
+        if (parsed.token && (parsed.role === "root" || parsed.role === "model")) {
           onAuth();
           return;
         }
       }
     } catch { /* ignore */ }
-    // Not authenticated — redirect to login
+    // Not authenticated or legacy session — redirect to login
+    sessionStorage.removeItem("heaven_auth");
     window.location.href = "/login";
   }, [onAuth]);
 
@@ -124,7 +125,7 @@ export default function AgenceCmsPage() {
       const raw = sessionStorage.getItem("heaven_auth");
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed.role === "root" || parsed.role === "model") {
+        if (parsed.token && (parsed.role === "root" || parsed.role === "model")) {
           setAuthed(true);
         }
       }

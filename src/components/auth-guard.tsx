@@ -16,7 +16,13 @@ export function getHeavenAuth(): HeavenAuth | null {
   try {
     const raw = sessionStorage.getItem("heaven_auth");
     if (!raw) return null;
-    return JSON.parse(raw);
+    const parsed: HeavenAuth = JSON.parse(raw);
+    // Legacy sessions without JWT token are invalid
+    if (!parsed.token) {
+      sessionStorage.removeItem("heaven_auth");
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }

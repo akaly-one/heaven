@@ -79,7 +79,7 @@ export default function AgenceDashboard() {
     const headers = authHeaders();
 
     // Fetch codes
-    fetch(`/api/codes?model=${modelSlug}`)
+    fetch(`/api/codes?model=${modelSlug}`, { headers })
       .then(r => r.json())
       .then(d => setCodes(d.codes || []))
       .catch(err => console.error("[Cockpit] Failed to fetch codes:", err));
@@ -91,13 +91,13 @@ export default function AgenceDashboard() {
       .catch(() => {});
 
     // Fetch packs
-    fetch(`/api/packs?model=${modelSlug}`)
+    fetch(`/api/packs?model=${modelSlug}`, { headers })
       .then(r => r.json())
       .then(d => { if (d.packs?.length > 0) setPacks(d.packs); })
       .catch(() => {});
 
     // Fetch model info
-    fetch(`/api/models/${modelSlug}`)
+    fetch(`/api/models/${modelSlug}`, { headers })
       .then(r => r.json())
       .then(d => setModelInfo(d))
       .catch(() => {});
@@ -127,27 +127,27 @@ export default function AgenceDashboard() {
       created: new Date().toISOString(), used: false, active: true, revoked: false, isTrial: false, lastUsed: null,
     };
     setCodes(prev => [...prev, newCode]);
-    fetch("/api/codes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newCode) });
+    fetch("/api/codes", { method: "POST", headers: authHeaders(), body: JSON.stringify(newCode) });
     return code;
-  }, [packs, modelSlug]);
+  }, [packs, modelSlug, authHeaders]);
 
   const handleCopy = useCallback((code: string) => { navigator.clipboard.writeText(code); }, []);
   const handleRevoke = useCallback((code: string) => {
     setCodes(prev => prev.map(c => c.code === code ? { ...c, revoked: true, active: false } : c));
-    fetch("/api/codes", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, action: "revoke" }) });
-  }, []);
+    fetch("/api/codes", { method: "PUT", headers: authHeaders(), body: JSON.stringify({ code, action: "revoke" }) });
+  }, [authHeaders]);
   const handlePause = useCallback((code: string) => {
     setCodes(prev => prev.map(c => c.code === code ? { ...c, active: false } : c));
-    fetch("/api/codes", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, action: "pause" }) });
-  }, []);
+    fetch("/api/codes", { method: "PUT", headers: authHeaders(), body: JSON.stringify({ code, action: "pause" }) });
+  }, [authHeaders]);
   const handleReactivate = useCallback((code: string) => {
     setCodes(prev => prev.map(c => c.code === code ? { ...c, active: true, revoked: false } : c));
-    fetch("/api/codes", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, action: "reactivate" }) });
-  }, []);
+    fetch("/api/codes", { method: "PUT", headers: authHeaders(), body: JSON.stringify({ code, action: "reactivate" }) });
+  }, [authHeaders]);
   const handleDelete = useCallback((code: string) => {
     setCodes(prev => prev.filter(c => c.code !== code));
-    fetch(`/api/codes?code=${encodeURIComponent(code)}`, { method: "DELETE" });
-  }, []);
+    fetch(`/api/codes?code=${encodeURIComponent(code)}`, { method: "DELETE", headers: authHeaders() });
+  }, [authHeaders]);
 
   // ── Client actions ──
   const handleUpdateClient = useCallback((id: string, updates: Record<string, unknown>) => {

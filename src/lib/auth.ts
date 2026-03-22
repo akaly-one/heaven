@@ -4,14 +4,6 @@ import { getServerSupabase } from "./supabase-server";
 
 export type HeavenRole = "root" | "model" | "client";
 
-export interface HeavenSession {
-  role: HeavenRole;
-  scope: string[];
-  model_slug: string | null;
-  display_name: string;
-  loggedAt: string;
-}
-
 // ── JWT helpers ──
 
 const JWT_SECRET_RAW = process.env.HEAVEN_JWT_SECRET || "";
