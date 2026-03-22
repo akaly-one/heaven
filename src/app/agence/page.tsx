@@ -464,20 +464,12 @@ export default function AgenceDashboard() {
             {/* CONTENT TAB */}
             {tab === "content" && (
               <div className="space-y-4">
-                {/* Upload form */}
-                {showUploadForm && (
-                  <div className="card-premium p-5 gradient-border">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-semibold" style={{ color: "var(--text)" }}>Upload Content</h3>
-                      <button onClick={() => setShowUploadForm(false)} className="w-6 h-6 rounded-lg flex items-center justify-center cursor-pointer"
-                        style={{ background: "rgba(255,255,255,0.04)" }}>
-                        <X className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      <input value={uploadLabel} onChange={e => setUploadLabel(e.target.value)} placeholder="Label (optional)"
-                        className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                        style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
+                {/* Upload zone — always visible at top */}
+                <div className="card-premium p-5">
+                  <div className="space-y-3">
+                    {/* Tier = dossier/pack destination */}
+                    <div>
+                      <label className="text-[10px] font-medium uppercase mb-2 block" style={{ color: "var(--text-muted)" }}>Dossier</label>
                       <div className="flex gap-2">
                         {Object.entries(TIER_COLORS).filter(([k]) => k !== "trial").map(([t, c]) => (
                           <button key={t} onClick={() => setUploadTier(t)}
@@ -489,70 +481,57 @@ export default function AgenceDashboard() {
                             }}>{t}</button>
                         ))}
                       </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => setUploadVisibility("pack")}
-                          className="flex-1 py-2 rounded-lg text-xs font-medium cursor-pointer"
-                          style={{ background: uploadVisibility === "pack" ? "var(--accent)" : "rgba(255,255,255,0.03)", color: uploadVisibility === "pack" ? "#fff" : "var(--text-muted)" }}>
-                          Pack only
-                        </button>
-                        <button onClick={() => setUploadVisibility("promo")}
-                          className="flex-1 py-2 rounded-lg text-xs font-medium cursor-pointer"
-                          style={{ background: uploadVisibility === "promo" ? "var(--success)" : "rgba(255,255,255,0.03)", color: uploadVisibility === "promo" ? "#fff" : "var(--text-muted)" }}>
-                          Promo (visible)
-                        </button>
-                      </div>
-                      <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                        Le type (photo/vidéo) est détecté automatiquement. Max 10 MB.
-                      </p>
-
-                      {/* Progress bar */}
-                      {uploading && (
-                        <div className="space-y-1.5">
-                          <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--bg3)" }}>
-                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${uploadProgress}%`, background: "var(--accent)" }} />
-                          </div>
-                          <p className="text-[10px] text-center" style={{ color: "var(--accent)" }}>
-                            {uploadProgress < 30 ? "Lecture du fichier..." : uploadProgress < 70 ? "Upload vers le cloud..." : uploadProgress < 100 ? "Sauvegarde..." : "Terminé !"}
-                          </p>
-                        </div>
-                      )}
-
-                      <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-                        className="w-full py-3 rounded-xl text-sm font-semibold cursor-pointer btn-gradient flex items-center justify-center gap-2 disabled:opacity-50">
-                        {uploading ? (
-                          <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(255,255,255,0.3)", borderTopColor: "#fff" }} /> Upload en cours...</>
-                        ) : (
-                          <><Upload className="w-4 h-4" /> Choisir un fichier</>
-                        )}
-                      </button>
-                      <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileUpload} />
                     </div>
+
+                    {/* Visibility toggle */}
+                    <div className="flex gap-2">
+                      <button onClick={() => setUploadVisibility("pack")}
+                        className="flex-1 py-2 rounded-lg text-[11px] font-medium cursor-pointer"
+                        style={{ background: uploadVisibility === "pack" ? "var(--accent)" : "rgba(255,255,255,0.03)", color: uploadVisibility === "pack" ? "#fff" : "var(--text-muted)" }}>
+                        Privé (abonnés)
+                      </button>
+                      <button onClick={() => setUploadVisibility("promo")}
+                        className="flex-1 py-2 rounded-lg text-[11px] font-medium cursor-pointer"
+                        style={{ background: uploadVisibility === "promo" ? "var(--success)" : "rgba(255,255,255,0.03)", color: uploadVisibility === "promo" ? "#fff" : "var(--text-muted)" }}>
+                        Public (promo)
+                      </button>
+                    </div>
+
+                    {/* Progress bar */}
+                    {uploading && (
+                      <div className="space-y-1.5">
+                        <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--bg3)" }}>
+                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${uploadProgress}%`, background: "var(--accent)" }} />
+                        </div>
+                        <p className="text-[10px] text-center" style={{ color: "var(--accent)" }}>
+                          {uploadProgress < 30 ? "Lecture du fichier..." : uploadProgress < 70 ? "Upload vers le cloud..." : uploadProgress < 100 ? "Sauvegarde..." : "Terminé !"}
+                        </p>
+                      </div>
+                    )}
+
+                    <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                      className="w-full py-3 rounded-xl text-sm font-semibold cursor-pointer btn-gradient flex items-center justify-center gap-2 disabled:opacity-50">
+                      {uploading ? (
+                        <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(255,255,255,0.3)", borderTopColor: "#fff" }} /> Upload en cours...</>
+                      ) : (
+                        <><Upload className="w-4 h-4" /> Choisir un fichier</>
+                      )}
+                    </button>
+                    <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileUpload} />
                   </div>
-                )}
-
-                {!showUploadForm && (
-                  <button onClick={() => setShowUploadForm(true)}
-                    className="w-full py-3 rounded-xl text-sm font-medium cursor-pointer flex items-center justify-center gap-2"
-                    style={{ background: "rgba(99,102,241,0.08)", color: "var(--accent)", border: "1px solid rgba(99,102,241,0.2)" }}>
-                    <Upload className="w-4 h-4" /> Upload Content
-                  </button>
-                )}
-
-                {/* Content count */}
-                {uploads.length > 0 && (
-                  <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                    {uploads.length} contenu{uploads.length > 1 ? "s" : ""} · Cliquer pour gérer
-                  </p>
-                )}
+                </div>
 
                 {/* Content grid */}
                 {uploads.length === 0 ? (
-                  <div className="text-center py-16">
-                    <Image className="w-12 h-12 mx-auto mb-3 opacity-20" style={{ color: "var(--text-muted)" }} />
-                    <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Aucun contenu uploadé</p>
-                    <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>Cliquez sur Upload Content pour commencer</p>
+                  <div className="text-center py-12">
+                    <Image className="w-10 h-10 mx-auto mb-3 opacity-20" style={{ color: "var(--text-muted)" }} />
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>Aucun contenu — uploadez votre premier fichier ci-dessus</p>
                   </div>
                 ) : (
+                  <>
+                  <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                    {uploads.length} contenu{uploads.length > 1 ? "s" : ""} · Cliquer pour gérer
+                  </p>
                   <div className="grid grid-cols-3 gap-2">
                     {uploads.map(item => {
                       const tierColor = TIER_COLORS[item.tier] || "#64748B";
@@ -582,6 +561,7 @@ export default function AgenceDashboard() {
                       );
                     })}
                   </div>
+                  </>
                 )}
 
                 {/* ── Preview / Edit panel ── */}
