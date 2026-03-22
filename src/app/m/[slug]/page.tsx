@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import {
   Heart, MessageCircle, Send, Lock, Image, Newspaper, ShoppingBag,
   Coins, Pin, Eye, Star, Camera, Video, Play, X,
   Instagram, Ghost, ChevronRight, Zap, Plus, Edit3, Wifi,
+  ImagePlus,
 } from "lucide-react";
 import { ContentProtection } from "@/components/content-protection";
 import { useScreenshotDetection } from "@/hooks/use-screenshot-detection";
@@ -32,6 +33,10 @@ interface UploadedContent {
 interface ModelAuth {
   role: string; model_slug?: string; display_name?: string;
 }
+interface WallPost {
+  id: string; model: string; pseudo: string; content: string | null;
+  photo_url: string | null; created_at: string;
+}
 
 // ── Constants ──
 const TIER_META: Record<string, { color: string; symbol: string; label: string }> = {
@@ -45,10 +50,9 @@ const TIER_HEX: Record<string, string> = {
   vip: "#F43F5E", gold: "#F59E0B", diamond: "#6366F1", platinum: "#A78BFA",
 };
 const TABS = [
-  { id: "feed", label: "Feed", icon: Newspaper },
+  { id: "wall", label: "Wall", icon: Newspaper },
   { id: "gallery", label: "Gallery", icon: Image },
   { id: "packs", label: "Packs", icon: ShoppingBag },
-  { id: "tokens", label: "Tokens", icon: Coins },
 ] as const;
 type TabId = typeof TABS[number]["id"];
 
@@ -60,13 +64,9 @@ function useModelSession(slug: string): ModelAuth | null {
       const raw = sessionStorage.getItem("heaven_auth");
       if (raw) {
         const parsed = JSON.parse(raw);
-        // Root sees everything, model only sees own profile
-        if (parsed.role === "root" || parsed.model_slug === slug) {
-          setAuth(parsed);
-        }
+        if (parsed.role === "root" || parsed.model_slug === slug) setAuth(parsed);
       }
     } catch {}
-    // Listen for storage changes from other tabs
     const onStorage = (e: StorageEvent) => {
       if (e.key === "heaven_auth") {
         try {
@@ -93,16 +93,25 @@ export default function ModelPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [packs, setPacks] = useState<PackConfig[]>([]);
   const [uploads, setUploads] = useState<UploadedContent[]>([]);
-  const [tab, setTab] = useState<TabId>("feed");
+  const [tab, setTab] = useState<TabId>("wall");
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  // Messenger
-  const [showMessenger, setShowMessenger] = useState(false);
+  // Wall (public posts by visitors)
+  const [wallPosts, setWallPosts] = useState<WallPost[]>([]);
+  const [wallPseudo, setWallPseudo] = useState("");
+  const [wallContent, setWallContent] = useState("");
+  const [wallPhoto, setWallPhoto] = useState<string | null>(null);
+  const [wallPosting, setWallPosting] = useState(false);
+  const wallFileRef = useRef<HTMLInputElement>(null);
+
+  // Chat bubble
+  const [chatOpen, setChatOpen] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
   const [pseudo, setPseudo] = useState({ snap: "", insta: "" });
   const [chatMessages, setChatMessages] = useState<{ id: string; client_id: string; sender_type: string; content: string; created_at: string }[]>([]);
   const [chatInput, setChatInput] = useState("");
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Unlock sheet
   const [showUnlock, setShowUnlock] = useState(false);
@@ -111,7 +120,6 @@ export default function ModelPage() {
   const [galleryTier, setGalleryTier] = useState("all");
 
   // ── Screenshot detection ──
-  // The subscriber's username for watermarking (from messenger registration)
   const subscriberUsername = pseudo.snap || pseudo.insta || clientId?.slice(0, 8) || "visitor";
   const hasSubscriberIdentity = !!clientId;
 
@@ -143,28 +151,34 @@ export default function ModelPage() {
       fetch(`/api/posts?model=${slug}`).then(r => r.json()).catch(() => ({ posts: [] })),
       fetch(`/api/packs?model=${slug}`).then(r => r.json()).catch(() => ({ packs: [] })),
       fetch(`/api/uploads?model=${slug}`).then(r => r.json()).catch(() => ({ uploads: [] })),
-    ]).then(([modelData, postsData, packsData, uploadsData]) => {
+      fetch(`/api/wall?model=${slug}`).then(r => r.json()).catch(() => ({ posts: [] })),
+    ]).then(([modelData, postsData, packsData, uploadsData, wallData]) => {
       setModel(modelData);
       setPosts(postsData.posts || []);
       setPacks(packsData.packs || []);
       setUploads(uploadsData.uploads || []);
+      setWallPosts(wallData.posts || []);
     }).catch(() => setNotFound(true)).finally(() => setLoading(false));
 
     try {
       const saved = sessionStorage.getItem(`heaven_client_${slug}`);
       if (saved) setClientId(JSON.parse(saved).id);
+      const savedPseudo = sessionStorage.getItem(`heaven_wall_pseudo_${slug}`);
+      if (savedPseudo) setWallPseudo(savedPseudo);
     } catch {}
   }, [slug]);
 
+  // Refresh on focus
   useEffect(() => {
     const onFocus = () => {
-      fetch(`/api/posts?model=${slug}`).then(r => r.json()).then(d => { if (d.posts) setPosts(d.posts); }).catch(() => {});
       fetch(`/api/uploads?model=${slug}`).then(r => r.json()).then(d => { if (d.uploads) setUploads(d.uploads); }).catch(() => {});
+      fetch(`/api/wall?model=${slug}`).then(r => r.json()).then(d => { if (d.posts) setWallPosts(d.posts); }).catch(() => {});
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [slug]);
 
+  // ── Chat: register client ──
   const registerClient = useCallback(async () => {
     if (!pseudo.snap && !pseudo.insta) return;
     const res = await fetch("/api/clients", {
@@ -179,18 +193,26 @@ export default function ModelPage() {
     }
   }, [pseudo, slug]);
 
+  // ── Chat: poll messages ──
   useEffect(() => {
-    if (!clientId || !showMessenger) return;
+    if (!clientId || !chatOpen) return;
     const fetchChat = () => {
       fetch(`/api/messages?model=${slug}`)
         .then(r => r.json())
-        .then(d => { setChatMessages(((d.messages || []) as typeof chatMessages).filter(m => m.client_id === clientId).reverse()); })
+        .then(d => {
+          setChatMessages(((d.messages || []) as typeof chatMessages).filter(m => m.client_id === clientId).reverse());
+        })
         .catch(() => {});
     };
     fetchChat();
     const iv = setInterval(fetchChat, 5000);
     return () => clearInterval(iv);
-  }, [clientId, showMessenger, slug]);
+  }, [clientId, chatOpen, slug]);
+
+  // Auto-scroll chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
 
   const sendMessage = async () => {
     if (!chatInput.trim() || !clientId) return;
@@ -203,6 +225,43 @@ export default function ModelPage() {
     const res = await fetch(`/api/messages?model=${slug}`);
     const d = await res.json();
     setChatMessages(((d.messages || []) as typeof chatMessages).filter(m => m.client_id === clientId).reverse());
+  };
+
+  // ── Wall: post ──
+  const submitWallPost = async () => {
+    if (!wallPseudo.trim()) return;
+    if (!wallContent.trim() && !wallPhoto) return;
+    setWallPosting(true);
+    try {
+      sessionStorage.setItem(`heaven_wall_pseudo_${slug}`, wallPseudo.trim());
+      await fetch("/api/wall", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: slug,
+          pseudo: wallPseudo.trim(),
+          content: wallContent.trim() || null,
+          photo_url: wallPhoto || null,
+        }),
+      });
+      setWallContent("");
+      setWallPhoto(null);
+      // Refresh wall
+      const res = await fetch(`/api/wall?model=${slug}`);
+      const d = await res.json();
+      setWallPosts(d.posts || []);
+    } catch {} finally {
+      setWallPosting(false);
+    }
+  };
+
+  const handleWallPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) return; // 2MB max
+    const reader = new FileReader();
+    reader.onload = () => setWallPhoto(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const timeAgo = (d: string) => {
@@ -241,6 +300,7 @@ export default function ModelPage() {
   }
 
   const activePacks = packs.filter(p => p.active);
+  const unreadCount = chatMessages.filter(m => m.sender_type === "model").length;
 
   return (
     <div className="min-h-screen pb-20" style={{ background: "var(--bg)" }}>
@@ -256,14 +316,12 @@ export default function ModelPage() {
 
         {/* ═══ TOP BAR ═══ */}
         <div className="fixed top-0 left-0 right-0 z-40 px-4 py-3 flex items-center justify-between">
-          {/* Cockpit logo — always visible */}
           <a href={isModelLoggedIn ? "/agence" : "/login"}
             className="w-8 h-8 rounded-lg flex items-center justify-center no-underline glass"
             style={{ border: "1px solid var(--border2)" }}>
             <Zap className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
           </a>
 
-          {/* Model quick actions (only if logged in) */}
           {isModelLoggedIn && (
             <div className="flex items-center gap-1.5">
               <a href="/agence?tab=content&upload=1"
@@ -313,9 +371,9 @@ export default function ModelPage() {
                   <h1 className="text-lg font-bold truncate" style={{ color: "var(--text)" }}>{model.display_name}</h1>
                   <span className="badge badge-success text-[9px]">Verified</span>
                 </div>
-                {model.status && <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>{model.status}</p>}
-                <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>
-                  {uploads.length} media · {posts.length} posts
+                {/* Stats merged into subtitle */}
+                <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
+                  {model.status || `${uploads.length} media · ${posts.length} posts`}
                 </p>
               </div>
             </div>
@@ -324,22 +382,17 @@ export default function ModelPage() {
               <p className="text-xs leading-relaxed mb-4 fade-up" style={{ color: "var(--text-secondary)" }}>{model.bio}</p>
             )}
 
-            {/* Action buttons — two equal buttons */}
-            <div className="grid grid-cols-2 gap-2.5 mb-6 fade-up-1">
+            {/* Single action button — Unlock */}
+            <div className="mb-6 fade-up-1">
               <button onClick={() => setShowUnlock(true)}
-                className="btn-gradient py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer">
-                <Lock className="w-3.5 h-3.5" /> Unlock
-              </button>
-              <button onClick={() => setShowMessenger(true)}
-                className="py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer glass"
-                style={{ border: "1px solid var(--border2)", color: "var(--text-secondary)" }}>
-                <MessageCircle className="w-3.5 h-3.5" /> Message
+                className="w-full btn-gradient py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer">
+                <Lock className="w-3.5 h-3.5" /> Unlock Exclusive Content
               </button>
             </div>
           </div>
         </div>
 
-        {/* ═══ TABS ═══ */}
+        {/* ═══ TABS (3 tabs, no Tokens tab — tokens shown as badge) ═══ */}
         <div className="max-w-xl mx-auto px-4 mb-5 fade-up-2">
           <div className="segmented-control">
             {TABS.map(t => (
@@ -354,14 +407,75 @@ export default function ModelPage() {
         {/* ═══ TAB CONTENT ═══ */}
         <div className="max-w-xl mx-auto px-4">
 
-          {/* ── FEED ── */}
-          {tab === "feed" && (
+          {/* ── WALL (public visitor posts) ── */}
+          {tab === "wall" && (
             <div className="space-y-3 fade-up">
-              {posts.length === 0 ? (
-                <EmptyState icon={Newspaper} text="No posts yet" />
-              ) : posts.map((post, i) => {
-                const tierMeta = TIER_META[post.tier_required];
-                const tierHex = TIER_HEX[post.tier_required];
+              {/* Composer */}
+              <div className="card-premium p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                    style={{ background: "rgba(99,102,241,0.12)", color: "var(--accent)" }}>
+                    {wallPseudo ? wallPseudo.charAt(0).toUpperCase() : "?"}
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-2">
+                    {!wallPseudo ? (
+                      <input
+                        value={wallPseudo}
+                        onChange={e => setWallPseudo(e.target.value)}
+                        placeholder="Your pseudo (Snap or Insta)"
+                        className="w-full px-3 py-2 rounded-lg text-xs outline-none"
+                        style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }}
+                        maxLength={30}
+                      />
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[11px] font-semibold" style={{ color: "var(--accent)" }}>@{wallPseudo}</span>
+                          <button onClick={() => setWallPseudo("")} className="text-[9px] cursor-pointer" style={{ color: "var(--text-muted)" }}>change</button>
+                        </div>
+                        <textarea
+                          value={wallContent}
+                          onChange={e => setWallContent(e.target.value)}
+                          placeholder={`Say something to ${model.display_name}...`}
+                          rows={2}
+                          className="w-full px-3 py-2 rounded-lg text-xs outline-none resize-none"
+                          style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }}
+                          maxLength={500}
+                        />
+
+                        {/* Photo preview */}
+                        {wallPhoto && (
+                          <div className="relative w-20 h-20 rounded-lg overflow-hidden">
+                            <img src={wallPhoto} alt="" className="w-full h-full object-cover" />
+                            <button onClick={() => setWallPhoto(null)}
+                              className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full flex items-center justify-center cursor-pointer"
+                              style={{ background: "rgba(0,0,0,0.7)" }}>
+                              <X className="w-3 h-3 text-white" />
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between">
+                          <button onClick={() => wallFileRef.current?.click()}
+                            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] cursor-pointer"
+                            style={{ color: "var(--text-muted)", background: "rgba(255,255,255,0.03)", border: "1px solid var(--border2)" }}>
+                            <ImagePlus className="w-3 h-3" /> Photo
+                          </button>
+                          <input ref={wallFileRef} type="file" accept="image/*" className="hidden" onChange={handleWallPhoto} />
+
+                          <button onClick={submitWallPost} disabled={wallPosting || (!wallContent.trim() && !wallPhoto)}
+                            className="px-4 py-1.5 rounded-lg text-[10px] font-semibold cursor-pointer btn-gradient disabled:opacity-30">
+                            Post
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Model posts (pinned first) */}
+              {posts.filter(p => p.tier_required === "public").map((post, i) => {
                 return (
                   <div key={post.id} className="card-premium overflow-hidden" style={{ animationDelay: `${i * 40}ms` }}>
                     <div className="flex items-center gap-3 p-4 pb-0">
@@ -370,20 +484,13 @@ export default function ModelPage() {
                         {model.display_name.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold" style={{ color: "var(--text)" }}>{model.display_name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-semibold" style={{ color: "var(--text)" }}>{model.display_name}</p>
+                          <span className="badge badge-success text-[7px]">Creator</span>
+                        </div>
                         <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{timeAgo(post.created_at)}</p>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        {post.pinned && <Pin className="w-3 h-3" style={{ color: "var(--tier-gold)" }} />}
-                        {post.tier_required !== "public" && (
-                          <span className="badge text-[8px]" style={{
-                            background: `${tierHex || "#64748B"}15`,
-                            color: tierMeta?.color || "var(--text-muted)",
-                          }}>
-                            <Lock className="w-2.5 h-2.5 mr-0.5" /> {tierMeta?.label}
-                          </span>
-                        )}
-                      </div>
+                      {post.pinned && <Pin className="w-3 h-3" style={{ color: "var(--tier-gold)" }} />}
                     </div>
 
                     {post.content && (
@@ -393,21 +500,11 @@ export default function ModelPage() {
                     )}
 
                     {post.media_url && (
-                      post.tier_required !== "public" ? (
-                        <div className="mx-4 my-2 rounded-xl overflow-hidden aspect-video flex items-center justify-center content-locked"
-                          style={{ background: `linear-gradient(135deg, ${tierHex || "#64748B"}10, rgba(0,0,0,0.2))` }}>
-                          <div className="text-center">
-                            <Lock className="w-6 h-6 mx-auto mb-1.5" style={{ color: tierMeta?.color || "var(--text-muted)" }} />
-                            <p className="text-[10px] font-semibold" style={{ color: tierMeta?.color }}>{tierMeta?.label} only</p>
-                          </div>
+                      <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
+                        <div className="mx-4 my-2 rounded-xl overflow-hidden">
+                          <img src={post.media_url} alt="" className="w-full" />
                         </div>
-                      ) : (
-                        <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
-                          <div className="mx-4 my-2 rounded-xl overflow-hidden">
-                            <img src={post.media_url} alt="" className="w-full" />
-                          </div>
-                        </ContentProtection>
-                      )
+                      </ContentProtection>
                     )}
 
                     <div className="flex items-center gap-4 px-4 py-3">
@@ -421,12 +518,43 @@ export default function ModelPage() {
                   </div>
                 );
               })}
+
+              {/* Wall posts from visitors */}
+              {wallPosts.map((wp, i) => (
+                <div key={wp.id} className="card-premium p-4" style={{ animationDelay: `${i * 30}ms` }}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                      style={{ background: "rgba(167,139,250,0.12)", color: "var(--tier-platinum)" }}>
+                      {wp.pseudo.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[11px] font-semibold" style={{ color: "var(--text)" }}>@{wp.pseudo}</span>
+                        <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{timeAgo(wp.created_at)}</span>
+                      </div>
+                      {wp.content && (
+                        <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>{wp.content}</p>
+                      )}
+                      {wp.photo_url && (
+                        <div className="mt-2 w-20 h-20 rounded-lg overflow-hidden">
+                          <img src={wp.photo_url} alt="" className="w-full h-full object-cover pointer-events-none" draggable={false} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {wallPosts.length === 0 && posts.filter(p => p.tier_required === "public").length === 0 && (
+                <EmptyState icon={Newspaper} text="Be the first to leave a message!" />
+              )}
             </div>
           )}
 
           {/* ── GALLERY ── */}
           {tab === "gallery" && (
             <div className="fade-up">
+              {/* Tier filter (the ONLY filter — no double nav) */}
               <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-4 -mx-4 px-4">
                 <button onClick={() => setGalleryTier("all")}
                   className="px-3.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap cursor-pointer transition-all"
@@ -540,46 +668,6 @@ export default function ModelPage() {
               })}
             </div>
           )}
-
-          {/* ── TOKENS ── */}
-          {tab === "tokens" && (
-            <div className="fade-up">
-              <div className="text-center mb-6">
-                <div className="w-12 h-12 rounded-2xl glass flex items-center justify-center mx-auto mb-3">
-                  <Coins className="w-6 h-6" style={{ color: "var(--tier-gold)" }} />
-                </div>
-                <h2 className="text-base font-bold" style={{ color: "var(--text)" }}>Heaven Tokens</h2>
-                <p className="text-[11px] mt-1 max-w-xs mx-auto" style={{ color: "var(--text-muted)" }}>
-                  Unlock exclusive content and premium services
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-2.5">
-                {[
-                  { tokens: 20, price: 10, bonus: 0 },
-                  { tokens: 50, price: 22, bonus: 5 },
-                  { tokens: 120, price: 50, bonus: 15, popular: true },
-                  { tokens: 300, price: 110, bonus: 50 },
-                ].map(tp => (
-                  <div key={tp.tokens} className="card-premium p-4 relative text-center cursor-pointer transition-all hover:-translate-y-0.5"
-                    style={tp.popular ? { border: "1px solid rgba(245,158,11,0.25)" } : undefined}>
-                    {tp.popular && (
-                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[8px] font-bold tracking-wide"
-                        style={{ background: "var(--tier-gold)", color: "#0A0A0F" }}>BEST VALUE</span>
-                    )}
-                    <p className="text-2xl font-black tabular-nums mb-0.5" style={{ color: "var(--tier-gold)" }}>
-                      {tp.tokens}
-                      {tp.bonus > 0 && <span className="text-xs" style={{ color: "var(--success)" }}> +{tp.bonus}</span>}
-                    </p>
-                    <p className="text-[10px] mb-3" style={{ color: "var(--text-muted)" }}>tokens</p>
-                    <button className="w-full py-2 rounded-xl text-xs font-semibold cursor-pointer"
-                      style={{ background: "rgba(245,158,11,0.08)", color: "var(--tier-gold)", border: "1px solid rgba(245,158,11,0.15)" }}>
-                      {tp.price}€
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* ═══ UNLOCK SHEET ═══ */}
@@ -626,84 +714,102 @@ export default function ModelPage() {
           </div>
         )}
 
-        {/* ═══ MESSENGER ═══ */}
-        {showMessenger && (
-          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center sheet-backdrop" onClick={() => setShowMessenger(false)}>
-            <div className="w-full max-w-md rounded-t-2xl md:rounded-2xl overflow-hidden flex flex-col"
-              style={{ background: "var(--surface)", maxHeight: "80vh", border: "1px solid var(--border2)" }}
-              onClick={e => e.stopPropagation()}>
-              <div className="flex justify-center pt-3 md:hidden">
-                <div className="w-10 h-1 rounded-full" style={{ background: "var(--border3)" }} />
-              </div>
-              <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: "1px solid var(--border2)" }}>
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold"
-                    style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff" }}>
-                    {model.display_name.charAt(0)}
-                  </div>
-                  <div>
-                    <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>{model.display_name}</span>
-                    {model.online && <span className="text-[9px] ml-1.5" style={{ color: "var(--success)" }}>Online</span>}
-                  </div>
-                </div>
-                <button onClick={() => setShowMessenger(false)} className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-80"
-                  style={{ background: "rgba(255,255,255,0.05)" }}>
-                  <X className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
-                </button>
-              </div>
+        {/* ═══ FLOATING CHAT BUBBLE ═══ */}
+        {!isModelLoggedIn && (
+          <>
+            {/* FAB button */}
+            {!chatOpen && (
+              <button
+                onClick={() => setChatOpen(true)}
+                className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer shadow-lg transition-transform hover:scale-105"
+                style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))" }}>
+                <MessageCircle className="w-5 h-5 text-white" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[9px] font-bold flex items-center justify-center"
+                    style={{ background: "var(--danger)", color: "#fff" }}>
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+            )}
 
-              {!clientId ? (
-                <div className="p-6 space-y-3">
-                  <p className="text-[11px] text-center mb-1" style={{ color: "var(--text-muted)" }}>Enter your username to start</p>
-                  <div className="relative">
-                    <Ghost className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--text-muted)" }} />
-                    <input value={pseudo.snap} onChange={e => setPseudo(p => ({ ...p, snap: e.target.value }))}
-                      placeholder="Snapchat" className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none"
-                      style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
+            {/* Chat popup */}
+            {chatOpen && (
+              <div className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+                style={{ background: "var(--surface)", border: "1px solid var(--border2)", maxHeight: "min(420px, 60vh)" }}>
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border2)" }}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold"
+                      style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff" }}>
+                      {model.display_name.charAt(0)}
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>{model.display_name}</span>
+                      {model.online && <span className="text-[9px] ml-1.5" style={{ color: "var(--success)" }}>Online</span>}
+                    </div>
                   </div>
-                  <div className="relative">
-                    <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--text-muted)" }} />
-                    <input value={pseudo.insta} onChange={e => setPseudo(p => ({ ...p, insta: e.target.value }))}
-                      placeholder="Instagram" className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none"
-                      style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
-                  </div>
-                  <button onClick={registerClient} disabled={!pseudo.snap && !pseudo.insta}
-                    className="w-full py-2.5 rounded-xl text-sm font-semibold cursor-pointer btn-gradient disabled:opacity-30">
-                    Start Chatting
+                  <button onClick={() => setChatOpen(false)} className="w-6 h-6 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-80"
+                    style={{ background: "rgba(255,255,255,0.05)" }}>
+                    <X className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
                   </button>
                 </div>
-              ) : (
-                <>
-                  <div className="flex-1 overflow-y-auto p-4 space-y-2" style={{ minHeight: 200 }}>
-                    {chatMessages.length === 0 ? (
-                      <p className="text-center text-[11px] py-8" style={{ color: "var(--text-muted)" }}>No messages yet. Say hello!</p>
-                    ) : chatMessages.map(msg => (
-                      <div key={msg.id} className={`flex ${msg.sender_type === "client" ? "justify-end" : "justify-start"}`}>
-                        <div className="max-w-[75%] rounded-2xl px-3.5 py-2 text-xs"
-                          style={{
-                            background: msg.sender_type === "client" ? "rgba(99,102,241,0.12)" : "var(--bg3)",
-                            color: "var(--text)",
-                          }}>
-                          {msg.content}
-                          <p className="text-[8px] mt-0.5 opacity-40">{timeAgo(msg.created_at)}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="p-3 flex gap-2" style={{ borderTop: "1px solid var(--border2)" }}>
-                    <input value={chatInput} onChange={e => setChatInput(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && sendMessage()}
-                      placeholder="Message..." className="flex-1 px-3.5 py-2.5 rounded-xl text-xs outline-none"
-                      style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
-                    <button onClick={sendMessage}
-                      className="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer btn-gradient">
-                      <Send className="w-4 h-4" />
+
+                {/* Body */}
+                {!clientId ? (
+                  <div className="p-4 space-y-2.5">
+                    <p className="text-[11px] text-center" style={{ color: "var(--text-muted)" }}>Enter your username to chat</p>
+                    <div className="relative">
+                      <Ghost className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                      <input value={pseudo.snap} onChange={e => setPseudo(p => ({ ...p, snap: e.target.value }))}
+                        placeholder="Snapchat" className="w-full pl-9 pr-3 py-2 rounded-lg text-xs outline-none"
+                        style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
+                    </div>
+                    <div className="relative">
+                      <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                      <input value={pseudo.insta} onChange={e => setPseudo(p => ({ ...p, insta: e.target.value }))}
+                        placeholder="Instagram" className="w-full pl-9 pr-3 py-2 rounded-lg text-xs outline-none"
+                        style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
+                    </div>
+                    <button onClick={registerClient} disabled={!pseudo.snap && !pseudo.insta}
+                      className="w-full py-2 rounded-lg text-xs font-semibold cursor-pointer btn-gradient disabled:opacity-30">
+                      Start Chatting
                     </button>
                   </div>
-                </>
-              )}
-            </div>
-          </div>
+                ) : (
+                  <>
+                    <div className="flex-1 overflow-y-auto p-3 space-y-1.5" style={{ minHeight: 150 }}>
+                      {chatMessages.length === 0 ? (
+                        <p className="text-center text-[10px] py-6" style={{ color: "var(--text-muted)" }}>Say hello!</p>
+                      ) : chatMessages.map(msg => (
+                        <div key={msg.id} className={`flex ${msg.sender_type === "client" ? "justify-end" : "justify-start"}`}>
+                          <div className="max-w-[80%] rounded-2xl px-3 py-1.5 text-[11px]"
+                            style={{
+                              background: msg.sender_type === "client" ? "rgba(99,102,241,0.12)" : "var(--bg3)",
+                              color: "var(--text)",
+                            }}>
+                            {msg.content}
+                            <p className="text-[7px] mt-0.5 opacity-40">{timeAgo(msg.created_at)}</p>
+                          </div>
+                        </div>
+                      ))}
+                      <div ref={chatEndRef} />
+                    </div>
+                    <div className="p-2.5 flex gap-1.5 shrink-0" style={{ borderTop: "1px solid var(--border2)" }}>
+                      <input value={chatInput} onChange={e => setChatInput(e.target.value)}
+                        onKeyDown={e => e.key === "Enter" && sendMessage()}
+                        placeholder="Message..." className="flex-1 px-3 py-2 rounded-lg text-[11px] outline-none"
+                        style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
+                      <button onClick={sendMessage}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer btn-gradient shrink-0">
+                        <Send className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </>
         )}
 
         {/* ═══ MOBILE BOTTOM NAV ═══ */}
