@@ -7,6 +7,8 @@ import {
   Coins, Pin, Eye, Star, Camera, Video, Play, X,
   Instagram, Ghost, ChevronRight, Zap, Plus, Edit3, Wifi,
 } from "lucide-react";
+import { ContentProtection } from "@/components/content-protection";
+import { useScreenshotDetection } from "@/hooks/use-screenshot-detection";
 
 // ── Types ──
 interface ModelInfo {
@@ -107,6 +109,30 @@ export default function ModelPage() {
 
   // Gallery filter
   const [galleryTier, setGalleryTier] = useState("all");
+
+  // ── Screenshot detection ──
+  // The subscriber's username for watermarking (from messenger registration)
+  const subscriberUsername = pseudo.snap || pseudo.insta || clientId?.slice(0, 8) || "visitor";
+  const hasSubscriberIdentity = !!clientId;
+
+  const reportScreenshot = useCallback(() => {
+    if (!clientId) return;
+    fetch("/api/security/screenshot-alert", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subscriberId: clientId,
+        modelId: slug,
+        timestamp: new Date().toISOString(),
+        page: `profile/${tab}`,
+      }),
+    }).catch(() => {});
+  }, [clientId, slug, tab]);
+
+  useScreenshotDetection({
+    enabled: hasSubscriberIdentity && !isModelLoggedIn,
+    onDetected: reportScreenshot,
+  });
 
   // ── Load data ──
   useEffect(() => {
@@ -376,9 +402,11 @@ export default function ModelPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="mx-4 my-2 rounded-xl overflow-hidden">
-                          <img src={post.media_url} alt="" className="w-full" />
-                        </div>
+                        <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
+                          <div className="mx-4 my-2 rounded-xl overflow-hidden">
+                            <img src={post.media_url} alt="" className="w-full" />
+                          </div>
+                        </ContentProtection>
                       )
                     )}
 
@@ -433,7 +461,9 @@ export default function ModelPage() {
                       <div key={item.id} className="relative aspect-square group cursor-pointer overflow-hidden rounded-lg"
                         style={{ animationDelay: `${i * 20}ms` }}>
                         {item.visibility === "promo" ? (
-                          <img src={item.dataUrl} alt={item.label} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                          <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">
+                            <img src={item.dataUrl} alt={item.label} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                          </ContentProtection>
                         ) : (
                           <div className="w-full h-full flex items-center justify-center relative" style={{ background: `${hex}08` }}>
                             <div className="absolute inset-0 content-locked" style={{ background: `linear-gradient(135deg, ${hex}12, rgba(0,0,0,0.25))` }} />

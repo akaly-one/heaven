@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { Upload, Image, Star, ThumbsUp, ThumbsDown, Wifi, WifiOff, Edit3, Trash2, ToggleLeft, ToggleRight, Save } from "lucide-react";
+import { Upload, Image, Star, ThumbsUp, ThumbsDown, Wifi, WifiOff, Edit3, Trash2, ToggleLeft, ToggleRight, Save, Shield } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
 import { QuickActions } from "@/components/cockpit/quick-actions";
 import { CodesList } from "@/components/cockpit/codes-list";
 import { GenerateModal } from "@/components/cockpit/generate-modal";
+import { SecurityAlerts } from "@/components/cockpit/security-alerts";
 
 // ── Types ──
 interface PackConfig {
@@ -102,7 +103,7 @@ function isExpired(expiresAt: string): boolean { return new Date(expiresAt).getT
 
 // ══════════ MAIN ══════════
 export default function AgenceDashboard() {
-  const { currentModel, auth } = useModel();
+  const { currentModel, auth, authHeaders } = useModel();
   const modelSlug = currentModel || auth?.model_slug || "yumi";
 
   const [codes, setCodes] = useState<AccessCode[]>([]);
@@ -111,7 +112,7 @@ export default function AgenceDashboard() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [presence, setPresence] = useState<ModelPresence>({ online: true, status: "", avatar: "" });
 
-  const [tab, setTab] = useState<"codes" | "packs" | "content" | "reviews" | "profile">("codes");
+  const [tab, setTab] = useState<"codes" | "packs" | "content" | "reviews" | "profile" | "security">("codes");
   const [showGenerator, setShowGenerator] = useState(false);
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [, setTick] = useState(0);
@@ -238,6 +239,7 @@ export default function AgenceDashboard() {
     { id: "packs" as const, label: "Packs" },
     { id: "content" as const, label: "Content" },
     { id: "reviews" as const, label: "Reviews" },
+    { id: "security" as const, label: "Security" },
     { id: "profile" as const, label: "Profile" },
   ];
 
@@ -547,6 +549,11 @@ export default function AgenceDashboard() {
                   ))
                 )}
               </div>
+            )}
+
+            {/* SECURITY TAB */}
+            {tab === "security" && (
+              <SecurityAlerts modelSlug={modelSlug} authHeaders={authHeaders} />
             )}
 
             {/* PROFILE TAB */}
