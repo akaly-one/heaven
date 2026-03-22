@@ -12,9 +12,9 @@
   --border2: rgba(255,255,255,0.06);
   --border3: rgba(255,255,255,0.1);
 
-  /* Accent */
-  --accent: #6366F1;
-  --accent-hover: #818CF8;
+  /* Accent — Gold-Rose */
+  --accent: #C9A84C;
+  --accent-hover: #D4B55A;
   --rose: #F43F5E;
   --rose-hover: #FB7185;
   --gold: #C9A84C;
@@ -55,7 +55,7 @@
   --sq-success: #10B981;
   --sq-danger: #EF4444;
   --sq-pink: #F43F5E;
-  --sq-accent: #6366F1;
+  --sq-accent: #C9A84C;
 }
 
 body {
@@ -106,7 +106,7 @@ body {
   box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.04);
 }
 
-/* ═══ Gradient CTA (rose → indigo) ═══ */
+/* ═══ Gradient CTA (rose → gold) ═══ */
 .btn-gradient {
   background: linear-gradient(135deg, var(--rose), var(--accent));
   color: white;
@@ -119,7 +119,7 @@ body {
 }
 .btn-gradient:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 24px rgba(244, 63, 94, 0.25), 0 4px 24px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 4px 24px rgba(244, 63, 94, 0.25), 0 4px 24px rgba(201, 168, 76, 0.15);
 }
 .btn-gradient::after {
   content: '';
@@ -143,7 +143,7 @@ body {
   position: absolute;
   top: -50%; left: -50%;
   width: 200%; height: 200%;
-  background: radial-gradient(circle, var(--glow-color, rgba(99,102,241,0.06)), transparent 70%);
+  background: radial-gradient(circle, var(--glow-color, rgba(201,168,76,0.06)), transparent 70%);
   pointer-events: none;
 }
 
@@ -171,7 +171,7 @@ body {
 .segmented-control button.active {
   background: var(--accent);
   color: white;
-  box-shadow: 0 2px 8px rgba(99,102,241,0.3);
+  box-shadow: 0 2px 8px rgba(201,168,76,0.3);
 }
 .segmented-control button:not(.active):hover {
   color: var(--text-secondary);

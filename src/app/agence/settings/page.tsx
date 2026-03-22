@@ -4,43 +4,14 @@ import { useState, useEffect } from "react";
 import { useModel } from "@/lib/model-context";
 import { OsLayout } from "@/components/os-layout";
 import { SecurityAlerts } from "@/components/cockpit/security-alerts";
-import { Settings, UserPlus, Trash2, Shield, ShieldCheck, Power, Edit3, ToggleLeft, ToggleRight, Save, Star, Wifi, WifiOff, Package, Lock, Users } from "lucide-react";
+import { Settings, UserPlus, Trash2, Shield, ShieldCheck, Power, Lock, Users } from "lucide-react";
 
 // ── Types ──
 interface Account {
   id: string; code: string; role: "root" | "model"; model_slug: string | null;
   display_name: string; active: boolean; created_at: string; last_login: string | null;
 }
-interface PackConfig {
-  id: string; name: string; price: number; color: string;
-  features: string[]; bonuses: Record<string, boolean>;
-  face: boolean; badge: string | null; active: boolean;
-}
-interface ModelPresence { online: boolean; status: string; avatar: string; }
-
-// ── Storage helpers ──
-const PACKS_KEY = "heaven_yumi_packs";
-const PRESENCE_KEY = "heaven_yumi_presence";
-
-const DEFAULT_PACKS: PackConfig[] = [
-  { id: "vip", name: "VIP Glamour", price: 150, color: "#F43F5E", features: ["Pieds glamour/sales + accessoires", "Lingerie sexy + haul", "Teasing + demandes custom", "Dedicaces personnalisees"], bonuses: { fanvueAccess: false, freeNudeExpress: true, nudeDedicaceLevres: false, freeVideoOffer: false }, face: false, badge: null, active: true },
-  { id: "gold", name: "Gold", price: 200, color: "#F59E0B", features: ["TOUT du VIP inclus", "Nudes complets", "Cosplay", "Sextape sans visage"], bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: false }, face: false, badge: "Populaire", active: true },
-  { id: "diamond", name: "Diamond", price: 250, color: "#6366F1", features: ["TOUT du Gold inclus", "Nudes avec visage", "Cosplay avec visage", "Sextape avec visage", "Hard illimite"], bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: false }, face: true, badge: null, active: true },
-  { id: "platinum", name: "Platinum All-Access", price: 320, color: "#A78BFA", features: ["Acces TOTAL aux 3 packs", "Demandes personnalisees", "Video calls prives", "Contenu exclusif illimite"], bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: true }, face: true, badge: "Ultimate", active: true },
-];
-
-function loadPacks(): PackConfig[] { try { const r = localStorage.getItem(PACKS_KEY); if (r) return JSON.parse(r); } catch {} return DEFAULT_PACKS; }
-function savePacks(packs: PackConfig[]) { localStorage.setItem(PACKS_KEY, JSON.stringify(packs)); fetch("/api/packs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ packs }) }).catch(() => {}); }
-function loadPresence(): ModelPresence { try { const r = localStorage.getItem(PRESENCE_KEY); if (r) { const p = JSON.parse(r); return { online: p.online ?? true, status: p.status ?? "", avatar: p.avatar ?? "" }; } } catch {} return { online: true, status: "", avatar: "" }; }
-function savePresence(p: ModelPresence, modelSlug?: string) {
-  localStorage.setItem(PRESENCE_KEY, JSON.stringify(p));
-  if (modelSlug) {
-    fetch(`/api/models/${modelSlug}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ online: p.online, status: p.status, avatar: p.avatar }) }).catch(() => {});
-  }
-}
-
 const SECTIONS = [
-  { id: "packs" as const, label: "Packs", icon: Package },
   { id: "security" as const, label: "Sécurité", icon: Lock },
   { id: "accounts" as const, label: "Comptes", icon: Users },
 ];
@@ -49,22 +20,11 @@ export default function SettingsPage() {
   const { authHeaders, isRoot, auth, currentModel } = useModel();
   const modelSlug = currentModel || auth?.model_slug || "yumi";
 
-  const [section, setSection] = useState<"packs" | "security" | "accounts">("packs");
+  const [section, setSection] = useState<"security" | "accounts">("security");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [newAccount, setNewAccount] = useState({ code: "", role: "model", model_slug: "", display_name: "" });
-  const [packs, setPacks] = useState<PackConfig[]>(DEFAULT_PACKS);
-  const [editingPack, setEditingPack] = useState<string | null>(null);
-  const [presence, setPresence] = useState<ModelPresence>({ online: true, status: "", avatar: "" });
-
-  // Load data
-  useEffect(() => {
-    setPresence(loadPresence());
-    fetch(`/api/packs?model=${modelSlug}`).then(r => r.json()).then(d => {
-      if (d.packs?.length > 0) { setPacks(d.packs); } else setPacks(loadPacks());
-    }).catch(() => setPacks(loadPacks()));
-  }, [modelSlug]);
 
   const fetchAccounts = () => {
     setLoading(true);
@@ -105,7 +65,7 @@ export default function SettingsPage() {
             </div>
             <div className="flex-1">
               <h1 className="text-lg font-bold" style={{ color: "var(--text)" }}>Paramètres</h1>
-              <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Packs, sécurité, comptes</p>
+              <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Sécurité, comptes</p>
             </div>
           </div>
 
@@ -118,80 +78,6 @@ export default function SettingsPage() {
               </button>
             ))}
           </div>
-
-          {/* ═══ PACKS SECTION ═══ */}
-          {section === "packs" && (
-            <div className="space-y-4 fade-up-2">
-              {/* Presence controls */}
-              <div className="card-premium p-5">
-                <h3 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: "var(--text-muted)" }}>Présence en ligne</h3>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Statut</span>
-                  <button onClick={() => { const p = { ...presence, online: !presence.online }; setPresence(p); savePresence(p, modelSlug); }}
-                    className="flex items-center gap-2 cursor-pointer hover:scale-105 active:scale-95 transition-transform" style={{ color: presence.online ? "var(--success)" : "var(--text-muted)" }}>
-                    {presence.online ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-                    <span className="text-xs font-medium">{presence.online ? "Online" : "Offline"}</span>
-                  </button>
-                </div>
-                <input value={presence.status}
-                  onChange={e => { const p = { ...presence, status: e.target.value }; setPresence(p); savePresence(p, modelSlug); }}
-                  placeholder="Message de statut..."
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none transition-all focus:ring-1 focus:ring-[var(--accent)]"
-                  style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
-              </div>
-
-              {/* Pack cards */}
-              {packs.map(pack => (
-                <div key={pack.id} className="card-premium p-5 hover:scale-[1.005] transition-transform">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <span className={`tier-dot ${pack.id}`} />
-                      <h3 className="text-sm font-bold" style={{ color: pack.color }}>{pack.name}</h3>
-                      {pack.badge && <span className="badge" style={{ background: `${pack.color}15`, color: pack.color }}>{pack.badge}</span>}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg font-black tabular-nums" style={{ color: pack.color }}>{pack.price}€</span>
-                      <button onClick={() => setEditingPack(editingPack === pack.id ? null : pack.id)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
-                        style={{ background: "rgba(255,255,255,0.04)" }}>
-                        <Edit3 className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
-                      </button>
-                    </div>
-                  </div>
-                  <ul className="space-y-1.5">
-                    {pack.features.map((f, i) => (
-                      <li key={i} className="flex items-center gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
-                        <Star className="w-3 h-3 shrink-0" style={{ color: pack.color }} /> {f}
-                      </li>
-                    ))}
-                  </ul>
-                  {editingPack === pack.id && (
-                    <div className="mt-4 pt-4 space-y-3 animate-slide-down" style={{ borderTop: "1px solid var(--border2)" }}>
-                      <div>
-                        <label className="text-[10px] font-medium uppercase mb-1 block" style={{ color: "var(--text-muted)" }}>Prix (€)</label>
-                        <input type="number" value={pack.price}
-                          onChange={e => { const u = packs.map(p => p.id === pack.id ? { ...p, price: Number(e.target.value) } : p); setPacks(u); }}
-                          className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                          style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Actif</span>
-                        <button onClick={() => { const u = packs.map(p => p.id === pack.id ? { ...p, active: !p.active } : p); setPacks(u); }}
-                          className="cursor-pointer hover:scale-110 transition-transform" style={{ color: pack.active ? "var(--success)" : "var(--text-muted)" }}>
-                          {pack.active ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
-                        </button>
-                      </div>
-                      <button onClick={() => { savePacks(packs); setEditingPack(null); }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer hover:scale-105 active:scale-95 transition-transform"
-                        style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)" }}>
-                        <Save className="w-3 h-3" /> Sauvegarder
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
 
           {/* ═══ SECURITY SECTION ═══ */}
           {section === "security" && (
@@ -267,7 +153,7 @@ export default function SettingsPage() {
                   </div>
                   {loading ? (
                     <div className="flex items-center justify-center py-10">
-                      <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(99,102,241,0.2)", borderTopColor: "var(--accent)" }} />
+                      <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(201,168,76,0.2)", borderTopColor: "var(--accent)" }} />
                     </div>
                   ) : (
                     <div className="divide-y" style={{ borderColor: "var(--border2)" }}>

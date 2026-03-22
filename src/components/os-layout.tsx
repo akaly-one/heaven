@@ -16,7 +16,7 @@ export function OsLayout({ children }: OsLayoutProps) {
         {/* Ambient gradient mesh */}
         <div className="fixed inset-0 pointer-events-none z-0" style={{
           background: `
-            radial-gradient(ellipse 600px 400px at 15% 10%, rgba(99,102,241,0.04), transparent),
+            radial-gradient(ellipse 600px 400px at 15% 10%, rgba(201,168,76,0.04), transparent),
             radial-gradient(ellipse 500px 500px at 85% 80%, rgba(244,63,94,0.03), transparent),
             radial-gradient(ellipse 400px 300px at 50% 50%, rgba(167,139,250,0.02), transparent)
           `,

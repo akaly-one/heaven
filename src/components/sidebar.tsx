@@ -53,7 +53,7 @@ export function Sidebar() {
       >
         <a href="/agence" className="flex items-center justify-center mb-6 no-underline">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", boxShadow: "0 0 20px rgba(99,102,241,0.25)" }}>
+            style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", boxShadow: "0 0 20px rgba(201,168,76,0.25)" }}>
             <Zap className="w-4 h-4" style={{ color: "#fff" }} />
           </div>
           {!collapsed && <span className="ml-2 text-xs font-bold" style={{ color: "var(--accent)" }}>HEAVEN</span>}
@@ -63,7 +63,7 @@ export function Sidebar() {
           <div className="px-3 mb-4">
             <div className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider text-center"
               style={{
-                background: isRoot ? "rgba(99,102,241,0.15)" : "rgba(167,139,250,0.15)",
+                background: isRoot ? "rgba(201,168,76,0.15)" : "rgba(167,139,250,0.15)",
                 color: isRoot ? "var(--accent)" : "var(--tier-platinum)",
               }}>
               {isRoot ? "Root Admin" : auth.display_name}
@@ -78,7 +78,7 @@ export function Sidebar() {
               <a key={item.id} href={item.href}
                 className="flex items-center gap-3 px-2.5 py-2 rounded-lg transition-all no-underline hover:opacity-80"
                 style={{
-                  background: isActive ? "rgba(99,102,241,0.12)" : "transparent",
+                  background: isActive ? "rgba(201,168,76,0.12)" : "transparent",
                   color: isActive ? item.color : "var(--text-muted)",
                 }}>
                 <item.icon className="w-4.5 h-4.5 flex-shrink-0" />

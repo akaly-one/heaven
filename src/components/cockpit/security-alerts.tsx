@@ -73,7 +73,7 @@ export function SecurityAlerts({ modelSlug, authHeaders }: SecurityAlertsProps) 
   if (loading) {
     return (
       <div className="flex justify-center py-8">
-        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(99,102,241,0.2)", borderTopColor: "var(--accent)" }} />
+        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(201,168,76,0.2)", borderTopColor: "var(--accent)" }} />
       </div>
     );
   }

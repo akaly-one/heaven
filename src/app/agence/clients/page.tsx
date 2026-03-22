@@ -244,7 +244,7 @@ export default function ClientsPage() {
             <div className={`${selected ? "hidden md:block md:w-1/2 lg:w-2/5" : "w-full"} space-y-2 fade-up-2`}>
               {loading ? (
                 <div className="flex items-center justify-center py-20">
-                  <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(99,102,241,0.2)", borderTopColor: "var(--accent)" }} />
+                  <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(201,168,76,0.2)", borderTopColor: "var(--accent)" }} />
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="text-center py-16">
@@ -261,7 +261,7 @@ export default function ClientsPage() {
                 return (
                   <button key={c.id} onClick={() => openClient(c)}
                     className="w-full p-3.5 rounded-xl text-left cursor-pointer transition-all card-premium"
-                    style={isActive ? { border: "1px solid rgba(99,102,241,0.3)", background: "rgba(99,102,241,0.06)" } : {}}>
+                    style={isActive ? { border: "1px solid rgba(201,168,76,0.3)", background: "rgba(201,168,76,0.06)" } : {}}>
                     <div className="flex items-center gap-3">
                       {/* Avatar */}
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold shrink-0"
@@ -275,7 +275,7 @@ export default function ClientsPage() {
                             <span className="text-xs font-semibold truncate" style={{ color: "var(--text)" }}>{c.firstname}</span>
                           )}
                           {c.tag && (
-                            <span className="badge text-[8px]" style={{ background: "rgba(99,102,241,0.1)", color: "var(--accent)" }}>
+                            <span className="badge text-[8px]" style={{ background: "rgba(201,168,76,0.1)", color: "var(--accent)" }}>
                               {c.tag}
                             </span>
                           )}
@@ -359,7 +359,7 @@ export default function ClientsPage() {
                       </button>
                       <button onClick={() => setEditing(!editing)}
                         className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer"
-                        style={{ background: editing ? "rgba(99,102,241,0.12)" : "rgba(255,255,255,0.04)" }}>
+                        style={{ background: editing ? "rgba(201,168,76,0.12)" : "rgba(255,255,255,0.04)" }}>
                         <Edit3 className="w-3.5 h-3.5" style={{ color: editing ? "var(--accent)" : "var(--text-muted)" }} />
                       </button>
                     </div>
@@ -450,7 +450,7 @@ export default function ClientsPage() {
                     <div className="flex flex-wrap gap-1.5 mb-4">
                       {selected.tag && (
                         <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px]"
-                          style={{ background: "rgba(99,102,241,0.08)", color: "var(--accent)" }}>
+                          style={{ background: "rgba(201,168,76,0.08)", color: "var(--accent)" }}>
                           <Tag className="w-3 h-3" /> {selected.tag}
                         </span>
                       )}
@@ -508,7 +508,7 @@ export default function ClientsPage() {
                   {/* Detail sections */}
                   {detailLoading ? (
                     <div className="flex justify-center py-8">
-                      <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(99,102,241,0.2)", borderTopColor: "var(--accent)" }} />
+                      <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(201,168,76,0.2)", borderTopColor: "var(--accent)" }} />
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -559,7 +559,7 @@ export default function ClientsPage() {
                           <div className="space-y-1.5 max-h-48 overflow-y-auto">
                             {detailMessages.slice(0, 10).map(msg => (
                               <div key={msg.id} className="flex gap-2 p-2 rounded-lg"
-                                style={{ background: msg.sender_type === "model" ? "rgba(99,102,241,0.04)" : "rgba(255,255,255,0.02)" }}>
+                                style={{ background: msg.sender_type === "model" ? "rgba(201,168,76,0.04)" : "rgba(255,255,255,0.02)" }}>
                                 <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5"
                                   style={{
                                     background: msg.sender_type === "model" ? "linear-gradient(135deg, var(--rose), var(--accent))" : "rgba(255,255,255,0.06)",

@@ -186,7 +186,7 @@ export function CodesList({ codes, onCopy, onRevoke, onPause, onReactivate, onDe
       {/* Grouped code list */}
       {groups.length === 0 ? (
         <div className="text-center py-16">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: "rgba(99,102,241,0.08)" }}>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: "rgba(201,168,76,0.08)" }}>
             <Search className="w-7 h-7" style={{ color: "var(--text-muted)" }} />
           </div>
           <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>No codes found</p>
@@ -205,7 +205,7 @@ export function CodesList({ codes, onCopy, onRevoke, onPause, onReactivate, onDe
                   style={{ borderBottom: isCollapsed ? "none" : "1px solid var(--border2)" }}
                 >
                   <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(99,102,241,0.12)" }}>
+                    style={{ background: "rgba(201,168,76,0.12)" }}>
                     <User className="w-4 h-4" style={{ color: "var(--accent)" }} />
                   </div>
                   <div className="flex-1 text-left min-w-0">
@@ -213,7 +213,7 @@ export function CodesList({ codes, onCopy, onRevoke, onPause, onReactivate, onDe
                       <span className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>
                         {group.name === "—" ? "Sans client" : group.name}
                       </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(99,102,241,0.1)", color: "var(--accent)" }}>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(201,168,76,0.1)", color: "var(--accent)" }}>
                         {group.codes.length} code{group.codes.length > 1 ? "s" : ""}
                       </span>
                       {group.activeCodes > 0 && (

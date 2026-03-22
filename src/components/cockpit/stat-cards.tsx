@@ -53,7 +53,7 @@ export function StatCards({ activeCodes, totalCodes, revenue, pendingCount }: St
         label="Codes actifs"
         value={activeCodes}
         icon={Key}
-        color="#6366F1"
+        color="#C9A84C"
         trend={totalCodes > 0 ? { value: `${totalCodes} total`, positive: true } : undefined}
       />
       <StatCard

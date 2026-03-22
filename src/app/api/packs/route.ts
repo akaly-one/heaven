@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       await supabase.from("agence_packs").delete().eq("model", model);
       const rows = packs.map((p: Record<string, unknown>, i: number) => ({
         model, pack_id: p.id || `pack-${i}`, name: p.name || "", price: p.price || 0,
-        color: p.color || "#6366F1", features: p.features || [], bonuses: p.bonuses || {},
+        color: p.color || "#C9A84C", features: p.features || [], bonuses: p.bonuses || {},
         face: p.face || false, badge: p.badge || null, active: p.active !== false, sort_order: i,
       }));
       await supabase.from("agence_packs").insert(rows);

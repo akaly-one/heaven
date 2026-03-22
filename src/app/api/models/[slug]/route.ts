@@ -44,6 +44,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       active: account.active,
       bio: modelInfo?.bio || null,
       avatar: modelInfo?.avatar || null,
+      banner: modelInfo?.banner || null,
       online: modelInfo?.online || false,
       status: modelInfo?.status || null,
     }, { headers: cors });
@@ -64,15 +65,27 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug
       return NextResponse.json({ error: "DB non configurée" }, { status: 500, headers: cors });
     }
 
-    // Only allow specific fields
+    // Handle display_name separately (stored in agence_accounts, not agence_models)
+    if (body.display_name !== undefined) {
+      await supabase
+        .from("agence_accounts")
+        .update({ display_name: body.display_name })
+        .eq("model_slug", slug);
+    }
+
+    // Only allow specific fields for agence_models
     const allowed: Record<string, unknown> = {};
-    const fields = ["avatar", "bio", "online", "status"];
+    const fields = ["avatar", "bio", "online", "status", "banner"];
     for (const f of fields) {
       if (body[f] !== undefined) allowed[f] = body[f];
     }
 
-    if (Object.keys(allowed).length === 0) {
+    if (Object.keys(allowed).length === 0 && body.display_name === undefined) {
       return NextResponse.json({ error: "No valid fields" }, { status: 400, headers: cors });
+    }
+
+    if (Object.keys(allowed).length === 0) {
+      return NextResponse.json({ success: true }, { headers: cors });
     }
 
     // Upsert into agence_models
