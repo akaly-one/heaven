@@ -46,6 +46,6 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[API/auth] POST:", msg);
-    return NextResponse.json({ error: `Erreur serveur: ${msg}` }, { status: 500, headers: cors });
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });
   }
 }
