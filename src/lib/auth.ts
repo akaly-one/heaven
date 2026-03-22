@@ -1,31 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SignJWT, jwtVerify } from "jose";
-import { getServerSupabase } from "./supabase-server";
+import { jwtVerify } from "jose";
 
 export type HeavenRole = "root" | "model" | "client";
 
-// ── JWT helpers ──
+// ── JWT verify ──
 
 function getJwtSecret(): Uint8Array {
-  const secret = process.env.HEAVEN_JWT_SECRET || "";
-  if (!secret) throw new Error("HEAVEN_JWT_SECRET not set");
-  return new TextEncoder().encode(secret);
+  // Use SUPABASE_SERVICE_ROLE_KEY as JWT secret (same key used to sign in /api/auth)
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  if (!key) throw new Error("SUPABASE_SERVICE_ROLE_KEY not set");
+  return new TextEncoder().encode(key);
 }
 
-/** Sign a JWT token for a logged-in user. Expires in 7 days. */
-export async function signToken(payload: {
-  role: HeavenRole;
-  model_slug: string | null;
-  display_name: string;
-}): Promise<string> {
-  return new SignJWT({ ...payload })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("7d")
-    .sign(getJwtSecret());
-}
-
-/** Verify a JWT token and return the payload, or null if invalid/expired. */
 export async function verifyToken(
   token: string
 ): Promise<{ role: HeavenRole; model_slug: string | null; display_name: string } | null> {
@@ -58,7 +44,7 @@ export function getCorsHeaders(req?: NextRequest): Record<string, string> {
     } else if (process.env.NODE_ENV === "development") {
       origin = requestOrigin || "*";
     } else {
-      origin = ALLOWED_ORIGINS[0]; // default to prod
+      origin = ALLOWED_ORIGINS[0];
     }
   }
   return {
@@ -71,7 +57,6 @@ export function getCorsHeaders(req?: NextRequest): Record<string, string> {
 
 /**
  * Extract role + model from Authorization Bearer token.
- * Returns null if no valid token present.
  */
 export async function getSessionFromHeaders(
   req: NextRequest
@@ -87,7 +72,7 @@ export async function getSessionFromHeaders(
 }
 
 /**
- * Require a specific role. Returns a 403/401 response if not authorized, or null if OK.
+ * Require a specific role. Returns 403/401 response if not authorized, or null if OK.
  */
 export async function requireRole(
   req: NextRequest,
@@ -106,8 +91,6 @@ export async function requireRole(
 
 /**
  * Get the model scope for the current request.
- * Root sees all models (returns null = no filter).
- * Model sees only their own slug.
  */
 export async function getModelScope(req: NextRequest): Promise<string | null> {
   const session = await getSessionFromHeaders(req);
@@ -118,9 +101,9 @@ export async function getModelScope(req: NextRequest): Promise<string | null> {
 
 /**
  * Authenticate a login code against the DB.
- * Returns the account row or null.
  */
 export async function authenticateCode(code: string) {
+  const { getServerSupabase } = await import("./supabase-server");
   const supabase = getServerSupabase();
   if (!supabase) return null;
 
