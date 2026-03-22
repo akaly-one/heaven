@@ -4,13 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, ArrowRight, Zap } from "lucide-react";
 
-// Access codes — Phase 0 (hardcoded). Phase prod: Supabase dynamic codes.
-const ACCESS_CODES: Record<string, { role: string; redirect: string; scope: string[] }> = {
-  one: { role: "admin", redirect: "/agence", scope: ["*"] },
-  yumi: { role: "model", redirect: "/agence", scope: ["/agence"] },
-  heaven: { role: "admin", redirect: "/agence", scope: ["*"] },
-};
-
 export default function LoginPage() {
   const router = useRouter();
   const [code, setCode] = useState("");
@@ -23,16 +16,37 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
 
-    await new Promise((r) => setTimeout(r, 400));
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: code.trim() }),
+      });
 
-    const access = ACCESS_CODES[code.trim().toLowerCase()];
-    if (access) {
-      sessionStorage.setItem("heaven_auth", JSON.stringify({ role: access.role, scope: access.scope, loggedAt: new Date().toISOString() }));
-      router.push(access.redirect);
-    } else {
-      setError("Code invalide");
+      const data = await res.json();
+
+      if (res.ok && data.role) {
+        sessionStorage.setItem(
+          "heaven_auth",
+          JSON.stringify({
+            role: data.role,
+            scope: data.scope,
+            model_slug: data.model_slug,
+            display_name: data.display_name,
+            loggedAt: data.loggedAt,
+          })
+        );
+        router.push("/agence");
+      } else {
+        setError(data.error || "Code invalide");
+        setShake(true);
+        setTimeout(() => setShake(false), 600);
+      }
+    } catch {
+      setError("Erreur de connexion");
       setShake(true);
       setTimeout(() => setShake(false), 600);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -139,7 +153,7 @@ export default function LoginPage() {
               color: "#fff",
             }}>
             {isLoading ? (
-              <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <>
                 Entrer

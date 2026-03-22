@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthGuard } from "@/components/auth-guard";
+import { ModelProvider } from "@/lib/model-context";
 
 import type { Viewport } from "next";
 
@@ -24,7 +25,9 @@ export default function RootLayout({
   return (
     <html lang="fr" className="dark">
       <body className="antialiased min-h-screen">
-        <AuthGuard>{children}</AuthGuard>
+        <AuthGuard>
+          <ModelProvider>{children}</ModelProvider>
+        </AuthGuard>
       </body>
     </html>
   );
