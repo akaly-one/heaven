@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { requireRole, getModelScope, getCorsHeaders } from "@/lib/auth";
+import { getCorsHeaders } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -42,15 +42,11 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/posts — Create post (root or model)
+// POST /api/posts — Create post
 export async function POST(req: NextRequest) {
-  const denied = await requireRole(req, "root", "model");
-  if (denied) return denied;
-
   try {
     const body = await req.json();
-    const modelScope = await getModelScope(req);
-    const model = modelScope || body.model;
+    const model = body.model;
 
     if (!model) return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
 
@@ -145,10 +141,8 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ success: true }, { headers: cors });
     }
 
-    // Pin/unpin (admin only)
+    // Pin/unpin
     if (action === "pin") {
-      const authDenied = await requireRole(req, "root", "model");
-      if (authDenied) return authDenied;
       const { data: post } = await supabase.from("agence_posts").select("pinned").eq("id", id).single();
       if (post) {
         await supabase.from("agence_posts").update({ pinned: !post.pinned }).eq("id", id);
@@ -165,9 +159,6 @@ export async function PUT(req: NextRequest) {
 
 // DELETE /api/posts?id=xxx
 export async function DELETE(req: NextRequest) {
-  const denied = await requireRole(req, "root", "model");
-  if (denied) return denied;
-
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
 
@@ -175,11 +166,7 @@ export async function DELETE(req: NextRequest) {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    const modelScope = await getModelScope(req);
-    let q = supabase.from("agence_posts").delete().eq("id", id);
-    if (modelScope) q = q.eq("model", modelScope);
-
-    const { error } = await q;
+    const { error } = await supabase.from("agence_posts").delete().eq("id", id);
     if (error) throw error;
 
     return NextResponse.json({ success: true }, { headers: cors });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { requireRole, getModelScope, getCorsHeaders } from "@/lib/auth";
+import { getCorsHeaders } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -21,8 +21,7 @@ export async function GET(req: NextRequest) {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ messages: [] }, { headers: cors });
 
-    const modelScope = await getModelScope(req);
-    const modelFilter = modelScope || req.nextUrl.searchParams.get("model");
+    const modelFilter = req.nextUrl.searchParams.get("model");
     const clientIdFilter = req.nextUrl.searchParams.get("client_id");
 
     // Require at least a model filter to prevent full table dump
@@ -59,11 +58,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "model, client_id, sender_type, content requis" }, { status: 400, headers: cors });
     }
 
-    // Auth check: model/root sending messages must be authenticated
-    if (sender_type === "model") {
-      const denied = await requireRole(req, "root", "model");
-      if (denied) return denied;
-    } else if (sender_type === "client") {
+    if (sender_type === "client") {
       // Verify client_id exists in DB
       const supabase = getServerSupabase();
       if (supabase) {
@@ -109,11 +104,8 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// DELETE /api/messages?id=xxx — Delete a message (root or model)
+// DELETE /api/messages?id=xxx — Delete a message
 export async function DELETE(req: NextRequest) {
-  const denied = await requireRole(req, "root", "model");
-  if (denied) return denied;
-
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
 
@@ -121,11 +113,7 @@ export async function DELETE(req: NextRequest) {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    const modelScope = await getModelScope(req);
-    let q = supabase.from("agence_messages").delete().eq("id", id);
-    if (modelScope) q = q.eq("model", modelScope);
-
-    const { error } = await q;
+    const { error } = await supabase.from("agence_messages").delete().eq("id", id);
     if (error) throw error;
 
     return NextResponse.json({ success: true }, { headers: cors });

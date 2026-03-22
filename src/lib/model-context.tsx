@@ -4,17 +4,11 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import type { HeavenAuth } from "@/components/auth-guard";
 
 interface ModelContextValue {
-  /** Current selected model slug (null = all models for root) */
   currentModel: string | null;
-  /** Set model (root only) */
   setCurrentModel: (slug: string | null) => void;
-  /** Auth info */
   auth: HeavenAuth | null;
-  /** Is root admin */
   isRoot: boolean;
-  /** List of available models */
   models: { slug: string; display_name: string }[];
-  /** Fetch headers with auth info */
   authHeaders: () => Record<string, string>;
 }
 
@@ -37,14 +31,7 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
       const raw = sessionStorage.getItem("heaven_auth");
       if (raw) {
         const parsed: HeavenAuth = JSON.parse(raw);
-        // Legacy sessions without JWT token → force re-login
-        if (!parsed.token) {
-          sessionStorage.removeItem("heaven_auth");
-          window.location.href = "/login";
-          return;
-        }
         setAuth(parsed);
-
         if (parsed.role === "model" && parsed.model_slug) {
           setCurrentModel(parsed.model_slug);
         }
@@ -52,40 +39,21 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
     } catch { /* ignore */ }
   }, []);
 
-  // Fetch available models for root
+  // Hardcoded models list (no API call needed for Phase 0)
   useEffect(() => {
-    if (auth?.role !== "root") return;
-
-    const token = auth?.token;
-    if (!token) return;
-
-    fetch("/api/accounts", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(r => r.json())
-      .then(d => {
-        if (d.accounts) {
-          const modelAccounts = d.accounts
-            .filter((a: { role: string; model_slug: string }) => a.role === "model" && a.model_slug)
-            .map((a: { model_slug: string; display_name: string }) => ({
-              slug: a.model_slug,
-              display_name: a.display_name,
-            }));
-          setModels(modelAccounts);
-        }
-      })
-      .catch(() => {});
-  }, [auth?.role, auth?.token]);
+    if (auth?.role === "root") {
+      setModels([
+        { slug: "yumi", display_name: "Yumi" },
+        { slug: "ruby", display_name: "Ruby" },
+      ]);
+    }
+  }, [auth?.role]);
 
   const isRoot = auth?.role === "root";
 
   const authHeaders = useCallback(() => {
-    const h: Record<string, string> = { "Content-Type": "application/json" };
-    if (auth?.token) {
-      h["Authorization"] = `Bearer ${auth.token}`;
-    }
-    return h;
-  }, [auth]);
+    return { "Content-Type": "application/json" };
+  }, []);
 
   return (
     <ModelContext.Provider value={{ currentModel, setCurrentModel, auth, isRoot, models, authHeaders }}>

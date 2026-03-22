@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { getCorsHeaders, requireRole, getModelScope } from "@/lib/auth";
+import { getCorsHeaders } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -72,18 +72,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const denied = await requireRole(req, "root", "model");
-  if (denied) return denied;
-
   try {
     const body = await req.json();
     const model = body.model || "yumi";
 
-    // Model users can only update their own packs
-    const modelScope = await getModelScope(req);
-    if (modelScope && modelScope !== model) {
-      return NextResponse.json({ error: "Acces non autorise" }, { status: 403, headers: cors });
-    }
     const packs = body.packs;
     if (!Array.isArray(packs)) return NextResponse.json({ error: "packs array requis" }, { status: 400, headers: cors });
 

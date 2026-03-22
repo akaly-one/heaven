@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { requireRole, getModelScope, getCorsHeaders } from "@/lib/auth";
+import { getCorsHeaders } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -10,16 +10,13 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
-// GET /api/clients?model=yumi — List clients (root sees all, model sees own)
+// GET /api/clients?model=yumi — List clients
 export async function GET(req: NextRequest) {
-  const denied = await requireRole(req, "root", "model");
-  if (denied) return denied;
-
   try {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    const modelFilter = (await getModelScope(req)) || req.nextUrl.searchParams.get("model");
+    const modelFilter = req.nextUrl.searchParams.get("model");
 
     let q = supabase
       .from("agence_clients")
@@ -111,11 +108,8 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PUT /api/clients — Update client (root or model)
+// PUT /api/clients — Update client
 export async function PUT(req: NextRequest) {
-  const denied = await requireRole(req, "root", "model");
-  if (denied) return denied;
-
   try {
     const body = await req.json();
     const { id, ...updates } = body;
@@ -131,11 +125,7 @@ export async function PUT(req: NextRequest) {
       if (updates[f] !== undefined) allowed[f] = updates[f];
     }
 
-    const modelScope = await getModelScope(req);
-    let q = supabase.from("agence_clients").update(allowed).eq("id", id);
-    if (modelScope) q = q.eq("model", modelScope);
-
-    const { data, error } = await q.select().single();
+    const { data, error } = await supabase.from("agence_clients").update(allowed).eq("id", id).select().single();
     if (error) throw error;
 
     return NextResponse.json({ success: true, client: data }, { headers: cors });

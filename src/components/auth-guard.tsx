@@ -9,20 +9,13 @@ export interface HeavenAuth {
   model_slug: string | null;
   display_name: string;
   loggedAt: string;
-  token?: string;
 }
 
 export function getHeavenAuth(): HeavenAuth | null {
   try {
     const raw = sessionStorage.getItem("heaven_auth");
     if (!raw) return null;
-    const parsed: HeavenAuth = JSON.parse(raw);
-    // Legacy sessions without JWT token are invalid
-    if (!parsed.token) {
-      sessionStorage.removeItem("heaven_auth");
-      return null;
-    }
-    return parsed;
+    return JSON.parse(raw);
   } catch {
     return null;
   }
@@ -34,8 +27,29 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    // Auth disabled — let everyone through
-    setChecked(true);
+    if (pathname === "/login" || pathname.startsWith("/api/") || pathname.startsWith("/m/")) {
+      setChecked(true);
+      return;
+    }
+    const raw = sessionStorage.getItem("heaven_auth");
+    if (!raw) {
+      router.replace("/login");
+      return;
+    }
+    try {
+      const auth = JSON.parse(raw);
+      const scope: string[] = auth.scope || ["*"];
+      if (!scope.includes("*")) {
+        const allowed = scope.some((s: string) => pathname === s || pathname.startsWith(s + "/"));
+        if (!allowed) {
+          router.replace(scope[0] || "/login");
+          return;
+        }
+      }
+      setChecked(true);
+    } catch {
+      router.replace("/login");
+    }
   }, [pathname, router]);
 
   if (!checked && pathname !== "/login") {
