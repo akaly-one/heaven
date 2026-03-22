@@ -92,16 +92,16 @@ function CmsAuthGate({ onAuth }: { onAuth: () => void }) {
     <OsLayout cpId="agence" showChat={false}>
       <div className="flex items-center justify-center min-h-[80vh] p-6">
         <div className="w-full max-w-sm">
-          <div className="sq-glass rounded-2xl p-8 text-center"
+          <div className="glass rounded-2xl p-8 text-center"
             style={{ boxShadow: "0 0 40px rgba(201,168,76,0.08)" }}>
             <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-5"
               style={{ background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.2)" }}>
               <Lock className="w-7 h-7" style={{ color: "#C9A84C" }} />
             </div>
-            <h1 className="text-lg font-bold mb-1" style={{ color: "var(--sq-text)" }}>
+            <h1 className="text-lg font-bold mb-1" style={{ color: "var(--text)" }}>
               Cockpit Agence
             </h1>
-            <p className="text-xs mb-6" style={{ color: "var(--sq-text-muted)" }}>
+            <p className="text-xs mb-6" style={{ color: "var(--text-muted)" }}>
               Acces reserve aux gestionnaires et photographes.
             </p>
             <form onSubmit={handleSubmit}>
@@ -111,9 +111,9 @@ function CmsAuthGate({ onAuth }: { onAuth: () => void }) {
                 placeholder="Code d'acces"
                 className="w-full text-center text-sm rounded-lg px-4 py-3 outline-none mb-3 tracking-wider"
                 style={{
-                  background: "var(--sq-surface)",
-                  border: `1px solid ${error ? "#FF4D6A" : "var(--sq-border)"}`,
-                  color: "var(--sq-text)",
+                  background: "var(--surface)",
+                  border: `1px solid ${error ? "#FF4D6A" : "var(--border)"}`,
+                  color: "var(--text)",
                 }}
                 autoFocus
               />
@@ -127,7 +127,7 @@ function CmsAuthGate({ onAuth }: { onAuth: () => void }) {
               </button>
             </form>
             <Link href="/agence" className="inline-block text-xs mt-4 transition-colors hover:text-[#C9A84C]"
-              style={{ color: "var(--sq-text-muted)" }}>
+              style={{ color: "var(--text-muted)" }}>
               &larr; Retour a l&apos;agence
             </Link>
           </div>
@@ -219,7 +219,7 @@ export default function AgenceCmsPage() {
           <div className="flex items-center gap-3">
             <Link href="/agence"
               className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-105"
-              style={{ background: "var(--sq-surface)", border: "1px solid var(--sq-border)" }}>
+              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
               <ArrowLeft className="w-4 h-4" style={{ color: "#C9A84C" }} />
             </Link>
             <div className="w-10 h-10 rounded-lg flex items-center justify-center"
@@ -227,10 +227,10 @@ export default function AgenceCmsPage() {
               <Settings className="w-5 h-5" style={{ color: "#C9A84C" }} />
             </div>
             <div>
-              <h1 className="text-lg font-bold" style={{ color: "var(--sq-text)" }}>
+              <h1 className="text-lg font-bold" style={{ color: "var(--text)" }}>
                 Cockpit Agence
               </h1>
-              <p className="text-xs" style={{ color: "var(--sq-text-muted)" }}>
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                 Gestion contenu &amp; acces client
               </p>
             </div>
@@ -250,21 +250,21 @@ export default function AgenceCmsPage() {
             { icon: Users, label: "Collaborateurs", value: collaborators.filter((c) => c.active).length, color: "#5B8DEF" },
             { icon: Image, label: "Medias total", value: pages.reduce((s, p) => s + p.galleryCount, 0), color: "#A78BFA" },
           ].map((kpi) => (
-            <div key={kpi.label} className="sq-glass rounded-xl p-4 group relative overflow-hidden">
+            <div key={kpi.label} className="glass rounded-xl p-4 group relative overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-[2px] opacity-0 group-hover:opacity-60 transition-opacity"
                 style={{ background: `linear-gradient(90deg, transparent, ${kpi.color}, transparent)` }} />
               <div className="flex items-center gap-2 mb-2">
                 <kpi.icon className="w-4 h-4" style={{ color: kpi.color }} />
-                <span className="text-[10px]" style={{ color: "var(--sq-text-muted)" }}>{kpi.label}</span>
+                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{kpi.label}</span>
               </div>
-              <p className="text-xl font-bold" style={{ color: "var(--sq-text)" }}>{kpi.value}</p>
+              <p className="text-xl font-bold" style={{ color: "var(--text)" }}>{kpi.value}</p>
             </div>
           ))}
         </div>
 
         {/* Tabs */}
         <div className="anim-3 flex gap-1 mb-6 p-1 rounded-lg w-fit"
-          style={{ background: "var(--sq-surface)", border: "1px solid var(--sq-border)" }}>
+          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
           {[
             { id: "pages" as const, label: "Pages", icon: FileText },
             { id: "codes" as const, label: "Codes d'acces", icon: Key },
@@ -274,7 +274,7 @@ export default function AgenceCmsPage() {
               className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-md transition-all"
               style={{
                 background: tab === t.id ? "rgba(201,168,76,0.15)" : "transparent",
-                color: tab === t.id ? "#C9A84C" : "var(--sq-text-muted)",
+                color: tab === t.id ? "#C9A84C" : "var(--text-muted)",
                 fontWeight: tab === t.id ? 600 : 400,
               }}>
               <t.icon className="w-3.5 h-3.5" />
@@ -289,14 +289,14 @@ export default function AgenceCmsPage() {
             <div className="lg:col-span-2 space-y-3">
               {pages.map((page) => (
                 <div key={page.id} onClick={() => setSelectedPage(page.id)}
-                  className="sq-glass sq-card-hover rounded-xl p-4 flex items-center gap-4 cursor-pointer transition-all"
+                  className="glass rounded-xl p-4 flex items-center gap-4 cursor-pointer transition-all"
                   style={{ outline: selectedPage === page.id ? "1px solid #C9A84C" : "none" }}>
                   <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0">
                     <img src={page.coverImage} alt={page.name} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-bold" style={{ color: "var(--sq-text)" }}>{page.name}</span>
+                      <span className="text-sm font-bold" style={{ color: "var(--text)" }}>{page.name}</span>
                       <span className="text-[9px] px-2 py-0.5 rounded-full"
                         style={{
                           background: page.status === "published" ? "#00D68F15" : page.status === "draft" ? "#FF9F4315" : "#8E8EA315",
@@ -305,11 +305,11 @@ export default function AgenceCmsPage() {
                         {page.status === "published" ? "Publie" : page.status === "draft" ? "Brouillon" : "Prive"}
                       </span>
                     </div>
-                    <p className="text-[11px]" style={{ color: "var(--sq-text-muted)" }}>
+                    <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                       /{page.slug} — {page.galleryCount} medias — Maj {page.lastUpdated}
                     </p>
                   </div>
-                  <Eye className="w-4 h-4 shrink-0" style={{ color: "var(--sq-text-muted)" }} />
+                  <Eye className="w-4 h-4 shrink-0" style={{ color: "var(--text-muted)" }} />
                 </div>
               ))}
             </div>
@@ -317,18 +317,18 @@ export default function AgenceCmsPage() {
             {/* Page detail / preview */}
             <div>
               {selectedPageData ? (
-                <div className="sq-glass rounded-xl p-5">
+                <div className="glass rounded-xl p-5">
                   <div className="w-full h-40 rounded-lg overflow-hidden mb-4">
                     <img src={selectedPageData.coverImage} alt={selectedPageData.name}
                       className="w-full h-full object-cover" />
                   </div>
-                  <h3 className="text-sm font-bold mb-3" style={{ color: "var(--sq-text)" }}>
+                  <h3 className="text-sm font-bold mb-3" style={{ color: "var(--text)" }}>
                     {selectedPageData.name}
                   </h3>
-                  <div className="space-y-2 text-xs mb-4" style={{ color: "var(--sq-text-muted)" }}>
+                  <div className="space-y-2 text-xs mb-4" style={{ color: "var(--text-muted)" }}>
                     <div className="flex justify-between">
                       <span>Slug</span>
-                      <span style={{ color: "var(--sq-text)" }}>/{selectedPageData.slug}</span>
+                      <span style={{ color: "var(--text)" }}>/{selectedPageData.slug}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Statut</span>
@@ -338,11 +338,11 @@ export default function AgenceCmsPage() {
                     </div>
                     <div className="flex justify-between">
                       <span>Medias</span>
-                      <span style={{ color: "var(--sq-text)" }}>{selectedPageData.galleryCount}</span>
+                      <span style={{ color: "var(--text)" }}>{selectedPageData.galleryCount}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Derniere maj</span>
-                      <span style={{ color: "var(--sq-text)" }}>{selectedPageData.lastUpdated}</span>
+                      <span style={{ color: "var(--text)" }}>{selectedPageData.lastUpdated}</span>
                     </div>
                   </div>
                   <div className="flex gap-2 flex-wrap">
@@ -357,9 +357,9 @@ export default function AgenceCmsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="sq-glass rounded-xl p-6 text-center">
-                  <Camera className="w-8 h-8 mx-auto mb-3" style={{ color: "var(--sq-text-muted)" }} />
-                  <p className="text-xs" style={{ color: "var(--sq-text-muted)" }}>
+                <div className="glass rounded-xl p-6 text-center">
+                  <Camera className="w-8 h-8 mx-auto mb-3" style={{ color: "var(--text-muted)" }} />
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                     Selectionnez une page pour voir les details.
                   </p>
                 </div>
@@ -372,14 +372,14 @@ export default function AgenceCmsPage() {
         {tab === "codes" && (
           <div className="anim-4">
             {/* Generate code */}
-            <div className="sq-glass rounded-xl p-5 mb-6"
+            <div className="glass rounded-xl p-5 mb-6"
               style={{ borderLeft: "3px solid #C9A84C" }}>
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h3 className="text-sm font-bold" style={{ color: "var(--sq-text)" }}>
+                  <h3 className="text-sm font-bold" style={{ color: "var(--text)" }}>
                     Generer un code temporaire
                   </h3>
-                  <p className="text-[11px]" style={{ color: "var(--sq-text-muted)" }}>
+                  <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                     Code valide 24h pour acces a la page client
                   </p>
                 </div>
@@ -403,13 +403,13 @@ export default function AgenceCmsPage() {
                   {activeCodes.map((c) => {
                     const remaining = Math.max(0, Math.round((c.expiresAt - Date.now()) / 3600000));
                     return (
-                      <div key={c.code} className="sq-glass rounded-xl p-4 flex items-center gap-3">
+                      <div key={c.code} className="glass rounded-xl p-4 flex items-center gap-3">
                         <Shield className="w-4 h-4 shrink-0" style={{ color: "#00D68F" }} />
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-mono font-bold tracking-wider"
-                            style={{ color: "var(--sq-text)" }}>{c.code}</span>
+                            style={{ color: "var(--text)" }}>{c.code}</span>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[10px]" style={{ color: "var(--sq-text-muted)" }}>{c.label}</span>
+                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{c.label}</span>
                             <span className="text-[10px] flex items-center gap-1" style={{ color: "#FF9F43" }}>
                               <Clock className="w-2.5 h-2.5" /> {remaining}h restantes
                             </span>
@@ -417,10 +417,10 @@ export default function AgenceCmsPage() {
                         </div>
                         <button onClick={() => copyCode(c.code)}
                           className="p-2 rounded-lg transition-all hover:opacity-80"
-                          style={{ background: "var(--sq-surface)" }}>
+                          style={{ background: "var(--surface)" }}>
                           {copiedCode === c.code
                             ? <CheckCircle2 className="w-3.5 h-3.5" style={{ color: "#00D68F" }} />
-                            : <Copy className="w-3.5 h-3.5" style={{ color: "var(--sq-text-muted)" }} />
+                            : <Copy className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
                           }
                         </button>
                         <button onClick={() => deleteCode(c.code)}
@@ -439,14 +439,14 @@ export default function AgenceCmsPage() {
             {expiredCodes.length > 0 && (
               <div>
                 <h4 className="text-xs font-semibold mb-3 flex items-center gap-2">
-                  <Clock className="w-3.5 h-3.5" style={{ color: "var(--sq-text-muted)" }} />
-                  <span style={{ color: "var(--sq-text-muted)" }}>Expires ({expiredCodes.length})</span>
+                  <Clock className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                  <span style={{ color: "var(--text-muted)" }}>Expires ({expiredCodes.length})</span>
                 </h4>
                 <div className="space-y-2">
                   {expiredCodes.slice(0, 5).map((c) => (
-                    <div key={c.code} className="sq-glass rounded-xl p-3 flex items-center gap-3 opacity-50">
-                      <span className="text-xs font-mono" style={{ color: "var(--sq-text-muted)" }}>{c.code}</span>
-                      <span className="text-[10px]" style={{ color: "var(--sq-text-muted)" }}>{c.label}</span>
+                    <div key={c.code} className="glass rounded-xl p-3 flex items-center gap-3 opacity-50">
+                      <span className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>{c.code}</span>
+                      <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{c.label}</span>
                       <span className="text-[10px] ml-auto" style={{ color: "#FF4D6A" }}>Expire</span>
                     </div>
                   ))}
@@ -455,9 +455,9 @@ export default function AgenceCmsPage() {
             )}
 
             {!codes.length && (
-              <div className="sq-glass rounded-xl p-8 text-center">
-                <Key className="w-8 h-8 mx-auto mb-3" style={{ color: "var(--sq-text-muted)" }} />
-                <p className="text-sm" style={{ color: "var(--sq-text-muted)" }}>
+              <div className="glass rounded-xl p-8 text-center">
+                <Key className="w-8 h-8 mx-auto mb-3" style={{ color: "var(--text-muted)" }} />
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>
                   Aucun code genere. Cliquez &quot;Generer&quot; pour creer un code d&apos;acces temporaire.
                 </p>
               </div>
@@ -469,7 +469,7 @@ export default function AgenceCmsPage() {
         {tab === "collaborators" && (
           <div className="anim-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold" style={{ color: "var(--sq-text)" }}>
+              <h3 className="text-sm font-semibold" style={{ color: "var(--text)" }}>
                 Equipe ({collaborators.length})
               </h3>
               <button onClick={() => setShowNewCollab(true)}
@@ -481,20 +481,20 @@ export default function AgenceCmsPage() {
 
             <div className="space-y-3">
               {collaborators.map((c) => (
-                <div key={c.id} className="sq-glass rounded-xl p-4 flex items-center gap-4">
+                <div key={c.id} className="glass rounded-xl p-4 flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full flex items-center justify-center"
                     style={{ background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.2)" }}>
                     <User className="w-5 h-5" style={{ color: "#C9A84C" }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold" style={{ color: "var(--sq-text)" }}>{c.name}</span>
+                      <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>{c.name}</span>
                       <span className="text-[9px] px-2 py-0.5 rounded-full"
                         style={{ background: c.active ? "#00D68F15" : "#8E8EA315", color: c.active ? "#00D68F" : "#8E8EA3" }}>
                         {c.active ? "Actif" : "Inactif"}
                       </span>
                     </div>
-                    <p className="text-[11px]" style={{ color: "var(--sq-text-muted)" }}>
+                    <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                       {c.role} — Profil {c.profile}
                     </p>
                   </div>
@@ -512,30 +512,30 @@ export default function AgenceCmsPage() {
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
                 style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}>
                 <div className="w-full max-w-sm rounded-2xl p-6"
-                  style={{ background: "var(--sq-bg)", border: "1px solid var(--sq-border)" }}>
+                  style={{ background: "var(--bg)", border: "1px solid var(--border)" }}>
                   <div className="flex items-center justify-between mb-5">
-                    <h3 className="text-sm font-bold" style={{ color: "var(--sq-text)" }}>Nouveau collaborateur</h3>
-                    <button onClick={() => setShowNewCollab(false)}><X className="w-4 h-4" style={{ color: "var(--sq-text-muted)" }} /></button>
+                    <h3 className="text-sm font-bold" style={{ color: "var(--text)" }}>Nouveau collaborateur</h3>
+                    <button onClick={() => setShowNewCollab(false)}><X className="w-4 h-4" style={{ color: "var(--text-muted)" }} /></button>
                   </div>
                   <div className="space-y-3">
                     <div>
-                      <label className="text-[10px] block mb-1" style={{ color: "var(--sq-text-muted)" }}>Prenom *</label>
+                      <label className="text-[10px] block mb-1" style={{ color: "var(--text-muted)" }}>Prenom *</label>
                       <input value={collabForm.name} onChange={(e) => setCollabForm({ ...collabForm, name: e.target.value })}
                         className="w-full text-xs rounded-lg px-3 py-2 outline-none"
-                        style={{ background: "var(--sq-surface)", border: "1px solid var(--sq-border)", color: "var(--sq-text)" }} />
+                        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }} />
                     </div>
                     <div>
-                      <label className="text-[10px] block mb-1" style={{ color: "var(--sq-text-muted)" }}>Role</label>
+                      <label className="text-[10px] block mb-1" style={{ color: "var(--text-muted)" }}>Role</label>
                       <input value={collabForm.role} onChange={(e) => setCollabForm({ ...collabForm, role: e.target.value })}
                         placeholder="Gestionnaire contenu, Photographe..."
                         className="w-full text-xs rounded-lg px-3 py-2 outline-none"
-                        style={{ background: "var(--sq-surface)", border: "1px solid var(--sq-border)", color: "var(--sq-text)" }} />
+                        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }} />
                     </div>
                     <div>
-                      <label className="text-[10px] block mb-1" style={{ color: "var(--sq-text-muted)" }}>Profil assigne</label>
+                      <label className="text-[10px] block mb-1" style={{ color: "var(--text-muted)" }}>Profil assigne</label>
                       <select value={collabForm.profile} onChange={(e) => setCollabForm({ ...collabForm, profile: e.target.value })}
                         className="w-full text-xs rounded-lg px-3 py-2 outline-none"
-                        style={{ background: "var(--sq-surface)", border: "1px solid var(--sq-border)", color: "var(--sq-text)" }}>
+                        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
                         {pages.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
                       </select>
                     </div>
@@ -543,7 +543,7 @@ export default function AgenceCmsPage() {
                   <div className="flex gap-3 mt-5">
                     <button onClick={() => setShowNewCollab(false)}
                       className="flex-1 text-xs py-2 rounded-lg"
-                      style={{ background: "var(--sq-surface)", color: "var(--sq-text-muted)", border: "1px solid var(--sq-border)" }}>
+                      style={{ background: "var(--surface)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
                       Annuler
                     </button>
                     <button onClick={addCollaborator}

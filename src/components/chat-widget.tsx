@@ -202,7 +202,7 @@ export function ChatWidget({ position = "bottom-right", embedded = false }: Chat
 
   const chatContent = (
     <div className={`flex flex-col ${embedded ? "h-full" : "h-[520px] w-[380px] max-w-[calc(100vw-2rem)]"}`}
-      style={{ background: "var(--sq-bg, #0A0A0F)" }}>
+      style={{ background: "var(--bg)" }}>
 
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 shrink-0"
@@ -226,7 +226,7 @@ export function ChatWidget({ position = "bottom-right", embedded = false }: Chat
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3"
-        style={{ scrollbarWidth: "thin", scrollbarColor: "var(--sq-border, #1E1E2E) transparent" }}>
+        style={{ scrollbarWidth: "thin", scrollbarColor: "var(--border) transparent" }}>
         {messages.map((msg) => (
           <div key={msg.id}>
             <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -237,8 +237,8 @@ export function ChatWidget({ position = "bottom-right", embedded = false }: Chat
                     : "rounded-2xl rounded-bl-md"
                 }`}
                 style={{
-                  background: msg.role === "user" ? accent : "var(--sq-surface, #12121A)",
-                  color: msg.role === "user" ? "#06060B" : "var(--sq-text, #E2E8F0)",
+                  background: msg.role === "user" ? accent : "var(--surface)",
+                  color: msg.role === "user" ? "#06060B" : "var(--text)",
                   fontWeight: msg.role === "user" ? 500 : 400,
                 }}
               >
@@ -255,9 +255,9 @@ export function ChatWidget({ position = "bottom-right", embedded = false }: Chat
                     onClick={() => handleActionClick(action)}
                     className="px-3 py-1.5 text-[10px] font-medium rounded-full cursor-pointer transition-all hover:scale-105"
                     style={{
-                      background: "var(--sq-surface, #12121A)",
-                      color: "var(--sq-text, #E2E8F0)",
-                      border: "1px solid var(--sq-border, #1E1E2E)",
+                      background: "var(--surface)",
+                      color: "var(--text)",
+                      border: "1px solid var(--border)",
                     }}
                   >
                     {action.label}
@@ -271,7 +271,7 @@ export function ChatWidget({ position = "bottom-right", embedded = false }: Chat
         {typing && (
           <div className="flex justify-start">
             <div className="px-3.5 py-2.5 rounded-2xl rounded-bl-md flex items-center gap-1.5"
-              style={{ background: "var(--sq-surface, #12121A)" }}>
+              style={{ background: "var(--surface)" }}>
               <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: accent, animationDelay: "0ms" }} />
               <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: accent, animationDelay: "150ms" }} />
               <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: accent, animationDelay: "300ms" }} />
@@ -281,7 +281,7 @@ export function ChatWidget({ position = "bottom-right", embedded = false }: Chat
       </div>
 
       {/* Input */}
-      <div className="p-3 shrink-0" style={{ borderTop: "1px solid var(--sq-border, #1E1E2E)" }}>
+      <div className="p-3 shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
         <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex gap-2">
           <input
             ref={inputRef}
@@ -291,9 +291,9 @@ export function ChatWidget({ position = "bottom-right", embedded = false }: Chat
             placeholder="Dis-moi ce que tu veux faire..."
             className="flex-1 text-xs px-3.5 py-2.5 rounded-xl outline-none"
             style={{
-              background: "var(--sq-surface, #12121A)",
-              color: "var(--sq-text, #E2E8F0)",
-              border: "1px solid var(--sq-border, #1E1E2E)",
+              background: "var(--surface)",
+              color: "var(--text)",
+              border: "1px solid var(--border)",
             }}
           />
           <button type="submit"
