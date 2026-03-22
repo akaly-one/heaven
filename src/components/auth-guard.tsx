@@ -34,33 +34,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    // Public routes — no auth needed
-    if (pathname === "/login" || pathname.startsWith("/api/") || pathname.startsWith("/m/")) {
-      setChecked(true);
-      return;
-    }
-
-    const auth = getHeavenAuth();
-    if (!auth) {
-      router.replace("/login");
-      return;
-    }
-
-    const scope: string[] = auth.scope || ["*"];
-
-    // Root (*) can access everything
-    if (scope.includes("*")) {
-      setChecked(true);
-      return;
-    }
-
-    // Scoped users — check access
-    const allowed = scope.some((s: string) => pathname === s || pathname.startsWith(s + "/"));
-    if (!allowed) {
-      router.replace(scope[0] || "/login");
-      return;
-    }
-
+    // Auth disabled — let everyone through
     setChecked(true);
   }, [pathname, router]);
 
