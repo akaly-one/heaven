@@ -6,8 +6,7 @@ import { Shield, ArrowRight, Zap } from "lucide-react";
 
 // Access codes — Phase 0 (hardcoded). Phase prod: Supabase dynamic codes.
 const ACCESS_CODES: Record<string, { role: string; redirect: string; scope: string[] }> = {
-  one: { role: "admin", redirect: "/", scope: ["*"] },
-  yumi: { role: "agence", redirect: "/agence", scope: ["/agence"] },
+  one: { role: "admin", redirect: "/agence", scope: ["*"] },
 };
 
 export default function LoginPage() {
@@ -41,8 +40,8 @@ export default function LoginPage() {
       {/* Animated mesh bg */}
       <div className="fixed inset-0 pointer-events-none" style={{
         background: `
-          radial-gradient(ellipse 800px 600px at 20% 20%, rgba(201,168,76,0.08), transparent),
-          radial-gradient(ellipse 600px 500px at 80% 80%, rgba(91,141,239,0.06), transparent),
+          radial-gradient(ellipse 800px 600px at 20% 20%, rgba(232,67,147,0.08), transparent),
+          radial-gradient(ellipse 600px 500px at 80% 80%, rgba(232,67,147,0.06), transparent),
           radial-gradient(ellipse 400px 400px at 50% 50%, rgba(167,139,250,0.04), transparent)
         `,
       }} />
@@ -54,12 +53,12 @@ export default function LoginPage() {
       {/* Floating orbs */}
       <div className="fixed pointer-events-none" style={{
         width: 500, height: 500, borderRadius: "50%", top: "-10%", right: "-5%",
-        background: "radial-gradient(circle, rgba(201,168,76,0.1), transparent 70%)",
+        background: "radial-gradient(circle, rgba(232,67,147,0.12), transparent 70%)",
         filter: "blur(60px)",
       }} />
       <div className="fixed pointer-events-none" style={{
         width: 400, height: 400, borderRadius: "50%", bottom: "-10%", left: "-5%",
-        background: "radial-gradient(circle, rgba(91,141,239,0.08), transparent 70%)",
+        background: "radial-gradient(circle, rgba(232,67,147,0.08), transparent 70%)",
         filter: "blur(50px)",
       }} />
 
@@ -80,19 +79,19 @@ export default function LoginPage() {
       `}</style>
 
       <div className={`login-card glass rounded-2xl p-10 max-w-sm w-full relative z-10 ${shake ? "shake" : ""}`}
-        style={{ boxShadow: "0 0 80px rgba(201,168,76,0.06), 0 20px 60px rgba(0,0,0,0.4)" }}>
+        style={{ boxShadow: "0 0 80px rgba(232,67,147,0.08), 0 20px 60px rgba(0,0,0,0.4)" }}>
 
         {/* Logo */}
         <div className="flex justify-center mb-6">
           <div className="w-20 h-20 rounded-2xl flex items-center justify-center relative"
             style={{
-              background: "linear-gradient(135deg, #C9A84C, #D4AF37, #E8C76A)",
-              boxShadow: "0 0 40px rgba(201,168,76,0.3), 0 8px 24px rgba(0,0,0,0.3)",
+              background: "linear-gradient(135deg, #E84393, #D63384, #FF6BB5)",
+              boxShadow: "0 0 40px rgba(232,67,147,0.3), 0 8px 24px rgba(0,0,0,0.3)",
             }}>
-            <Zap className="w-8 h-8" style={{ color: "#06060B" }} />
+            <Zap className="w-8 h-8" style={{ color: "#fff" }} />
             {/* Pulse ring */}
             <div className="absolute inset-0 rounded-2xl" style={{
-              border: "2px solid rgba(201,168,76,0.3)",
+              border: "2px solid rgba(232,67,147,0.3)",
               animation: "pulse 3s ease-in-out infinite",
             }} />
           </div>
@@ -114,7 +113,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div className="relative">
-            <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--sq-gold)" }} />
+            <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#E84393" }} />
             <input
               type="password"
               value={code}
@@ -122,7 +121,7 @@ export default function LoginPage() {
               placeholder="Code administrateur"
               required
               autoFocus
-              className="w-full pl-11 pr-4 py-3.5 rounded-xl text-sm outline-none transition-all duration-300 focus:shadow-[0_0_0_2px_rgba(201,168,76,0.3)]"
+              className="w-full pl-11 pr-4 py-3.5 rounded-xl text-sm outline-none transition-all duration-300 focus:shadow-[0_0_0_2px_rgba(232,67,147,0.3)]"
               style={{
                 background: "var(--sq-bg3)",
                 color: "var(--sq-text)",
@@ -132,10 +131,10 @@ export default function LoginPage() {
           </div>
 
           <button type="submit" disabled={isLoading}
-            className="w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-300 hover:shadow-[0_0_24px_rgba(201,168,76,0.3)] hover:-translate-y-0.5 disabled:opacity-50 cursor-pointer"
+            className="w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-300 hover:shadow-[0_0_24px_rgba(232,67,147,0.3)] hover:-translate-y-0.5 disabled:opacity-50 cursor-pointer"
             style={{
-              background: "linear-gradient(135deg, #C9A84C, #D4AF37)",
-              color: "#06060B",
+              background: "linear-gradient(135deg, #E84393, #D63384)",
+              color: "#fff",
             }}>
             {isLoading ? (
               <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
@@ -148,7 +147,13 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-8 text-center">
+        <div className="mt-6 flex flex-col items-center gap-3">
+          <a href="https://live-os-cyan.vercel.app/login" target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all duration-300 hover:-translate-y-0.5"
+            style={{ background: "rgba(201,168,76,0.1)", color: "#C9A84C", border: "1px solid rgba(201,168,76,0.2)" }}>
+            <span>Admin OS</span>
+            <ArrowRight className="w-3 h-3" />
+          </a>
           <p className="text-[10px] tracking-widest uppercase" style={{ color: "var(--sq-text-muted)" }}>
             Heaven Studio &middot; Benelux
           </p>

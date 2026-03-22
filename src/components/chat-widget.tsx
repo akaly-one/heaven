@@ -2,15 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  Sparkles, X, Send, LayoutDashboard, Wrench, Palette, Camera,
-  Rocket, Settings, TrendingUp, Bell, FileText, Users, Calendar,
-  Plus, Search, BarChart3, ArrowRight, Zap,
-} from "lucide-react";
+import { Sparkles, X, Send } from "lucide-react";
 
 /* ══════════════════════════════════════════════
-   PILOT — Agent admin OS SQWENSY
-   Aide NB a naviguer, gerer, et agir dans l'OS
+   PILOT — Agent admin Heaven Studio
+   Aide a naviguer, gerer, et agir dans le cockpit
    Mode task-oriented, pas informatif
    ══════════════════════════════════════════════ */
 
@@ -33,38 +29,19 @@ function readQuickStats() {
   const safeJSON = (key: string) => {
     try { return JSON.parse(localStorage.getItem(key) || "null"); } catch { return null; }
   };
-  const leads = safeJSON("sqwensy_jps_pipeline") || safeJSON("sqwensy_leads") || [];
-  const products = safeJSON("sqwensy_sqwensy_produits") || safeJSON("sqwensy_brands_products") || [];
-  const tickets = safeJSON("sqwensy_chat_tickets") || [];
-  const notifications = safeJSON("sqwensy_notifications") || [];
-  const studioProjects = safeJSON("sqwensy_studio_projects") || [];
-  const agenceProjects = safeJSON("sqwensy_agence_projects") || [];
+  const tickets = safeJSON("heaven_chat_tickets") || [];
+  const notifications = safeJSON("heaven_notifications") || [];
 
-  const activeLeads = Array.isArray(leads) ? leads.filter((l: { stage?: string }) =>
-    l.stage && !["cloture", "sav"].includes(l.stage)).length : 0;
   const openTickets = Array.isArray(tickets) ? tickets.filter((t: { status?: string }) =>
     t.status && ["new", "open"].includes(t.status)).length : 0;
   const unreadNotifs = Array.isArray(notifications) ? notifications.filter((n: { read?: boolean }) => !n.read).length : 0;
 
-  return {
-    leadsTotal: Array.isArray(leads) ? leads.length : 0,
-    leadsActive: activeLeads,
-    productsCount: Array.isArray(products) ? products.length : 0,
-    ticketsOpen: openTickets,
-    unreadNotifs,
-    studioActive: Array.isArray(studioProjects) ? studioProjects.filter((p: { status?: string }) => p.status === "active").length : 0,
-    agenceActive: Array.isArray(agenceProjects) ? agenceProjects.filter((p: { status?: string }) => p.status === "active").length : 0,
-  };
+  return { ticketsOpen: openTickets, unreadNotifs };
 }
 
 // ── Navigation map ──
 const NAV_MAP: Record<string, { path: string; label: string }> = {
-  hq: { path: "/", label: "HQ Dashboard" },
-  jps: { path: "/client/jps", label: "JPS Plomberie" },
-  studio: { path: "/studio", label: "Vawlens Studio" },
-  agence: { path: "/agence", label: "Vawlens Agence" },
-  brands: { path: "/brands", label: "SQWENSY Brands" },
-  admin: { path: "/admin", label: "Administration" },
+  agence: { path: "/agence", label: "Cockpit" },
 };
 
 interface ChatWidgetProps {
@@ -118,23 +95,16 @@ export function ChatWidget({ position = "bottom-right", embedded = false }: Chat
     if (messages.length === 0) {
       const stats = readQuickStats();
       const alerts: string[] = [];
-      if (stats.ticketsOpen > 0) alerts.push(`${stats.ticketsOpen} ticket${stats.ticketsOpen > 1 ? "s" : ""} BEACON en attente`);
+      if (stats.ticketsOpen > 0) alerts.push(`${stats.ticketsOpen} ticket${stats.ticketsOpen > 1 ? "s" : ""} en attente`);
       if (stats.unreadNotifs > 0) alerts.push(`${stats.unreadNotifs} notification${stats.unreadNotifs > 1 ? "s" : ""} non lue${stats.unreadNotifs > 1 ? "s" : ""}`);
 
-      const alertText = alerts.length > 0 ? `\n\n⚠️ ${alerts.join(" · ")}` : "";
+      const alertText = alerts.length > 0 ? `\n\n${alerts.join(" · ")}` : "";
 
       setMessages([{
         id: "greeting",
         role: "bot",
-        content: `Salut NB ! PILOT ici.\n\nQue veux-tu faire ?${alertText}`,
-        actions: [
-          { id: "stats", label: "📊 Stats du jour", value: "stats" },
-          { id: "go_jps", label: "🔧 Pipeline JPS", value: "go_jps" },
-          { id: "go_tickets", label: "🎫 Tickets BEACON", value: "go_tickets" },
-          { id: "go_studio", label: "🎨 Studio", value: "go_studio" },
-          { id: "go_brands", label: "🚀 Brands", value: "go_brands" },
-          { id: "create_lead", label: "➕ Creer un lead", value: "create_lead" },
-        ],
+        content: `Salut ! PILOT ici.\n\nQue veux-tu faire ?${alertText}`,
+        actions: getMainActions(),
       }]);
     }
   }
@@ -143,47 +113,24 @@ export function ChatWidget({ position = "bottom-right", embedded = false }: Chat
     const nav = NAV_MAP[key];
     if (nav) {
       router.push(nav.path);
-      addBot(`✅ Navigation vers ${nav.label}`, getMainActions());
+      addBot(`Navigation vers ${nav.label}`, getMainActions());
     }
   }
 
   function showStats() {
     const s = readQuickStats();
     addBot(
-      `📊 Stats en temps reel :\n\n` +
-      `🔧 JPS — ${s.leadsActive} leads actifs / ${s.leadsTotal} total\n` +
-      `🚀 Brands — ${s.productsCount} produit${s.productsCount > 1 ? "s" : ""} en pipeline\n` +
-      `🎨 Studio — ${s.studioActive} projet${s.studioActive > 1 ? "s" : ""} actif${s.studioActive > 1 ? "s" : ""}\n` +
-      `📸 Agence — ${s.agenceActive} projet${s.agenceActive > 1 ? "s" : ""} actif${s.agenceActive > 1 ? "s" : ""}\n` +
-      `🎫 Tickets BEACON — ${s.ticketsOpen} en attente\n` +
-      `🔔 Notifications — ${s.unreadNotifs} non lue${s.unreadNotifs > 1 ? "s" : ""}`,
-      [
-        { id: "go_jps", label: "🔧 Voir JPS", value: "go_jps" },
-        { id: "go_tickets", label: "🎫 Voir tickets", value: "go_tickets" },
-        { id: "go_brands", label: "🚀 Voir Brands", value: "go_brands" },
-        { id: "refresh", label: "🔄 Rafraichir", value: "stats" },
-      ]
-    );
-  }
-
-  function showCreateLead() {
-    addBot(
-      "➕ Creer un lead JPS :\n\nOuvre le pipeline JPS et utilise le bouton '+' pour ajouter un nouveau lead avec toutes les infos.\n\nJe t'y emmene ?",
-      [
-        { id: "go_jps", label: "🔧 Ouvrir JPS", value: "go_jps" },
-        { id: "back", label: "⬅️ Retour", value: "menu" },
-      ]
+      `Stats en temps reel :\n\n` +
+      `Tickets — ${s.ticketsOpen} en attente\n` +
+      `Notifications — ${s.unreadNotifs} non lue${s.unreadNotifs > 1 ? "s" : ""}`,
+      getMainActions()
     );
   }
 
   function getMainActions(): PilotAction[] {
     return [
-      { id: "stats", label: "📊 Stats", value: "stats" },
-      { id: "go_jps", label: "🔧 JPS", value: "go_jps" },
-      { id: "go_tickets", label: "🎫 Tickets", value: "go_tickets" },
-      { id: "go_studio", label: "🎨 Studio", value: "go_studio" },
-      { id: "go_brands", label: "🚀 Brands", value: "go_brands" },
-      { id: "create_lead", label: "➕ Lead", value: "create_lead" },
+      { id: "stats", label: "Stats", value: "stats" },
+      { id: "go_agence", label: "Cockpit", value: "go_agence" },
     ];
   }
 
@@ -191,28 +138,8 @@ export function ChatWidget({ position = "bottom-right", embedded = false }: Chat
     const t = text.toLowerCase().trim();
 
     // Navigation commands
-    if (t.includes("jps") || t.includes("pipeline") || t.includes("plomberie") || t === "go_jps") {
-      navigateTo("jps");
-      return;
-    }
-    if (t.includes("ticket") || t.includes("beacon") || t.includes("admin") || t === "go_tickets") {
-      navigateTo("admin");
-      return;
-    }
-    if (t.includes("studio") || t.includes("design") || t === "go_studio") {
-      navigateTo("studio");
-      return;
-    }
-    if (t.includes("agence") || t.includes("profil") || t === "go_agence") {
+    if (t.includes("agence") || t.includes("cockpit") || t.includes("profil") || t === "go_agence") {
       navigateTo("agence");
-      return;
-    }
-    if (t.includes("brand") || t.includes("produit") || t === "go_brands") {
-      navigateTo("brands");
-      return;
-    }
-    if (t === "hq" || t.includes("dashboard") || t.includes("accueil") || t === "go_hq") {
-      navigateTo("hq");
       return;
     }
 
@@ -222,36 +149,21 @@ export function ChatWidget({ position = "bottom-right", embedded = false }: Chat
       return;
     }
 
-    // Create lead
-    if (t.includes("creer") || t.includes("nouveau lead") || t.includes("ajouter lead") || t === "create_lead") {
-      showCreateLead();
-      return;
-    }
-
     // Menu / help
     if (t === "menu" || t === "aide" || t === "help" || t === "retour") {
       addBot("Que veux-tu faire ?", getMainActions());
       return;
     }
 
-    // Devis
-    if (t.includes("devis")) {
-      addBot("Pour envoyer un devis :\n\n1. Va dans le pipeline JPS\n2. Ouvre le lead concerne\n3. Envoie le devis depuis sa fiche\n\nJe t'emmene au pipeline ?", [
-        { id: "go_jps", label: "🔧 Ouvrir JPS", value: "go_jps" },
-        { id: "back", label: "⬅️ Retour", value: "menu" },
-      ]);
-      return;
-    }
-
     // Notifications
     if (t.includes("notif")) {
       const s = readQuickStats();
-      addBot(`🔔 ${s.unreadNotifs} notification${s.unreadNotifs > 1 ? "s" : ""} non lue${s.unreadNotifs > 1 ? "s" : ""}.\n\nClique sur la cloche en haut a droite du dashboard pour les voir.`, getMainActions());
+      addBot(`${s.unreadNotifs} notification${s.unreadNotifs > 1 ? "s" : ""} non lue${s.unreadNotifs > 1 ? "s" : ""}.`, getMainActions());
       return;
     }
 
     // Fallback
-    addBot("Je peux t'aider a :\n\n📊 Voir les stats\n🔧 Naviguer vers un cockpit\n➕ Creer un lead\n🎫 Gerer les tickets\n📋 Envoyer un devis\n\nDis-moi ce que tu veux faire !", getMainActions());
+    addBot("Je peux t'aider a :\n\nVoir les stats\nNaviguer vers le cockpit\nGerer les notifications\n\nDis-moi ce que tu veux faire !", getMainActions());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
@@ -301,7 +213,7 @@ export function ChatWidget({ position = "bottom-right", embedded = false }: Chat
         <div className="flex-1">
           <p className="text-sm font-bold" style={{ color: "#06060B" }}>PILOT</p>
           <p className="text-[10px] font-medium" style={{ color: "rgba(6,6,11,0.6)" }}>
-            Assistant admin OS
+            Assistant Heaven Studio
           </p>
         </div>
         {!embedded && (

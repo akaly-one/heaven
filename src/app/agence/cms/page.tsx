@@ -80,7 +80,7 @@ function CmsAuthGate({ onAuth }: { onAuth: () => void }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (code.trim().toLowerCase() === CMS_CODE) {
-      sessionStorage.setItem("sqwensy_cms_auth", "1");
+      sessionStorage.setItem("heaven_cms_auth", "1");
       onAuth();
     } else {
       setError(true);
@@ -150,19 +150,19 @@ export default function AgenceCmsPage() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   useEffect(() => {
-    if (sessionStorage.getItem("sqwensy_cms_auth")) setAuthed(true);
+    if (sessionStorage.getItem("heaven_cms_auth")) setAuthed(true);
   }, []);
 
   useEffect(() => {
     if (!authed) return;
-    setCodes(loadData("sqwensy_cms_codes", []));
-    setCollaborators(loadData("sqwensy_cms_collaborators", SEED_COLLABORATORS));
-    setPages(loadData("sqwensy_cms_pages", SEED_PAGES));
+    setCodes(loadData("heaven_cms_codes", []));
+    setCollaborators(loadData("heaven_cms_collaborators", SEED_COLLABORATORS));
+    setPages(loadData("heaven_cms_pages", SEED_PAGES));
   }, [authed]);
 
-  useEffect(() => { if (authed && codes.length) saveData("sqwensy_cms_codes", codes); }, [codes, authed]);
-  useEffect(() => { if (authed && collaborators.length) saveData("sqwensy_cms_collaborators", collaborators); }, [collaborators, authed]);
-  useEffect(() => { if (authed && pages.length) saveData("sqwensy_cms_pages", pages); }, [pages, authed]);
+  useEffect(() => { if (authed && codes.length) saveData("heaven_cms_codes", codes); }, [codes, authed]);
+  useEffect(() => { if (authed && collaborators.length) saveData("heaven_cms_collaborators", collaborators); }, [collaborators, authed]);
+  useEffect(() => { if (authed && pages.length) saveData("heaven_cms_pages", pages); }, [pages, authed]);
 
   const generateNewCode = useCallback((label: string) => {
     const now = Date.now();
@@ -235,7 +235,7 @@ export default function AgenceCmsPage() {
               </p>
             </div>
           </div>
-          <button onClick={() => { sessionStorage.removeItem("sqwensy_cms_auth"); setAuthed(false); }}
+          <button onClick={() => { sessionStorage.removeItem("heaven_cms_auth"); setAuthed(false); }}
             className="text-[10px] px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
             style={{ background: "rgba(255,77,106,0.1)", color: "#FF4D6A", border: "1px solid rgba(255,77,106,0.2)" }}>
             Deconnexion
