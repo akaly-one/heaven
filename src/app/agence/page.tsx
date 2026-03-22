@@ -31,11 +31,7 @@ const DEFAULT_PACKS: PackConfig[] = [
   { id: "platinum", name: "Platinum All-Access", price: 320, color: "#A78BFA", features: ["Acces TOTAL aux 3 packs", "Demandes personnalisees", "Video calls prives", "Contenu exclusif illimite"], bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: true }, face: true, badge: "Ultimate", active: true },
 ];
 
-// ── Storage ──
-const CODES_KEY = "heaven_gallery_codes";
-
-function loadCodes(): AccessCode[] { try { return JSON.parse(localStorage.getItem(CODES_KEY) || "[]"); } catch { return []; } }
-function saveCodes(codes: AccessCode[]) { localStorage.setItem(CODES_KEY, JSON.stringify(codes)); }
+// ── No localStorage — API-only ──
 
 // ── API helpers ──
 async function apiFetchCodes(model: string): Promise<AccessCode[]> {
@@ -76,8 +72,8 @@ export default function AgenceDashboard() {
   // ── Load data ──
   useEffect(() => {
     apiFetchCodes(modelSlug).then(apiCodes => {
-      setCodes(apiCodes); saveCodes(apiCodes);
-    }).catch(() => setCodes(loadCodes()));
+      setCodes(apiCodes);
+    }).catch(err => console.error("[Cockpit] Failed to fetch codes:", err));
 
     fetch(`/api/packs?model=${modelSlug}`).then(r => r.json()).then(d => {
       if (d.packs?.length > 0) setPacks(d.packs);
@@ -111,7 +107,7 @@ export default function AgenceDashboard() {
       created: new Date().toISOString(), used: false, active: true, revoked: false, isTrial: false, lastUsed: null,
     };
     const updated = [...codes, newCode];
-    setCodes(updated); saveCodes(updated);
+    setCodes(updated);
     apiCreateCode(newCode);
     return code;
   }, [codes, packs, modelSlug]);
@@ -119,19 +115,19 @@ export default function AgenceDashboard() {
   const handleCopy = useCallback((code: string) => { navigator.clipboard.writeText(code); }, []);
   const handleRevoke = useCallback((code: string) => {
     const u = codes.map(c => c.code === code ? { ...c, revoked: true, active: false } : c);
-    setCodes(u); saveCodes(u); apiUpdateCode(code, "revoke");
+    setCodes(u); apiUpdateCode(code, "revoke");
   }, [codes]);
   const handlePause = useCallback((code: string) => {
     const u = codes.map(c => c.code === code ? { ...c, active: false } : c);
-    setCodes(u); saveCodes(u); apiUpdateCode(code, "pause");
+    setCodes(u); apiUpdateCode(code, "pause");
   }, [codes]);
   const handleReactivate = useCallback((code: string) => {
     const u = codes.map(c => c.code === code ? { ...c, active: true, revoked: false } : c);
-    setCodes(u); saveCodes(u); apiUpdateCode(code, "reactivate");
+    setCodes(u); apiUpdateCode(code, "reactivate");
   }, [codes]);
   const handleDelete = useCallback((code: string) => {
     const u = codes.filter(c => c.code !== code);
-    setCodes(u); saveCodes(u); apiDeleteCode(code);
+    setCodes(u); apiDeleteCode(code);
   }, [codes]);
 
   return (

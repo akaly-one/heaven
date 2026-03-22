@@ -344,13 +344,21 @@ export default function ModelPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...newUpload, model: slug }),
         });
+        const data = await res.json();
         if (res.ok) {
-          const data = await res.json();
           setUploads(prev => [data.upload || newUpload, ...prev]);
           setEditToast("Média ajouté");
           setTimeout(() => setEditToast(null), 2000);
+        } else {
+          console.error("[EditMode] Upload save failed:", data);
+          setEditToast("Erreur: " + (data.error || "upload échoué"));
+          setTimeout(() => setEditToast(null), 3000);
         }
-      } catch {}
+      } catch (err) {
+        console.error("[EditMode] Upload save error:", err);
+        setEditToast("Erreur réseau");
+        setTimeout(() => setEditToast(null), 3000);
+      }
     }
     setUploading(false);
     if (mediaInputRef.current) mediaInputRef.current.value = "";
@@ -359,11 +367,20 @@ export default function ModelPage() {
   // ── Edit mode: delete media ──
   const handleDeleteMedia = useCallback(async (id: string) => {
     try {
-      await fetch(`/api/uploads?model=${slug}&id=${id}`, { method: "DELETE" });
-      setUploads(prev => prev.filter(u => u.id !== id));
-      setEditToast("Média supprimé");
-      setTimeout(() => setEditToast(null), 2000);
-    } catch {}
+      const res = await fetch(`/api/uploads?model=${slug}&id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setUploads(prev => prev.filter(u => u.id !== id));
+        setEditToast("Média supprimé");
+        setTimeout(() => setEditToast(null), 2000);
+      } else {
+        const data = await res.json();
+        console.error("[EditMode] Delete failed:", data);
+        setEditToast("Erreur suppression");
+        setTimeout(() => setEditToast(null), 3000);
+      }
+    } catch (err) {
+      console.error("[EditMode] Delete error:", err);
+    }
   }, [slug]);
 
   // ── Edit mode: update media ──
@@ -486,10 +503,10 @@ export default function ModelPage() {
     setLoading(true);
     Promise.all([
       fetch(`/api/models/${slug}`).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
-      fetch(`/api/posts?model=${slug}`).then(r => r.json()).catch(() => ({ posts: [] })),
-      fetch(`/api/packs?model=${slug}`).then(r => r.json()).catch(() => ({ packs: [] })),
-      fetch(`/api/uploads?model=${slug}`).then(r => r.json()).catch(() => ({ uploads: [] })),
-      fetch(`/api/wall?model=${slug}`).then(r => r.json()).catch(() => ({ posts: [] })),
+      fetch(`/api/posts?model=${slug}`).then(r => r.json()).catch(e => { console.error("[Profile] posts fetch failed:", e); return { posts: [] }; }),
+      fetch(`/api/packs?model=${slug}`).then(r => r.json()).catch(e => { console.error("[Profile] packs fetch failed:", e); return { packs: [] }; }),
+      fetch(`/api/uploads?model=${slug}`).then(r => r.json()).catch(e => { console.error("[Profile] uploads fetch failed:", e); return { uploads: [] }; }),
+      fetch(`/api/wall?model=${slug}`).then(r => r.json()).catch(e => { console.error("[Profile] wall fetch failed:", e); return { posts: [] }; }),
     ]).then(([modelData, postsData, packsData, uploadsData, wallData]) => {
       setModel(modelData);
       setPosts(postsData.posts || []);
@@ -546,8 +563,8 @@ export default function ModelPage() {
   // Refresh on focus
   useEffect(() => {
     const onFocus = () => {
-      fetch(`/api/uploads?model=${slug}`).then(r => r.json()).then(d => { if (d.uploads) setUploads(d.uploads); }).catch(() => {});
-      fetch(`/api/wall?model=${slug}`).then(r => r.json()).then(d => { if (d.posts) setWallPosts(d.posts); }).catch(() => {});
+      fetch(`/api/uploads?model=${slug}`).then(r => r.json()).then(d => { if (d.uploads) setUploads(d.uploads); }).catch(e => console.error("[Profile] refresh uploads failed:", e));
+      fetch(`/api/wall?model=${slug}`).then(r => r.json()).then(d => { if (d.posts) setWallPosts(d.posts); }).catch(e => console.error("[Profile] refresh wall failed:", e));
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
