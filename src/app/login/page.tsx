@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Shield, ArrowRight, Zap } from "lucide-react";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -42,7 +40,8 @@ export default function LoginPage() {
             loggedAt: data.loggedAt,
           })
         );
-        router.push("/agence");
+        // Full reload to remount ModelProvider with fresh session
+        window.location.href = "/agence";
       } else {
         setError(data.error || "Code invalide");
         setShake(true);

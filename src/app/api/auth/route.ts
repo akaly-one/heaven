@@ -44,7 +44,8 @@ export async function POST(req: NextRequest) {
       loggedAt: new Date().toISOString(),
     }, { headers: cors });
   } catch (err) {
-    console.error("[API/auth] POST:", err);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[API/auth] POST:", msg);
+    return NextResponse.json({ error: `Erreur serveur: ${msg}` }, { status: 500, headers: cors });
   }
 }
