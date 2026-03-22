@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { Upload, Image, Star, ThumbsUp, ThumbsDown, Wifi, WifiOff, Edit3, Trash2, ToggleLeft, ToggleRight, Save, Shield } from "lucide-react";
+import { Upload, Image, Star, ThumbsUp, ThumbsDown, Wifi, WifiOff, Edit3, Trash2, ToggleLeft, ToggleRight, Save, Shield, Check, X, Eye } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
@@ -132,6 +132,13 @@ export default function AgenceDashboard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
+  // Content management
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [editingUpload, setEditingUpload] = useState<string | null>(null);
+  const [previewUpload, setPreviewUpload] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
   // Pack editing
   const [editingPack, setEditingPack] = useState<string | null>(null);
 
@@ -204,39 +211,67 @@ export default function AgenceDashboard() {
 
   // Upload handler — uploads to Cloudinary, stores URL
   const [uploading, setUploading] = useState(false);
+  const showToast = useCallback((message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  }, []);
+
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { alert("Max 10MB"); return; }
+    if (file.size > 10 * 1024 * 1024) { showToast("Fichier trop lourd (10MB max)", "error"); return; }
     setUploading(true);
+    setUploadProgress(10);
     const reader = new FileReader();
     reader.onload = async () => {
       const base64 = reader.result as string;
       const isVideo = file.type.startsWith("video/");
+      const fileType: "photo" | "video" | "reel" = isVideo ? "video" : "photo";
       const folder = `heaven/${modelSlug}/${isVideo ? "videos" : "gallery"}`;
+
+      setUploadProgress(30);
 
       // Upload to Cloudinary
       const cloud = await uploadToCloud(base64, folder);
-      const url = cloud?.url || base64; // fallback to base64 if cloud fails
+      setUploadProgress(70);
+      const url = cloud?.url || base64;
       const cloudinaryId = cloud?.public_id || undefined;
 
       const newUpload: UploadedContent = {
         id: cloudinaryId || `upload-${Date.now()}`,
         tier: uploadVisibility === "promo" ? "promo" : uploadTier,
-        type: isVideo ? "video" : uploadType,
+        type: fileType,
         label: uploadLabel.trim() || file.name.split(".")[0],
         dataUrl: url, uploadedAt: new Date().toISOString(),
         isNew: true, visibility: uploadVisibility,
       };
+      setUploadProgress(90);
       const updated = [newUpload, ...uploads]; setUploads(updated); saveUploads(updated);
-      apiCreateUpload(modelSlug, newUpload); setUploadLabel(""); setShowUploadForm(false);
-      setUploading(false);
+      await apiCreateUpload(modelSlug, newUpload);
+      setUploadProgress(100);
+      setUploadLabel(""); setShowUploadForm(false);
+      setUploading(false); setUploadProgress(0);
+      showToast(`${fileType === "video" ? "Vidéo" : "Photo"} uploadée avec succès`);
     };
     reader.readAsDataURL(file); e.target.value = "";
-  }, [uploads, uploadTier, uploadType, uploadLabel, uploadVisibility, modelSlug]);
+  }, [uploads, uploadTier, uploadType, uploadLabel, uploadVisibility, modelSlug, showToast]);
 
   const handleDeleteUpload = useCallback((id: string) => {
     const u = uploads.filter(u => u.id !== id); setUploads(u); saveUploads(u); apiDeleteUpload(modelSlug, id);
-  }, [uploads, modelSlug]);
+    setConfirmDelete(null); setEditingUpload(null); setPreviewUpload(null);
+    showToast("Contenu supprimé");
+  }, [uploads, modelSlug, showToast]);
+
+  const handleEditUpload = useCallback((id: string, updates: Partial<UploadedContent>) => {
+    const u = uploads.map(item => item.id === id ? { ...item, ...updates } : item);
+    setUploads(u); saveUploads(u);
+    fetch("/api/uploads", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: modelSlug, id, updates }),
+    }).catch(() => {});
+    showToast("Modifications sauvegardées");
+    setEditingUpload(null);
+  }, [uploads, modelSlug, showToast]);
 
   // Review handlers
   const handleValidateReview = useCallback((id: string) => {
@@ -432,22 +467,17 @@ export default function AgenceDashboard() {
                 {/* Upload form */}
                 {showUploadForm && (
                   <div className="card-premium p-5 gradient-border">
-                    <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text)" }}>Upload Content</h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-semibold" style={{ color: "var(--text)" }}>Upload Content</h3>
+                      <button onClick={() => setShowUploadForm(false)} className="w-6 h-6 rounded-lg flex items-center justify-center cursor-pointer"
+                        style={{ background: "rgba(255,255,255,0.04)" }}>
+                        <X className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
+                      </button>
+                    </div>
                     <div className="space-y-3">
                       <input value={uploadLabel} onChange={e => setUploadLabel(e.target.value)} placeholder="Label (optional)"
                         className="w-full px-3 py-2 rounded-lg text-sm outline-none"
                         style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
-                      <div className="flex gap-2">
-                        {(["photo", "video", "reel"] as const).map(t => (
-                          <button key={t} onClick={() => setUploadType(t)}
-                            className="flex-1 py-2 rounded-lg text-xs font-medium cursor-pointer capitalize"
-                            style={{
-                              background: uploadType === t ? "var(--accent)" : "rgba(255,255,255,0.03)",
-                              color: uploadType === t ? "#fff" : "var(--text-muted)",
-                              border: `1px solid ${uploadType === t ? "var(--accent)" : "var(--border2)"}`,
-                            }}>{t}</button>
-                        ))}
-                      </div>
                       <div className="flex gap-2">
                         {Object.entries(TIER_COLORS).filter(([k]) => k !== "trial").map(([t, c]) => (
                           <button key={t} onClick={() => setUploadTier(t)}
@@ -468,15 +498,31 @@ export default function AgenceDashboard() {
                         <button onClick={() => setUploadVisibility("promo")}
                           className="flex-1 py-2 rounded-lg text-xs font-medium cursor-pointer"
                           style={{ background: uploadVisibility === "promo" ? "var(--success)" : "rgba(255,255,255,0.03)", color: uploadVisibility === "promo" ? "#fff" : "var(--text-muted)" }}>
-                          Promo (free)
+                          Promo (visible)
                         </button>
                       </div>
+                      <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                        Le type (photo/vidéo) est détecté automatiquement. Max 10 MB.
+                      </p>
+
+                      {/* Progress bar */}
+                      {uploading && (
+                        <div className="space-y-1.5">
+                          <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--bg3)" }}>
+                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${uploadProgress}%`, background: "var(--accent)" }} />
+                          </div>
+                          <p className="text-[10px] text-center" style={{ color: "var(--accent)" }}>
+                            {uploadProgress < 30 ? "Lecture du fichier..." : uploadProgress < 70 ? "Upload vers le cloud..." : uploadProgress < 100 ? "Sauvegarde..." : "Terminé !"}
+                          </p>
+                        </div>
+                      )}
+
                       <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
                         className="w-full py-3 rounded-xl text-sm font-semibold cursor-pointer btn-gradient flex items-center justify-center gap-2 disabled:opacity-50">
                         {uploading ? (
-                          <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(255,255,255,0.3)", borderTopColor: "#fff" }} /> Uploading...</>
+                          <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(255,255,255,0.3)", borderTopColor: "#fff" }} /> Upload en cours...</>
                         ) : (
-                          <><Upload className="w-4 h-4" /> Choose File</>
+                          <><Upload className="w-4 h-4" /> Choisir un fichier</>
                         )}
                       </button>
                       <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileUpload} />
@@ -492,38 +538,180 @@ export default function AgenceDashboard() {
                   </button>
                 )}
 
+                {/* Content count */}
+                {uploads.length > 0 && (
+                  <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                    {uploads.length} contenu{uploads.length > 1 ? "s" : ""} · Cliquer pour gérer
+                  </p>
+                )}
+
                 {/* Content grid */}
                 {uploads.length === 0 ? (
                   <div className="text-center py-16">
                     <Image className="w-12 h-12 mx-auto mb-3 opacity-20" style={{ color: "var(--text-muted)" }} />
-                    <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No content uploaded</p>
+                    <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Aucun contenu uploadé</p>
+                    <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>Cliquez sur Upload Content pour commencer</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 gap-2">
-                    {uploads.map(item => (
-                      <div key={item.id} className="relative aspect-square rounded-xl overflow-hidden group">
-                        <img src={item.dataUrl} alt={item.label} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <button onClick={() => handleDeleteUpload(item.id)}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
-                            style={{ background: "rgba(239,68,68,0.9)", color: "#fff" }}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                        <div className="absolute top-1.5 left-1.5">
-                          <span className="badge text-[8px]" style={{ background: `${TIER_COLORS[item.tier] || "#64748B"}20`, color: TIER_COLORS[item.tier] || "#64748B" }}>
-                            {item.tier}
-                          </span>
-                        </div>
-                        {item.isNew && (
-                          <div className="absolute top-1.5 right-1.5">
-                            <span className="badge badge-success text-[8px]">NEW</span>
+                    {uploads.map(item => {
+                      const tierColor = TIER_COLORS[item.tier] || "#64748B";
+                      return (
+                        <div key={item.id}
+                          className="relative aspect-square rounded-xl overflow-hidden group cursor-pointer"
+                          onClick={() => setPreviewUpload(item.id)}>
+                          <img src={item.dataUrl} alt={item.label} className="w-full h-full object-cover" />
+                          {/* Hover overlay with info — NOT delete */}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                            <div className="w-full">
+                              <p className="text-[10px] font-medium text-white truncate">{item.label || "Sans titre"}</p>
+                              <p className="text-[8px] text-white/60">{item.visibility === "promo" ? "Visible" : "Pack only"}</p>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    ))}
+                          <div className="absolute top-1.5 left-1.5">
+                            <span className="badge text-[8px]" style={{ background: `${tierColor}20`, color: tierColor }}>
+                              {item.tier}
+                            </span>
+                          </div>
+                          {item.isNew && (
+                            <div className="absolute top-1.5 right-1.5">
+                              <span className="badge badge-success text-[8px]">NEW</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
+
+                {/* ── Preview / Edit panel ── */}
+                {previewUpload && (() => {
+                  const item = uploads.find(u => u.id === previewUpload);
+                  if (!item) return null;
+                  const tierColor = TIER_COLORS[item.tier] || "#64748B";
+                  const isEditing = editingUpload === item.id;
+                  return (
+                    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center sheet-backdrop" onClick={() => { setPreviewUpload(null); setEditingUpload(null); }}>
+                      <div className="w-full max-w-lg rounded-t-2xl md:rounded-2xl overflow-hidden"
+                        style={{ background: "var(--surface)", maxHeight: "90vh", border: "1px solid var(--border2)" }}
+                        onClick={e => e.stopPropagation()}>
+                        {/* Drag handle mobile */}
+                        <div className="flex justify-center pt-3 md:hidden">
+                          <div className="w-10 h-1 rounded-full" style={{ background: "var(--border3)" }} />
+                        </div>
+
+                        {/* Image */}
+                        <div className="relative" style={{ maxHeight: "50vh" }}>
+                          <img src={item.dataUrl} alt={item.label} className="w-full object-contain" style={{ maxHeight: "50vh" }} />
+                          <div className="absolute top-3 right-3 flex gap-1.5">
+                            <button onClick={() => { setPreviewUpload(null); setEditingUpload(null); }}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
+                              style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}>
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Info + Actions */}
+                        <div className="p-5 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{item.label || "Sans titre"}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="badge text-[9px]" style={{ background: `${tierColor}15`, color: tierColor }}>{item.tier.toUpperCase()}</span>
+                                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{item.type}</span>
+                                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>·</span>
+                                <span className="text-[10px]" style={{ color: item.visibility === "promo" ? "var(--success)" : "var(--text-muted)" }}>
+                                  {item.visibility === "promo" ? "Visible" : "Pack only"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Edit mode */}
+                          {isEditing && (
+                            <div className="space-y-3 pt-2" style={{ borderTop: "1px solid var(--border2)" }}>
+                              <div>
+                                <label className="text-[10px] font-medium uppercase mb-1 block" style={{ color: "var(--text-muted)" }}>Label</label>
+                                <input defaultValue={item.label} id={`edit-label-${item.id}`}
+                                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                                  style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-medium uppercase mb-1 block" style={{ color: "var(--text-muted)" }}>Tier</label>
+                                <div className="flex gap-2">
+                                  {Object.entries(TIER_COLORS).filter(([k]) => k !== "trial").map(([t, c]) => (
+                                    <button key={t}
+                                      onClick={() => handleEditUpload(item.id, { tier: t })}
+                                      className="flex-1 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer capitalize"
+                                      style={{
+                                        background: item.tier === t ? `${c}20` : "rgba(255,255,255,0.03)",
+                                        color: item.tier === t ? c : "var(--text-muted)",
+                                        border: `1px solid ${item.tier === t ? `${c}40` : "var(--border2)"}`,
+                                      }}>{t}</button>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-medium uppercase mb-1 block" style={{ color: "var(--text-muted)" }}>Visibilité</label>
+                                <div className="flex gap-2">
+                                  <button onClick={() => handleEditUpload(item.id, { visibility: "pack" })}
+                                    className="flex-1 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer"
+                                    style={{ background: item.visibility === "pack" ? "rgba(99,102,241,0.12)" : "rgba(255,255,255,0.03)", color: item.visibility === "pack" ? "var(--accent)" : "var(--text-muted)" }}>
+                                    Pack only
+                                  </button>
+                                  <button onClick={() => handleEditUpload(item.id, { visibility: "promo" })}
+                                    className="flex-1 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer"
+                                    style={{ background: item.visibility === "promo" ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", color: item.visibility === "promo" ? "var(--success)" : "var(--text-muted)" }}>
+                                    Visible (promo)
+                                  </button>
+                                </div>
+                              </div>
+                              <button onClick={() => {
+                                const labelInput = document.getElementById(`edit-label-${item.id}`) as HTMLInputElement;
+                                if (labelInput) handleEditUpload(item.id, { label: labelInput.value });
+                                setEditingUpload(null);
+                              }}
+                                className="w-full py-2 rounded-lg text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5"
+                                style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)" }}>
+                                <Save className="w-3 h-3" /> Sauvegarder
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Action buttons */}
+                          <div className="flex gap-2">
+                            <button onClick={() => setEditingUpload(isEditing ? null : item.id)}
+                              className="flex-1 py-2.5 rounded-xl text-xs font-medium cursor-pointer flex items-center justify-center gap-1.5"
+                              style={{ background: "rgba(99,102,241,0.08)", color: "var(--accent)", border: "1px solid rgba(99,102,241,0.15)" }}>
+                              <Edit3 className="w-3 h-3" /> {isEditing ? "Annuler" : "Modifier"}
+                            </button>
+                            {confirmDelete === item.id ? (
+                              <div className="flex-1 flex gap-1.5">
+                                <button onClick={() => handleDeleteUpload(item.id)}
+                                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold cursor-pointer flex items-center justify-center gap-1"
+                                  style={{ background: "rgba(239,68,68,0.15)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                                  Confirmer
+                                </button>
+                                <button onClick={() => setConfirmDelete(null)}
+                                  className="px-3 py-2.5 rounded-xl text-xs cursor-pointer"
+                                  style={{ background: "rgba(255,255,255,0.04)", color: "var(--text-muted)" }}>
+                                  Non
+                                </button>
+                              </div>
+                            ) : (
+                              <button onClick={() => setConfirmDelete(item.id)}
+                                className="flex-1 py-2.5 rounded-xl text-xs font-medium cursor-pointer flex items-center justify-center gap-1.5"
+                                style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.15)" }}>
+                                <Trash2 className="w-3 h-3" /> Supprimer
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -624,6 +812,19 @@ export default function AgenceDashboard() {
             onClose={() => setShowGenerator(false)}
             onGenerate={handleGenerate}
           />
+
+          {/* ── Toast notification ── */}
+          {toast && (
+            <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-lg"
+              style={{
+                background: toast.type === "success" ? "var(--success)" : "var(--danger)",
+                color: "#fff",
+                animation: "fadeUp 0.3s ease",
+              }}>
+              {toast.type === "success" ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
+              {toast.message}
+            </div>
+          )}
 
         </div>
       </div>
