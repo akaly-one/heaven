@@ -116,7 +116,15 @@ export async function POST(req: NextRequest) {
   }
   if (!jwtSecret) {
     console.error("[auth] Missing HEAVEN_JWT_SECRET");
-    return NextResponse.json({ error: "Config JWT manquante" }, { status: 500, headers: cors });
+    return NextResponse.json({
+      error: "Config JWT manquante",
+      _debug: {
+        has_jwt: !!process.env.HEAVEN_JWT_SECRET,
+        jwt_len: (process.env.HEAVEN_JWT_SECRET || "").length,
+        env_keys_heaven: Object.keys(process.env).filter(k => k.includes("HEAVEN")).join(","),
+        method: req.method,
+      },
+    }, { status: 500, headers: cors });
   }
 
   // Step 3: Query DB
