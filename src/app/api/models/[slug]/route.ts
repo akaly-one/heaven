@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { getCorsHeaders } from "@/lib/auth";
+import { getCorsHeaders, requireRole, getModelScope } from "@/lib/auth";
 
 const cors = getCorsHeaders();
 
@@ -53,7 +53,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
 
 // PUT /api/models/[slug] — Update model profile (avatar, status, online, bio)
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  const denied = await requireRole(req, "root", "model");
+  if (denied) return denied;
+
   const { slug } = await params;
+
+  // Model users can only update their own profile
+  const modelScope = await getModelScope(req);
+  if (modelScope && modelScope !== slug) {
+    return NextResponse.json({ error: "Acces non autorise" }, { status: 403, headers: cors });
+  }
 
   try {
     const body = await req.json();

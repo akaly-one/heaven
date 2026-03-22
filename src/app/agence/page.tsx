@@ -232,6 +232,7 @@ export default function AgenceDashboard() {
             <CodesList
               codes={modelCodes}
               clients={clients}
+              modelSlug={modelSlug}
               onCopy={handleCopy}
               onRevoke={handleRevoke}
               onPause={handlePause}

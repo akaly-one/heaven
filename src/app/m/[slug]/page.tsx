@@ -33,7 +33,7 @@ interface UploadedContent {
   dataUrl: string; uploadedAt: string; visibility?: "pack" | "promo"; tokenPrice?: number; isNew?: boolean;
 }
 interface ModelAuth {
-  role: string; model_slug?: string; display_name?: string;
+  role: string; model_slug?: string; display_name?: string; token?: string;
 }
 interface WallPost {
   id: string; model: string; pseudo: string; content: string | null;
@@ -458,9 +458,10 @@ export default function ModelPage() {
     try {
       // Save profile changes
       if (Object.keys(editProfile).length > 0) {
+        const token = modelAuth?.token;
         const profileRes = await fetch(`/api/models/${slug}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify(editProfile),
         });
         if (!profileRes.ok) {
@@ -471,9 +472,10 @@ export default function ModelPage() {
       }
       // Save pack changes
       if (editPacks) {
+        const tkn = modelAuth?.token;
         const packsRes = await fetch("/api/packs", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...(tkn ? { Authorization: `Bearer ${tkn}` } : {}) },
           body: JSON.stringify({ model: slug, packs: editPacks }),
         });
         if (!packsRes.ok) {
@@ -559,9 +561,9 @@ export default function ModelPage() {
     } catch {}
   }, [slug]);
 
-  // ── Validate access token from URL ──
+  // ── Validate access token from URL (?access=CODE or ?code=CODE) ──
   useEffect(() => {
-    const accessToken = searchParams.get("access");
+    const accessToken = searchParams.get("access") || searchParams.get("code");
     if (!accessToken || !slug || accessChecked) return;
     setAccessChecked(true);
 
