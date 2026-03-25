@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Camera, DollarSign, MessageSquare, Settings, ChevronLeft, ChevronRight, Zap, Map } from "lucide-react";
+import { Camera, DollarSign, MessageSquare, Settings, ChevronLeft, ChevronRight, Zap, Map, TrendingUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { HeavenAuth } from "./auth-guard";
 
@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances", color: "var(--success)" },
   { id: "messages", label: "Messages", icon: MessageSquare, href: "/agence/messages", color: "var(--accent)" },
   { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings", color: "var(--text-muted)" },
+  { id: "pipeline", label: "Pipeline", icon: TrendingUp, href: "/agence/pipeline", color: "#F59E0B" },
   { id: "architecture", label: "Architecture", icon: Map, href: "/agence/architecture", color: "#6366F1", rootOnly: true },
 ] as const;
 
