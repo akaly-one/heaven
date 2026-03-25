@@ -5,7 +5,7 @@ export type HeavenRole = "root" | "model" | "client";
 // ── CORS ──
 
 const ALLOWED_ORIGINS = [
-  "https://heaven-one.vercel.app",
+  "https://heaven-os.vercel.app",
   "http://localhost:3000",
   "http://localhost:3001",
 ];
