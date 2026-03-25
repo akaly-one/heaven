@@ -103,6 +103,11 @@ const PLATFORM_COLORS: Record<string, string> = {
 
 const TIER_COLORS: Record<string, string> = {
   free: "#64748B",
+  vip: "#F43F5E",
+  gold: "#F59E0B",
+  diamond: "#6366F1",
+  platinum: "#A78BFA",
+  // Legacy fallbacks
   basic: "#10B981",
   premium: "#F59E0B",
   ppv: "#F43F5E",
@@ -1103,9 +1108,10 @@ export default function PipelineDashboard() {
                     >
                       <option value="">Aucun</option>
                       <option value="free">Free</option>
-                      <option value="basic">Basic</option>
-                      <option value="premium">Premium</option>
-                      <option value="ppv">PPV</option>
+                      <option value="vip">VIP Glamour</option>
+                      <option value="gold">Gold</option>
+                      <option value="diamond">Diamond</option>
+                      <option value="platinum">Platinum All-Access</option>
                     </select>
                     <ChevronDown
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none"
