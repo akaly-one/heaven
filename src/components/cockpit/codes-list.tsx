@@ -79,7 +79,7 @@ function timeLeft(expiresAt: string): string {
 }
 
 function getAccessLink(modelSlug: string, code: string): string {
-  const base = typeof window !== "undefined" ? window.location.origin : "https://heaven-os.vercel.app";
+  const base = typeof window !== "undefined" ? window.location.origin : "https://heaven-one.vercel.app";
   return `${base}/m/${modelSlug}?access=${encodeURIComponent(code)}`;
 }
 
