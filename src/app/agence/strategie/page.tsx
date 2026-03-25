@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Zap,
   Globe,
@@ -23,8 +23,12 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
+  Target,
+  RotateCcw,
+  Save,
 } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
+import { useModel } from "@/lib/model-context";
 
 // ── Platform data ──
 
@@ -443,12 +447,128 @@ const REVENUE_MODELS = [
   { platform: "Instagram", sub: false, ppv: false, tips: false, live: false, gifts: false, custom: false, ai: false },
 ];
 
+// ── Strategy Planner types ──
+
+interface ModelStrategy {
+  modelSlug: string;
+  activePlatforms: string[];
+  weeklyChecklist: { id: string; label: string; category: string; done: boolean }[];
+  revenueTargets: { platform: string; target: number }[];
+  notes: string;
+  updatedAt: string;
+}
+
+const STRATEGY_CHECKLIST_TEMPLATES: { id: string; label: string; category: string }[] = [
+  { id: "ig-reels", label: "Publier 3+ Reels Instagram (funnel)", category: "contenu" },
+  { id: "ig-stories", label: "Stories quotidiennes Instagram", category: "contenu" },
+  { id: "fv-posts", label: "Publier 5+ posts Fanvue", category: "contenu" },
+  { id: "of-posts", label: "Publier 5+ posts OnlyFans", category: "contenu" },
+  { id: "snap-stories", label: "Stories Snapchat premium (3+/jour)", category: "contenu" },
+  { id: "mym-push", label: "Envoyer Push MYM (2+/semaine)", category: "contenu" },
+  { id: "fv-chat", label: "Verifier reponses IA Fanvue", category: "engagement" },
+  { id: "of-dms", label: "Repondre DMs OnlyFans (< 2h)", category: "engagement" },
+  { id: "snap-dms", label: "Repondre DMs Snap clients (< 2h)", category: "engagement" },
+  { id: "community", label: "Interagir commentaires IG/TikTok", category: "engagement" },
+  { id: "ppv-send", label: "Envoyer PPV cible (Fanvue + OF)", category: "monetisation" },
+  { id: "custom-req", label: "Traiter demandes custom en attente", category: "monetisation" },
+  { id: "live-session", label: "Session live (Stripchat/Bigo)", category: "monetisation" },
+  { id: "check-codes", label: "Verifier codes expirants Heaven OS", category: "gestion" },
+  { id: "check-revenue", label: "Verifier revenus plateformes", category: "gestion" },
+  { id: "content-plan", label: "Planifier contenu semaine suivante", category: "gestion" },
+  { id: "watermark", label: "Verifier watermarks sur livrables", category: "securite" },
+  { id: "leak-check", label: "Scan anti-leak (nom + contenu)", category: "securite" },
+];
+
+const STRATEGY_CATEGORIES = [
+  { id: "contenu", label: "Contenu", color: "#A78BFA" },
+  { id: "engagement", label: "Engagement", color: "#00AFF0" },
+  { id: "monetisation", label: "Monetisation", color: "#C9A84C" },
+  { id: "gestion", label: "Gestion", color: "#10B981" },
+  { id: "securite", label: "Securite", color: "#EF4444" },
+];
+
+function loadModelStrategy(slug: string): ModelStrategy {
+  try {
+    const raw = localStorage.getItem(`heaven_strategy_${slug}`);
+    if (raw) return JSON.parse(raw);
+  } catch { /* */ }
+  return {
+    modelSlug: slug,
+    activePlatforms: ["fanvue", "snapchat"],
+    weeklyChecklist: STRATEGY_CHECKLIST_TEMPLATES.map(t => ({ ...t, done: false })),
+    revenueTargets: [
+      { platform: "fanvue", target: 2000 },
+      { platform: "onlyfans", target: 1500 },
+      { platform: "snapchat", target: 1000 },
+      { platform: "mym", target: 500 },
+    ],
+    notes: "",
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function saveModelStrategy(strategy: ModelStrategy) {
+  localStorage.setItem(`heaven_strategy_${strategy.modelSlug}`, JSON.stringify({ ...strategy, updatedAt: new Date().toISOString() }));
+}
+
 // ── Component ──
 
 export default function StrategiePage() {
+  const { currentModel, auth } = useModel();
+  const modelSlug = currentModel || auth?.model_slug || "yumi";
+
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"platforms" | "comparison" | "checklist" | "strategy">("platforms");
+
+  // Strategy planner state
+  const [strategy, setStrategy] = useState<ModelStrategy>(() => loadModelStrategy(modelSlug));
+  const [strategyDirty, setStrategyDirty] = useState(false);
+
+  // Reload strategy when model changes
+  useEffect(() => {
+    setStrategy(loadModelStrategy(modelSlug));
+    setStrategyDirty(false);
+  }, [modelSlug]);
+
+  const togglePlatform = useCallback((platformId: string) => {
+    setStrategy(prev => {
+      const active = prev.activePlatforms.includes(platformId)
+        ? prev.activePlatforms.filter(p => p !== platformId)
+        : [...prev.activePlatforms, platformId];
+      return { ...prev, activePlatforms: active };
+    });
+    setStrategyDirty(true);
+  }, []);
+
+  const toggleCheckItem = useCallback((itemId: string) => {
+    setStrategy(prev => ({
+      ...prev,
+      weeklyChecklist: prev.weeklyChecklist.map(c => c.id === itemId ? { ...c, done: !c.done } : c),
+    }));
+    setStrategyDirty(true);
+  }, []);
+
+  const updateTarget = useCallback((platform: string, target: number) => {
+    setStrategy(prev => ({
+      ...prev,
+      revenueTargets: prev.revenueTargets.map(r => r.platform === platform ? { ...r, target } : r),
+    }));
+    setStrategyDirty(true);
+  }, []);
+
+  const saveStrategy = useCallback(() => {
+    saveModelStrategy(strategy);
+    setStrategyDirty(false);
+  }, [strategy]);
+
+  const resetChecklist = useCallback(() => {
+    setStrategy(prev => ({
+      ...prev,
+      weeklyChecklist: prev.weeklyChecklist.map(c => ({ ...c, done: false })),
+    }));
+    setStrategyDirty(true);
+  }, []);
 
   const filtered = activeCategory === "all"
     ? PLATFORMS
@@ -880,191 +1000,172 @@ export default function StrategiePage() {
           </div>
         )}
 
-        {/* ═══ TAB: Strategy ═══ */}
+        {/* ═══ TAB: Strategy Planner (dynamic per model) ═══ */}
         {activeTab === "strategy" && (
-          <div className="fade-up flex flex-col gap-6">
+          <div className="fade-up flex flex-col gap-5">
 
-            {/* Recommended stack */}
-            <div className="card-premium p-5 gradient-border">
-              <h3 className="text-sm font-bold mb-1" style={{ color: "var(--text)" }}>Stack recommande par model</h3>
-              <p className="text-[11px] mb-5" style={{ color: "var(--text-muted)" }}>
-                Combinaison optimale de plateformes pour maximiser les revenus et minimiser l&apos;effort.
-              </p>
-
-              <div className="flex flex-col gap-4">
-                {/* Tier 1: Core revenue */}
-                <div className="p-4 rounded-xl" style={{ background: "var(--bg3)", border: "1px solid rgba(224,64,251,0.2)" }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-2 h-2 rounded-full" style={{ background: "#E040FB", boxShadow: "0 0 8px rgba(224,64,251,0.5)" }} />
-                    <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "#E040FB" }}>Tier 1 — Revenus principaux (Automatise)</p>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="p-3 rounded-lg" style={{ background: "var(--surface)" }}>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-bold" style={{ color: "#E040FB" }}>Fanvue</span>
-                        <span className="badge badge-success" style={{ fontSize: 9 }}><Bot className="w-2.5 h-2.5" /> IA Chat</span>
-                      </div>
-                      <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                        Plateforme principale — agent IA gere les chats automatiquement.
-                        Commission 20%. Focus: abonnements + PPV + messages automatises.
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg" style={{ background: "var(--surface)" }}>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-bold" style={{ color: "#00AFF0" }}>OnlyFans</span>
-                        <span className="badge badge-warning" style={{ fontSize: 9 }}>Volume</span>
-                      </div>
-                      <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                        Plateforme secondaire — plus grande audience du marche.
-                        Commission 20%. Focus: volume d&apos;abonnes via la notoriete OF.
-                      </p>
-                    </div>
-                  </div>
+            {/* Header with model + save */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #C9A84C, #E8C76A)" }}>
+                  <Target className="w-5 h-5" style={{ color: "#06060B" }} />
                 </div>
-
-                {/* Tier 2: European + Chat revenue */}
-                <div className="p-4 rounded-xl" style={{ background: "var(--bg3)", border: "1px solid rgba(255,107,107,0.2)" }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-2 h-2 rounded-full" style={{ background: "#FF6B6B", boxShadow: "0 0 8px rgba(255,107,107,0.5)" }} />
-                    <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "#FF6B6B" }}>Tier 2 — Revenus complementaires (Semi-auto)</p>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="p-3 rounded-lg" style={{ background: "var(--surface)" }}>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-bold" style={{ color: "#FF6B6B" }}>MYM</span>
-                        <span className="badge badge-muted" style={{ fontSize: 9 }}>EU</span>
-                      </div>
-                      <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                        Marche francophone europeen. Systeme Push semi-automatique.
-                        Commission 25%. Ideal pour le public FR/BE.
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg" style={{ background: "var(--surface)" }}>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-bold" style={{ color: "#FFFC00" }}>Snapchat</span>
-                        <span className="badge badge-muted" style={{ fontSize: 9 }}>Direct</span>
-                      </div>
-                      <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                        Revenus directs sans commission plateforme.
-                        Gestion manuelle des abonnements via Heaven OS.
-                      </p>
-                    </div>
-                  </div>
+                <div>
+                  <h3 className="text-sm font-bold" style={{ color: "var(--text)" }}>
+                    Strategie — {modelSlug.toUpperCase()}
+                  </h3>
+                  <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                    Planificateur temps reel · Derniere maj: {new Date(strategy.updatedAt).toLocaleDateString("fr-BE")}
+                  </p>
                 </div>
-
-                {/* Tier 3: Live + conversion */}
-                <div className="p-4 rounded-xl" style={{ background: "var(--bg3)", border: "1px solid rgba(255,51,102,0.2)" }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-2 h-2 rounded-full" style={{ background: "#FF3366", boxShadow: "0 0 8px rgba(255,51,102,0.5)" }} />
-                    <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "#FF3366" }}>Tier 3 — Optionnel (Manuel / Live)</p>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="p-3 rounded-lg" style={{ background: "var(--surface)" }}>
-                      <p className="text-xs font-bold mb-1" style={{ color: "#FF3366" }}>Stripchat</p>
-                      <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Sessions live a haut revenu. Demande du temps et du materiel.</p>
-                    </div>
-                    <div className="p-3 rounded-lg" style={{ background: "var(--surface)" }}>
-                      <p className="text-xs font-bold mb-1" style={{ color: "#E1306C" }}>Instagram</p>
-                      <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Vitrine publique + funnel de conversion vers Fanvue/OF.</p>
-                    </div>
-                    <div className="p-3 rounded-lg" style={{ background: "var(--surface)" }}>
-                      <p className="text-xs font-bold mb-1" style={{ color: "#00D4AA" }}>Bigo Live</p>
-                      <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Streaming SFW pour diversifier et toucher l&apos;audience asiatique.</p>
-                    </div>
-                  </div>
-                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={resetChecklist} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer transition-all hover:opacity-80"
+                  style={{ background: "var(--surface)", border: "1px solid var(--border2)", color: "var(--text-muted)" }}>
+                  <RotateCcw className="w-3 h-3" /> Reset semaine
+                </button>
+                <button onClick={saveStrategy} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all hover:opacity-80"
+                  style={{ background: strategyDirty ? "linear-gradient(135deg, #C9A84C, #E8C76A)" : "var(--surface)", color: strategyDirty ? "#06060B" : "var(--text-muted)", border: strategyDirty ? "none" : "1px solid var(--border2)" }}>
+                  <Save className="w-3 h-3" /> {strategyDirty ? "Sauvegarder" : "Sauvegarde"}
+                </button>
               </div>
             </div>
 
-            {/* Revenue projection */}
+            {/* Active platforms toggle */}
             <div className="card-premium p-5 gradient-border">
-              <h3 className="text-sm font-bold mb-1" style={{ color: "var(--text)" }}>Projection de revenus (par model)</h3>
-              <p className="text-[11px] mb-5" style={{ color: "var(--text-muted)" }}>
-                Estimation mensuelle basee sur un model actif avec le stack recommande.
-              </p>
+              <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>
+                Plateformes actives — {modelSlug.toUpperCase()}
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {PLATFORMS.map(p => {
+                  const isActive = strategy.activePlatforms.includes(p.id);
+                  return (
+                    <button key={p.id} onClick={() => togglePlatform(p.id)}
+                      className="flex items-center gap-2 p-3 rounded-xl text-xs font-medium cursor-pointer transition-all"
+                      style={{
+                        background: isActive ? `${p.color}15` : "var(--bg3)",
+                        border: `1px solid ${isActive ? `${p.color}40` : "var(--border2)"}`,
+                        color: isActive ? p.color : "var(--text-muted)",
+                        opacity: isActive ? 1 : 0.5,
+                      }}>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0"
+                        style={{ background: isActive ? `${p.color}25` : "var(--surface)", color: p.color }}>
+                        {p.logo}
+                      </div>
+                      <div className="text-left">
+                        <div className="font-bold">{p.name}</div>
+                        <div className="text-[9px] opacity-70">{p.automationLevel}</div>
+                      </div>
+                      {isActive && <CheckCircle2 className="w-3.5 h-3.5 ml-auto" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Revenue targets */}
+            <div className="card-premium p-5 gradient-border">
+              <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "#C9A84C" }}>
+                Objectifs revenus mensuels
+              </h4>
               <div className="flex flex-col gap-3">
-                {[
-                  { source: "Fanvue (abos + PPV + chat IA)", low: 800, high: 5000, color: "#E040FB" },
-                  { source: "OnlyFans (abos + PPV)", low: 500, high: 8000, color: "#00AFF0" },
-                  { source: "MYM (abos + Push)", low: 200, high: 3000, color: "#FF6B6B" },
-                  { source: "Snapchat (packs directs)", low: 300, high: 5000, color: "#FFFC00" },
-                  { source: "Camming (Stripchat)", low: 0, high: 5000, color: "#FF3366" },
-                  { source: "Instagram (conversion)", low: 0, high: 500, color: "#E1306C" },
-                ].map((item) => (
-                  <div key={item.source} className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: item.color }} />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>{item.source}</span>
-                        <span className="text-[11px] font-bold tabular-nums" style={{ color: "var(--text)" }}>
-                          {item.low}€ – {item.high}€
-                        </span>
+                {strategy.revenueTargets.filter(r => strategy.activePlatforms.includes(r.platform)).map(r => {
+                  const pData = PLATFORMS.find(p => p.id === r.platform);
+                  const color = pData?.color || "#666";
+                  return (
+                    <div key={r.platform} className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0"
+                        style={{ background: `${color}20`, color }}>
+                        {pData?.logo || "?"}
                       </div>
-                      <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--bg3)" }}>
-                        <div className="h-full rounded-full" style={{ width: `${(item.high / 8000) * 100}%`, background: item.color, opacity: 0.6 }} />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[11px] font-medium" style={{ color: "var(--text)" }}>{pData?.name}</span>
+                          <span className="text-[11px] font-bold tabular-nums" style={{ color }}>{r.target.toLocaleString()}€</span>
+                        </div>
+                        <input type="range" min={0} max={10000} step={100} value={r.target}
+                          onChange={e => updateTarget(r.platform, Number(e.target.value))}
+                          className="w-full h-1 rounded-full appearance-none cursor-pointer"
+                          style={{ background: `linear-gradient(to right, ${color} ${(r.target / 10000) * 100}%, var(--bg3) ${(r.target / 10000) * 100}%)` }} />
                       </div>
                     </div>
-                  </div>
-                ))}
-                <div className="mt-2 p-3 rounded-xl flex items-center justify-between" style={{ background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.2)" }}>
-                  <span className="text-xs font-bold" style={{ color: "var(--accent)" }}>Total potentiel mensuel</span>
-                  <span className="text-lg font-bold shimmer-gold">1.800€ – 26.500€</span>
+                  );
+                })}
+                <div className="mt-1 p-3 rounded-xl flex items-center justify-between" style={{ background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.2)" }}>
+                  <span className="text-xs font-bold" style={{ color: "var(--accent)" }}>Objectif total</span>
+                  <span className="text-lg font-bold shimmer-gold">
+                    {strategy.revenueTargets.filter(r => strategy.activePlatforms.includes(r.platform)).reduce((s, r) => s + r.target, 0).toLocaleString()}€
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Automation workflow */}
+            {/* Weekly checklist */}
             <div className="card-premium p-5 gradient-border">
-              <h3 className="text-sm font-bold mb-1" style={{ color: "var(--text)" }}>Workflow d&apos;automatisation</h3>
-              <p className="text-[11px] mb-5" style={{ color: "var(--text-muted)" }}>
-                Comment Heaven OS automatise la gestion multi-plateforme.
-              </p>
-              <div className="flex flex-col gap-3">
-                {[
-                  { step: "Acquisition", desc: "Instagram Reels + Stories → lien bio vers Fanvue/OF", icon: Globe, color: "#E1306C" },
-                  { step: "Conversion", desc: "ManyChat automatise les DMs IG → redirection vers la plateforme payante", icon: MessageSquare, color: "#00AFF0" },
-                  { step: "Monetisation", desc: "Fanvue IA gere les chats + PPV automatiques. OF pour le volume.", icon: DollarSign, color: "#E040FB" },
-                  { step: "Retention", desc: "MYM Push + Snap stories privees maintiennent l'engagement", icon: Users, color: "#FF6B6B" },
-                  { step: "Upsell", desc: "Sessions live Stripchat pour les top fans. Custom requests premium.", icon: Star, color: "#FF3366" },
-                  { step: "Tracking", desc: "Heaven OS centralise les metriques, gere les expirations, optimise le ROI", icon: TrendingUp, color: "var(--accent)" },
-                ].map((item, i) => (
-                  <div key={item.step} className="flex items-start gap-3">
-                    <div className="flex flex-col items-center">
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                        style={{ background: `${item.color}15`, color: item.color }}
-                      >
-                        <item.icon className="w-4 h-4" />
-                      </div>
-                      {i < 5 && <div className="w-px h-6" style={{ background: "var(--border)" }} />}
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-xs font-bold uppercase tracking-wider" style={{ color: "#A78BFA" }}>
+                  Checklist hebdomadaire
+                </h4>
+                <span className="text-[11px] font-bold tabular-nums px-2 py-0.5 rounded-full"
+                  style={{ background: "rgba(167,139,250,0.15)", color: "#A78BFA" }}>
+                  {strategy.weeklyChecklist.filter(c => c.done).length}/{strategy.weeklyChecklist.length}
+                </span>
+              </div>
+
+              {/* Progress bar */}
+              <div className="h-2 rounded-full overflow-hidden mb-5" style={{ background: "var(--bg3)" }}>
+                <div className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${(strategy.weeklyChecklist.filter(c => c.done).length / strategy.weeklyChecklist.length) * 100}%`, background: "linear-gradient(90deg, #A78BFA, #C9A84C)" }} />
+              </div>
+
+              {/* Grouped by category */}
+              {STRATEGY_CATEGORIES.map(cat => {
+                const items = strategy.weeklyChecklist.filter(c => c.category === cat.id);
+                if (items.length === 0) return null;
+                const doneCount = items.filter(c => c.done).length;
+                return (
+                  <div key={cat.id} className="mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 rounded-full" style={{ background: cat.color }} />
+                      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: cat.color }}>
+                        {cat.label}
+                      </span>
+                      <span className="text-[9px] font-medium ml-auto" style={{ color: "var(--text-muted)" }}>
+                        {doneCount}/{items.length}
+                      </span>
                     </div>
-                    <div className="pt-1">
-                      <p className="text-xs font-bold" style={{ color: item.color }}>{item.step}</p>
-                      <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>{item.desc}</p>
+                    <div className="flex flex-col gap-1">
+                      {items.map(item => (
+                        <button key={item.id} onClick={() => toggleCheckItem(item.id)}
+                          className="flex items-center gap-2.5 p-2.5 rounded-lg text-left cursor-pointer transition-all hover:opacity-80 w-full"
+                          style={{ background: item.done ? `${cat.color}08` : "var(--bg3)", border: `1px solid ${item.done ? `${cat.color}20` : "transparent"}` }}>
+                          <div className="w-4.5 h-4.5 rounded-md flex items-center justify-center shrink-0 transition-all"
+                            style={{ background: item.done ? cat.color : "var(--surface)", border: `1.5px solid ${item.done ? cat.color : "var(--border2)"}` }}>
+                            {item.done && <CheckCircle2 className="w-3 h-3" style={{ color: "#fff" }} />}
+                          </div>
+                          <span className="text-[11px]" style={{ color: item.done ? "var(--text-muted)" : "var(--text)", textDecoration: item.done ? "line-through" : "none" }}>
+                            {item.label}
+                          </span>
+                        </button>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
 
-            {/* Key rules */}
+            {/* Notes */}
             <div className="card-premium p-5 gradient-border">
-              <h3 className="text-sm font-bold mb-3" style={{ color: "var(--text)" }}>Regles cles</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { rule: "Publier du contenu sur minimum 2 plateformes simultanement", icon: Globe },
-                  { rule: "Repondre aux DMs Snapchat dans les 2h (gestion via Heaven)", icon: Clock },
-                  { rule: "Minimum 3 Reels/semaine sur Instagram pour le funnel", icon: Camera },
-                  { rule: "Activer l'IA Fanvue des le 1er jour pour maximiser le chat", icon: Bot },
-                  { rule: "Tracker les expirations Snap dans Heaven OS", icon: AlertTriangle },
-                  { rule: "Sessions live minimum 2x/semaine si camming actif", icon: Video },
-                ].map((item) => (
-                  <div key={item.rule} className="flex items-start gap-2 p-3 rounded-lg" style={{ background: "var(--bg3)" }}>
-                    <item.icon className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />
-                    <p className="text-[11px]" style={{ color: "var(--text-secondary)" }}>{item.rule}</p>
-                  </div>
-                ))}
-              </div>
+              <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "var(--text-muted)" }}>
+                Notes strategie — {modelSlug.toUpperCase()}
+              </h4>
+              <textarea
+                value={strategy.notes}
+                onChange={e => { setStrategy(prev => ({ ...prev, notes: e.target.value })); setStrategyDirty(true); }}
+                placeholder="Notes libres sur la strategie de ce model..."
+                className="w-full min-h-[100px] p-3 rounded-lg text-xs outline-none resize-y"
+                style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }}
+              />
             </div>
 
           </div>
