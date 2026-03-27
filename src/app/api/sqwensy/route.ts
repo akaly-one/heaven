@@ -260,6 +260,42 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      case "sync_to_sqwensy": {
+        // Push Heaven aggregate data to SQWENSY OS /api/sync/heaven
+        const syncSecret = process.env.HEAVEN_SYNC_SECRET || "heaven-sync-2026";
+        const sqwensyUrl = `${SQWENSY_OS_URL}/api/sync/heaven`;
+
+        // Gather data
+        const { data: allCodes } = await supabase.from("access_codes").select("*");
+        const { data: allClients } = await supabase.from("agence_clients").select("*");
+        const { data: allPlatforms } = await supabase.from("agence_platform_accounts").select("*").eq("status", "active");
+        const { data: allContent } = await supabase.from("agence_content_pipeline").select("model_slug, stage, revenue");
+
+        const summary = {
+          codes_total: allCodes?.length || 0,
+          codes_active: allCodes?.filter((c: { active?: boolean; revoked?: boolean }) => c.active && !c.revoked).length || 0,
+          clients_total: allClients?.length || 0,
+          platforms_active: allPlatforms?.length || 0,
+          content_total: allContent?.length || 0,
+          content_published: allContent?.filter((c: { stage?: string }) => c.stage === "published").length || 0,
+          revenue_total: allPlatforms?.reduce((s: number, a: { monthly_revenue?: string }) => s + parseFloat(a.monthly_revenue || "0"), 0) || 0,
+          synced_at: new Date().toISOString(),
+        };
+
+        try {
+          const res = await fetch(sqwensyUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-sync-secret": syncSecret },
+            body: JSON.stringify({ type: "summary", model_slug: body.model_slug || null, data: summary }),
+          });
+          const result = await res.json();
+          return NextResponse.json({ success: true, sqwensy_response: result }, { headers: cors });
+        } catch (syncErr) {
+          console.error("[API/sqwensy] sync_to_sqwensy error:", syncErr);
+          return NextResponse.json({ error: "Failed to reach SQWENSY OS", detail: String(syncErr) }, { status: 502, headers: cors });
+        }
+      }
+
       case "push_notification": {
         // Log a notification from SQWENSY OS (store in content pipeline as note)
         const notePayload = {
@@ -299,6 +335,7 @@ export async function POST(request: NextRequest) {
               "sync_client",
               "update_goal",
               "push_notification",
+              "sync_to_sqwensy",
             ],
           },
           { status: 400, headers: cors }
