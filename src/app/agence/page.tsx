@@ -54,6 +54,13 @@ const DEFAULT_PACKS: PackConfig[] = [
   { id: "platinum", name: "Platinum All-Access", price: 320, color: "#A78BFA", features: ["Acces TOTAL aux 3 packs", "Demandes personnalisees", "Video calls prives", "Contenu exclusif illimite"], bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: true }, face: true, badge: "Ultimate", active: true },
 ];
 
+const WISE_LINKS = [
+  { tier: "vip", url: "" },
+  { tier: "gold", url: "" },
+  { tier: "diamond", url: "" },
+  { tier: "platinum", url: "" },
+];
+
 // ── API helpers ──
 function generateCodeString(model: string): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -87,6 +94,7 @@ export default function AgenceDashboard() {
   const [modelInfo, setModelInfo] = useState<{ avatar?: string; online?: boolean; display_name?: string } | null>(null);
 
   const [showGenerator, setShowGenerator] = useState(false);
+  const [prefillClient, setPrefillClient] = useState("");
   const [, setTick] = useState(0);
   const [feedPosts, setFeedPosts] = useState<FeedPost[]>([]);
 
@@ -200,6 +208,21 @@ export default function AgenceDashboard() {
   const handleDelete = useCallback((code: string) => {
     setCodes(prev => prev.filter(c => c.code !== code));
     fetch(`/api/codes?code=${encodeURIComponent(code)}`, { method: "DELETE", headers: authHeaders() });
+  }, [authHeaders]);
+
+  const handleGenerateForClient = useCallback((clientName: string) => {
+    setPrefillClient(clientName);
+    setShowGenerator(true);
+  }, []);
+
+  const handleExtendCode = useCallback((code: string, extraHours: number) => {
+    setCodes(prev => prev.map(c => {
+      if (c.code !== code) return c;
+      const currentExpiry = new Date(c.expiresAt).getTime();
+      const base = currentExpiry > Date.now() ? currentExpiry : Date.now();
+      return { ...c, expiresAt: new Date(base + extraHours * 3600000).toISOString(), active: true };
+    }));
+    fetch("/api/codes", { method: "PUT", headers: authHeaders(), body: JSON.stringify({ code, action: "extend", extra_hours: extraHours }) });
   }, [authHeaders]);
 
   // ── Client actions ──
@@ -350,113 +373,116 @@ export default function AgenceDashboard() {
               onDelete={handleDelete}
               onUpdateClient={handleUpdateClient}
               onSendMessage={handleSendMessage}
+              onGenerateForClient={handleGenerateForClient}
+              onExtendCode={handleExtendCode}
+              wiseLinks={WISE_LINKS.filter(w => w.url)}
             />
           </div>
 
-          {/* ── Recent Feed ── */}
-          {feedPosts.length > 0 && (
-            <div className="fade-up-3">
+          {/* ── Feed + Checklist side by side ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 fade-up-3">
+            {/* Feed column */}
+            <div>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: "var(--text)" }}>
                   <Newspaper className="w-4 h-4" style={{ color: "var(--accent)" }} />
-                  Feed recent
+                  Feed
                 </h2>
-                <a href="/agence/messages" onClick={() => {}} className="text-[10px] font-medium no-underline hover:opacity-70 transition-opacity" style={{ color: "var(--accent)" }}>
+                <a href="/agence/messages" className="text-[10px] font-medium no-underline hover:opacity-70 transition-opacity" style={{ color: "var(--accent)" }}>
                   Voir tout
                 </a>
               </div>
-              <div className="space-y-2">
-                {feedPosts.map(post => (
-                  <div key={post.id} className="rounded-xl p-3.5 transition-all hover:scale-[1.005]" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold"
-                        style={{ background: "linear-gradient(135deg, var(--accent), #7C3AED)", color: "#fff" }}>
-                        {modelSlug.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold" style={{ color: "var(--text)" }}>{modelSlug.toUpperCase()}</span>
-                          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                            {(() => { const s = Math.floor((Date.now() - new Date(post.created_at).getTime()) / 1000); if (s < 3600) return `${Math.floor(s / 60)}min`; if (s < 86400) return `${Math.floor(s / 3600)}h`; return `${Math.floor(s / 86400)}j`; })()}
-                          </span>
-                          {post.pinned && <Pin className="w-3 h-3" style={{ color: "#F59E0B" }} />}
-                          {post.tier_required !== "public" && (
-                            <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase"
-                              style={{ background: "rgba(124,58,237,0.12)", color: "#7C3AED" }}>
-                              {post.tier_required}
-                            </span>
-                          )}
+              {feedPosts.length === 0 ? (
+                <div className="rounded-xl p-8 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                  <Newspaper className="w-8 h-8 mx-auto mb-2 opacity-20" style={{ color: "var(--text-muted)" }} />
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>Aucun post</p>
+                  <button onClick={() => setShowNewPost(true)} className="mt-2 text-[10px] font-semibold cursor-pointer hover:opacity-80" style={{ color: "var(--accent)", background: "none", border: "none" }}>
+                    Publier un post
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {feedPosts.map(post => (
+                    <div key={post.id} className="rounded-xl p-3 transition-all hover:scale-[1.005]" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                      <div className="flex items-start gap-2.5">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold"
+                          style={{ background: "linear-gradient(135deg, var(--accent), #7C3AED)", color: "#fff" }}>
+                          {modelSlug.charAt(0).toUpperCase()}
                         </div>
-                        {post.content && (
-                          <p className="text-xs leading-relaxed mt-1 line-clamp-2" style={{ color: "var(--text-secondary)" }}>{post.content}</p>
-                        )}
-                        {post.media_url && (
-                          <div className="mt-2 w-16 h-16 rounded-lg overflow-hidden" style={{ border: "1px solid var(--border2)" }}>
-                            <img src={post.media_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{modelSlug.toUpperCase()}</span>
+                            <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>
+                              {(() => { const s = Math.floor((Date.now() - new Date(post.created_at).getTime()) / 1000); if (s < 3600) return `${Math.floor(s / 60)}min`; if (s < 86400) return `${Math.floor(s / 3600)}h`; return `${Math.floor(s / 86400)}j`; })()}
+                            </span>
+                            {post.pinned && <Pin className="w-2.5 h-2.5" style={{ color: "#F59E0B" }} />}
+                            {post.tier_required !== "public" && (
+                              <span className="px-1 py-0.5 rounded text-[7px] font-bold uppercase" style={{ background: "rgba(124,58,237,0.12)", color: "#7C3AED" }}>{post.tier_required}</span>
+                            )}
                           </div>
-                        )}
-                        <div className="flex items-center gap-4 mt-2">
-                          <span className="flex items-center gap-1 text-[10px]" style={{ color: post.likes_count > 0 ? "#F43F5E" : "var(--text-muted)" }}>
-                            <Heart className="w-3 h-3" fill={post.likes_count > 0 ? "#F43F5E" : "none"} /> {post.likes_count || 0}
-                          </span>
-                          <span className="flex items-center gap-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
-                            <MessageCircle className="w-3 h-3" /> {post.comments_count || 0}
-                          </span>
+                          {post.content && <p className="text-[11px] leading-relaxed mt-0.5 line-clamp-2" style={{ color: "var(--text-secondary)" }}>{post.content}</p>}
+                          <div className="flex items-center gap-3 mt-1.5">
+                            <span className="flex items-center gap-1 text-[9px]" style={{ color: post.likes_count > 0 ? "#F43F5E" : "var(--text-muted)" }}>
+                              <Heart className="w-2.5 h-2.5" fill={post.likes_count > 0 ? "#F43F5E" : "none"} /> {post.likes_count || 0}
+                            </span>
+                            <span className="flex items-center gap-1 text-[9px]" style={{ color: "var(--text-muted)" }}>
+                              <MessageCircle className="w-2.5 h-2.5" /> {post.comments_count || 0}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Checklist column */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-bold" style={{ color: "var(--text)" }}>
+                  Checklist Hebdo
+                  <span className="ml-2 text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>
+                    {checklistProgress}/{WEEKLY_TASKS.length}
+                  </span>
+                </h2>
+                <button onClick={resetChecklist} className="flex items-center gap-1 text-[10px] font-medium cursor-pointer hover:opacity-70 transition-opacity"
+                  style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
+                  <RotateCcw className="w-3 h-3" /> Reset
+                </button>
+              </div>
+              <div className="w-full h-1.5 rounded-full mb-3" style={{ background: "var(--bg2)" }}>
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(checklistProgress / WEEKLY_TASKS.length) * 100}%`, background: checklistProgress === WEEKLY_TASKS.length ? "var(--success)" : "var(--accent)" }} />
+              </div>
+              <div className="space-y-1.5">
+                {WEEKLY_TASKS.map(task => (
+                  <button key={task.id} onClick={() => toggleCheck(task.id)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left cursor-pointer transition-all duration-200 hover:scale-[1.01]"
+                    style={{ background: checklist[task.id] ? "rgba(22,163,74,0.06)" : "var(--surface)", border: `1px solid ${checklist[task.id] ? "rgba(22,163,74,0.15)" : "var(--border)"}` }}>
+                    {checklist[task.id]
+                      ? <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--success)" }} />
+                      : <Circle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--border3)" }} />
+                    }
+                    <span className="text-[11px] font-medium flex-1" style={{ color: checklist[task.id] ? "var(--success)" : "var(--text-secondary)", textDecoration: checklist[task.id] ? "line-through" : "none" }}>
+                      {task.label}
+                    </span>
+                    <span className="text-[8px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-md"
+                      style={{ background: "var(--bg2)", color: "var(--text-muted)" }}>
+                      {task.cat}
+                    </span>
+                  </button>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* ── Weekly Checklist ── */}
-          <div className="fade-up-3">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold" style={{ color: "var(--text)" }}>
-                Checklist Hebdo
-                <span className="ml-2 text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>
-                  {checklistProgress}/{WEEKLY_TASKS.length}
-                </span>
-              </h2>
-              <button onClick={resetChecklist} className="flex items-center gap-1 text-[10px] font-medium cursor-pointer hover:opacity-70 transition-opacity"
-                style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
-                <RotateCcw className="w-3 h-3" /> Reset
-              </button>
-            </div>
-            {/* Progress bar */}
-            <div className="w-full h-1.5 rounded-full mb-3" style={{ background: "var(--bg2)" }}>
-              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(checklistProgress / WEEKLY_TASKS.length) * 100}%`, background: checklistProgress === WEEKLY_TASKS.length ? "var(--success)" : "var(--accent)" }} />
-            </div>
-            <div className="space-y-1.5">
-              {WEEKLY_TASKS.map(task => (
-                <button key={task.id} onClick={() => toggleCheck(task.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left cursor-pointer transition-all duration-200 hover:scale-[1.01]"
-                  style={{ background: checklist[task.id] ? "rgba(22,163,74,0.06)" : "var(--surface)", border: `1px solid ${checklist[task.id] ? "rgba(22,163,74,0.15)" : "var(--border)"}` }}>
-                  {checklist[task.id]
-                    ? <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: "var(--success)" }} />
-                    : <Circle className="w-4 h-4 flex-shrink-0" style={{ color: "var(--border3)" }} />
-                  }
-                  <task.icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: checklist[task.id] ? "var(--success)" : "var(--text-muted)" }} />
-                  <span className="text-xs font-medium flex-1" style={{ color: checklist[task.id] ? "var(--success)" : "var(--text-secondary)", textDecoration: checklist[task.id] ? "line-through" : "none" }}>
-                    {task.label}
-                  </span>
-                  <span className="text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md"
-                    style={{ background: "var(--bg2)", color: "var(--text-muted)" }}>
-                    {task.cat}
-                  </span>
-                </button>
-              ))}
             </div>
           </div>
 
           {/* ── Generate Modal ── */}
           <GenerateModal
             open={showGenerator}
-            onClose={() => setShowGenerator(false)}
+            onClose={() => { setShowGenerator(false); setPrefillClient(""); }}
             onGenerate={handleGenerate}
             modelSlug={modelSlug}
+            prefillClient={prefillClient}
           />
 
           {/* ── FAB Radial Menu ── */}

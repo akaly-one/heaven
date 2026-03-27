@@ -7,6 +7,7 @@ interface GenerateModalProps {
   open: boolean;
   onClose: () => void;
   modelSlug: string;
+  prefillClient?: string;
   onGenerate: (data: {
     client: string;
     platform: string;
@@ -29,7 +30,7 @@ const DURATIONS = [
   { label: "90 jours", value: 2160 },
 ];
 
-export function GenerateModal({ open, onClose, onGenerate, modelSlug }: GenerateModalProps) {
+export function GenerateModal({ open, onClose, onGenerate, modelSlug, prefillClient = "" }: GenerateModalProps) {
   const [client, setClient] = useState("");
   const [platform, setPlatform] = useState("snapchat");
   const [tier, setTier] = useState("vip");
@@ -40,6 +41,7 @@ export function GenerateModal({ open, onClose, onGenerate, modelSlug }: Generate
   const [origin, setOrigin] = useState("");
 
   useEffect(() => { setOrigin(window.location.origin); }, []);
+  useEffect(() => { if (prefillClient) setClient(prefillClient); }, [prefillClient]);
 
   if (!open) return null;
 

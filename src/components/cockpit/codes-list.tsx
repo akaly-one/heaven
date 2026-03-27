@@ -4,7 +4,8 @@ import { useState, useMemo, useCallback } from "react";
 import {
   Search, Copy, Check, MoreHorizontal, Pause, Play, Ban, Trash2,
   Clock, ChevronDown, ChevronRight, User, MessageSquare, Shield,
-  ShieldOff, Send, StickyNote, ExternalLink, Link2
+  ShieldOff, Send, StickyNote, ExternalLink, Link2, Plus,
+  Package, CalendarPlus, Wallet, Crown
 } from "lucide-react";
 
 interface AccessCode {
@@ -39,6 +40,11 @@ interface ClientInfo {
   last_active?: string;
 }
 
+interface WiseLink {
+  tier: string;
+  url: string;
+}
+
 interface CodesListProps {
   codes: AccessCode[];
   clients?: ClientInfo[];
@@ -50,6 +56,9 @@ interface CodesListProps {
   onDelete: (code: string) => void;
   onUpdateClient?: (id: string, updates: Record<string, unknown>) => void;
   onSendMessage?: (clientId: string, content: string) => void;
+  onGenerateForClient?: (clientName: string) => void;
+  onExtendCode?: (code: string, extraHours: number) => void;
+  wiseLinks?: WiseLink[];
 }
 
 const TIER_COLORS: Record<string, string> = {
@@ -97,9 +106,15 @@ interface ClientGroup {
   clientInfo?: ClientInfo;
 }
 
+const EXTEND_OPTIONS = [
+  { label: "+7j", hours: 168 },
+  { label: "+30j", hours: 720 },
+  { label: "+90j", hours: 2160 },
+];
+
 export function CodesList({
   codes, clients = [], modelSlug, onCopy, onRevoke, onPause, onReactivate, onDelete,
-  onUpdateClient, onSendMessage
+  onUpdateClient, onSendMessage, onGenerateForClient, onExtendCode, wiseLinks = []
 }: CodesListProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -221,7 +236,19 @@ export function CodesList({
       {groups.length === 0 ? (
         <div className="text-center py-12">
           <Search className="w-6 h-6 mx-auto mb-2" style={{ color: "var(--text-muted)" }} />
-          <p className="text-xs" style={{ color: "var(--text-muted)" }}>Aucun code trouve</p>
+          <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>
+            {search.trim() ? `Aucun client "${search}" trouve` : "Aucun code trouve"}
+          </p>
+          {search.trim() && onGenerateForClient && (
+            <button
+              onClick={() => onGenerateForClient(search.trim())}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+              style={{ background: "var(--accent)", color: "#fff" }}
+            >
+              <Plus className="w-4 h-4" />
+              Generer code pour &quot;{search.trim()}&quot;
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-2">
@@ -382,6 +409,94 @@ export function CodesList({
                           style={{ background: "var(--accent)", color: "#fff" }}>
                           <Send className="w-3.5 h-3.5" />
                         </button>
+                      </div>
+                    )}
+
+                    {/* Active Subscriptions */}
+                    {(() => {
+                      const activeSubs = group.codes.filter(c => c.active && !c.revoked && !isExpired(c.expiresAt));
+                      if (activeSubs.length === 0) return null;
+                      return (
+                        <div className="px-3 py-2.5" style={{ borderTop: "1px solid var(--border2)" }}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Package className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
+                            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+                              Abonnements actifs ({activeSubs.length})
+                            </span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {activeSubs.map(sub => {
+                              const tierColor = TIER_COLORS[sub.tier] || "var(--text-muted)";
+                              return (
+                                <div key={sub.code} className="flex items-center gap-2 p-2 rounded-lg" style={{ background: "rgba(255,255,255,0.02)" }}>
+                                  <Crown className="w-3 h-3 shrink-0" style={{ color: tierColor }} />
+                                  <span className="text-[10px] font-bold uppercase" style={{ color: tierColor }}>{sub.tier}</span>
+                                  <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>·</span>
+                                  <span className="text-[9px] tabular-nums" style={{ color: "var(--text-secondary)" }}>
+                                    Expire {new Date(sub.expiresAt).toLocaleDateString("fr-FR")} ({timeLeft(sub.expiresAt)})
+                                  </span>
+                                  <div className="flex-1" />
+                                  {onExtendCode && (
+                                    <div className="flex gap-1">
+                                      {EXTEND_OPTIONS.map(opt => (
+                                        <button key={opt.hours} onClick={() => onExtendCode(sub.code, opt.hours)}
+                                          className="px-1.5 py-0.5 rounded text-[8px] font-medium cursor-pointer hover:scale-105 transition-transform"
+                                          style={{ background: "rgba(16,185,129,0.08)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.15)" }}>
+                                          {opt.label}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {/* Generate unified access code */}
+                          {activeSubs.length > 0 && (
+                            <div className="mt-2 p-2 rounded-lg flex items-center gap-2" style={{ background: "rgba(230,51,41,0.04)", border: "1px solid rgba(230,51,41,0.1)" }}>
+                              <Link2 className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--accent)" }} />
+                              <span className="text-[9px] flex-1" style={{ color: "var(--text-secondary)" }}>
+                                Code unifie: acces {activeSubs.map(s => s.tier.toUpperCase()).join(" + ")}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  const primary = activeSubs.sort((a, b) => new Date(b.expiresAt).getTime() - new Date(a.expiresAt).getTime())[0];
+                                  handleCopy(getAccessLink(modelSlug, primary.code), `unified-${group.name}`);
+                                }}
+                                className="px-2 py-1 rounded-lg text-[9px] font-medium cursor-pointer hover:scale-105 transition-transform flex items-center gap-1"
+                                style={{ background: "var(--accent)", color: "#fff" }}>
+                                {copied === `unified-${group.name}` ? <Check className="w-2.5 h-2.5" /> : <Copy className="w-2.5 h-2.5" />}
+                                Copier
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Wise Payment Links */}
+                    {wiseLinks.length > 0 && (
+                      <div className="px-3 py-2.5" style={{ borderTop: "1px solid var(--border2)" }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Wallet className="w-3.5 h-3.5" style={{ color: "#9FE870" }} />
+                          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+                            Paiement Wise
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {wiseLinks.map(wl => {
+                            const tierColor = TIER_COLORS[wl.tier] || "var(--text-muted)";
+                            return (
+                              <a key={wl.tier} href={wl.url} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer hover:scale-105 transition-transform no-underline"
+                                style={{ background: "rgba(159,232,112,0.06)", color: "#9FE870", border: "1px solid rgba(159,232,112,0.15)" }}>
+                                <span className="w-2 h-2 rounded-full" style={{ background: tierColor }} />
+                                <span className="uppercase">{wl.tier}</span>
+                                <ExternalLink className="w-2.5 h-2.5" />
+                              </a>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
 
