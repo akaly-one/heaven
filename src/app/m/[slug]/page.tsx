@@ -56,7 +56,6 @@ const TABS = [
   { id: "wall", label: "Wall", icon: Newspaper },
   { id: "gallery", label: "Gallery", icon: Image },
   { id: "shop", label: "Shop", icon: ShoppingBag },
-  { id: "chat", label: "Chat", icon: MessageCircle },
 ] as const;
 type TabId = typeof TABS[number]["id"];
 
@@ -158,6 +157,7 @@ export default function ModelPage() {
   const [clientBalance, setClientBalance] = useState(0);
   const [shopSection, setShopSection] = useState<"packs" | "credits">("packs");
   const [expandedPack, setExpandedPack] = useState<string | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
   const [selectedPack, setSelectedPack] = useState<PackConfig | null>(null);
   const [topupLoading, setTopupLoading] = useState(false);
   const [shopToast, setShopToast] = useState<string | null>(null);
@@ -623,10 +623,10 @@ export default function ModelPage() {
         .catch(e => console.error("[Chat] poll error:", e));
     };
     fetchChat();
-    const interval = tab === "chat" ? 5000 : 15000;
+    const interval = chatOpen ? 5000 : 15000;
     const iv = setInterval(fetchChat, interval);
     return () => clearInterval(iv);
-  }, [clientId, slug, tab]);
+  }, [clientId, slug, chatOpen]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -1835,7 +1835,7 @@ export default function ModelPage() {
                     <div className="card-premium p-5 text-center">
                       <Coins className="w-8 h-8 mx-auto mb-3" style={{ color: "var(--gold)", opacity: 0.5 }} />
                       <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>Identifie-toi pour acheter des crédits</p>
-                      <button onClick={() => setTab("chat")}
+                      <button onClick={() => setChatOpen(true)}
                         className="px-6 py-2.5 rounded-xl text-xs font-semibold cursor-pointer btn-gradient">
                         S&apos;identifier
                       </button>
@@ -1922,7 +1922,7 @@ export default function ModelPage() {
                 {!clientId ? (
                   <div className="space-y-3">
                     <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>Identifie-toi d&apos;abord pour acheter</p>
-                    <button onClick={() => { setCreditPurchaseModal(null); setTab("chat"); }}
+                    <button onClick={() => { setCreditPurchaseModal(null); setChatOpen(true); }}
                       className="w-full py-3 rounded-xl text-sm font-semibold cursor-pointer btn-gradient">
                       S&apos;identifier
                     </button>
@@ -1966,7 +1966,34 @@ export default function ModelPage() {
                 {activePacks.map(pack => {
                   const hex = TIER_HEX[pack.id] || pack.color;
                   const bonus = TIER_CREDIT_BONUS[pack.id];
-                  return (
+                  return pack.wise_url ? (
+                    <a key={pack.id} href={pack.wise_url} target="_blank" rel="noopener noreferrer"
+                      className="block w-full p-4 rounded-xl text-left cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] no-underline"
+                      style={{ background: `${hex}08`, border: `1px solid ${hex}20` }}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-lg">{TIER_META[pack.id]?.symbol}</span>
+                          <span className="text-sm font-bold" style={{ color: hex }}>{pack.name}</span>
+                        </div>
+                        <span className="text-base font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
+                      </div>
+                      <p className="text-[10px] leading-relaxed mb-1.5" style={{ color: "var(--text-muted)" }}>
+                        {pack.features.slice(0, 2).join(" · ")}
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <ChevronRight className="w-3 h-3" style={{ color: hex }} />
+                        <span className="text-[9px] font-semibold" style={{ color: hex }}>Payer via Wise</span>
+                      </div>
+                      {bonus && (bonus.multiplier > 1 || bonus.bonus) && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <Crown className="w-3 h-3" style={{ color: hex }} />
+                          <span className="text-[9px] font-semibold" style={{ color: hex }}>
+                            {bonus.multiplier > 1 ? `${bonus.label} crédits` : `🎁 ${bonus.bonus}`}
+                          </span>
+                        </div>
+                      )}
+                    </a>
+                  ) : (
                     <button key={pack.id} onClick={() => { setShowUnlock(false); setSelectedPack(pack); }}
                       className="w-full p-4 rounded-xl text-left cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
                       style={{ background: `${hex}08`, border: `1px solid ${hex}20` }}>
@@ -2064,7 +2091,7 @@ export default function ModelPage() {
                     <>
                       <button onClick={() => {
                         setSelectedPack(null);
-                        setTab("chat");
+                        setChatOpen(true);
                         setChatInput(`Je veux le pack ${selectedPack.name} à ${selectedPack.price}€`);
                       }}
                         className="w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
@@ -2087,80 +2114,123 @@ export default function ModelPage() {
           );
         })()}
 
-        {/* ═══ CHAT TAB CONTENT ═══ */}
-        {tab === "chat" && !isModelLoggedIn && model && (
-          <div className="fade-up" style={{ minHeight: "60vh" }}>
-            {/* Chat header */}
-            <div className="flex items-center gap-3 p-4 rounded-2xl mb-4" style={{ background: "var(--surface)", border: "1px solid var(--border2)" }}>
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
-                style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff" }}>
-                {model.display_name.charAt(0)}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{model.display_name}</p>
-                <p className="text-[10px]" style={{ color: model.online ? "var(--success)" : "var(--text-muted)" }}>
-                  {model.online ? "Online" : "Offline"}
-                </p>
-              </div>
-            </div>
+        {/* ═══ CHAT FLOATING BUBBLE ═══ */}
+        {!isModelLoggedIn && model && (
+          <>
+            {/* Chat FAB */}
+            {!chatOpen && (
+              <button onClick={() => setChatOpen(true)}
+                className="fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full flex items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110 active:scale-95"
+                style={{
+                  background: "linear-gradient(135deg, var(--rose), var(--accent))",
+                  boxShadow: "0 4px 20px rgba(230,51,41,0.4)",
+                }}>
+                <MessageCircle className="w-6 h-6 text-white" />
+                {chatMessages.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[9px] font-bold flex items-center justify-center"
+                    style={{ background: "var(--success)", color: "#fff" }}>
+                    {chatMessages.length}
+                  </span>
+                )}
+              </button>
+            )}
 
-            {!clientId ? (
-              <div className="card-premium p-6 space-y-3">
-                <p className="text-xs text-center font-medium" style={{ color: "var(--text-muted)" }}>Enter your username to start chatting</p>
-                <div className="relative">
-                  <Ghost className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--text-muted)" }} />
-                  <input value={pseudo.snap} onChange={e => setPseudo(p => ({ ...p, snap: e.target.value }))}
-                    placeholder="Snapchat username" className="w-full pl-10 pr-3 py-2.5 rounded-xl text-xs outline-none"
-                    style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
-                </div>
-                <div className="relative">
-                  <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--text-muted)" }} />
-                  <input value={pseudo.insta} onChange={e => setPseudo(p => ({ ...p, insta: e.target.value }))}
-                    placeholder="Instagram username" className="w-full pl-10 pr-3 py-2.5 rounded-xl text-xs outline-none"
-                    style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
-                </div>
-                <button onClick={registerClient} disabled={!pseudo.snap && !pseudo.insta}
-                  className="w-full py-2.5 rounded-xl text-xs font-semibold cursor-pointer btn-gradient disabled:opacity-30">
-                  Start Chatting
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-col rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border2)", height: "calc(100vh - 340px)", minHeight: 300 }}>
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                  {chatMessages.length === 0 ? (
-                    <div className="text-center py-12">
-                      <MessageCircle className="w-8 h-8 mx-auto mb-2" style={{ color: "var(--text-muted)" }} />
-                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>Say hello to {model.display_name}!</p>
+            {/* Chat panel — floating card */}
+            {chatOpen && (
+              <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-[380px] z-50 rounded-2xl overflow-hidden shadow-2xl"
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--border2)",
+                  maxHeight: "min(500px, 70vh)",
+                  animation: "slideUp 0.3s ease-out",
+                  boxShadow: "0 8px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)",
+                }}>
+                {/* Header */}
+                <div className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border2)", background: "var(--bg2)" }}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden"
+                    style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff" }}>
+                    {model.avatar ? (
+                      <img src={model.avatar} alt="" className="w-full h-full object-cover" />
+                    ) : model.display_name.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold truncate" style={{ color: "var(--text)" }}>{model.display_name}</p>
+                    <div className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full" style={{
+                        background: model.online ? "var(--success)" : "var(--text-muted)",
+                        boxShadow: model.online ? "0 0 4px rgba(16,185,129,0.5)" : "none",
+                      }} />
+                      <span className="text-[9px]" style={{ color: model.online ? "var(--success)" : "var(--text-muted)" }}>
+                        {model.online ? "En ligne" : "Hors ligne"}
+                      </span>
                     </div>
-                  ) : chatMessages.map(msg => (
-                    <div key={msg.id} className={`flex ${msg.sender_type === "client" ? "justify-end" : "justify-start"}`}>
-                      <div className="max-w-[75%] rounded-2xl px-3.5 py-2 text-[12px]"
-                        style={{
-                          background: msg.sender_type === "client" ? "rgba(230,51,41,0.15)" : "var(--bg3)",
-                          color: "var(--text)",
-                        }}>
-                        {msg.content}
-                        <p className="text-[8px] mt-0.5 opacity-40">{timeAgo(msg.created_at)}</p>
-                      </div>
-                    </div>
-                  ))}
-                  <div ref={chatEndRef} />
-                </div>
-                {/* Input */}
-                <div className="p-3 flex gap-2 shrink-0" style={{ borderTop: "1px solid var(--border2)" }}>
-                  <input value={chatInput} onChange={e => setChatInput(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && sendMessage()}
-                    placeholder="Message..." className="flex-1 px-4 py-2.5 rounded-xl text-xs outline-none"
-                    style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
-                  <button onClick={sendMessage}
-                    className="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer btn-gradient shrink-0">
-                    <Send className="w-4 h-4" />
+                  </div>
+                  <button onClick={() => setChatOpen(false)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
+                    style={{ background: "rgba(255,255,255,0.05)" }}>
+                    <X className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
                   </button>
                 </div>
+
+                {!clientId ? (
+                  <div className="p-5 space-y-3">
+                    <p className="text-xs text-center font-medium" style={{ color: "var(--text-muted)" }}>Identifie-toi pour discuter</p>
+                    <div className="relative">
+                      <Ghost className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                      <input value={pseudo.snap} onChange={e => setPseudo(p => ({ ...p, snap: e.target.value }))}
+                        placeholder="Pseudo Snapchat" className="w-full pl-10 pr-3 py-2.5 rounded-xl text-xs outline-none"
+                        style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
+                    </div>
+                    <div className="relative">
+                      <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                      <input value={pseudo.insta} onChange={e => setPseudo(p => ({ ...p, insta: e.target.value }))}
+                        placeholder="Pseudo Instagram" className="w-full pl-10 pr-3 py-2.5 rounded-xl text-xs outline-none"
+                        style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
+                    </div>
+                    <button onClick={registerClient} disabled={!pseudo.snap && !pseudo.insta}
+                      className="w-full py-2.5 rounded-xl text-xs font-semibold cursor-pointer btn-gradient disabled:opacity-30">
+                      Commencer
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Messages */}
+                    <div className="overflow-y-auto p-3 space-y-2" style={{ height: "min(320px, 45vh)" }}>
+                      {chatMessages.length === 0 ? (
+                        <div className="text-center py-8">
+                          <MessageCircle className="w-6 h-6 mx-auto mb-2" style={{ color: "var(--text-muted)" }} />
+                          <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>Envoie un message a {model.display_name}</p>
+                        </div>
+                      ) : chatMessages.map(msg => (
+                        <div key={msg.id} className={`flex ${msg.sender_type === "client" ? "justify-end" : "justify-start"}`}>
+                          <div className="max-w-[80%] rounded-2xl px-3 py-2 text-[12px]"
+                            style={{
+                              background: msg.sender_type === "client" ? "rgba(230,51,41,0.15)" : "var(--bg3)",
+                              color: "var(--text)",
+                            }}>
+                            {msg.content}
+                            <p className="text-[8px] mt-0.5 opacity-40">{timeAgo(msg.created_at)}</p>
+                          </div>
+                        </div>
+                      ))}
+                      <div ref={chatEndRef} />
+                    </div>
+                    {/* Input */}
+                    <div className="p-3 flex gap-2 shrink-0" style={{ borderTop: "1px solid var(--border2)" }}>
+                      <input value={chatInput} onChange={e => setChatInput(e.target.value)}
+                        onKeyDown={e => e.key === "Enter" && sendMessage()}
+                        placeholder="Message..." className="flex-1 px-3 py-2 rounded-xl text-xs outline-none"
+                        style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
+                      <button onClick={sendMessage}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer btn-gradient shrink-0">
+                        <Send className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
-          </div>
+          </>
         )}
 
         {/* ═══ SHOP TOAST ═══ */}
@@ -2231,12 +2301,6 @@ export default function ModelPage() {
                   style={{ color: tab === t.id ? "var(--accent)" : "var(--text-muted)" }}>
                   <t.icon className="w-5 h-5" />
                   {tab === t.id && <span className="text-[10px] font-medium">{t.label}</span>}
-                  {t.id === "chat" && unreadCount > 0 && tab !== "chat" && (
-                    <span className="absolute -top-0.5 right-1 w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center"
-                      style={{ background: "var(--danger)", color: "#fff" }}>
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
-                  )}
                 </button>
               ))}
             </div>
