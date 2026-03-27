@@ -828,8 +828,8 @@ export default function ModelPage() {
               ? `url(${displayModel.banner}) center/cover`
               : "linear-gradient(135deg, rgba(244,63,94,0.2), rgba(230,51,41,0.15), rgba(124,58,237,0.1))",
           }}>
-            {/* Gradient overlay for text readability */}
-            <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(var(--bg-rgb, 15,16,25), 0.6), transparent 60%)" }} />
+            {/* Gradient overlay for text readability — stronger at bottom */}
+            <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(var(--bg-rgb, 15,16,25), 0.85) 0%, rgba(var(--bg-rgb, 15,16,25), 0.4) 40%, transparent 70%)" }} />
             {isEditMode && (
               <>
                 <button onClick={() => bannerInputRef.current?.click()}
@@ -846,9 +846,9 @@ export default function ModelPage() {
           </div>
 
           <div className="max-w-2xl mx-auto px-4 -mt-14 sm:-mt-16 relative z-10">
-            <div className="flex items-end gap-4 mb-4 profile-stagger-2">
+            <div className="flex items-end gap-4 profile-stagger-2">
               {/* Avatar — animated glow */}
-              <div className="relative">
+              <div className="relative shrink-0">
                 <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-2xl border-[3px] flex items-center justify-center text-2xl font-black overflow-hidden"
                   style={{
                     borderColor: "var(--bg)",
@@ -877,14 +877,8 @@ export default function ModelPage() {
               <div className="pb-1.5 flex-1 min-w-0">
                 {isEditMode ? (
                   <>
-                    <input
-                      value={displayModel?.display_name || ""}
-                      onChange={e => updateEditField("display_name", e.target.value)}
-                      className="text-lg font-bold w-full bg-transparent outline-none rounded-lg px-2 py-1 -ml-2"
-                      style={{ color: "var(--text)", border: "1px dashed var(--border3)" }}
-                      placeholder="Display name"
-                    />
-                    <div className="flex items-center gap-2 mt-1">
+                    {/* Status toggle ABOVE name in edit mode */}
+                    <div className="flex items-center gap-2 mb-1">
                       <button onClick={() => updateEditField("online", !displayModel?.online)}
                         className="flex items-center gap-1 cursor-pointer"
                         style={{ color: displayModel?.online ? "var(--success)" : "var(--text-muted)" }}>
@@ -892,9 +886,26 @@ export default function ModelPage() {
                         <span className="text-[10px] font-medium">{displayModel?.online ? "Online" : "Offline"}</span>
                       </button>
                     </div>
+                    <input
+                      value={displayModel?.display_name || ""}
+                      onChange={e => updateEditField("display_name", e.target.value)}
+                      className="text-lg font-bold w-full bg-transparent outline-none rounded-lg px-2 py-1 -ml-2"
+                      style={{ color: "var(--text)", border: "1px dashed var(--border3)" }}
+                      placeholder="Display name"
+                    />
                   </>
                 ) : (
                   <>
+                    {/* Online status ABOVE pseudo */}
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="w-2 h-2 rounded-full" style={{
+                        background: displayModel?.online ? "var(--success)" : "var(--text-muted)",
+                        boxShadow: displayModel?.online ? "0 0 6px rgba(16,185,129,0.5)" : "none",
+                      }} />
+                      <span className="text-[10px] font-medium" style={{ color: displayModel?.online ? "var(--success)" : "var(--text-muted)" }}>
+                        {displayModel?.online ? "En ligne" : "Hors ligne"}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h1 className="text-lg sm:text-xl font-bold truncate" style={{ color: "var(--text)" }}>{displayModel?.display_name}</h1>
                       <span className="badge badge-success text-[9px]">Verified</span>
@@ -909,16 +920,36 @@ export default function ModelPage() {
 
             {/* Stats bar — animated counters */}
             {!isEditMode && (
-              <div className="flex items-center gap-4 sm:gap-6 mb-4 profile-stagger-3">
+              <div className="flex items-center gap-4 sm:gap-6 mt-4 mb-3 profile-stagger-3">
                 {[
                   { label: "Posts", value: posts.length },
                   { label: "Media", value: uploads.length },
                   { label: "Packs", value: activePacks.length },
+                  { label: "Fans", value: wallPosts.length },
                 ].map((s, i) => (
                   <div key={s.label} className="stat-pop" style={{ animationDelay: `${0.5 + i * 0.1}s` }}>
                     <span className="text-sm sm:text-base font-bold block" style={{ color: "var(--text)" }}>{s.value}</span>
                     <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{s.label}</span>
                   </div>
+                ))}
+              </div>
+            )}
+
+            {/* Skills / Psychological triggers — what the model offers */}
+            {!isEditMode && (
+              <div className="flex flex-wrap gap-1.5 mb-3 profile-stagger-3">
+                {[
+                  { label: "Contenu Exclusif", icon: "🔥", color: "#F43F5E" },
+                  { label: "Reponse Rapide", icon: "⚡", color: "#F59E0B" },
+                  { label: "Custom Content", icon: "🎨", color: "#7C3AED" },
+                  ...(activePacks.length > 0 ? [{ label: `${activePacks.length} Pack${activePacks.length > 1 ? "s" : ""}`, icon: "💎", color: "#A78BFA" }] : []),
+                  ...(uploads.length >= 10 ? [{ label: "Media Regulier", icon: "📸", color: "#10B981" }] : []),
+                ].map(skill => (
+                  <span key={skill.label} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-semibold"
+                    style={{ background: `${skill.color}12`, color: skill.color, border: `1px solid ${skill.color}25` }}>
+                    <span className="text-[10px]">{skill.icon}</span>
+                    {skill.label}
+                  </span>
                 ))}
               </div>
             )}
@@ -944,7 +975,7 @@ export default function ModelPage() {
               </div>
             ) : (
               displayModel?.bio && (
-                <p className="text-xs leading-relaxed mb-4 fade-up" style={{ color: "var(--text-secondary)" }}>{displayModel.bio}</p>
+                <p className="text-xs leading-relaxed mb-3 fade-up" style={{ color: "var(--text-secondary)" }}>{displayModel.bio}</p>
               )
             )}
 
@@ -1210,12 +1241,10 @@ export default function ModelPage() {
 
               {(isEditMode ? uploads : galleryItems).length === 0 ? (
                 isEditMode ? (
-                  <button onClick={() => mediaInputRef.current?.click()}
-                    className="w-full py-16 rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer transition-all hover:scale-[1.01]"
-                    style={{ border: "2px dashed var(--border3)", background: "rgba(255,255,255,0.02)" }}>
-                    <Upload className="w-8 h-8" style={{ color: "var(--text-muted)" }} />
-                    <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>Ajouter votre premier média</span>
-                  </button>
+                  <div className="text-center py-8">
+                    <Upload className="w-6 h-6 mx-auto mb-2" style={{ color: "var(--text-muted)" }} />
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>Utilisez le bouton ci-dessus pour ajouter des medias</p>
+                  </div>
                 ) : (
                   <EmptyState icon={Image} text="No content available" />
                 )
