@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Plus, KeyRound, Pencil, Eye, CheckCircle, Circle, RotateCcw, TrendingUp, Instagram, Camera as CameraIcon, Globe, MessageCircle, Heart, Pin, Newspaper } from "lucide-react";
+import { Plus, KeyRound, Pencil, Eye, CheckCircle, Circle, RotateCcw, TrendingUp, Instagram, Camera as CameraIcon, Globe, MessageCircle, Heart, Pin, Newspaper, Wifi, WifiOff, Send, Compass, X } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
@@ -89,6 +89,13 @@ export default function AgenceDashboard() {
   const [showGenerator, setShowGenerator] = useState(false);
   const [, setTick] = useState(0);
   const [feedPosts, setFeedPosts] = useState<FeedPost[]>([]);
+
+  // FAB sub-panels
+  const [showNewPost, setShowNewPost] = useState(false);
+  const [newPostContent, setNewPostContent] = useState("");
+  const [newPostTier, setNewPostTier] = useState("public");
+  const [posting, setPosting] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
   // FAB state
   const [fabOpen, setFabOpen] = useState(false);
@@ -211,6 +218,43 @@ export default function AgenceDashboard() {
     });
   }, [authHeaders, modelSlug]);
 
+  // ── Toggle model online/offline ──
+  const handleToggleStatus = useCallback(async () => {
+    setStatusUpdating(true);
+    const newStatus = !modelInfo?.online;
+    try {
+      const res = await fetch(`/api/models/${modelSlug}`, {
+        method: "PUT",
+        headers: authHeaders(),
+        body: JSON.stringify({ online: newStatus }),
+      });
+      if (res.ok) setModelInfo(prev => prev ? { ...prev, online: newStatus } : prev);
+    } catch { /* */ }
+    setStatusUpdating(false);
+    setFabOpen(false);
+  }, [modelSlug, modelInfo, authHeaders]);
+
+  // ── Create new feed post ──
+  const handleCreatePost = useCallback(async () => {
+    if (!newPostContent.trim() || posting) return;
+    setPosting(true);
+    try {
+      await fetch("/api/posts", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ model: modelSlug, content: newPostContent.trim(), tier_required: newPostTier }),
+      });
+      setNewPostContent("");
+      setNewPostTier("public");
+      setShowNewPost(false);
+      // Refresh feed
+      const res = await fetch(`/api/posts?model=${modelSlug}`, { headers: authHeaders() });
+      const d = await res.json();
+      setFeedPosts((d.posts || []).slice(0, 5));
+    } catch { /* */ }
+    setPosting(false);
+  }, [newPostContent, newPostTier, posting, modelSlug, authHeaders]);
+
   return (
     <OsLayout cpId="agence">
       <div className="min-h-screen p-4 md:p-8 pb-28 md:pb-8">
@@ -231,7 +275,10 @@ export default function AgenceDashboard() {
                   modelSlug.charAt(0).toUpperCase()
                 )}
               </div>
-              {modelInfo?.online && <span className="online-dot absolute -bottom-0.5 -right-0.5" />}
+              <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center"
+                style={{ borderColor: "var(--bg)", background: modelInfo?.online ? "#10B981" : "#6B7280" }}>
+                {modelInfo?.online && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+              </span>
             </div>
             <div className="flex-1 min-w-0">
               <h1 className="text-base font-bold truncate" style={{ color: "var(--text)" }}>
@@ -412,20 +459,64 @@ export default function AgenceDashboard() {
             modelSlug={modelSlug}
           />
 
-          {/* ── FAB (Floating Action Button) ── */}
+          {/* ── FAB Radial Menu ── */}
           {fabOpen && (
-            <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm animate-fade-in" onClick={() => setFabOpen(false)} />
+            <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={() => setFabOpen(false)}
+              style={{ animation: "fadeIn 0.2s ease" }} />
           )}
-          <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-3">
-            <div className={`flex flex-col items-center gap-2.5 transition-all duration-300 ${fabOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"}`}>
-              <button
-                onClick={() => { setShowGenerator(true); setFabOpen(false); }}
-                className="fab-item flex items-center gap-2.5 pl-3 pr-4 py-2.5 rounded-full shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition-transform"
-                style={{ background: "var(--accent)", color: "#fff", transitionDelay: "50ms" }}>
-                <KeyRound className="w-4 h-4" />
-                <span className="text-xs font-semibold whitespace-nowrap">Code</span>
-              </button>
+          <style>{`
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes fabItemIn { from { opacity: 0; transform: scale(0.5) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+          `}</style>
+          <div className="fixed bottom-20 md:bottom-8 right-4 md:right-8 z-50 flex flex-col items-end gap-3">
+            {/* Radial items */}
+            <div className={`flex flex-col items-end gap-2.5 transition-all duration-300 ${fabOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8 pointer-events-none"}`}>
+              {[
+                {
+                  label: modelInfo?.online ? "Passer Offline" : "Passer Online",
+                  icon: modelInfo?.online ? WifiOff : Wifi,
+                  color: modelInfo?.online ? "#EF4444" : "#10B981",
+                  action: handleToggleStatus,
+                  delay: "200ms",
+                  loading: statusUpdating,
+                },
+                {
+                  label: "Nouveau Post",
+                  icon: Send,
+                  color: "#7C3AED",
+                  action: () => { setShowNewPost(true); setFabOpen(false); },
+                  delay: "150ms",
+                },
+                {
+                  label: "Generer Code",
+                  icon: KeyRound,
+                  color: "var(--accent)",
+                  action: () => { setShowGenerator(true); setFabOpen(false); },
+                  delay: "100ms",
+                },
+                {
+                  label: "Strategie",
+                  icon: Compass,
+                  color: "#F59E0B",
+                  action: () => { window.location.href = "/agence/strategie"; },
+                  delay: "50ms",
+                },
+              ].map(item => (
+                <button key={item.label}
+                  onClick={item.action}
+                  disabled={item.loading}
+                  className="flex items-center gap-2.5 pl-3 pr-4 py-2.5 rounded-full shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition-transform disabled:opacity-50"
+                  style={{ background: item.color, color: "#fff", animation: fabOpen ? `fabItemIn 0.3s ease ${item.delay} both` : "none" }}>
+                  {item.loading ? (
+                    <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(255,255,255,0.3)", borderTopColor: "#fff" }} />
+                  ) : (
+                    <item.icon className="w-4 h-4" />
+                  )}
+                  <span className="text-xs font-semibold whitespace-nowrap">{item.label}</span>
+                </button>
+              ))}
             </div>
+            {/* Main FAB */}
             <button
               onClick={() => setFabOpen(!fabOpen)}
               className="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(230,51,41,0.4)]"
@@ -436,6 +527,62 @@ export default function AgenceDashboard() {
               <Plus className="w-6 h-6 text-white" />
             </button>
           </div>
+
+          {/* ── New Post Sheet ── */}
+          {showNewPost && (
+            <>
+              <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={() => setShowNewPost(false)} />
+              <div className="fixed bottom-0 left-0 right-0 z-50 safe-area-bottom md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-md md:rounded-2xl overflow-hidden rounded-t-2xl"
+                style={{ background: "var(--surface)", border: "1px solid var(--border2)", boxShadow: "0 -8px 40px rgba(0,0,0,0.3)" }}>
+                <div className="flex justify-center pt-3 md:hidden">
+                  <div className="w-10 h-1 rounded-full" style={{ background: "var(--border3)" }} />
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold" style={{ color: "var(--text)" }}>Nouveau Post</h3>
+                    <button onClick={() => setShowNewPost(false)} className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer"
+                      style={{ background: "rgba(255,255,255,0.04)" }}>
+                      <X className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                    </button>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[11px] font-bold"
+                      style={{ background: "linear-gradient(135deg, var(--accent), #7C3AED)", color: "#fff" }}>
+                      {modelSlug.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <textarea
+                        value={newPostContent}
+                        onChange={e => setNewPostContent(e.target.value)}
+                        placeholder="Quoi de neuf ?"
+                        rows={4}
+                        className="w-full text-[13px] leading-relaxed outline-none resize-none rounded-lg p-3"
+                        style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }}
+                        autoFocus
+                      />
+                      <div className="flex items-center justify-between mt-3">
+                        <select value={newPostTier} onChange={e => setNewPostTier(e.target.value)}
+                          className="text-[11px] font-medium px-2.5 py-1.5 rounded-lg outline-none cursor-pointer"
+                          style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }}>
+                          <option value="public">Public</option>
+                          <option value="vip">VIP</option>
+                          <option value="gold">Gold</option>
+                          <option value="diamond">Diamond</option>
+                          <option value="platinum">Platinum</option>
+                        </select>
+                        <button onClick={handleCreatePost}
+                          disabled={!newPostContent.trim() || posting}
+                          className="px-5 py-2 rounded-xl text-xs font-bold cursor-pointer disabled:opacity-30 hover:scale-105 active:scale-95 transition-transform"
+                          style={{ background: "var(--accent)", color: "#fff" }}>
+                          {posting ? "..." : "Publier"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
         </div>
       </div>
