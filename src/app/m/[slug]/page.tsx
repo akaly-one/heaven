@@ -49,7 +49,7 @@ const TIER_META: Record<string, { color: string; symbol: string; label: string }
   public: { color: "var(--text-muted)", symbol: "", label: "Public" },
 };
 const TIER_HEX: Record<string, string> = {
-  vip: "#F43F5E", gold: "#F59E0B", diamond: "#6366F1", platinum: "#A78BFA",
+  vip: "#F43F5E", gold: "#F59E0B", diamond: "#7C3AED", platinum: "#A78BFA",
 };
 const TABS = [
   { id: "wall", label: "Wall", icon: Newspaper },
@@ -746,7 +746,7 @@ export default function ModelPage() {
   if (loading || !model) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{ background: "var(--bg)" }}>
-        <div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(201,168,76,0.2)", borderTopColor: "var(--accent)" }} />
+        <div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(230,51,41,0.2)", borderTopColor: "var(--accent)" }} />
       </div>
     );
   }
@@ -759,7 +759,7 @@ export default function ModelPage() {
       {/* Ambient gradient */}
       <div className="fixed inset-0 pointer-events-none z-0" style={{
         background: `
-          radial-gradient(ellipse 600px 400px at 15% 10%, rgba(201,168,76,0.04), transparent),
+          radial-gradient(ellipse 600px 400px at 15% 10%, rgba(230,51,41,0.04), transparent),
           radial-gradient(ellipse 500px 500px at 85% 80%, rgba(244,63,94,0.03), transparent)
         `,
       }} />
@@ -775,7 +775,7 @@ export default function ModelPage() {
           </a>
 
           {isEditMode && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.25)" }}>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: "rgba(230,51,41,0.12)", border: "1px solid rgba(230,51,41,0.25)" }}>
               <Pencil className="w-3 h-3" style={{ color: "var(--accent)" }} />
               <span className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>Edit Mode</span>
             </div>
@@ -810,7 +810,7 @@ export default function ModelPage() {
           <div className="h-32 md:h-44 relative overflow-hidden" style={{
             background: displayModel?.banner
               ? `url(${displayModel.banner}) center/cover`
-              : "linear-gradient(135deg, rgba(244,63,94,0.15), rgba(201,168,76,0.12), rgba(167,139,250,0.08))",
+              : "linear-gradient(135deg, rgba(244,63,94,0.15), rgba(230,51,41,0.12), rgba(167,139,250,0.08))",
           }}>
             {isEditMode && (
               <>
@@ -957,7 +957,7 @@ export default function ModelPage() {
               <div className="card-premium p-4">
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                    style={{ background: "rgba(201,168,76,0.12)", color: "var(--accent)" }}>
+                    style={{ background: "rgba(230,51,41,0.12)", color: "var(--accent)" }}>
                     {wallPseudo ? wallPseudo.charAt(0).toUpperCase() : "?"}
                   </div>
                   <div className="flex-1 min-w-0 space-y-2">
@@ -1151,10 +1151,10 @@ export default function ModelPage() {
                   <p className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>{uploads.length} médias</p>
                   <button onClick={() => mediaInputRef.current?.click()}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-semibold cursor-pointer transition-all hover:scale-[1.02]"
-                    style={{ background: "rgba(201,168,76,0.12)", color: "var(--accent)", border: "1px solid rgba(201,168,76,0.25)" }}
+                    style={{ background: "rgba(230,51,41,0.12)", color: "var(--accent)", border: "1px solid rgba(230,51,41,0.25)" }}
                     disabled={uploading}>
                     {uploading ? (
-                      <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(201,168,76,0.2)", borderTopColor: "var(--accent)" }} />
+                      <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(230,51,41,0.2)", borderTopColor: "var(--accent)" }} />
                     ) : (
                       <Plus className="w-3.5 h-3.5" />
                     )}
@@ -1242,7 +1242,7 @@ export default function ModelPage() {
                         {/* Tier badge */}
                         {!isEditMode && isCreditItem && !isCreditUnlocked && !isModelLoggedIn && (
                           <div className="absolute top-1.5 right-1.5">
-                            <span className="px-1.5 py-0.5 rounded text-[7px] font-bold" style={{ background: "rgba(201,168,76,0.9)", color: "#000" }}>
+                            <span className="px-1.5 py-0.5 rounded text-[7px] font-bold" style={{ background: "rgba(230,51,41,0.9)", color: "#000" }}>
                               {item.tokenPrice} 💰
                             </span>
                           </div>
@@ -1320,9 +1320,9 @@ export default function ModelPage() {
                             <button key={vis} onClick={() => setEditUploadData(prev => ({ ...prev, visibility: vis === "credits" ? "pack" : vis, tokenPrice: vis === "credits" ? (prev.tokenPrice || 5) : 0 }))}
                               className="flex-1 py-2 rounded-lg text-[10px] font-semibold cursor-pointer transition-all"
                               style={{
-                                background: (vis === "credits" ? (editUploadData.tokenPrice || 0) > 0 : editUploadData.visibility === vis && !(editUploadData.tokenPrice || 0)) ? "rgba(201,168,76,0.12)" : "rgba(255,255,255,0.03)",
+                                background: (vis === "credits" ? (editUploadData.tokenPrice || 0) > 0 : editUploadData.visibility === vis && !(editUploadData.tokenPrice || 0)) ? "rgba(230,51,41,0.12)" : "rgba(255,255,255,0.03)",
                                 color: (vis === "credits" ? (editUploadData.tokenPrice || 0) > 0 : editUploadData.visibility === vis && !(editUploadData.tokenPrice || 0)) ? "var(--accent)" : "var(--text-muted)",
-                                border: `1px solid ${(vis === "credits" ? (editUploadData.tokenPrice || 0) > 0 : editUploadData.visibility === vis && !(editUploadData.tokenPrice || 0)) ? "rgba(201,168,76,0.25)" : "var(--border2)"}`,
+                                border: `1px solid ${(vis === "credits" ? (editUploadData.tokenPrice || 0) > 0 : editUploadData.visibility === vis && !(editUploadData.tokenPrice || 0)) ? "rgba(230,51,41,0.25)" : "var(--border2)"}`,
                               }}>
                               {vis === "pack" ? "Privé" : vis === "promo" ? "Public" : "Crédits"}
                             </button>
@@ -1339,9 +1339,9 @@ export default function ModelPage() {
                               <button key={p} onClick={() => setEditUploadData(prev => ({ ...prev, tokenPrice: p }))}
                                 className="flex-1 py-2 rounded-lg text-[10px] font-bold cursor-pointer transition-all"
                                 style={{
-                                  background: editUploadData.tokenPrice === p ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.03)",
+                                  background: editUploadData.tokenPrice === p ? "rgba(230,51,41,0.15)" : "rgba(255,255,255,0.03)",
                                   color: editUploadData.tokenPrice === p ? "var(--gold)" : "var(--text-muted)",
-                                  border: `1px solid ${editUploadData.tokenPrice === p ? "rgba(201,168,76,0.3)" : "var(--border2)"}`,
+                                  border: `1px solid ${editUploadData.tokenPrice === p ? "rgba(230,51,41,0.3)" : "var(--border2)"}`,
                                 }}>
                                 {p}
                               </button>
@@ -1378,7 +1378,7 @@ export default function ModelPage() {
               {clientId && (
                 <div className="card-premium p-4 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(201,168,76,0.12)" }}>
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(230,51,41,0.12)" }}>
                       <Coins className="w-4.5 h-4.5" style={{ color: "var(--gold)" }} />
                     </div>
                     <div>
@@ -1399,18 +1399,18 @@ export default function ModelPage() {
                 <button onClick={() => setShopSection("packs")}
                   className="flex-1 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all flex items-center justify-center gap-1.5"
                   style={{
-                    background: shopSection === "packs" ? "rgba(201,168,76,0.1)" : "rgba(255,255,255,0.03)",
+                    background: shopSection === "packs" ? "rgba(230,51,41,0.1)" : "rgba(255,255,255,0.03)",
                     color: shopSection === "packs" ? "var(--accent)" : "var(--text-muted)",
-                    border: `1px solid ${shopSection === "packs" ? "rgba(201,168,76,0.25)" : "var(--border2)"}`,
+                    border: `1px solid ${shopSection === "packs" ? "rgba(230,51,41,0.25)" : "var(--border2)"}`,
                   }}>
                   <ShoppingBag className="w-3.5 h-3.5" /> Packs
                 </button>
                 <button onClick={() => setShopSection("credits")}
                   className="flex-1 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all flex items-center justify-center gap-1.5"
                   style={{
-                    background: shopSection === "credits" ? "rgba(201,168,76,0.1)" : "rgba(255,255,255,0.03)",
+                    background: shopSection === "credits" ? "rgba(230,51,41,0.1)" : "rgba(255,255,255,0.03)",
                     color: shopSection === "credits" ? "var(--gold)" : "var(--text-muted)",
-                    border: `1px solid ${shopSection === "credits" ? "rgba(201,168,76,0.25)" : "var(--border2)"}`,
+                    border: `1px solid ${shopSection === "credits" ? "rgba(230,51,41,0.25)" : "var(--border2)"}`,
                   }}>
                   <Coins className="w-3.5 h-3.5" /> Crédits
                 </button>
@@ -1655,7 +1655,7 @@ export default function ModelPage() {
                             )}
                             <p className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>crédits</p>
                             <div className="mt-2 py-1.5 rounded-lg text-[11px] font-bold"
-                              style={{ background: "rgba(201,168,76,0.08)", color: "var(--gold)", border: "1px solid rgba(201,168,76,0.15)" }}>
+                              style={{ background: "rgba(230,51,41,0.08)", color: "var(--gold)", border: "1px solid rgba(230,51,41,0.15)" }}>
                               {cp.price}€
                             </div>
                           </button>
@@ -1705,7 +1705,7 @@ export default function ModelPage() {
                 <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
                   {creditPurchaseModal.label || "Contenu exclusif"}
                 </p>
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl mb-5" style={{ background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.2)" }}>
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl mb-5" style={{ background: "rgba(230,51,41,0.1)", border: "1px solid rgba(230,51,41,0.2)" }}>
                   <Coins className="w-4 h-4" style={{ color: "var(--gold)" }} />
                   <span className="text-lg font-bold" style={{ color: "var(--gold)" }}>{creditPurchaseModal.tokenPrice}</span>
                   <span className="text-xs" style={{ color: "var(--gold2)" }}>crédits</span>
@@ -1914,7 +1914,7 @@ export default function ModelPage() {
                     <div key={msg.id} className={`flex ${msg.sender_type === "client" ? "justify-end" : "justify-start"}`}>
                       <div className="max-w-[75%] rounded-2xl px-3.5 py-2 text-[12px]"
                         style={{
-                          background: msg.sender_type === "client" ? "rgba(201,168,76,0.15)" : "var(--bg3)",
+                          background: msg.sender_type === "client" ? "rgba(230,51,41,0.15)" : "var(--bg3)",
                           color: "var(--text)",
                         }}>
                         {msg.content}
@@ -1991,7 +1991,7 @@ export default function ModelPage() {
         {uploading && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}>
             <div className="flex flex-col items-center gap-3">
-              <div className="w-10 h-10 border-3 rounded-full animate-spin" style={{ borderColor: "rgba(201,168,76,0.2)", borderTopColor: "var(--accent)" }} />
+              <div className="w-10 h-10 border-3 rounded-full animate-spin" style={{ borderColor: "rgba(230,51,41,0.2)", borderTopColor: "var(--accent)" }} />
               <p className="text-xs font-medium" style={{ color: "var(--text)" }}>Upload en cours...</p>
             </div>
           </div>

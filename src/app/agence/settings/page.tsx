@@ -153,7 +153,7 @@ export default function SettingsPage() {
                   </div>
                   {loading ? (
                     <div className="flex items-center justify-center py-10">
-                      <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(201,168,76,0.2)", borderTopColor: "var(--accent)" }} />
+                      <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(230,51,41,0.2)", borderTopColor: "var(--accent)" }} />
                     </div>
                   ) : (
                     <div className="divide-y" style={{ borderColor: "var(--border2)" }}>

@@ -1091,7 +1091,7 @@ export default function StrategiePage() {
                     </div>
                   );
                 })}
-                <div className="mt-1 p-3 rounded-xl flex items-center justify-between" style={{ background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.2)" }}>
+                <div className="mt-1 p-3 rounded-xl flex items-center justify-between" style={{ background: "rgba(230,51,41,0.08)", border: "1px solid rgba(230,51,41,0.2)" }}>
                   <span className="text-xs font-bold" style={{ color: "var(--accent)" }}>Objectif total</span>
                   <span className="text-lg font-bold shimmer-gold">
                     {strategy.revenueTargets.filter(r => strategy.activePlatforms.includes(r.platform)).reduce((s, r) => s + r.target, 0).toLocaleString()}€

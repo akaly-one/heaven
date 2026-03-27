@@ -306,7 +306,7 @@ const TYPE_ICONS: Record<string, typeof Zap> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  page: "#6366F1",
+  page: "#7C3AED",
   api: "#10B981",
   db: "#3B82F6",
   external: "#8B5CF6",
@@ -436,7 +436,7 @@ export default function ArchitecturePage() {
           {/* Summary stats */}
           <div className="flex flex-wrap gap-2 mt-4">
             {[
-              { label: "Nodes", value: ARCHITECTURE.length, color: "#6366F1" },
+              { label: "Nodes", value: ARCHITECTURE.length, color: "#7C3AED" },
               { label: "Boutons", value: totalButtons, color: "#10B981" },
               { label: "Connexions", value: totalConnections, color: "#3B82F6" },
               { label: "OK", value: counts.ok, color: STATUS_COLORS.ok },
@@ -460,7 +460,7 @@ export default function ArchitecturePage() {
             <button key={tab} onClick={() => setSection(tab)}
               className="flex-1 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer"
               style={{
-                background: section === tab ? "rgba(201,168,76,0.15)" : "transparent",
+                background: section === tab ? "rgba(230,51,41,0.15)" : "transparent",
                 color: section === tab ? "var(--accent)" : "var(--text-muted)",
               }}>
               {tab === "map" ? "Map Complete" : tab === "issues" ? `Issues (${ISSUES.length})` : "Circuit Flow"}
@@ -475,8 +475,8 @@ export default function ArchitecturePage() {
               <button key={f} onClick={() => setFilter(f)}
                 className="px-3 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer"
                 style={{
-                  background: filter === f ? `${f === "all" ? "#6366F1" : STATUS_COLORS[f]}22` : "rgba(255,255,255,0.03)",
-                  color: filter === f ? (f === "all" ? "#6366F1" : STATUS_COLORS[f]) : "var(--text-muted)",
+                  background: filter === f ? `${f === "all" ? "#7C3AED" : STATUS_COLORS[f]}22` : "rgba(255,255,255,0.03)",
+                  color: filter === f ? (f === "all" ? "#7C3AED" : STATUS_COLORS[f]) : "var(--text-muted)",
                 }}>
                 {f === "all" ? "Tout" : f.toUpperCase()}
               </button>
@@ -548,7 +548,7 @@ export default function ArchitecturePage() {
           <div className="space-y-6">
             {/* Login → Cockpit flow */}
             <div className="rounded-xl p-4" style={{ background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.15)" }}>
-              <h3 className="text-sm font-bold mb-3" style={{ color: "#6366F1" }}>Circuit 1: Login → Cockpit</h3>
+              <h3 className="text-sm font-bold mb-3" style={{ color: "#7C3AED" }}>Circuit 1: Login → Cockpit</h3>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 {[
                   { label: "/login", type: "page" },

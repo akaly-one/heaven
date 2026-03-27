@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Camera, DollarSign, MessageSquare, Settings, ChevronLeft, ChevronRight, Zap, Map, TrendingUp, Compass, Users } from "lucide-react";
+import { Camera, DollarSign, MessageSquare, Settings, ChevronLeft, ChevronRight, Crown, Map, TrendingUp, Compass, Users } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { HeavenAuth } from "./auth-guard";
 
@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings", color: "var(--text-muted)" },
   { id: "pipeline", label: "Pipeline", icon: TrendingUp, href: "/agence/pipeline", color: "#F59E0B" },
   { id: "strategie", label: "Strategie", icon: Compass, href: "/agence/strategie", color: "#E040FB" },
-  { id: "architecture", label: "Architecture", icon: Map, href: "/agence/architecture", color: "#6366F1", rootOnly: true },
+  { id: "architecture", label: "Architecture", icon: Map, href: "/agence/architecture", color: "#7C3AED", rootOnly: true },
 ] as const;
 
 function useAuth(): HeavenAuth | null {
@@ -60,17 +60,17 @@ export function Sidebar() {
       >
         <a href="/agence" className="flex items-center justify-center mb-6 no-underline">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", boxShadow: "0 0 20px rgba(201,168,76,0.25)" }}>
-            <Zap className="w-4 h-4" style={{ color: "#fff" }} />
+            style={{ background: "linear-gradient(135deg, var(--accent), #7C3AED)", boxShadow: "0 0 20px rgba(230,51,41,0.25)" }}>
+            <Crown className="w-4 h-4" style={{ color: "#fff" }} />
           </div>
-          {!collapsed && <span className="ml-2 text-xs font-bold" style={{ color: "var(--accent)" }}>HEAVEN</span>}
+          {!collapsed && <span className="ml-2 text-xs font-bold tracking-widest" style={{ color: "var(--accent)", fontFamily: "'Inter', sans-serif" }}>HEAVEN</span>}
         </a>
 
         {!collapsed && auth && (
           <div className="px-3 mb-4">
             <div className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider text-center"
               style={{
-                background: isRoot ? "rgba(201,168,76,0.15)" : "rgba(167,139,250,0.15)",
+                background: isRoot ? "rgba(230,51,41,0.12)" : "rgba(124,58,237,0.12)",
                 color: isRoot ? "var(--accent)" : "var(--tier-platinum)",
               }}>
               {isRoot ? "Root Admin" : auth.display_name}
@@ -85,7 +85,7 @@ export function Sidebar() {
               <a key={item.id} href={item.href}
                 className="flex items-center gap-3 px-2.5 py-2 rounded-lg transition-all no-underline hover:opacity-80"
                 style={{
-                  background: isActive ? "rgba(201,168,76,0.12)" : "transparent",
+                  background: isActive ? "rgba(230,51,41,0.10)" : "transparent",
                   color: isActive ? item.color : "var(--text-muted)",
                 }}>
                 <item.icon className="w-4.5 h-4.5 flex-shrink-0" />

@@ -75,7 +75,7 @@ interface Goal {
 
 const STAGES = [
   { id: "idea", label: "Idee", color: "#64748B" },
-  { id: "planned", label: "Planifie", color: "#6366F1" },
+  { id: "planned", label: "Planifie", color: "#7C3AED" },
   { id: "shooting", label: "Shooting", color: "#F59E0B" },
   { id: "editing", label: "Montage", color: "#F97316" },
   { id: "ready", label: "Pret", color: "#10B981" },
@@ -105,7 +105,7 @@ const TIER_COLORS: Record<string, string> = {
   free: "#64748B",
   vip: "#F43F5E",
   gold: "#F59E0B",
-  diamond: "#6366F1",
+  diamond: "#7C3AED",
   platinum: "#A78BFA",
   // Legacy fallbacks
   basic: "#10B981",
@@ -442,7 +442,7 @@ export default function PipelineDashboard() {
                 className="w-10 h-10 rounded-xl flex items-center justify-center"
                 style={{
                   background: "linear-gradient(135deg, var(--rose), var(--accent))",
-                  boxShadow: "0 0 20px rgba(201,168,76,0.15)",
+                  boxShadow: "0 0 20px rgba(230,51,41,0.15)",
                 }}
               >
                 <TrendingUp className="w-5 h-5 text-white" />
@@ -499,7 +499,7 @@ export default function PipelineDashboard() {
               label="Engagement moy."
               value={`${kpis.avgEngagement}%`}
               icon={Heart}
-              color="#6366F1"
+              color="#7C3AED"
             />
           </div>
 

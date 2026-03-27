@@ -72,7 +72,7 @@ interface ClientWithSubs {
 const TIER_COLORS: Record<string, string> = {
   vip: "#F43F5E",
   gold: "#F59E0B",
-  diamond: "#6366F1",
+  diamond: "#7C3AED",
   platinum: "#A78BFA",
 };
 
@@ -263,9 +263,9 @@ export default function ClientsPage() {
                 onClick={() => setStatusFilter(s)}
                 className="px-3 py-2 rounded-lg text-[11px] font-medium cursor-pointer transition-all"
                 style={{
-                  background: statusFilter === s ? "rgba(201,168,76,0.15)" : "var(--surface)",
+                  background: statusFilter === s ? "rgba(230,51,41,0.15)" : "var(--surface)",
                   color: statusFilter === s ? "var(--accent)" : "var(--text-muted)",
-                  border: `1px solid ${statusFilter === s ? "rgba(201,168,76,0.3)" : "var(--border2)"}`,
+                  border: `1px solid ${statusFilter === s ? "rgba(230,51,41,0.3)" : "var(--border2)"}`,
                 }}
               >
                 {s === "all" ? "Tous" : s === "active" ? "Actifs" : s === "expiring" ? "Expirent" : "Expires"}
@@ -295,7 +295,7 @@ export default function ClientsPage() {
         {/* Client list */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(201,168,76,0.2)", borderTopColor: "var(--accent)" }} />
+            <div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(230,51,41,0.2)", borderTopColor: "var(--accent)" }} />
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Plus, KeyRound, Pencil, Eye } from "lucide-react";
+import { Plus, KeyRound, Pencil, Eye, CheckCircle, Circle, RotateCcw, TrendingUp, Instagram, Camera as CameraIcon, Globe, MessageCircle } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
@@ -44,7 +44,7 @@ interface ClientInfo {
 const DEFAULT_PACKS: PackConfig[] = [
   { id: "vip", name: "VIP Glamour", price: 150, color: "#F43F5E", features: ["Pieds glamour/sales + accessoires", "Lingerie sexy + haul", "Teasing + demandes custom", "Dedicaces personnalisees"], bonuses: { fanvueAccess: false, freeNudeExpress: true, nudeDedicaceLevres: false, freeVideoOffer: false }, face: false, badge: null, active: true },
   { id: "gold", name: "Gold", price: 200, color: "#F59E0B", features: ["TOUT du VIP inclus", "Nudes complets", "Cosplay", "Sextape sans visage"], bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: false }, face: false, badge: "Populaire", active: true },
-  { id: "diamond", name: "Diamond", price: 250, color: "#6366F1", features: ["TOUT du Gold inclus", "Nudes avec visage", "Cosplay avec visage", "Sextape avec visage", "Hard illimite"], bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: false }, face: true, badge: null, active: true },
+  { id: "diamond", name: "Diamond", price: 250, color: "#7C3AED", features: ["TOUT du Gold inclus", "Nudes avec visage", "Cosplay avec visage", "Sextape avec visage", "Hard illimite"], bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: false }, face: true, badge: null, active: true },
   { id: "platinum", name: "Platinum All-Access", price: 320, color: "#A78BFA", features: ["Acces TOTAL aux 3 packs", "Demandes personnalisees", "Video calls prives", "Contenu exclusif illimite"], bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: true }, face: true, badge: "Ultimate", active: true },
 ];
 
@@ -57,6 +57,18 @@ function generateCodeString(model: string): string {
 }
 
 function isExpired(expiresAt: string): boolean { return new Date(expiresAt).getTime() <= Date.now(); }
+
+// ── Weekly checklist ──
+const WEEKLY_TASKS = [
+  { id: "ig-story", cat: "Contenu", label: "Publier 3+ stories Instagram", icon: Instagram },
+  { id: "snap-story", cat: "Contenu", label: "Envoyer snaps prives aux VIP+", icon: CameraIcon },
+  { id: "fanvue-post", cat: "Contenu", label: "Poster contenu exclusif Fanvue", icon: Globe },
+  { id: "respond-dms", cat: "Engagement", label: "Repondre aux DMs en attente", icon: MessageCircle },
+  { id: "check-codes", cat: "Gestion", label: "Verifier codes expirants cette semaine", icon: KeyRound },
+  { id: "review-revenue", cat: "Gestion", label: "Analyser revenus de la semaine", icon: TrendingUp },
+  { id: "promo-msg", cat: "Promotion", label: "Envoyer promo aux clients inactifs", icon: MessageCircle },
+  { id: "new-content", cat: "Contenu", label: "Preparer shooting photo/video", icon: CameraIcon },
+];
 
 // ══════════ MAIN ══════════
 export default function AgenceDashboard() {
@@ -73,6 +85,27 @@ export default function AgenceDashboard() {
 
   // FAB state
   const [fabOpen, setFabOpen] = useState(false);
+
+  // Weekly checklist
+  const [checklist, setChecklist] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const saved = localStorage.getItem(`heaven_checklist_${modelSlug}`);
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const toggleCheck = useCallback((id: string) => {
+    setChecklist(prev => {
+      const next = { ...prev, [id]: !prev[id] };
+      localStorage.setItem(`heaven_checklist_${modelSlug}`, JSON.stringify(next));
+      return next;
+    });
+  }, [modelSlug]);
+  const resetChecklist = useCallback(() => {
+    setChecklist({});
+    localStorage.removeItem(`heaven_checklist_${modelSlug}`);
+  }, [modelSlug]);
+  const checklistProgress = WEEKLY_TASKS.filter(t => checklist[t.id]).length;
 
   // ── Load data ──
   useEffect(() => {
@@ -204,10 +237,27 @@ export default function AgenceDashboard() {
             </a>
             <a href={`/m/${modelSlug}?edit=true`}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-transform no-underline"
-              style={{ background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.25)" }}>
+              style={{ background: "rgba(230,51,41,0.12)", border: "1px solid rgba(230,51,41,0.25)" }}>
               <Pencil className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
               <span className="text-[11px] font-semibold hidden md:inline" style={{ color: "var(--accent)" }}>Edit</span>
             </a>
+          </div>
+
+          {/* ── Quick Actions ── */}
+          <div className="flex gap-2 flex-wrap fade-up">
+            {[
+              { label: "Galerie", href: `/m/${modelSlug}?edit=true#gallery`, icon: CameraIcon, color: "var(--accent)" },
+              { label: "Messages", href: "/agence/messages", icon: MessageCircle, color: "#F59E0B" },
+              { label: "Finances", href: "/agence/finances", icon: TrendingUp, color: "var(--success)" },
+              { label: "Pipeline", href: "/agence/pipeline", icon: Globe, color: "#7C3AED" },
+            ].map(action => (
+              <a key={action.label} href={action.href}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-semibold no-underline transition-all hover:scale-105 active:scale-95"
+                style={{ background: `${action.color}10`, border: `1px solid ${action.color}20`, color: action.color }}>
+                <action.icon className="w-3.5 h-3.5" />
+                {action.label}
+              </a>
+            ))}
           </div>
 
           {/* ── Stats ── */}
@@ -243,6 +293,46 @@ export default function AgenceDashboard() {
             />
           </div>
 
+          {/* ── Weekly Checklist ── */}
+          <div className="fade-up-3">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold" style={{ color: "var(--text)" }}>
+                Checklist Hebdo
+                <span className="ml-2 text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>
+                  {checklistProgress}/{WEEKLY_TASKS.length}
+                </span>
+              </h2>
+              <button onClick={resetChecklist} className="flex items-center gap-1 text-[10px] font-medium cursor-pointer hover:opacity-70 transition-opacity"
+                style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
+                <RotateCcw className="w-3 h-3" /> Reset
+              </button>
+            </div>
+            {/* Progress bar */}
+            <div className="w-full h-1.5 rounded-full mb-3" style={{ background: "var(--bg2)" }}>
+              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(checklistProgress / WEEKLY_TASKS.length) * 100}%`, background: checklistProgress === WEEKLY_TASKS.length ? "var(--success)" : "var(--accent)" }} />
+            </div>
+            <div className="space-y-1.5">
+              {WEEKLY_TASKS.map(task => (
+                <button key={task.id} onClick={() => toggleCheck(task.id)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left cursor-pointer transition-all duration-200 hover:scale-[1.01]"
+                  style={{ background: checklist[task.id] ? "rgba(22,163,74,0.06)" : "var(--surface)", border: `1px solid ${checklist[task.id] ? "rgba(22,163,74,0.15)" : "var(--border)"}` }}>
+                  {checklist[task.id]
+                    ? <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: "var(--success)" }} />
+                    : <Circle className="w-4 h-4 flex-shrink-0" style={{ color: "var(--border3)" }} />
+                  }
+                  <task.icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: checklist[task.id] ? "var(--success)" : "var(--text-muted)" }} />
+                  <span className="text-xs font-medium flex-1" style={{ color: checklist[task.id] ? "var(--success)" : "var(--text-secondary)", textDecoration: checklist[task.id] ? "line-through" : "none" }}>
+                    {task.label}
+                  </span>
+                  <span className="text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md"
+                    style={{ background: "var(--bg2)", color: "var(--text-muted)" }}>
+                    {task.cat}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* ── Generate Modal ── */}
           <GenerateModal
             open={showGenerator}
@@ -267,7 +357,7 @@ export default function AgenceDashboard() {
             </div>
             <button
               onClick={() => setFabOpen(!fabOpen)}
-              className="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(201,168,76,0.4)]"
+              className="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(230,51,41,0.4)]"
               style={{
                 background: "linear-gradient(135deg, var(--rose), var(--accent))",
                 transform: fabOpen ? "rotate(45deg)" : "rotate(0deg)",

@@ -93,9 +93,9 @@ function CmsAuthGate({ onAuth }: { onAuth: () => void }) {
       <div className="flex items-center justify-center min-h-[80vh] p-6">
         <div className="w-full max-w-sm">
           <div className="glass rounded-2xl p-8 text-center"
-            style={{ boxShadow: "0 0 40px rgba(201,168,76,0.08)" }}>
+            style={{ boxShadow: "0 0 40px rgba(230,51,41,0.08)" }}>
             <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-5"
-              style={{ background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.2)" }}>
+              style={{ background: "rgba(230,51,41,0.1)", border: "1px solid rgba(230,51,41,0.2)" }}>
               <Lock className="w-7 h-7" style={{ color: "#C9A84C" }} />
             </div>
             <p className="text-sm" style={{ color: "var(--text-muted)" }}>
@@ -202,7 +202,7 @@ export default function AgenceCmsPage() {
               <ArrowLeft className="w-4 h-4" style={{ color: "#C9A84C" }} />
             </Link>
             <div className="w-10 h-10 rounded-lg flex items-center justify-center"
-              style={{ background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.2)" }}>
+              style={{ background: "rgba(230,51,41,0.1)", border: "1px solid rgba(230,51,41,0.2)" }}>
               <Settings className="w-5 h-5" style={{ color: "#C9A84C" }} />
             </div>
             <div>
@@ -252,7 +252,7 @@ export default function AgenceCmsPage() {
             <button key={t.id} onClick={() => setTab(t.id)}
               className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-md transition-all"
               style={{
-                background: tab === t.id ? "rgba(201,168,76,0.15)" : "transparent",
+                background: tab === t.id ? "rgba(230,51,41,0.15)" : "transparent",
                 color: tab === t.id ? "#C9A84C" : "var(--text-muted)",
                 fontWeight: tab === t.id ? 600 : 400,
               }}>
@@ -462,7 +462,7 @@ export default function AgenceCmsPage() {
               {collaborators.map((c) => (
                 <div key={c.id} className="glass rounded-xl p-4 flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.2)" }}>
+                    style={{ background: "rgba(230,51,41,0.1)", border: "1px solid rgba(230,51,41,0.2)" }}>
                     <User className="w-5 h-5" style={{ color: "#C9A84C" }} />
                   </div>
                   <div className="flex-1 min-w-0">

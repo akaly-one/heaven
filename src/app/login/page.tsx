@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Shield, ArrowRight, Zap } from "lucide-react";
+import { Shield, ArrowRight, Crown } from "lucide-react";
 
 // Access codes — Phase 0 (hardcoded). Phase prod: Supabase dynamic codes.
 const ACCESS_CODES: Record<string, { role: string; redirect: string; scope: string[]; model_slug: string | null; display_name: string }> = {
@@ -51,20 +51,20 @@ export default function LoginPage() {
       {/* Animated mesh bg */}
       <div className="fixed inset-0 pointer-events-none" style={{
         background: `
-          radial-gradient(ellipse 800px 600px at 20% 20%, rgba(201,168,76,0.08), transparent),
+          radial-gradient(ellipse 800px 600px at 20% 20%, rgba(230,51,41,0.08), transparent),
           radial-gradient(ellipse 600px 500px at 80% 80%, rgba(244,63,94,0.06), transparent),
           radial-gradient(ellipse 400px 400px at 50% 50%, rgba(167,139,250,0.04), transparent)
         `,
       }} />
       {/* Dot grid */}
       <div className="fixed inset-0 pointer-events-none opacity-30" style={{
-        backgroundImage: "radial-gradient(rgba(201,168,76,0.06) 1px, transparent 1px)",
+        backgroundImage: "radial-gradient(rgba(230,51,41,0.04) 1px, transparent 1px)",
         backgroundSize: "28px 28px",
       }} />
       {/* Floating orbs */}
       <div className="fixed pointer-events-none" style={{
         width: 500, height: 500, borderRadius: "50%", top: "-10%", right: "-5%",
-        background: "radial-gradient(circle, rgba(201,168,76,0.1), transparent 70%)",
+        background: "radial-gradient(circle, rgba(124,58,237,0.08), transparent 70%)",
         filter: "blur(60px)",
       }} />
       <div className="fixed pointer-events-none" style={{
@@ -90,18 +90,18 @@ export default function LoginPage() {
       `}</style>
 
       <div className={`login-card glass rounded-2xl p-10 max-w-sm w-full relative z-10 ${shake ? "shake" : ""}`}
-        style={{ boxShadow: "0 0 80px rgba(201,168,76,0.08), 0 20px 60px rgba(0,0,0,0.4)" }}>
+        style={{ boxShadow: "0 0 80px rgba(230,51,41,0.08), 0 20px 60px rgba(0,0,0,0.4)" }}>
 
         {/* Logo */}
         <div className="flex justify-center mb-6">
           <div className="w-20 h-20 rounded-2xl flex items-center justify-center relative"
             style={{
-              background: "linear-gradient(135deg, var(--rose), var(--accent))",
-              boxShadow: "0 0 40px rgba(201,168,76,0.3), 0 8px 24px rgba(0,0,0,0.3)",
+              background: "linear-gradient(135deg, var(--accent), #7C3AED)",
+              boxShadow: "0 0 40px rgba(230,51,41,0.25), 0 8px 24px rgba(0,0,0,0.2)",
             }}>
-            <Zap className="w-8 h-8" style={{ color: "#fff" }} />
+            <Crown className="w-9 h-9" style={{ color: "#fff" }} />
             <div className="absolute inset-0 rounded-2xl" style={{
-              border: "2px solid rgba(201,168,76,0.3)",
+              border: "2px solid rgba(230,51,41,0.25)",
               animation: "pulse 3s ease-in-out infinite",
             }} />
           </div>
@@ -131,7 +131,7 @@ export default function LoginPage() {
               placeholder="Code administrateur"
               required
               autoFocus
-              className="w-full pl-11 pr-4 py-3.5 rounded-xl text-sm outline-none transition-all duration-300 focus:shadow-[0_0_0_2px_rgba(201,168,76,0.3)]"
+              className="w-full pl-11 pr-4 py-3.5 rounded-xl text-sm outline-none transition-all duration-300 focus:shadow-[0_0_0_2px_rgba(230,51,41,0.3)]"
               style={{
                 background: "var(--bg3)",
                 color: "var(--text)",
@@ -141,7 +141,7 @@ export default function LoginPage() {
           </div>
 
           <button type="submit" disabled={isLoading}
-            className="w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-300 hover:shadow-[0_0_24px_rgba(201,168,76,0.3)] hover:-translate-y-0.5 disabled:opacity-50 cursor-pointer btn-gradient">
+            className="w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-300 hover:shadow-[0_0_24px_rgba(230,51,41,0.3)] hover:-translate-y-0.5 disabled:opacity-50 cursor-pointer btn-gradient">
             {isLoading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (

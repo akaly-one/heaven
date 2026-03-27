@@ -55,7 +55,7 @@ interface CodesListProps {
 const TIER_COLORS: Record<string, string> = {
   vip: "var(--tier-vip, #F43F5E)",
   gold: "var(--tier-gold, #C9A84C)",
-  diamond: "var(--tier-diamond, #6366F1)",
+  diamond: "var(--tier-diamond, #7C3AED)",
   platinum: "var(--tier-platinum, #A78BFA)",
 };
 
@@ -314,7 +314,7 @@ export function CodesList({
                             <button
                               onClick={(e) => { e.stopPropagation(); setSendingMessage(sendingMessage === ci.id ? null : ci.id); }}
                               className="p-1.5 rounded-lg cursor-pointer hover:scale-105 transition-transform"
-                              style={{ background: "rgba(201,168,76,0.08)" }}
+                              style={{ background: "rgba(230,51,41,0.08)" }}
                               title="Message">
                               <MessageSquare className="w-3 h-3" style={{ color: "var(--accent)" }} />
                             </button>
@@ -435,7 +435,7 @@ export function CodesList({
                                   <button
                                     onClick={() => setDeliveryCode(isDelivery ? null : c.code)}
                                     className="p-1 rounded-lg cursor-pointer hover:scale-105 transition-transform"
-                                    style={{ background: isDelivery ? "rgba(201,168,76,0.15)" : "rgba(201,168,76,0.06)" }}
+                                    style={{ background: isDelivery ? "rgba(230,51,41,0.15)" : "rgba(230,51,41,0.06)" }}
                                     title="Envoyer au client">
                                     <Link2 className="w-3 h-3" style={{ color: "var(--accent)" }} />
                                   </button>
@@ -489,7 +489,7 @@ export function CodesList({
 
                             {/* Delivery panel */}
                             {isDelivery && (
-                              <div className="mt-2 p-2.5 rounded-lg space-y-2" style={{ background: "rgba(201,168,76,0.04)", border: "1px solid rgba(201,168,76,0.12)" }}>
+                              <div className="mt-2 p-2.5 rounded-lg space-y-2" style={{ background: "rgba(230,51,41,0.04)", border: "1px solid rgba(230,51,41,0.12)" }}>
                                 {/* Access link */}
                                 <div className="flex items-center gap-2">
                                   <input

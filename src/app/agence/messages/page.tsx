@@ -23,7 +23,7 @@ interface Review {
 }
 
 const TIER_COLORS: Record<string, string> = {
-  vip: "#F43F5E", gold: "#F59E0B", diamond: "#6366F1", platinum: "#A78BFA",
+  vip: "#F43F5E", gold: "#F59E0B", diamond: "#7C3AED", platinum: "#A78BFA",
 };
 function getReviewsKey(model: string) { return `heaven_${model}_reviews`; }
 function loadReviews(model: string): Review[] { try { return JSON.parse(localStorage.getItem(getReviewsKey(model)) || "[]"); } catch { return []; } }
@@ -160,7 +160,7 @@ export default function MessagesPage() {
                 <div className="flex-1 overflow-y-auto">
                   {loading ? (
                     <div className="flex items-center justify-center py-10">
-                      <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(201,168,76,0.2)", borderTopColor: "var(--accent)" }} />
+                      <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(230,51,41,0.2)", borderTopColor: "var(--accent)" }} />
                     </div>
                   ) : filteredConvs.length === 0 ? (
                     <div className="text-center py-10 px-4">
@@ -170,9 +170,9 @@ export default function MessagesPage() {
                   ) : filteredConvs.map(conv => (
                     <button key={conv.client.id} onClick={() => setSelectedClient(conv.client.id)}
                       className="w-full px-4 py-3 flex items-start gap-3 transition-all text-left cursor-pointer hover:bg-white/[0.02]"
-                      style={{ background: selectedClient === conv.client.id ? "rgba(201,168,76,0.06)" : "transparent", borderBottom: "1px solid var(--border2)" }}>
+                      style={{ background: selectedClient === conv.client.id ? "rgba(230,51,41,0.06)" : "transparent", borderBottom: "1px solid var(--border2)" }}>
                       <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold"
-                        style={{ background: conv.client.is_verified ? "rgba(16,185,129,0.12)" : "rgba(201,168,76,0.12)", color: conv.client.is_verified ? "var(--success)" : "var(--accent)" }}>
+                        style={{ background: conv.client.is_verified ? "rgba(16,185,129,0.12)" : "rgba(230,51,41,0.12)", color: conv.client.is_verified ? "var(--success)" : "var(--accent)" }}>
                         {clientName(conv.client).charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -189,7 +189,7 @@ export default function MessagesPage() {
                             {new Date(conv.lastMessage.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                           </span>
                           {conv.client.total_spent > 0 && (
-                            <span className="text-[9px] px-1 rounded" style={{ background: "rgba(201,168,76,0.1)", color: "var(--accent)" }}>
+                            <span className="text-[9px] px-1 rounded" style={{ background: "rgba(230,51,41,0.1)", color: "var(--accent)" }}>
                               {Number(conv.client.total_spent).toFixed(0)}€
                             </span>
                           )}
@@ -217,7 +217,7 @@ export default function MessagesPage() {
                         <ArrowLeft className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
                       </button>
                       <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-                        style={{ background: "rgba(201,168,76,0.12)", color: "var(--accent)" }}>
+                        style={{ background: "rgba(230,51,41,0.12)", color: "var(--accent)" }}>
                         {clientName(selectedConv.client).charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1">
@@ -233,7 +233,7 @@ export default function MessagesPage() {
                       {[...selectedConv.messages].reverse().map(msg => (
                         <div key={msg.id} className={`flex ${msg.sender_type === "model" ? "justify-end" : "justify-start"}`}>
                           <div className="max-w-[75%] rounded-2xl px-4 py-2.5 text-xs relative group"
-                            style={{ background: msg.sender_type === "model" ? "rgba(201,168,76,0.12)" : "var(--bg3)", color: "var(--text)" }}>
+                            style={{ background: msg.sender_type === "model" ? "rgba(230,51,41,0.12)" : "var(--bg3)", color: "var(--text)" }}>
                             <p>{msg.content}</p>
                             <p className="text-[9px] mt-1 opacity-50">
                               {new Date(msg.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
