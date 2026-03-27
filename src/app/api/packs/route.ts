@@ -12,7 +12,7 @@ const DEFAULT_PACKS = [
   { id: "vip", name: "VIP Glamour", price: 150, color: "#E84393",
     features: ["Pieds glamour/sales + accessoires", "Lingerie sexy + haul", "Teasing + demandes custom", "Dedicaces personnalisees"],
     bonuses: { fanvueAccess: false, freeNudeExpress: true, nudeDedicaceLevres: false, freeVideoOffer: false },
-    face: false, badge: null, active: true },
+    face: false, badge: null, active: true, wise_url: "https://wise.com/pay/r/uQcY2-5PTQqyvko" },
   { id: "gold", name: "Gold", price: 200, color: "#C9A84C",
     features: ["TOUT du VIP inclus", "Nudes complets", "Cosplay", "Sextape sans visage"],
     bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: false },
