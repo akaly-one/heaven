@@ -27,6 +27,7 @@ interface Post {
 interface PackConfig {
   id: string; name: string; price: number; color: string;
   features: string[]; face: boolean; badge: string | null; active: boolean;
+  wise_url?: string;
 }
 interface UploadedContent {
   id: string; tier: string; type: "photo" | "video" | "reel"; label: string;
@@ -1603,14 +1604,28 @@ export default function ModelPage() {
                             </div>
                           )}
 
-                          {/* Active toggle (edit mode) */}
+                          {/* Wise URL + Active toggle (edit mode) */}
                           {isEditMode && (
-                            <button onClick={() => handleUpdatePack(pack.id, { active: !pack.active })}
-                              className="flex items-center gap-1.5 mb-3 cursor-pointer"
-                              style={{ color: pack.active ? "var(--success)" : "var(--text-muted)" }}>
-                              {pack.active ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
-                              <span className="text-[10px] font-medium">{pack.active ? "Actif" : "Inactif"}</span>
-                            </button>
+                            <div className="space-y-2 mb-3">
+                              <div>
+                                <label className="text-[9px] font-medium uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>
+                                  Lien Wise (paiement)
+                                </label>
+                                <input
+                                  value={pack.wise_url || ""}
+                                  onChange={e => handleUpdatePack(pack.id, { wise_url: e.target.value })}
+                                  placeholder="https://wise.com/pay/..."
+                                  className="w-full text-[11px] bg-transparent outline-none rounded-lg px-3 py-2"
+                                  style={{ color: "var(--text-secondary)", border: "1px dashed var(--border3)" }}
+                                />
+                              </div>
+                              <button onClick={() => handleUpdatePack(pack.id, { active: !pack.active })}
+                                className="flex items-center gap-1.5 cursor-pointer"
+                                style={{ color: pack.active ? "var(--success)" : "var(--text-muted)" }}>
+                                {pack.active ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
+                                <span className="text-[10px] font-medium">{pack.active ? "Actif" : "Inactif"}</span>
+                              </button>
+                            </div>
                           )}
                         </div>
 
@@ -1622,6 +1637,13 @@ export default function ModelPage() {
                                 style={{ background: `${hex}10`, color: hex, border: `1px solid ${hex}20` }}>
                                 <Check className="w-3.5 h-3.5" /> Pack actif
                               </div>
+                            ) : pack.wise_url ? (
+                              <a href={pack.wise_url} target="_blank" rel="noopener noreferrer"
+                                className="w-full py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-1.5 no-underline"
+                                style={{ background: hex, color: "#fff" }}>
+                                Payer {pack.price}€ via Wise
+                                <ChevronRight className="w-3 h-3" />
+                              </a>
                             ) : (
                               <button onClick={() => setSelectedPack(pack)}
                                 className="w-full py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-1.5"
@@ -1911,21 +1933,35 @@ export default function ModelPage() {
                     </div>
                   )}
 
-                  {/* CTA */}
-                  <button onClick={() => {
-                    // Copy payment info or open chat for payment
-                    setSelectedPack(null);
-                    setTab("chat");
-                    setChatInput(`Je veux le pack ${selectedPack.name} à ${selectedPack.price}€`);
-                  }}
-                    className="w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
-                    style={{ background: hex, color: "#fff" }}>
-                    Commander — {selectedPack.price}€
-                  </button>
-                  <p className="text-[9px] text-center mt-3 leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                    Après commande, les instructions de paiement seront envoyées par message.
-                    L&apos;accès est activé sous 15 min après confirmation du paiement.
-                  </p>
+                  {/* CTA — Wise payment link */}
+                  {selectedPack.wise_url ? (
+                    <>
+                      <a href={selectedPack.wise_url} target="_blank" rel="noopener noreferrer"
+                        className="w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 no-underline"
+                        style={{ background: hex, color: "#fff" }}>
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                        Payer {selectedPack.price}€ via Wise
+                      </a>
+                      <p className="text-[9px] text-center mt-3 leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                        Paiement securise via Wise. L&apos;acces est active sous 15 min apres confirmation.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => {
+                        setSelectedPack(null);
+                        setTab("chat");
+                        setChatInput(`Je veux le pack ${selectedPack.name} à ${selectedPack.price}€`);
+                      }}
+                        className="w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
+                        style={{ background: hex, color: "#fff" }}>
+                        Commander — {selectedPack.price}€
+                      </button>
+                      <p className="text-[9px] text-center mt-3 leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                        Les instructions de paiement seront envoyees par message.
+                      </p>
+                    </>
+                  )}
                   <button onClick={() => setSelectedPack(null)}
                     className="w-full py-2 mt-2 rounded-xl text-xs font-medium cursor-pointer"
                     style={{ color: "var(--text-muted)" }}>

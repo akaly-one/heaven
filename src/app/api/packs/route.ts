@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
     const mapped = data.map((r: any) => ({
       id: r.pack_id, name: r.name, price: Number(r.price), color: r.color,
       features: r.features || [], bonuses: r.bonuses || {},
-      face: r.face, badge: r.badge, active: r.active,
+      face: r.face, badge: r.badge, active: r.active, wise_url: r.wise_url || "",
     }));
     return NextResponse.json({ packs: mapped }, { headers: cors });
   } catch (err) {
@@ -91,6 +91,7 @@ export async function POST(req: NextRequest) {
       model, pack_id: p.id || `pack-${i}`, name: p.name || "", price: p.price || 0,
       color: p.color || "#C9A84C", features: p.features || [], bonuses: p.bonuses || {},
       face: p.face || false, badge: p.badge || null, active: p.active !== false, sort_order: i,
+      wise_url: p.wise_url || null,
     }));
 
     const { error: insErr } = await supabase.from("agence_packs").insert(rows);

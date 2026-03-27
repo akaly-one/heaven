@@ -14,6 +14,7 @@ interface PackConfig {
   features: string[];
   bonuses: { fanvueAccess: boolean; freeNudeExpress: boolean; nudeDedicaceLevres: boolean; freeVideoOffer: boolean; };
   face: boolean; badge: string | null; active: boolean;
+  wise_url?: string;
 }
 
 interface AccessCode {
@@ -52,13 +53,6 @@ const DEFAULT_PACKS: PackConfig[] = [
   { id: "gold", name: "Gold", price: 200, color: "#F59E0B", features: ["TOUT du VIP inclus", "Nudes complets", "Cosplay", "Sextape sans visage"], bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: false }, face: false, badge: "Populaire", active: true },
   { id: "diamond", name: "Diamond", price: 250, color: "#7C3AED", features: ["TOUT du Gold inclus", "Nudes avec visage", "Cosplay avec visage", "Sextape avec visage", "Hard illimite"], bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: false }, face: true, badge: null, active: true },
   { id: "platinum", name: "Platinum All-Access", price: 320, color: "#A78BFA", features: ["Acces TOTAL aux 3 packs", "Demandes personnalisees", "Video calls prives", "Contenu exclusif illimite"], bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: true }, face: true, badge: "Ultimate", active: true },
-];
-
-const WISE_LINKS = [
-  { tier: "vip", url: "" },
-  { tier: "gold", url: "" },
-  { tier: "diamond", url: "" },
-  { tier: "platinum", url: "" },
 ];
 
 // ── API helpers ──
@@ -375,7 +369,7 @@ export default function AgenceDashboard() {
               onSendMessage={handleSendMessage}
               onGenerateForClient={handleGenerateForClient}
               onExtendCode={handleExtendCode}
-              wiseLinks={WISE_LINKS.filter(w => w.url)}
+              wiseLinks={packs.filter(p => p.wise_url).map(p => ({ tier: p.id, url: p.wise_url! }))}
             />
           </div>
 
