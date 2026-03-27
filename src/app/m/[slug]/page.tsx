@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import {
   Heart, MessageCircle, Send, Lock, Image, Newspaper, ShoppingBag,
   Coins, Pin, Eye, Star, Camera, Video, Play, X, Check,
-  Instagram, Ghost, ChevronRight, Zap, Plus, Edit3, Wifi,
+  Instagram, Ghost, ChevronRight, Crown, Plus, Edit3, Wifi,
   ImagePlus, Trash2, Save, RotateCcw, ToggleLeft, ToggleRight,
   Upload, Pencil, GripVertical,
 } from "lucide-react";
@@ -756,22 +756,38 @@ export default function ModelPage() {
 
   return (
     <div className="min-h-screen pb-20" style={{ background: "var(--bg)" }}>
-      {/* Ambient gradient */}
+      {/* Ambient gradient — animated pulse */}
       <div className="fixed inset-0 pointer-events-none z-0" style={{
         background: `
-          radial-gradient(ellipse 600px 400px at 15% 10%, rgba(230,51,41,0.04), transparent),
-          radial-gradient(ellipse 500px 500px at 85% 80%, rgba(244,63,94,0.03), transparent)
+          radial-gradient(ellipse 600px 400px at 15% 10%, rgba(230,51,41,0.05), transparent),
+          radial-gradient(ellipse 500px 500px at 85% 80%, rgba(244,63,94,0.04), transparent),
+          radial-gradient(ellipse 300px 300px at 50% 30%, rgba(124,58,237,0.03), transparent)
         `,
+        animation: "ambientPulse 8s ease-in-out infinite alternate",
       }} />
+      <style>{`
+        @keyframes ambientPulse { 0% { opacity: 0.7; } 100% { opacity: 1; } }
+        @keyframes heroGlow { 0%, 100% { box-shadow: 0 0 20px rgba(230,51,41,0.2), 0 0 60px rgba(230,51,41,0.05); } 50% { box-shadow: 0 0 30px rgba(230,51,41,0.35), 0 0 80px rgba(124,58,237,0.1); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes countUp { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+        .profile-stagger-1 { animation: slideUp 0.5s ease-out 0.1s both; }
+        .profile-stagger-2 { animation: slideUp 0.5s ease-out 0.2s both; }
+        .profile-stagger-3 { animation: slideUp 0.5s ease-out 0.3s both; }
+        .profile-stagger-4 { animation: slideUp 0.5s ease-out 0.4s both; }
+        .stat-pop { animation: countUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s both; }
+        .post-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .post-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
+        @media (max-width: 768px) { .post-hover:hover { transform: none; box-shadow: none; } }
+      `}</style>
 
       <div className="relative z-10">
 
         {/* ═══ TOP BAR ═══ */}
-        <div className="fixed top-0 left-0 right-0 z-40 px-4 py-3 flex items-center justify-between">
+        <div className="fixed top-0 left-0 right-0 z-40 px-4 py-3 flex items-center justify-between" style={{ backdropFilter: "blur(12px)", background: "rgba(var(--bg-rgb, 15,16,25), 0.7)" }}>
           <a href={isModelLoggedIn ? "/agence" : "/login"}
             className="w-8 h-8 rounded-lg flex items-center justify-center no-underline glass"
             style={{ border: "1px solid var(--border2)" }}>
-            <Zap className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
+            <Crown className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
           </a>
 
           {isEditMode && (
@@ -805,13 +821,15 @@ export default function ModelPage() {
         </div>
 
         {/* ═══ HERO ═══ */}
-        <div className="relative">
-          {/* Banner */}
-          <div className="h-32 md:h-44 relative overflow-hidden" style={{
+        <div className="relative profile-stagger-1">
+          {/* Banner — taller on desktop */}
+          <div className="h-36 sm:h-44 md:h-52 lg:h-60 relative overflow-hidden" style={{
             background: displayModel?.banner
               ? `url(${displayModel.banner}) center/cover`
-              : "linear-gradient(135deg, rgba(244,63,94,0.15), rgba(230,51,41,0.12), rgba(167,139,250,0.08))",
+              : "linear-gradient(135deg, rgba(244,63,94,0.2), rgba(230,51,41,0.15), rgba(124,58,237,0.1))",
           }}>
+            {/* Gradient overlay for text readability */}
+            <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(var(--bg-rgb, 15,16,25), 0.6), transparent 60%)" }} />
             {isEditMode && (
               <>
                 <button onClick={() => bannerInputRef.current?.click()}
@@ -827,16 +845,16 @@ export default function ModelPage() {
             )}
           </div>
 
-          <div className="max-w-xl mx-auto px-4 -mt-12 relative z-10">
-            <div className="flex items-end gap-4 mb-4 fade-up">
-              {/* Avatar */}
+          <div className="max-w-2xl mx-auto px-4 -mt-14 sm:-mt-16 relative z-10">
+            <div className="flex items-end gap-4 mb-4 profile-stagger-2">
+              {/* Avatar — animated glow */}
               <div className="relative">
-                <div className="w-24 h-24 rounded-2xl border-[3px] flex items-center justify-center text-2xl font-black overflow-hidden"
+                <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-2xl border-[3px] flex items-center justify-center text-2xl font-black overflow-hidden"
                   style={{
                     borderColor: "var(--bg)",
                     background: displayModel?.avatar ? "transparent" : "linear-gradient(135deg, var(--rose), var(--accent))",
                     color: "#fff",
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                    animation: "heroGlow 3s ease-in-out infinite",
                   }}>
                   {displayModel?.avatar ? (
                     <img src={displayModel.avatar} alt={displayModel.display_name} className="w-full h-full object-cover" />
@@ -878,7 +896,7 @@ export default function ModelPage() {
                 ) : (
                   <>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h1 className="text-lg font-bold truncate" style={{ color: "var(--text)" }}>{displayModel?.display_name}</h1>
+                      <h1 className="text-lg sm:text-xl font-bold truncate" style={{ color: "var(--text)" }}>{displayModel?.display_name}</h1>
                       <span className="badge badge-success text-[9px]">Verified</span>
                     </div>
                     <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
@@ -888,6 +906,22 @@ export default function ModelPage() {
                 )}
               </div>
             </div>
+
+            {/* Stats bar — animated counters */}
+            {!isEditMode && (
+              <div className="flex items-center gap-4 sm:gap-6 mb-4 profile-stagger-3">
+                {[
+                  { label: "Posts", value: posts.length },
+                  { label: "Media", value: uploads.length },
+                  { label: "Packs", value: activePacks.length },
+                ].map((s, i) => (
+                  <div key={s.label} className="stat-pop" style={{ animationDelay: `${0.5 + i * 0.1}s` }}>
+                    <span className="text-sm sm:text-base font-bold block" style={{ color: "var(--text)" }}>{s.value}</span>
+                    <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{s.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Bio */}
             {isEditMode ? (
@@ -935,11 +969,12 @@ export default function ModelPage() {
           </div>
         </div>
 
-        {/* ═══ TABS (3 tabs, no Tokens tab — tokens shown as badge) ═══ */}
-        <div className="max-w-xl mx-auto px-4 mb-5 fade-up-2">
+        {/* ═══ TABS ═══ */}
+        <div className="max-w-2xl mx-auto px-4 mb-5 profile-stagger-4">
           <div className="segmented-control">
             {TABS.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)} className={tab === t.id ? "active" : ""}>
+              <button key={t.id} onClick={() => setTab(t.id)} className={tab === t.id ? "active" : ""}
+                style={{ transition: "all 0.2s ease" }}>
                 <t.icon className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
                 <span className="hidden sm:inline">{t.label}</span>
               </button>
@@ -948,7 +983,7 @@ export default function ModelPage() {
         </div>
 
         {/* ═══ TAB CONTENT ═══ */}
-        <div className="max-w-xl mx-auto px-4">
+        <div className="max-w-2xl mx-auto px-4">
 
           {/* ── WALL (public visitor posts) ── */}
           {tab === "wall" && (
@@ -1024,60 +1059,69 @@ export default function ModelPage() {
                 const tierMeta = TIER_META[postTier];
                 const tierHex = TIER_HEX[postTier] || "#64748B";
                 return (
-                  <div key={post.id} className="card-premium overflow-hidden" style={{ animationDelay: `${i * 40}ms` }}>
-                    <div className="flex items-center gap-3 p-4 pb-0">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold"
-                        style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff" }}>
+                  <div key={post.id} className="card-premium overflow-hidden post-hover" style={{ animation: `slideUp 0.4s ease-out ${i * 0.06}s both` }}>
+                    {/* Pinned indicator */}
+                    {post.pinned && (
+                      <div className="flex items-center gap-1.5 px-4 pt-3 pb-0">
+                        <Pin className="w-3 h-3" style={{ color: "var(--tier-gold)" }} />
+                        <span className="text-[10px] font-medium" style={{ color: "var(--tier-gold)" }}>Pinned</span>
+                      </div>
+                    )}
+                    <div className="flex items-start gap-3 p-4 pb-0">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+                        style={{ background: "linear-gradient(135deg, var(--accent), #7C3AED)", color: "#fff" }}>
                         {model.display_name.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-semibold" style={{ color: "var(--text)" }}>{model.display_name}</p>
-                          <span className="badge badge-success text-[7px]">Creator</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-[13px] font-bold" style={{ color: "var(--text)" }}>{model.display_name}</p>
+                          <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>@{slug}</span>
+                          <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>·</span>
+                          <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{timeAgo(post.created_at)}</span>
                           {postTier !== "public" && (
-                            <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${tierHex}20`, color: tierHex }}>
+                            <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${tierHex}18`, color: tierHex }}>
                               {tierMeta?.label || postTier}
                             </span>
                           )}
                         </div>
-                        <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{timeAgo(post.created_at)}</p>
-                      </div>
-                      {post.pinned && <Pin className="w-3 h-3" style={{ color: "var(--tier-gold)" }} />}
-                    </div>
 
-                    {post.content && (
-                      <div className="px-4 pt-3 pb-2">
-                        <p className="text-[13px] leading-relaxed" style={{ color: "var(--text)" }}>{post.content}</p>
-                      </div>
-                    )}
+                        {post.content && (
+                          <p className="text-[13px] sm:text-sm leading-relaxed mt-1.5 whitespace-pre-wrap" style={{ color: "var(--text)" }}>{post.content}</p>
+                        )}
 
-                    {post.media_url && (
-                      mediaUnlocked ? (
-                        <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
-                          <div className="mx-4 my-2 rounded-xl overflow-hidden">
-                            <img src={post.media_url} alt="" className="w-full" />
-                          </div>
-                        </ContentProtection>
-                      ) : (
-                        <div className="mx-4 my-2 rounded-xl overflow-hidden relative cursor-pointer" onClick={() => setShowUnlock(true)}>
-                          <img src={post.media_url} alt="" className="w-full content-locked" />
-                          <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(16px)" }}>
-                            <div className="text-center">
-                              <Lock className="w-5 h-5 mx-auto mb-1" style={{ color: tierHex }} />
-                              <span className="text-[10px] font-bold" style={{ color: tierHex }}>{tierMeta?.label || postTier} Only</span>
+                        {post.media_url && (
+                          mediaUnlocked ? (
+                            <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
+                              <div className="mt-2.5 rounded-xl overflow-hidden" style={{ border: "1px solid var(--border2)" }}>
+                                <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover" loading="lazy" />
+                              </div>
+                            </ContentProtection>
+                          ) : (
+                            <div className="mt-2.5 rounded-xl overflow-hidden relative cursor-pointer" onClick={() => setShowUnlock(true)} style={{ border: "1px solid var(--border2)" }}>
+                              <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover content-locked" />
+                              <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(20px)" }}>
+                                <div className="text-center">
+                                  <Lock className="w-6 h-6 mx-auto mb-1.5" style={{ color: tierHex }} />
+                                  <span className="text-xs font-bold" style={{ color: tierHex }}>{tierMeta?.label || postTier} Only</span>
+                                  <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.5)" }}>Unlock to view</p>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                      )
-                    )}
+                          )
+                        )}
 
-                    <div className="flex items-center gap-4 px-4 py-3">
-                      <button className="flex items-center gap-1.5 text-[11px] cursor-pointer hover:opacity-80" style={{ color: "var(--text-muted)" }}>
-                        <Heart className="w-3.5 h-3.5" /> {post.likes_count}
-                      </button>
-                      <button className="flex items-center gap-1.5 text-[11px] cursor-pointer hover:opacity-80" style={{ color: "var(--text-muted)" }}>
-                        <MessageCircle className="w-3.5 h-3.5" /> {post.comments_count}
-                      </button>
+                        {/* Actions bar — Twitter style */}
+                        <div className="flex items-center gap-6 mt-3 mb-1">
+                          <button className="flex items-center gap-1.5 text-[12px] cursor-pointer transition-colors hover:text-[#F43F5E] group/like" style={{ color: "var(--text-muted)" }}>
+                            <Heart className="w-4 h-4 transition-transform group-hover/like:scale-110" fill={post.likes_count > 0 ? "#F43F5E" : "none"} style={{ color: post.likes_count > 0 ? "#F43F5E" : undefined }} />
+                            <span>{post.likes_count || ""}</span>
+                          </button>
+                          <button className="flex items-center gap-1.5 text-[12px] cursor-pointer transition-colors hover:text-[#7C3AED] group/comment" style={{ color: "var(--text-muted)" }}>
+                            <MessageCircle className="w-4 h-4 transition-transform group-hover/comment:scale-110" />
+                            <span>{post.comments_count || ""}</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -1515,7 +1559,7 @@ export default function ModelPage() {
                           {tierBonus && (tierBonus.multiplier > 1 || tierBonus.bonus) && (
                             <div className="flex items-center gap-2 p-2.5 rounded-lg mb-3"
                               style={{ background: `${hex}08`, border: `1px dashed ${hex}20` }}>
-                              <Zap className="w-3.5 h-3.5 shrink-0" style={{ color: hex }} />
+                              <Crown className="w-3.5 h-3.5 shrink-0" style={{ color: hex }} />
                               <div>
                                 {tierBonus.multiplier > 1 ? (
                                   <p className="text-[10px] font-semibold" style={{ color: hex }}>
@@ -1773,7 +1817,7 @@ export default function ModelPage() {
                       </p>
                       {bonus && (bonus.multiplier > 1 || bonus.bonus) && (
                         <div className="flex items-center gap-1.5">
-                          <Zap className="w-3 h-3" style={{ color: hex }} />
+                          <Crown className="w-3 h-3" style={{ color: hex }} />
                           <span className="text-[9px] font-semibold" style={{ color: hex }}>
                             {bonus.multiplier > 1 ? `${bonus.label} crédits` : `🎁 ${bonus.bonus}`}
                           </span>
@@ -1962,7 +2006,7 @@ export default function ModelPage() {
         {isEditMode && editDirty && (
           <div className="fixed bottom-0 left-0 right-0 z-50 safe-area-bottom"
             style={{ background: "var(--surface)", borderTop: "1px solid var(--border2)", boxShadow: "0 -4px 24px rgba(0,0,0,0.3)" }}>
-            <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
               <p className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
                 Modifications non sauvegardées
               </p>

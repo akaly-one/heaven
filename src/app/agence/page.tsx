@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Plus, KeyRound, Pencil, Eye, CheckCircle, Circle, RotateCcw, TrendingUp, Instagram, Camera as CameraIcon, Globe, MessageCircle } from "lucide-react";
+import { Plus, KeyRound, Pencil, Eye, CheckCircle, Circle, RotateCcw, TrendingUp, Instagram, Camera as CameraIcon, Globe, MessageCircle, Heart, Pin, Newspaper } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
@@ -38,6 +38,12 @@ interface ClientInfo {
   total_tokens_spent?: number;
   firstname?: string;
   last_active?: string;
+}
+
+interface FeedPost {
+  id: string; model: string; content: string | null; media_url: string | null;
+  media_type: string | null; tier_required: string; pinned: boolean;
+  likes_count: number; comments_count: number; created_at: string;
 }
 
 // ── Defaults ──
@@ -82,6 +88,7 @@ export default function AgenceDashboard() {
 
   const [showGenerator, setShowGenerator] = useState(false);
   const [, setTick] = useState(0);
+  const [feedPosts, setFeedPosts] = useState<FeedPost[]>([]);
 
   // FAB state
   const [fabOpen, setFabOpen] = useState(false);
@@ -133,6 +140,12 @@ export default function AgenceDashboard() {
     fetch(`/api/models/${modelSlug}`, { headers })
       .then(r => r.json())
       .then(d => setModelInfo(d))
+      .catch(() => {});
+
+    // Fetch recent feed posts
+    fetch(`/api/posts?model=${modelSlug}`, { headers })
+      .then(r => r.json())
+      .then(d => setFeedPosts((d.posts || []).slice(0, 5)))
       .catch(() => {});
   }, [modelSlug, authHeaders]);
 
@@ -292,6 +305,64 @@ export default function AgenceDashboard() {
               onSendMessage={handleSendMessage}
             />
           </div>
+
+          {/* ── Recent Feed ── */}
+          {feedPosts.length > 0 && (
+            <div className="fade-up-3">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: "var(--text)" }}>
+                  <Newspaper className="w-4 h-4" style={{ color: "var(--accent)" }} />
+                  Feed recent
+                </h2>
+                <a href="/agence/messages" onClick={() => {}} className="text-[10px] font-medium no-underline hover:opacity-70 transition-opacity" style={{ color: "var(--accent)" }}>
+                  Voir tout
+                </a>
+              </div>
+              <div className="space-y-2">
+                {feedPosts.map(post => (
+                  <div key={post.id} className="rounded-xl p-3.5 transition-all hover:scale-[1.005]" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold"
+                        style={{ background: "linear-gradient(135deg, var(--accent), #7C3AED)", color: "#fff" }}>
+                        {modelSlug.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold" style={{ color: "var(--text)" }}>{modelSlug.toUpperCase()}</span>
+                          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                            {(() => { const s = Math.floor((Date.now() - new Date(post.created_at).getTime()) / 1000); if (s < 3600) return `${Math.floor(s / 60)}min`; if (s < 86400) return `${Math.floor(s / 3600)}h`; return `${Math.floor(s / 86400)}j`; })()}
+                          </span>
+                          {post.pinned && <Pin className="w-3 h-3" style={{ color: "#F59E0B" }} />}
+                          {post.tier_required !== "public" && (
+                            <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase"
+                              style={{ background: "rgba(124,58,237,0.12)", color: "#7C3AED" }}>
+                              {post.tier_required}
+                            </span>
+                          )}
+                        </div>
+                        {post.content && (
+                          <p className="text-xs leading-relaxed mt-1 line-clamp-2" style={{ color: "var(--text-secondary)" }}>{post.content}</p>
+                        )}
+                        {post.media_url && (
+                          <div className="mt-2 w-16 h-16 rounded-lg overflow-hidden" style={{ border: "1px solid var(--border2)" }}>
+                            <img src={post.media_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                          </div>
+                        )}
+                        <div className="flex items-center gap-4 mt-2">
+                          <span className="flex items-center gap-1 text-[10px]" style={{ color: post.likes_count > 0 ? "#F43F5E" : "var(--text-muted)" }}>
+                            <Heart className="w-3 h-3" fill={post.likes_count > 0 ? "#F43F5E" : "none"} /> {post.likes_count || 0}
+                          </span>
+                          <span className="flex items-center gap-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                            <MessageCircle className="w-3 h-3" /> {post.comments_count || 0}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ── Weekly Checklist ── */}
           <div className="fade-up-3">
