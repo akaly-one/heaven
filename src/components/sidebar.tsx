@@ -1,18 +1,17 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Camera, DollarSign, MessageSquare, Settings, ChevronLeft, ChevronRight, Crown, Map, TrendingUp, Compass, Users } from "lucide-react";
+import { DollarSign, Settings, ChevronLeft, ChevronRight, Crown, Map, TrendingUp, Users, Calculator } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { HeavenAuth } from "./auth-guard";
 
 const NAV_ITEMS = [
-  { id: "cockpit", label: "Cockpit", icon: Camera, href: "/agence", color: "var(--accent)" },
-  { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances", color: "var(--success)" },
-  { id: "clients", label: "Clients", icon: Users, href: "/agence/clients", color: "#F59E0B" },
-  { id: "messages", label: "Messages", icon: MessageSquare, href: "/agence/messages", color: "var(--accent)" },
-  { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings", color: "var(--text-muted)" },
+  { id: "cockpit", label: "Dashboard", icon: Crown, href: "/agence", color: "var(--accent)" },
+  { id: "strategie", label: "Strategie", icon: Calculator, href: "/agence/simulateur", color: "#E040FB" },
   { id: "pipeline", label: "Pipeline", icon: TrendingUp, href: "/agence/pipeline", color: "#F59E0B" },
-  { id: "strategie", label: "Strategie", icon: Compass, href: "/agence/strategie", color: "#E040FB" },
+  { id: "clients", label: "Clients", icon: Users, href: "/agence/clients", color: "#F59E0B" },
+  { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances", color: "var(--success)" },
+  { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings", color: "var(--text-muted)" },
   { id: "architecture", label: "Architecture", icon: Map, href: "/agence/architecture", color: "#7C3AED", rootOnly: true },
 ] as const;
 
@@ -42,7 +41,7 @@ export function Sidebar() {
     if ("rootOnly" in item && item.rootOnly && !isRoot) return false;
     if (isAdmin) return true;
     if (auth?.role === "model") {
-      return ["cockpit", "messages", "settings"].includes(item.id);
+      return ["cockpit", "strategie", "settings"].includes(item.id);
     }
     return scope.some(s => item.href === s || item.href.startsWith(s + "/"));
   });

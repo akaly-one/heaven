@@ -296,6 +296,84 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      case "register_packs": {
+        // Register Heaven packs as shop items on SQWENSY OS
+        // Returns secret link URLs for each pack
+        const modelSlug = body.model_slug || "yumi";
+        const packsList = body.packs as Array<{
+          id: string; name: string; price: number; code: string;
+        }>;
+
+        if (!Array.isArray(packsList) || packsList.length === 0) {
+          return NextResponse.json(
+            { error: "packs array required" },
+            { status: 400, headers: cors }
+          );
+        }
+
+        const osBaseUrl = SQWENSY_OS_URL;
+        const results: Array<{ packId: string; code: string; shopItemId?: string; linkUrl?: string; error?: string }> = [];
+
+        for (const pack of packsList) {
+          try {
+            // 1. Create shop item on OS
+            const itemRes = await fetch(`${osBaseUrl}/api/shop/items`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "x-api-key": TUNNEL_KEY },
+              body: JSON.stringify({
+                branch: "agence",
+                internalName: `${modelSlug.toUpperCase()} ${pack.name} (${pack.code})`,
+                price: pack.price,
+                description: `Heaven Agence — ${pack.name}`,
+                profileId: modelSlug,
+                packTier: pack.id,
+                generatesAccessCode: true,
+                accessDurationDays: 30,
+              }),
+            });
+            const item = await itemRes.json();
+
+            if (!item?.id) {
+              results.push({ packId: pack.id, code: pack.code, error: item?.error || "Failed to create shop item" });
+              continue;
+            }
+
+            // 2. Generate secret link
+            const linkRes = await fetch(`${osBaseUrl}/api/shop/links`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "x-api-key": TUNNEL_KEY },
+              body: JSON.stringify({
+                shopItemId: item.id,
+                profileId: modelSlug,
+              }),
+            });
+            const link = await linkRes.json();
+
+            results.push({
+              packId: pack.id,
+              code: pack.code,
+              shopItemId: item.id,
+              linkUrl: link?.url || null,
+            });
+          } catch (err) {
+            results.push({ packId: pack.id, code: pack.code, error: String(err) });
+          }
+        }
+
+        // 3. Save stripe_link back to Heaven packs
+        for (const r of results) {
+          if (r.linkUrl) {
+            await supabase
+              .from("agence_packs")
+              .update({ stripe_link: r.linkUrl })
+              .eq("model", modelSlug)
+              .eq("pack_id", r.packId);
+          }
+        }
+
+        return NextResponse.json({ success: true, results }, { headers: cors });
+      }
+
       case "push_notification": {
         // Log a notification from SQWENSY OS (store in content pipeline as note)
         const notePayload = {
@@ -334,6 +412,7 @@ export async function POST(request: NextRequest) {
             valid_actions: [
               "sync_client",
               "update_goal",
+              "register_packs",
               "push_notification",
               "sync_to_sqwensy",
             ],

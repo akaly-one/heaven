@@ -27,7 +27,7 @@ interface Post {
 interface PackConfig {
   id: string; name: string; price: number; color: string;
   features: string[]; face: boolean; badge: string | null; active: boolean;
-  wise_url?: string;
+  wise_url?: string; stripe_link?: string; code?: string;
 }
 interface UploadedContent {
   id: string; tier: string; type: "photo" | "video" | "reel"; label: string;
@@ -39,6 +39,7 @@ interface ModelAuth {
 interface WallPost {
   id: string; model: string; pseudo: string; content: string | null;
   photo_url: string | null; created_at: string;
+  pseudo_snap?: string | null; pseudo_insta?: string | null;
 }
 
 // ── Constants ──
@@ -133,10 +134,11 @@ export default function ModelPage() {
   // Wall (public posts by visitors)
   const [wallPosts, setWallPosts] = useState<WallPost[]>([]);
   const [wallPseudo, setWallPseudo] = useState("");
+  const [wallSnapHandle, setWallSnapHandle] = useState("");
+  const [wallInstaHandle, setWallInstaHandle] = useState("");
   const [wallContent, setWallContent] = useState("");
-  const [wallPhoto, setWallPhoto] = useState<string | null>(null);
   const [wallPosting, setWallPosting] = useState(false);
-  const wallFileRef = useRef<HTMLInputElement>(null);
+  const [socialPopup, setSocialPopup] = useState<{ pseudo: string; snap?: string | null; insta?: string | null; x: number; y: number } | null>(null);
 
   // Chat
   const [clientId, setClientId] = useState<string | null>(null);
@@ -546,6 +548,10 @@ export default function ModelPage() {
       if (saved) setClientId(JSON.parse(saved).id);
       const savedPseudo = sessionStorage.getItem(`heaven_wall_pseudo_${slug}`);
       if (savedPseudo) setWallPseudo(savedPseudo);
+      const savedSnap = sessionStorage.getItem(`heaven_wall_snap_${slug}`);
+      if (savedSnap) setWallSnapHandle(savedSnap);
+      const savedInsta = sessionStorage.getItem(`heaven_wall_insta_${slug}`);
+      if (savedInsta) setWallInstaHandle(savedInsta);
       // Check for saved access tier
       const savedAccess = sessionStorage.getItem(`heaven_access_${slug}`);
       if (savedAccess) {
@@ -653,26 +659,12 @@ export default function ModelPage() {
   // ── Wall: post ──
   const submitWallPost = async () => {
     if (!wallPseudo.trim()) return;
-    if (!wallContent.trim() && !wallPhoto) return;
+    if (!wallContent.trim()) return;
     setWallPosting(true);
     try {
       sessionStorage.setItem(`heaven_wall_pseudo_${slug}`, wallPseudo.trim());
-
-      // Upload photo to Cloudinary if present
-      let photoUrl = wallPhoto;
-      if (wallPhoto && wallPhoto.startsWith("data:")) {
-        try {
-          const cloudRes = await fetch("/api/upload", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ file: wallPhoto, folder: `heaven/${slug}/wall` }),
-          });
-          if (cloudRes.ok) {
-            const cloudData = await cloudRes.json();
-            photoUrl = cloudData.url;
-          }
-        } catch {}
-      }
+      if (wallSnapHandle.trim()) sessionStorage.setItem(`heaven_wall_snap_${slug}`, wallSnapHandle.trim());
+      if (wallInstaHandle.trim()) sessionStorage.setItem(`heaven_wall_insta_${slug}`, wallInstaHandle.trim());
 
       await fetch("/api/wall", {
         method: "POST",
@@ -680,12 +672,12 @@ export default function ModelPage() {
         body: JSON.stringify({
           model: slug,
           pseudo: wallPseudo.trim(),
-          content: wallContent.trim() || null,
-          photo_url: photoUrl || null,
+          content: wallContent.trim(),
+          pseudo_snap: wallSnapHandle.trim() || null,
+          pseudo_insta: wallInstaHandle.trim() || null,
         }),
       });
       setWallContent("");
-      setWallPhoto(null);
       // Refresh wall
       const res = await fetch(`/api/wall?model=${slug}`);
       const d = await res.json();
@@ -695,14 +687,7 @@ export default function ModelPage() {
     }
   };
 
-  const handleWallPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) return; // 2MB max
-    const reader = new FileReader();
-    reader.onload = () => setWallPhoto(reader.result as string);
-    reader.readAsDataURL(file);
-  };
+  // handleWallPhoto removed — visitors post text only
 
   const timeAgo = (d: string) => {
     const diff = Date.now() - new Date(d).getTime();
@@ -1032,53 +1017,59 @@ export default function ModelPage() {
                   </div>
                   <div className="flex-1 min-w-0 space-y-2">
                     {!wallPseudo ? (
-                      <input
-                        value={wallPseudo}
-                        onChange={e => setWallPseudo(e.target.value)}
-                        placeholder="Your pseudo (Snap or Insta)"
-                        className="w-full px-3 py-2 rounded-lg text-xs outline-none"
-                        style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }}
-                        maxLength={30}
-                      />
+                      <div className="space-y-2">
+                        <input
+                          value={wallPseudo}
+                          onChange={e => setWallPseudo(e.target.value)}
+                          placeholder="Your display name"
+                          className="w-full px-3 py-2 rounded-lg text-xs outline-none"
+                          style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }}
+                          maxLength={30}
+                        />
+                        <div className="flex gap-2">
+                          <div className="flex-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
+                            <Ghost className="w-3 h-3 shrink-0" style={{ color: "#FFFC00" }} />
+                            <input
+                              value={wallSnapHandle}
+                              onChange={e => setWallSnapHandle(e.target.value)}
+                              placeholder="Snap"
+                              className="w-full text-xs outline-none bg-transparent"
+                              style={{ color: "var(--text)" }}
+                              maxLength={30}
+                            />
+                          </div>
+                          <div className="flex-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
+                            <Instagram className="w-3 h-3 shrink-0" style={{ color: "#E1306C" }} />
+                            <input
+                              value={wallInstaHandle}
+                              onChange={e => setWallInstaHandle(e.target.value)}
+                              placeholder="Insta"
+                              className="w-full text-xs outline-none bg-transparent"
+                              style={{ color: "var(--text)" }}
+                              maxLength={30}
+                            />
+                          </div>
+                        </div>
+                      </div>
                     ) : (
                       <>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-[11px] font-semibold" style={{ color: "var(--accent)" }}>@{wallPseudo}</span>
                           <button onClick={() => setWallPseudo("")} className="text-[9px] cursor-pointer" style={{ color: "var(--text-muted)" }}>change</button>
                         </div>
-                        <textarea
-                          value={wallContent}
-                          onChange={e => setWallContent(e.target.value)}
-                          placeholder={`Say something to ${model.display_name}...`}
-                          rows={2}
-                          className="w-full px-3 py-2 rounded-lg text-xs outline-none resize-none"
-                          style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }}
-                          maxLength={500}
-                        />
-
-                        {/* Photo preview */}
-                        {wallPhoto && (
-                          <div className="relative w-20 h-20 rounded-lg overflow-hidden">
-                            <img src={wallPhoto} alt="" className="w-full h-full object-cover" />
-                            <button onClick={() => setWallPhoto(null)}
-                              className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full flex items-center justify-center cursor-pointer"
-                              style={{ background: "rgba(0,0,0,0.7)" }}>
-                              <X className="w-3 h-3 text-white" />
-                            </button>
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between">
-                          <button onClick={() => wallFileRef.current?.click()}
-                            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] cursor-pointer"
-                            style={{ color: "var(--text-muted)", background: "rgba(255,255,255,0.03)", border: "1px solid var(--border2)" }}>
-                            <ImagePlus className="w-3 h-3" /> Photo
-                          </button>
-                          <input ref={wallFileRef} type="file" accept="image/*" className="hidden" onChange={handleWallPhoto} />
-
-                          <button onClick={submitWallPost} disabled={wallPosting || (!wallContent.trim() && !wallPhoto)}
-                            className="px-4 py-1.5 rounded-lg text-[10px] font-semibold cursor-pointer btn-gradient disabled:opacity-30">
-                            Post
+                        <div className="flex items-center gap-2">
+                          <input
+                            value={wallContent}
+                            onChange={e => setWallContent(e.target.value)}
+                            placeholder={`Say something to ${model.display_name}...`}
+                            className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
+                            style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }}
+                            maxLength={500}
+                            onKeyDown={e => { if (e.key === "Enter" && wallContent.trim()) submitWallPost(); }}
+                          />
+                          <button onClick={submitWallPost} disabled={wallPosting || !wallContent.trim()}
+                            className="px-4 py-2 rounded-lg text-[10px] font-semibold cursor-pointer btn-gradient disabled:opacity-30 shrink-0">
+                            {wallPosting ? "..." : "Post"}
                           </button>
                         </div>
                       </>
@@ -1087,109 +1078,159 @@ export default function ModelPage() {
                 </div>
               </div>
 
-              {/* Model posts (all — media gated by tier) */}
-              {posts.map((post, i) => {
-                const postTier = post.tier_required || "public";
-                const mediaUnlocked = postTier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, postTier));
-                const tierMeta = TIER_META[postTier];
-                const tierHex = TIER_HEX[postTier] || "#64748B";
-                return (
-                  <div key={post.id} className="card-premium overflow-hidden post-hover" style={{ animation: `slideUp 0.4s ease-out ${i * 0.06}s both` }}>
-                    {/* Pinned indicator */}
-                    {post.pinned && (
-                      <div className="flex items-center gap-1.5 px-4 pt-3 pb-0">
-                        <Pin className="w-3 h-3" style={{ color: "var(--tier-gold)" }} />
-                        <span className="text-[10px] font-medium" style={{ color: "var(--tier-gold)" }}>Pinned</span>
+              {/* ── Unified feed: model posts + wall posts sorted by date ── */}
+              {(() => {
+                // Merge model posts and wall posts into a single timeline
+                const feedItems: Array<{ type: "model"; data: Post } | { type: "wall"; data: WallPost }> = [
+                  ...posts.map(p => ({ type: "model" as const, data: p })),
+                  ...wallPosts.map(w => ({ type: "wall" as const, data: w })),
+                ].sort((a, b) => new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime());
+
+                if (feedItems.length === 0) {
+                  return <EmptyState icon={Newspaper} text="Be the first to leave a message!" />;
+                }
+
+                return feedItems.map((item, i) => {
+                  if (item.type === "model") {
+                    const post = item.data;
+                    const postTier = post.tier_required || "public";
+                    const mediaUnlocked = postTier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, postTier));
+                    const tierMeta = TIER_META[postTier];
+                    const tierHex = TIER_HEX[postTier] || "#64748B";
+                    return (
+                      <div key={`post-${post.id}`} className="card-premium overflow-hidden post-hover" style={{ animation: `slideUp 0.4s ease-out ${i * 0.06}s both` }}>
+                        {post.pinned && (
+                          <div className="flex items-center gap-1.5 px-4 pt-3 pb-0">
+                            <Pin className="w-3 h-3" style={{ color: "var(--tier-gold)" }} />
+                            <span className="text-[10px] font-medium" style={{ color: "var(--tier-gold)" }}>Pinned</span>
+                          </div>
+                        )}
+                        <div className="flex items-start gap-3 p-4 pb-0">
+                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+                            style={{ background: "linear-gradient(135deg, var(--accent), #7C3AED)", color: "#fff" }}>
+                            {model.display_name.charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-[13px] font-bold" style={{ color: "var(--text)" }}>{model.display_name}</p>
+                              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>@{slug}</span>
+                              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>·</span>
+                              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{timeAgo(post.created_at)}</span>
+                              {postTier !== "public" && (
+                                <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${tierHex}18`, color: tierHex }}>
+                                  {tierMeta?.label || postTier}
+                                </span>
+                              )}
+                            </div>
+
+                            {post.content && (
+                              <p className="text-[13px] sm:text-sm leading-relaxed mt-1.5 whitespace-pre-wrap" style={{ color: "var(--text)" }}>{post.content}</p>
+                            )}
+
+                            {post.media_url && (
+                              mediaUnlocked ? (
+                                <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
+                                  <div className="mt-2.5 rounded-xl overflow-hidden" style={{ border: "1px solid var(--border2)" }}>
+                                    <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover" loading="lazy" />
+                                  </div>
+                                </ContentProtection>
+                              ) : (
+                                <div className="mt-2.5 rounded-xl overflow-hidden relative cursor-pointer" onClick={() => setShowUnlock(true)} style={{ border: "1px solid var(--border2)" }}>
+                                  <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover content-locked" />
+                                  <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(20px)" }}>
+                                    <div className="text-center">
+                                      <Lock className="w-6 h-6 mx-auto mb-1.5" style={{ color: tierHex }} />
+                                      <span className="text-xs font-bold" style={{ color: tierHex }}>{tierMeta?.label || postTier} Only</span>
+                                      <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.5)" }}>Unlock to view</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            )}
+
+                            <div className="flex items-center gap-6 mt-3 mb-1">
+                              <button className="flex items-center gap-1.5 text-[12px] cursor-pointer transition-colors hover:text-[#F43F5E] group/like" style={{ color: "var(--text-muted)" }}>
+                                <Heart className="w-4 h-4 transition-transform group-hover/like:scale-110" fill={post.likes_count > 0 ? "#F43F5E" : "none"} style={{ color: post.likes_count > 0 ? "#F43F5E" : undefined }} />
+                                <span>{post.likes_count || ""}</span>
+                              </button>
+                              <button className="flex items-center gap-1.5 text-[12px] cursor-pointer transition-colors hover:text-[#7C3AED] group/comment" style={{ color: "var(--text-muted)" }}>
+                                <MessageCircle className="w-4 h-4 transition-transform group-hover/comment:scale-110" />
+                                <span>{post.comments_count || ""}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Wall post — single-line: @pseudo message · time
+                  const wp = item.data;
+                  return (
+                    <div key={`wall-${wp.id}`} className="card-premium px-4 py-3" style={{ animation: `slideUp 0.3s ease-out ${i * 0.04}s both` }}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                          style={{ background: "rgba(167,139,250,0.12)", color: "var(--tier-platinum)" }}>
+                          {wp.pseudo.charAt(0).toUpperCase()}
+                        </div>
+                        <button
+                          className="text-[11px] font-semibold shrink-0 cursor-pointer hover:underline"
+                          style={{ color: "var(--accent)" }}
+                          onClick={(e) => {
+                            const rect = (e.target as HTMLElement).getBoundingClientRect();
+                            setSocialPopup({
+                              pseudo: wp.pseudo,
+                              snap: wp.pseudo_snap,
+                              insta: wp.pseudo_insta,
+                              x: rect.left,
+                              y: rect.bottom + 4,
+                            });
+                          }}
+                        >
+                          @{wp.pseudo}
+                        </button>
+                        <p className="text-xs truncate flex-1 min-w-0" style={{ color: "var(--text-secondary)" }}>
+                          {wp.content || ""}
+                        </p>
+                        <span className="text-[9px] shrink-0" style={{ color: "var(--text-muted)" }}>{timeAgo(wp.created_at)}</span>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+
+              {/* Social popup — shows snap/insta on pseudo click */}
+              {socialPopup && (
+                <div className="fixed inset-0 z-[999]" onClick={() => setSocialPopup(null)}>
+                  <div
+                    className="absolute rounded-xl p-3 shadow-2xl space-y-2 min-w-[180px]"
+                    style={{
+                      left: Math.min(socialPopup.x, window.innerWidth - 200),
+                      top: socialPopup.y,
+                      background: "rgba(20,20,25,0.95)",
+                      backdropFilter: "blur(20px)",
+                      border: "1px solid var(--border2)",
+                    }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <p className="text-[11px] font-bold" style={{ color: "var(--text)" }}>@{socialPopup.pseudo}</p>
+                    {socialPopup.snap && (
+                      <div className="flex items-center gap-2">
+                        <Ghost className="w-3.5 h-3.5" style={{ color: "#FFFC00" }} />
+                        <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>{socialPopup.snap}</span>
                       </div>
                     )}
-                    <div className="flex items-start gap-3 p-4 pb-0">
-                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                        style={{ background: "linear-gradient(135deg, var(--accent), #7C3AED)", color: "#fff" }}>
-                        {model.display_name.charAt(0)}
+                    {socialPopup.insta && (
+                      <div className="flex items-center gap-2">
+                        <Instagram className="w-3.5 h-3.5" style={{ color: "#E1306C" }} />
+                        <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>{socialPopup.insta}</span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-[13px] font-bold" style={{ color: "var(--text)" }}>{model.display_name}</p>
-                          <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>@{slug}</span>
-                          <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>·</span>
-                          <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{timeAgo(post.created_at)}</span>
-                          {postTier !== "public" && (
-                            <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${tierHex}18`, color: tierHex }}>
-                              {tierMeta?.label || postTier}
-                            </span>
-                          )}
-                        </div>
-
-                        {post.content && (
-                          <p className="text-[13px] sm:text-sm leading-relaxed mt-1.5 whitespace-pre-wrap" style={{ color: "var(--text)" }}>{post.content}</p>
-                        )}
-
-                        {post.media_url && (
-                          mediaUnlocked ? (
-                            <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
-                              <div className="mt-2.5 rounded-xl overflow-hidden" style={{ border: "1px solid var(--border2)" }}>
-                                <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover" loading="lazy" />
-                              </div>
-                            </ContentProtection>
-                          ) : (
-                            <div className="mt-2.5 rounded-xl overflow-hidden relative cursor-pointer" onClick={() => setShowUnlock(true)} style={{ border: "1px solid var(--border2)" }}>
-                              <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover content-locked" />
-                              <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(20px)" }}>
-                                <div className="text-center">
-                                  <Lock className="w-6 h-6 mx-auto mb-1.5" style={{ color: tierHex }} />
-                                  <span className="text-xs font-bold" style={{ color: tierHex }}>{tierMeta?.label || postTier} Only</span>
-                                  <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.5)" }}>Unlock to view</p>
-                                </div>
-                              </div>
-                            </div>
-                          )
-                        )}
-
-                        {/* Actions bar — Twitter style */}
-                        <div className="flex items-center gap-6 mt-3 mb-1">
-                          <button className="flex items-center gap-1.5 text-[12px] cursor-pointer transition-colors hover:text-[#F43F5E] group/like" style={{ color: "var(--text-muted)" }}>
-                            <Heart className="w-4 h-4 transition-transform group-hover/like:scale-110" fill={post.likes_count > 0 ? "#F43F5E" : "none"} style={{ color: post.likes_count > 0 ? "#F43F5E" : undefined }} />
-                            <span>{post.likes_count || ""}</span>
-                          </button>
-                          <button className="flex items-center gap-1.5 text-[12px] cursor-pointer transition-colors hover:text-[#7C3AED] group/comment" style={{ color: "var(--text-muted)" }}>
-                            <MessageCircle className="w-4 h-4 transition-transform group-hover/comment:scale-110" />
-                            <span>{post.comments_count || ""}</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Wall posts from visitors */}
-              {wallPosts.map((wp, i) => (
-                <div key={wp.id} className="card-premium p-4" style={{ animationDelay: `${i * 30}ms` }}>
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                      style={{ background: "rgba(167,139,250,0.12)", color: "var(--tier-platinum)" }}>
-                      {wp.pseudo.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[11px] font-semibold" style={{ color: "var(--text)" }}>@{wp.pseudo}</span>
-                        <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{timeAgo(wp.created_at)}</span>
-                      </div>
-                      {wp.content && (
-                        <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>{wp.content}</p>
-                      )}
-                      {wp.photo_url && (
-                        <div className="mt-2 w-20 h-20 rounded-lg overflow-hidden">
-                          <img src={wp.photo_url} alt="" className="w-full h-full object-cover pointer-events-none" draggable={false} />
-                        </div>
-                      )}
-                    </div>
+                    )}
+                    {!socialPopup.snap && !socialPopup.insta && (
+                      <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>No social accounts linked</p>
+                    )}
                   </div>
                 </div>
-              ))}
-
-              {wallPosts.length === 0 && posts.length === 0 && (
-                <EmptyState icon={Newspaper} text="Be the first to leave a message!" />
               )}
             </div>
           )}
@@ -1640,22 +1681,20 @@ export default function ModelPage() {
                                   style={{ background: `${hex}10`, color: hex, border: `1px solid ${hex}20` }}>
                                   <Check className="w-4 h-4" /> Pack actif
                                 </div>
-                              ) : pack.wise_url ? (
-                                <a href={pack.wise_url} target="_blank" rel="noopener noreferrer"
+                              ) : (pack.stripe_link || pack.wise_url) ? (
+                                <a href={pack.stripe_link || pack.wise_url} target="_blank" rel="noopener noreferrer"
                                   className="w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 no-underline"
                                   style={{ background: hex, color: "#fff" }}>
-                                  Payer {pack.price}€ via Wise
+                                  Payer {pack.price}€{pack.stripe_link ? "" : " via Wise"}
                                   <ChevronRight className="w-4 h-4" />
                                 </a>
                               ) : (
-                                <button onClick={() => setSelectedPack(pack)}
-                                  className="w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
-                                  style={{ background: hex, color: "#fff" }}>
-                                  Choisir {TIER_META[pack.id]?.label || pack.name}
-                                  <ChevronRight className="w-4 h-4" />
-                                </button>
+                                <div className="w-full py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 opacity-50"
+                                  style={{ background: `${hex}15`, color: hex, border: `1px solid ${hex}20` }}>
+                                  Paiement bientot disponible
+                                </div>
                               )}
-                              {!isCurrentTier && pack.wise_url && (
+                              {!isCurrentTier && (pack.stripe_link || pack.wise_url) && (
                                 <p className="text-[9px] text-center mt-2" style={{ color: "var(--text-muted)" }}>
                                   Paiement securise · Acces active sous 15 min
                                 </p>
@@ -1742,11 +1781,23 @@ export default function ModelPage() {
                                     </div>
                                   )}
 
-                                  {/* Wise + Toggle */}
+                                  {/* Payment links + Toggle */}
                                   <div className="space-y-2">
                                     <div>
                                       <label className="text-[9px] font-medium uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>
-                                        Lien Wise (paiement)
+                                        Lien Stripe (paiement via SQWENSY)
+                                      </label>
+                                      <input
+                                        value={pack.stripe_link || ""}
+                                        onChange={e => handleUpdatePack(pack.id, { stripe_link: e.target.value })}
+                                        placeholder="https://sqwensy.com/p/..."
+                                        className="w-full text-[11px] bg-transparent outline-none rounded-lg px-3 py-2"
+                                        style={{ color: "var(--text-secondary)", border: "1px dashed var(--border3)" }}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-[9px] font-medium uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>
+                                        Lien Wise (alternatif)
                                       </label>
                                       <input
                                         value={pack.wise_url || ""}
@@ -1966,8 +2017,9 @@ export default function ModelPage() {
                 {activePacks.map(pack => {
                   const hex = TIER_HEX[pack.id] || pack.color;
                   const bonus = TIER_CREDIT_BONUS[pack.id];
-                  return pack.wise_url ? (
-                    <a key={pack.id} href={pack.wise_url} target="_blank" rel="noopener noreferrer"
+                  const payUrl = pack.stripe_link || pack.wise_url;
+                  return payUrl ? (
+                    <a key={pack.id} href={payUrl} target="_blank" rel="noopener noreferrer"
                       className="block w-full p-4 rounded-xl text-left cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] no-underline"
                       style={{ background: `${hex}08`, border: `1px solid ${hex}20` }}>
                       <div className="flex items-center justify-between mb-1.5">
@@ -1982,7 +2034,7 @@ export default function ModelPage() {
                       </p>
                       <div className="flex items-center gap-1.5">
                         <ChevronRight className="w-3 h-3" style={{ color: hex }} />
-                        <span className="text-[9px] font-semibold" style={{ color: hex }}>Payer via Wise</span>
+                        <span className="text-[9px] font-semibold" style={{ color: hex }}>Payer maintenant</span>
                       </div>
                       {bonus && (bonus.multiplier > 1 || bonus.bonus) && (
                         <div className="flex items-center gap-1.5 mt-1">
@@ -1994,8 +2046,8 @@ export default function ModelPage() {
                       )}
                     </a>
                   ) : (
-                    <button key={pack.id} onClick={() => { setShowUnlock(false); setSelectedPack(pack); }}
-                      className="w-full p-4 rounded-xl text-left cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
+                    <div key={pack.id}
+                      className="w-full p-4 rounded-xl text-left opacity-60"
                       style={{ background: `${hex}08`, border: `1px solid ${hex}20` }}>
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2.5">
@@ -2007,15 +2059,16 @@ export default function ModelPage() {
                       <p className="text-[10px] leading-relaxed mb-1.5" style={{ color: "var(--text-muted)" }}>
                         {pack.features.slice(0, 2).join(" · ")}
                       </p>
+                      <p className="text-[9px] font-semibold" style={{ color: hex }}>Paiement bientot disponible</p>
                       {bonus && (bonus.multiplier > 1 || bonus.bonus) && (
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 mt-1">
                           <Crown className="w-3 h-3" style={{ color: hex }} />
                           <span className="text-[9px] font-semibold" style={{ color: hex }}>
                             {bonus.multiplier > 1 ? `${bonus.label} crédits` : `🎁 ${bonus.bonus}`}
                           </span>
                         </div>
                       )}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -2074,32 +2127,27 @@ export default function ModelPage() {
                     </div>
                   )}
 
-                  {/* CTA — Wise payment link */}
-                  {selectedPack.wise_url ? (
+                  {/* CTA — Payment link (Stripe preferred, Wise fallback) */}
+                  {(selectedPack.stripe_link || selectedPack.wise_url) ? (
                     <>
-                      <a href={selectedPack.wise_url} target="_blank" rel="noopener noreferrer"
+                      <a href={selectedPack.stripe_link || selectedPack.wise_url} target="_blank" rel="noopener noreferrer"
                         className="w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 no-underline"
                         style={{ background: hex, color: "#fff" }}>
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-                        Payer {selectedPack.price}€ via Wise
+                        Payer {selectedPack.price}€
                       </a>
                       <p className="text-[9px] text-center mt-3 leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                        Paiement securise via Wise. L&apos;acces est active sous 15 min apres confirmation.
+                        Paiement securise. L&apos;acces est active sous 15 min apres confirmation.
                       </p>
                     </>
                   ) : (
                     <>
-                      <button onClick={() => {
-                        setSelectedPack(null);
-                        setChatOpen(true);
-                        setChatInput(`Je veux le pack ${selectedPack.name} à ${selectedPack.price}€`);
-                      }}
-                        className="w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
-                        style={{ background: hex, color: "#fff" }}>
-                        Commander — {selectedPack.price}€
-                      </button>
+                      <div className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 opacity-50"
+                        style={{ background: `${hex}15`, color: hex, border: `1px solid ${hex}20` }}>
+                        Paiement bientot disponible
+                      </div>
                       <p className="text-[9px] text-center mt-3 leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                        Les instructions de paiement seront envoyees par message.
+                        Le lien de paiement sera active prochainement.
                       </p>
                     </>
                   )}

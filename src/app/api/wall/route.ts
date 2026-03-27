@@ -48,6 +48,8 @@ export async function POST(req: NextRequest) {
     const pseudo = body.pseudo ? sanitize(body.pseudo) : "";
     const content = body.content ? sanitize(body.content) : "";
     const photo_url = body.photo_url || null;
+    const pseudo_snap = body.pseudo_snap ? sanitize(body.pseudo_snap) : null;
+    const pseudo_insta = body.pseudo_insta ? sanitize(body.pseudo_insta) : null;
 
     if (!model || !pseudo) {
       return NextResponse.json({ error: "model and pseudo required" }, { status: 400, headers: cors });
@@ -59,6 +61,8 @@ export async function POST(req: NextRequest) {
     // Length limits
     if (pseudo.length > 30) return NextResponse.json({ error: "pseudo too long" }, { status: 400, headers: cors });
     if (content && content.length > 500) return NextResponse.json({ error: "content too long (500 max)" }, { status: 400, headers: cors });
+    if (pseudo_snap && pseudo_snap.length > 30) return NextResponse.json({ error: "pseudo_snap too long" }, { status: 400, headers: cors });
+    if (pseudo_insta && pseudo_insta.length > 30) return NextResponse.json({ error: "pseudo_insta too long" }, { status: 400, headers: cors });
 
     // Validate photo_url if provided (must be https Cloudinary URL)
     if (photo_url && !photo_url.startsWith("https://res.cloudinary.com/")) {
@@ -70,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     const { data, error } = await supabase
       .from("agence_wall_posts")
-      .insert({ model, pseudo, content: content || null, photo_url })
+      .insert({ model, pseudo, content: content || null, photo_url, pseudo_snap, pseudo_insta })
       .select()
       .single();
 

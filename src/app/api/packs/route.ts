@@ -9,19 +9,19 @@ export const runtime = "nodejs";
    ══════════════════════════════════════════════ */
 
 const DEFAULT_PACKS = [
-  { id: "vip", name: "VIP Glamour", price: 150, color: "#E84393",
+  { id: "vip", name: "VIP Glamour", code: "AG-P150", price: 150, color: "#E84393",
     features: ["Pieds glamour/sales + accessoires", "Lingerie sexy + haul", "Teasing + demandes custom", "Dedicaces personnalisees"],
     bonuses: { fanvueAccess: false, freeNudeExpress: true, nudeDedicaceLevres: false, freeVideoOffer: false },
     face: false, badge: null, active: true, wise_url: "https://wise.com/pay/r/uQcY2-5PTQqyvko" },
-  { id: "gold", name: "Gold", price: 200, color: "#C9A84C",
+  { id: "gold", name: "Gold", code: "AG-P200", price: 200, color: "#C9A84C",
     features: ["TOUT du VIP inclus", "Nudes complets", "Cosplay", "Sextape sans visage"],
     bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: false },
     face: false, badge: "Populaire", active: true },
-  { id: "diamond", name: "Diamond", price: 250, color: "#5B8DEF",
+  { id: "diamond", name: "Diamond", code: "AG-P250", price: 250, color: "#5B8DEF",
     features: ["TOUT du Gold inclus", "Nudes avec visage", "Cosplay avec visage", "Sextape avec visage", "Hard illimite"],
     bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: false },
     face: true, badge: null, active: true },
-  { id: "platinum", name: "Platinum All-Access", price: 320, color: "#A882FF",
+  { id: "platinum", name: "Platinum All-Access", code: "AG-P320", price: 320, color: "#A882FF",
     features: ["Acces TOTAL aux 3 packs", "Demandes personnalisees", "Video calls prives", "Contenu exclusif illimite"],
     bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: true },
     face: true, badge: "Ultimate", active: true },
@@ -61,8 +61,10 @@ export async function GET(req: NextRequest) {
     /* eslint-disable @typescript-eslint/no-explicit-any */
     const mapped = data.map((r: any) => ({
       id: r.pack_id, name: r.name, price: Number(r.price), color: r.color,
+      code: r.code || `AG-P${Math.round(Number(r.price))}`,
       features: r.features || [], bonuses: r.bonuses || {},
-      face: r.face, badge: r.badge, active: r.active, wise_url: r.wise_url || "",
+      face: r.face, badge: r.badge, active: r.active,
+      wise_url: r.wise_url || "", stripe_link: r.stripe_link || "",
     }));
     return NextResponse.json({ packs: mapped }, { headers: cors });
   } catch (err) {
@@ -89,9 +91,10 @@ export async function POST(req: NextRequest) {
 
     const rows = packs.map((p: Record<string, unknown>, i: number) => ({
       model, pack_id: p.id || `pack-${i}`, name: p.name || "", price: p.price || 0,
+      code: p.code || `AG-P${Math.round(Number(p.price) || 0)}`,
       color: p.color || "#C9A84C", features: p.features || [], bonuses: p.bonuses || {},
       face: p.face || false, badge: p.badge || null, active: p.active !== false, sort_order: i,
-      wise_url: p.wise_url || null,
+      wise_url: p.wise_url || null, stripe_link: p.stripe_link || null,
     }));
 
     const { error: insErr } = await supabase.from("agence_packs").insert(rows);

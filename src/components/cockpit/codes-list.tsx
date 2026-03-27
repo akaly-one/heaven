@@ -205,15 +205,27 @@ export function CodesList({
     <div className="space-y-3">
       {/* Search + filters */}
       <div className="flex gap-2 items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher..."
-            className="w-full pl-9 pr-3 py-2 rounded-xl text-xs outline-none glass"
-            style={{ color: "var(--text)" }}
-          />
+        <div className="relative flex-1 flex gap-1.5">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Rechercher..."
+              className="w-full pl-9 pr-3 py-2 rounded-xl text-xs outline-none glass"
+              style={{ color: "var(--text)" }}
+            />
+          </div>
+          {search.trim() && onGenerateForClient && (
+            <button
+              onClick={() => onGenerateForClient(search.trim())}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-semibold cursor-pointer hover:scale-105 active:scale-95 transition-transform whitespace-nowrap shrink-0"
+              style={{ background: "var(--accent)", color: "#fff" }}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Generer</span>
+            </button>
+          )}
         </div>
         <div className="flex gap-1">
           {STATUS_FILTERS.map(f => (
@@ -236,19 +248,9 @@ export function CodesList({
       {groups.length === 0 ? (
         <div className="text-center py-12">
           <Search className="w-6 h-6 mx-auto mb-2" style={{ color: "var(--text-muted)" }} />
-          <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
             {search.trim() ? `Aucun client "${search}" trouve` : "Aucun code trouve"}
           </p>
-          {search.trim() && onGenerateForClient && (
-            <button
-              onClick={() => onGenerateForClient(search.trim())}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold cursor-pointer hover:scale-105 active:scale-95 transition-transform"
-              style={{ background: "var(--accent)", color: "#fff" }}
-            >
-              <Plus className="w-4 h-4" />
-              Generer code pour &quot;{search.trim()}&quot;
-            </button>
-          )}
         </div>
       ) : (
         <div className="space-y-2">

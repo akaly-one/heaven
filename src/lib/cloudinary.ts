@@ -70,6 +70,58 @@ export function cloudinaryBlurUrl(publicId: string): string {
 }
 
 /**
+ * List all resources in a folder (paginated).
+ */
+export async function listCloudinaryResources(
+  folder: string,
+  resourceType: "image" | "video" = "image",
+  maxResults = 500,
+): Promise<{ public_id: string; secure_url: string; bytes: number; created_at: string }[]> {
+  const allResources: { public_id: string; secure_url: string; bytes: number; created_at: string }[] = [];
+  let nextCursor: string | undefined;
+
+  do {
+    const result = await cloudinary.api.resources({
+      type: "upload",
+      resource_type: resourceType,
+      prefix: folder,
+      max_results: Math.min(maxResults - allResources.length, 500),
+      ...(nextCursor ? { next_cursor: nextCursor } : {}),
+    });
+
+    for (const r of result.resources || []) {
+      allResources.push({
+        public_id: r.public_id,
+        secure_url: r.secure_url,
+        bytes: r.bytes,
+        created_at: r.created_at,
+      });
+    }
+
+    nextCursor = result.next_cursor;
+  } while (nextCursor && allResources.length < maxResults);
+
+  return allResources;
+}
+
+/**
+ * Bulk delete resources by public_id.
+ */
+export async function bulkDeleteCloudinary(
+  publicIds: string[],
+  resourceType: "image" | "video" = "image",
+): Promise<{ deleted: Record<string, string>; partial: boolean }> {
+  // Cloudinary allows max 100 per bulk delete call
+  const results: Record<string, string> = {};
+  for (let i = 0; i < publicIds.length; i += 100) {
+    const batch = publicIds.slice(i, i + 100);
+    const res = await cloudinary.api.delete_resources(batch, { resource_type: resourceType });
+    Object.assign(results, res.deleted || {});
+  }
+  return { deleted: results, partial: false };
+}
+
+/**
  * Generate a thumbnail URL.
  */
 export function cloudinaryThumb(publicId: string, size = 300): string {
