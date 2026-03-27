@@ -8,7 +8,6 @@ import type { HeavenAuth } from "./auth-guard";
 const NAV_ITEMS = [
   { id: "cockpit", label: "Dashboard", icon: Crown, href: "/agence", color: "var(--accent)" },
   { id: "strategie", label: "Strategie", icon: Calculator, href: "/agence/simulateur", color: "#E040FB" },
-  { id: "pipeline", label: "Pipeline", icon: TrendingUp, href: "/agence/pipeline", color: "#F59E0B" },
   { id: "clients", label: "Clients", icon: Users, href: "/agence/clients", color: "#F59E0B" },
   { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances", color: "var(--success)" },
   { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings", color: "var(--text-muted)" },

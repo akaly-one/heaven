@@ -489,8 +489,8 @@ export default function AgenceDashboard() {
           <div className="flex gap-2 flex-wrap fade-up">
             {[
               { label: "Strategie", href: "/agence/simulateur", icon: Target, color: "#E040FB" },
-              { label: "Pipeline", href: "/agence/pipeline", icon: TrendingUp, color: "#7C3AED" },
               { label: "Galerie", href: `/m/${modelSlug}?edit=true#gallery`, icon: CameraIcon, color: "var(--accent)" },
+              { label: "Nouveau post", href: "#", icon: Plus, color: "#10B981" },
             ].map(action => (
               <a key={action.label} href={action.href}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-semibold no-underline transition-all duration-200 hover:scale-105 active:scale-95"
