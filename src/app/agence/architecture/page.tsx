@@ -8,6 +8,7 @@ import {
   Upload, Eye, Lock, CreditCard, Bell, Image, Send, Trash2, Edit,
   Copy, Pause, Play, Ban, RefreshCw, Search, ShoppingBag
 } from "lucide-react";
+import { OsLayout } from "@/components/os-layout";
 
 // ═══════════════════════════════════════════════
 // ARCHITECTURE MAP — Heaven Studio
@@ -418,6 +419,7 @@ export default function ArchitecturePage() {
   const warnButtons = ARCHITECTURE.reduce((sum, n) => sum + (n.buttons?.filter(b => b.status === "warning" || b.status === "redundant").length || 0), 0);
 
   return (
+    <OsLayout cpId="agence">
     <div className="min-h-screen p-4 md:p-8" style={{ background: "var(--bg)" }}>
       <div className="max-w-6xl mx-auto">
         {/* Header */}
@@ -694,5 +696,6 @@ export default function ArchitecturePage() {
         </div>
       </div>
     </div>
+    </OsLayout>
   );
 }

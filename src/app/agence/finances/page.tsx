@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useModel } from "@/lib/model-context";
 import { DollarSign, TrendingUp, Users, CreditCard } from "lucide-react";
+import { OsLayout } from "@/components/os-layout";
 
 interface Client {
   model: string;
@@ -50,7 +51,8 @@ export default function FinancesPage() {
   ];
 
   return (
-    <div className="min-h-screen p-4 md:p-8 md:ml-[60px]" style={{ background: "var(--bg)" }}>
+    <OsLayout cpId="agence">
+    <div className="min-h-screen p-4 md:p-8" style={{ background: "var(--bg)" }}>
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
@@ -125,5 +127,6 @@ export default function FinancesPage() {
         )}
       </div>
     </div>
+    </OsLayout>
   );
 }
