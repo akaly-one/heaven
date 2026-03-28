@@ -826,41 +826,23 @@ export default function ModelPage() {
 
       <div className="relative z-10">
 
-        {/* ═══ TOP BAR ═══ */}
-        <div className="fixed top-0 left-0 right-0 z-40 px-4 py-3 flex items-center justify-between" style={{ backdropFilter: "blur(12px)", background: "rgba(var(--bg-rgb, 15,16,25), 0.7)" }}>
-          <a href={isModelLoggedIn ? "/agence" : "/login"}
-            className="w-8 h-8 rounded-lg flex items-center justify-center no-underline glass"
-            style={{ border: "1px solid var(--border2)" }}>
-            <Crown className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
-          </a>
-
-          {isEditMode && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: "rgba(230,51,41,0.12)", border: "1px solid rgba(230,51,41,0.25)" }}>
-              <Pencil className="w-3 h-3" style={{ color: "var(--accent)" }} />
-              <span className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>Edit Mode</span>
-            </div>
-          )}
-
-          {isModelLoggedIn && !isEditMode && (
-            <div className="flex items-center gap-1.5">
-              <a href="/agence"
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium no-underline glass cursor-pointer"
-                style={{ border: "1px solid var(--border2)", color: "var(--text-secondary)" }}>
-                <Edit3 className="w-3 h-3" /> Cockpit
-              </a>
-              <a href="/agence/settings"
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium no-underline glass cursor-pointer"
-                style={{ border: "1px solid var(--border2)", color: "var(--text-secondary)" }}>
-                <Wifi className="w-3 h-3" /> Status
-              </a>
-            </div>
-          )}
-          {isModelLoggedIn && isEditMode && (
-            <a href="/agence"
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium no-underline glass cursor-pointer"
-              style={{ border: "1px solid var(--border2)", color: "var(--text-secondary)" }}>
-              <X className="w-3 h-3" /> Quitter
+        {/* ═══ TOP BAR — minimal, overlays banner ═══ */}
+        <div className="fixed top-0 left-0 right-0 z-40 px-4 py-2.5 flex items-center justify-between">
+          {isModelLoggedIn ? (
+            <a href="/agence" className="px-3 py-1.5 rounded-full text-[10px] font-bold no-underline"
+              style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(8px)", color: "#fff" }}>
+              {isEditMode ? "← Quitter" : "← Cockpit"}
             </a>
+          ) : (
+            <div />
+          )}
+          {/* Message button for visitors */}
+          {visitorRegistered && !isModelLoggedIn && (
+            <button onClick={() => setChatOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold cursor-pointer"
+              style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(8px)", color: "#fff" }}>
+              <MessageCircle className="w-3.5 h-3.5" /> Message
+            </button>
           )}
         </div>
 
