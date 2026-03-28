@@ -864,30 +864,32 @@ export default function ModelPage() {
           )}
         </div>
 
-        {/* ═══ HERO ═══ */}
+        {/* ═══ HERO — auto banner from latest post image ═══ */}
         <div className="relative profile-stagger-1">
-          {/* Banner — taller on desktop */}
-          <div className="h-36 sm:h-44 md:h-52 lg:h-60 relative overflow-hidden" style={{
-            background: displayModel?.banner
-              ? `url(${displayModel.banner}) center/cover`
-              : "linear-gradient(135deg, rgba(244,63,94,0.2), rgba(230,51,41,0.15), rgba(124,58,237,0.1))",
-          }}>
-            {/* Gradient overlay for text readability — stronger at bottom */}
-            <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(var(--bg-rgb, 15,16,25), 0.85) 0%, rgba(var(--bg-rgb, 15,16,25), 0.4) 40%, transparent 70%)" }} />
-            {isEditMode && (
-              <>
-                <button onClick={() => bannerInputRef.current?.click()}
-                  className="absolute inset-0 w-full h-full flex items-center justify-center cursor-pointer transition-all hover:bg-black/30"
-                  style={{ background: "rgba(0,0,0,0.15)" }}>
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-xl" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}>
-                    <Camera className="w-4 h-4 text-white" />
-                    <span className="text-xs font-medium text-white">Changer la bannière</span>
-                  </div>
-                </button>
-                <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} />
-              </>
-            )}
-          </div>
+          {(() => {
+            const latestImagePost = posts.find(p => p.media_url);
+            const bannerUrl = displayModel?.banner || latestImagePost?.media_url || null;
+            return (
+              <div className="h-40 sm:h-48 md:h-56 relative overflow-hidden" style={{
+                background: bannerUrl
+                  ? `url(${bannerUrl}) center/cover`
+                  : "linear-gradient(135deg, #1a1a2e, #16213e, #0f3460)",
+              }}>
+                <div className="absolute inset-0" style={{ background: "linear-gradient(to top, var(--bg) 0%, rgba(0,0,0,0.3) 50%, transparent 100%)" }} />
+              </div>
+            );
+          })()}
+          {isEditMode && (
+            <div className="absolute top-3 right-3 z-20">
+              <button onClick={() => bannerInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer hover:scale-105 transition-transform"
+                style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", color: "#fff" }}>
+                <Camera className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-medium">Banniere</span>
+              </button>
+              <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} />
+            </div>
+          )}
 
           <div className="max-w-2xl mx-auto px-4 -mt-14 sm:-mt-16 relative z-10">
             {/* ── Instagram-style centered profile ── */}
@@ -954,6 +956,24 @@ export default function ModelPage() {
                 )}
               </div>
             </div>
+
+            {/* Subscription status — inline, not a sticky bar */}
+            {!isEditMode && visitorRegistered && !isModelLoggedIn && (
+              <div className="flex items-center justify-center gap-2 mt-2 profile-stagger-3">
+                {unlockedTier ? (
+                  <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase"
+                    style={{ background: "rgba(16,185,129,0.1)", color: "#10B981", border: "1px solid rgba(16,185,129,0.2)" }}>
+                    {unlockedTier} active
+                  </span>
+                ) : (
+                  <button onClick={() => setTab("shop")}
+                    className="px-4 py-1.5 rounded-full text-[10px] font-bold cursor-pointer hover:scale-105 transition-transform"
+                    style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff" }}>
+                    Voir les packs
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Stats row — centered with dividers */}
             {!isEditMode && (
@@ -1038,17 +1058,7 @@ export default function ModelPage() {
           </div>
         </div>
 
-        {/* ═══ SUBSCRIPTION STATUS BAR ═══ */}
-        {visitorRegistered && !isModelLoggedIn && (
-          <SubscriptionStatusBar
-            visitorHandle={visitorHandle}
-            visitorPlatform={visitorPlatform}
-            unlockedTier={unlockedTier}
-            activeCode={activeCode}
-            onUpgrade={() => { setTab("shop"); }}
-            onManage={() => { setShowSubscriptionPanel(true); }}
-          />
-        )}
+        {/* Status bar removed — info integrated in header */}
 
         {/* ═══ EXPIRED CODE BANNER ═══ */}
         {expiredCodeInfo && !unlockedTier && (
