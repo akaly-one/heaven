@@ -547,35 +547,11 @@ export default function AgenceDashboard() {
             />
           </div>
 
-          {/* ── Codes + Clients unified list ── */}
-          <div className="fade-up-2">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold" style={{ color: "var(--text)" }}>Codes &amp; Clients</h2>
-              <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>
-                {activeCodes.length} actif{activeCodes.length > 1 ? "s" : ""} · {clients.length} client{clients.length > 1 ? "s" : ""}
-              </span>
-            </div>
-            <CodesList
-              codes={modelCodes}
-              clients={clients}
-              modelSlug={modelSlug}
-              onCopy={handleCopy}
-              onRevoke={handleRevoke}
-              onPause={handlePause}
-              onReactivate={handleReactivate}
-              onDelete={handleDelete}
-              onUpdateClient={handleUpdateClient}
-              onSendMessage={handleSendMessage}
-              onGenerateForClient={handleGenerateForClient}
-              onExtendCode={handleExtendCode}
-              wiseLinks={packs.filter(p => p.wise_url).map(p => ({ tier: p.id, url: p.wise_url! }))}
-            />
-          </div>
+          {/* ── 2-column layout: Feed/Messages LEFT + Codes/Checklist RIGHT ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 fade-up-2" style={{ height: "calc(100vh - 320px)", minHeight: "400px" }}>
 
-          {/* ── Feed/Messages + Checklist side by side ── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 fade-up-3">
-            {/* Feed / Chat pivot column */}
-            <div>
+            {/* ── LEFT COLUMN: Feed + Messages (3/5) ── */}
+            <div className="lg:col-span-3 flex flex-col min-h-0 overflow-y-auto" style={{ maxHeight: "calc(100vh - 320px)" }}>
               {/* Pivot tabs (accessible) */}
               <div className="mb-3">
                 <Tabs
@@ -996,8 +972,34 @@ export default function AgenceDashboard() {
               })()}
             </div>
 
-            {/* Checklist + Pipeline column */}
-            <div className="space-y-4">
+            {/* ── RIGHT COLUMN: Codes + Checklist (2/5) ── */}
+            <div className="lg:col-span-2 space-y-4 overflow-y-auto" style={{ maxHeight: "calc(100vh - 320px)" }}>
+              {/* Codes & Clients */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-xs font-bold" style={{ color: "var(--text)" }}>Codes &amp; Clients</h2>
+                  <span className="text-[9px] font-medium" style={{ color: "var(--text-muted)" }}>
+                    {activeCodes.length} actif{activeCodes.length > 1 ? "s" : ""} · {clients.length} client{clients.length > 1 ? "s" : ""}
+                  </span>
+                </div>
+                <div style={{ maxHeight: "250px", overflowY: "auto" }}>
+                  <CodesList
+                    codes={modelCodes}
+                    clients={clients}
+                    modelSlug={modelSlug}
+                    onCopy={handleCopy}
+                    onRevoke={handleRevoke}
+                    onPause={handlePause}
+                    onReactivate={handleReactivate}
+                    onDelete={handleDelete}
+                    onUpdateClient={handleUpdateClient}
+                    onSendMessage={handleSendMessage}
+                    onGenerateForClient={handleGenerateForClient}
+                    onExtendCode={handleExtendCode}
+                    wiseLinks={packs.filter(p => p.wise_url).map(p => ({ tier: p.id, url: p.wise_url! }))}
+                  />
+                </div>
+              </div>
               {/* Checklist */}
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -1049,68 +1051,7 @@ export default function AgenceDashboard() {
                 </div>
               </div>
 
-              {/* Pipeline mini */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: "var(--text)" }}>
-                    <Target className="w-4 h-4" style={{ color: "#7C3AED" }} />
-                    Pipeline
-                  </h2>
-                  <a href="/agence/pipeline" className="flex items-center gap-0.5 text-[10px] font-medium no-underline hover:opacity-70 transition-opacity" style={{ color: "var(--accent)" }}>
-                    Voir tout <ChevronRight className="w-3 h-3" />
-                  </a>
-                </div>
-                {/* Stage progress bar */}
-                <div className="flex gap-1 mb-3">
-                  {PIPELINE_STAGES.map(stage => {
-                    const count = pipelineGoals.filter(g => g.stage === stage.id).length;
-                    return (
-                      <div key={stage.id} className="flex-1 text-center">
-                        <div className="h-1.5 rounded-full mb-1" style={{ background: count > 0 ? stage.color : "var(--bg2)" }} />
-                        <span className="text-[10px] font-semibold" style={{ color: count > 0 ? stage.color : "var(--text-muted)" }}>
-                          {stage.label}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* Goals list */}
-                {pipelineGoals.length === 0 ? (
-                  <div className="rounded-xl p-4 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                    <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Aucun objectif</p>
-                    <a href="/agence/pipeline" className="text-[10px] font-semibold no-underline hover:opacity-70" style={{ color: "var(--accent)" }}>
-                      Ajouter un objectif
-                    </a>
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    {pipelineGoals.map(goal => {
-                      const stage = PIPELINE_STAGES.find(s => s.id === goal.stage);
-                      return (
-                        <div key={goal.id} className="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-200 hover:scale-[1.008]"
-                          style={{ background: goal.completed ? "rgba(22,163,74,0.06)" : "rgba(255,255,255,0.03)", border: `1px solid ${goal.completed ? "rgba(22,163,74,0.15)" : "var(--border)"}` }}>
-                          {(() => { const Icon = stage?.icon || ClipboardList; return <Icon size={14} style={{ color: stage?.color || "var(--text-muted)" }} />; })()}
-                          <span className="text-[11px] font-medium flex-1" style={{
-                            color: goal.completed ? "var(--success)" : "var(--text-secondary)",
-                            textDecoration: goal.completed ? "line-through" : "none",
-                          }}>
-                            {goal.title}
-                          </span>
-                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md" style={{ background: `${stage?.color || "var(--bg2)"}20`, color: stage?.color || "var(--text-muted)" }}>
-                            {stage?.label || goal.stage}
-                          </span>
-                          {goal.target_date && (
-                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                              <CalendarDays className="w-2.5 h-2.5 inline mr-0.5" />
-                              {new Date(goal.target_date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              {/* Pipeline removed — use Strategie page instead */}
             </div>
           </div>
 
