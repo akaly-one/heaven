@@ -772,18 +772,7 @@ export default function ModelPage() {
     );
   }
 
-  if (loading || !model) {
-    return (
-      <div className="flex items-center justify-center min-h-screen" style={{ background: "var(--bg)" }}>
-        <div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(230,51,41,0.2)", borderTopColor: "var(--accent)" }} />
-      </div>
-    );
-  }
-
-  const activePacks = displayPacks.filter(p => p.active);
-  const unreadCount = chatMessages.filter(m => m.sender_type === "model").length;
-
-  // ── Identity Gate: mandatory identification before browsing ──
+  // ── These must be before conditional returns (React hooks rule) ──
   const handleGateRegistered = useCallback((client: Record<string, unknown>, platform: VisitorPlatform, handle: string) => {
     setClientId(client.id as string);
     setVisitorPlatform(platform);
@@ -791,6 +780,17 @@ export default function ModelPage() {
     setVisitorRegistered(true);
     sessionStorage.setItem(`heaven_client_${slug}`, JSON.stringify(client));
   }, [slug]);
+
+  const activePacks = displayPacks.filter(p => p.active);
+  const unreadCount = chatMessages.filter(m => m.sender_type === "model").length;
+
+  if (loading || !model) {
+    return (
+      <div className="flex items-center justify-center min-h-screen" style={{ background: "var(--bg)" }}>
+        <div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(230,51,41,0.2)", borderTopColor: "var(--accent)" }} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-20" style={{ background: "var(--bg)" }}>
