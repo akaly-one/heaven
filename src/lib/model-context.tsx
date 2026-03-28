@@ -39,13 +39,31 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
     } catch { /* ignore */ }
   }, []);
 
-  // Hardcoded models list (no API call needed for Phase 0)
+  // Load models from API (fallback to hardcoded for Phase 0)
   useEffect(() => {
     if (auth?.role === "root") {
-      setModels([
-        { slug: "yumi", display_name: "Yumi" },
-        { slug: "ruby", display_name: "Ruby" },
-      ]);
+      fetch("/api/models")
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data?.models?.length) {
+            setModels(data.models.map((m: { model_slug: string; display_name: string }) => ({
+              slug: m.model_slug,
+              display_name: m.display_name,
+            })));
+          } else {
+            // Fallback hardcoded
+            setModels([
+              { slug: "yumi", display_name: "Yumi" },
+              { slug: "ruby", display_name: "Ruby" },
+            ]);
+          }
+        })
+        .catch(() => {
+          setModels([
+            { slug: "yumi", display_name: "Yumi" },
+            { slug: "ruby", display_name: "Ruby" },
+          ]);
+        });
     }
   }, [auth?.role]);
 
