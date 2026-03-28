@@ -890,15 +890,15 @@ export default function ModelPage() {
           </div>
 
           <div className="max-w-2xl mx-auto px-4 -mt-14 sm:-mt-16 relative z-10">
-            <div className="flex items-end gap-4 profile-stagger-2">
-              {/* Avatar — animated glow */}
-              <div className="relative shrink-0">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-2xl border-[3px] flex items-center justify-center text-2xl font-black overflow-hidden"
+            {/* ── Instagram-style centered profile ── */}
+            <div className="text-center profile-stagger-2">
+              {/* Avatar — round, centered */}
+              <div className="relative inline-block mx-auto">
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-[3px] flex items-center justify-center text-2xl font-black overflow-hidden mx-auto"
                   style={{
-                    borderColor: "var(--bg)",
+                    borderColor: displayModel?.online ? "var(--accent)" : "var(--border)",
                     background: displayModel?.avatar ? "transparent" : "linear-gradient(135deg, var(--rose), var(--accent))",
                     color: "#fff",
-                    animation: "heroGlow 3s ease-in-out infinite",
                   }}>
                   {displayModel?.avatar ? (
                     <img src={displayModel.avatar} alt={displayModel.display_name} className="w-full h-full object-cover" />
@@ -907,22 +907,25 @@ export default function ModelPage() {
                 {isEditMode ? (
                   <>
                     <button onClick={() => avatarInputRef.current?.click()}
-                      className="absolute inset-0 rounded-2xl flex items-center justify-center cursor-pointer transition-all hover:bg-black/40"
+                      className="absolute inset-0 rounded-full flex items-center justify-center cursor-pointer transition-all hover:bg-black/40"
                       style={{ background: "rgba(0,0,0,0.25)" }}>
                       <Camera className="w-6 h-6 text-white" />
                     </button>
                     <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
                   </>
                 ) : (
-                  displayModel?.online && <span className="online-dot absolute -bottom-0.5 -right-0.5" />
+                  displayModel?.online && (
+                    <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full border-2"
+                      style={{ background: "var(--success)", borderColor: "var(--bg)", boxShadow: "0 0 8px rgba(16,185,129,0.5)" }} />
+                  )
                 )}
               </div>
 
-              <div className="pb-1.5 flex-1 min-w-0">
+              {/* Name + status */}
+              <div className="mt-3">
                 {isEditMode ? (
-                  <>
-                    {/* Status toggle ABOVE name in edit mode */}
-                    <div className="flex items-center gap-2 mb-1">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-center gap-2 mb-1">
                       <button onClick={() => updateEditField("online", !displayModel?.online)}
                         className="flex items-center gap-1 cursor-pointer"
                         style={{ color: displayModel?.online ? "var(--success)" : "var(--text-muted)" }}>
@@ -933,65 +936,64 @@ export default function ModelPage() {
                     <input
                       value={displayModel?.display_name || ""}
                       onChange={e => updateEditField("display_name", e.target.value)}
-                      className="text-lg font-bold w-full bg-transparent outline-none rounded-lg px-2 py-1 -ml-2"
+                      className="text-xl font-bold bg-transparent outline-none rounded-lg px-3 py-1 text-center w-full max-w-xs mx-auto block"
                       style={{ color: "var(--text)", border: "1px dashed var(--border3)" }}
                       placeholder="Display name"
                     />
-                  </>
+                  </div>
                 ) : (
                   <>
-                    {/* Online status ABOVE pseudo */}
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="w-2 h-2 rounded-full" style={{
-                        background: displayModel?.online ? "var(--success)" : "var(--text-muted)",
-                        boxShadow: displayModel?.online ? "0 0 6px rgba(16,185,129,0.5)" : "none",
-                      }} />
-                      <span className="text-[10px] font-medium" style={{ color: displayModel?.online ? "var(--success)" : "var(--text-muted)" }}>
-                        {displayModel?.online ? "En ligne" : "Hors ligne"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h1 className="text-lg sm:text-xl font-bold truncate" style={{ color: "var(--text)" }}>{displayModel?.display_name}</h1>
-                      <span className="badge badge-success text-[10px]">Verified</span>
-                    </div>
-                    <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
-                      {displayModel?.status || `${uploads.length} media · ${posts.length} posts`}
+                    <h1 className="text-xl sm:text-2xl font-bold" style={{ color: "var(--text)" }}>
+                      {displayModel?.display_name}
+                      <Check className="w-4 h-4 inline ml-1.5 -mt-0.5" style={{ color: "var(--accent)" }} />
+                    </h1>
+                    <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                      {displayModel?.status || "Creatrice exclusive"}
                     </p>
                   </>
                 )}
               </div>
             </div>
 
-            {/* Stats bar — animated counters */}
+            {/* Stats row — centered with dividers */}
             {!isEditMode && (
-              <div className="flex items-center gap-4 sm:gap-6 mt-4 mb-3 profile-stagger-3">
+              <div className="flex items-center justify-center gap-6 sm:gap-8 mt-4 mb-3 profile-stagger-3">
                 {[
                   { label: "Posts", value: posts.length },
                   { label: "Media", value: uploads.length },
                   { label: "Packs", value: activePacks.length },
                   { label: "Fans", value: wallPosts.length },
                 ].map((s, i) => (
-                  <div key={s.label} className="stat-pop" style={{ animationDelay: `${0.5 + i * 0.1}s` }}>
-                    <span className="text-sm sm:text-base font-bold block" style={{ color: "var(--text)" }}>{s.value}</span>
+                  <div key={s.label} className="text-center stat-pop" style={{ animationDelay: `${0.5 + i * 0.1}s` }}>
+                    <span className="text-base sm:text-lg font-bold block" style={{ color: "var(--text)" }}>{s.value}</span>
                     <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{s.label}</span>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Skills / Psychological triggers — what the model offers */}
+            {/* CTA Subscribe button */}
+            {!isEditMode && activePacks.length > 0 && (
+              <div className="text-center mb-3 profile-stagger-3">
+                <button onClick={() => setShowSubscriptionPanel(true)}
+                  className="px-8 py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                  style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff", boxShadow: "0 4px 20px rgba(244,63,94,0.3)" }}>
+                  S&apos;abonner &middot; {activePacks.length} pack{activePacks.length > 1 ? "s" : ""}
+                </button>
+              </div>
+            )}
+
+            {/* Skills badges — compact */}
             {!isEditMode && (
-              <div className="flex flex-wrap gap-1.5 mb-3 profile-stagger-3">
+              <div className="flex flex-wrap justify-center gap-1.5 mb-3 profile-stagger-3">
                 {([
-                  { label: "Contenu Exclusif", icon: Flame, color: "#F43F5E" },
-                  { label: "Reponse Rapide", icon: Zap, color: "#F59E0B" },
-                  { label: "Custom Content", icon: Palette, color: "#7C3AED" },
-                  ...(activePacks.length > 0 ? [{ label: `${activePacks.length} Pack${activePacks.length > 1 ? "s" : ""}`, icon: Diamond, color: "#A78BFA" }] : []),
-                  ...(uploads.length >= 10 ? [{ label: "Media Regulier", icon: Camera, color: "#10B981" }] : []),
+                  { label: "Exclusif", icon: Flame, color: "#F43F5E" },
+                  { label: "Rapide", icon: Zap, color: "#F59E0B" },
+                  { label: "Custom", icon: Palette, color: "#7C3AED" },
                 ] as { label: string; icon: LucideIcon; color: string }[]).map(skill => (
-                  <span key={skill.label} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold"
-                    style={{ background: `${skill.color}12`, color: skill.color, border: `1px solid ${skill.color}25` }}>
-                    <skill.icon size={11} />
+                  <span key={skill.label} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold"
+                    style={{ background: `${skill.color}10`, color: skill.color, border: `1px solid ${skill.color}20` }}>
+                    <skill.icon size={10} />
                     {skill.label}
                   </span>
                 ))}
