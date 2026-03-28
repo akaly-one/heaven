@@ -48,16 +48,18 @@ export async function POST(req: NextRequest) {
     // Normalize pseudos to lowercase for consistent matching
     const pseudo_snap = body.pseudo_snap ? body.pseudo_snap.trim().toLowerCase() : null;
     const pseudo_insta = body.pseudo_insta ? body.pseudo_insta.trim().toLowerCase() : null;
+    const phone = body.phone ? body.phone.trim() : null;
+    const nickname = body.nickname ? body.nickname.trim().toLowerCase() : null;
 
     if (!model || !isValidModelSlug(model)) return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
-    if (!pseudo_snap && !pseudo_insta) {
-      return NextResponse.json({ error: "pseudo_snap ou pseudo_insta requis" }, { status: 400, headers: cors });
+    if (!pseudo_snap && !pseudo_insta && !phone && !nickname) {
+      return NextResponse.json({ error: "pseudo_snap, pseudo_insta, phone ou nickname requis" }, { status: 400, headers: cors });
     }
 
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    // Case-insensitive lookup to merge duplicates
+    // Case-insensitive lookup to merge duplicates (priority: snap > insta > phone > nickname)
     let existing = null;
     if (pseudo_snap) {
       const { data } = await supabase
@@ -77,36 +79,97 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
       existing = data;
     }
+    if (!existing && phone) {
+      try {
+        const { data } = await supabase
+          .from("agence_clients")
+          .select("*")
+          .eq("model", model)
+          .eq("phone", phone)
+          .maybeSingle();
+        existing = data;
+      } catch {
+        // phone column may not exist yet — graceful skip
+      }
+    }
+    if (!existing && nickname) {
+      try {
+        const { data } = await supabase
+          .from("agence_clients")
+          .select("*")
+          .eq("model", model)
+          .ilike("nickname", nickname)
+          .maybeSingle();
+        existing = data;
+      } catch {
+        // nickname column may not exist yet — graceful skip
+      }
+    }
 
     if (existing) {
       const updates: Record<string, unknown> = { last_active: new Date().toISOString() };
       if (pseudo_snap) updates.pseudo_snap = pseudo_snap;
       if (pseudo_insta && !existing.pseudo_insta) updates.pseudo_insta = pseudo_insta;
+      if (phone) updates.phone = phone;
+      if (nickname && !existing.nickname) updates.nickname = nickname;
 
-      const { data } = await supabase
-        .from("agence_clients")
-        .update(updates)
-        .eq("id", existing.id)
-        .select()
-        .single();
-
-      return NextResponse.json({ client: data, created: false }, { headers: cors });
+      try {
+        const { data } = await supabase
+          .from("agence_clients")
+          .update(updates)
+          .eq("id", existing.id)
+          .select()
+          .single();
+        return NextResponse.json({ client: data, created: false }, { headers: cors });
+      } catch {
+        // If phone/nickname columns don't exist, retry without them
+        const safeUpdates: Record<string, unknown> = { last_active: new Date().toISOString() };
+        if (pseudo_snap) safeUpdates.pseudo_snap = pseudo_snap;
+        if (pseudo_insta && !existing.pseudo_insta) safeUpdates.pseudo_insta = pseudo_insta;
+        const { data } = await supabase
+          .from("agence_clients")
+          .update(safeUpdates)
+          .eq("id", existing.id)
+          .select()
+          .single();
+        return NextResponse.json({ client: data, created: false }, { headers: cors });
+      }
     }
 
     // Create new client
-    const { data, error } = await supabase
-      .from("agence_clients")
-      .insert({
+    const insertData: Record<string, unknown> = {
+      model,
+      pseudo_snap: pseudo_snap || null,
+      pseudo_insta: pseudo_insta || null,
+      last_active: new Date().toISOString(),
+    };
+    if (phone) insertData.phone = phone;
+    if (nickname) insertData.nickname = nickname;
+
+    try {
+      const { data, error } = await supabase
+        .from("agence_clients")
+        .insert(insertData)
+        .select()
+        .single();
+      if (error) throw error;
+      return NextResponse.json({ client: data, created: true }, { status: 201, headers: cors });
+    } catch (insertErr) {
+      // If phone/nickname columns don't exist, retry without them
+      const safeInsert: Record<string, unknown> = {
+        model,
         pseudo_snap: pseudo_snap || null,
         pseudo_insta: pseudo_insta || null,
-        model,
         last_active: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return NextResponse.json({ client: data, created: true }, { status: 201, headers: cors });
+      };
+      const { data, error } = await supabase
+        .from("agence_clients")
+        .insert(safeInsert)
+        .select()
+        .single();
+      if (error) { console.error("[API/clients] fallback insert failed:", insertErr, error); throw error; }
+      return NextResponse.json({ client: data, created: true }, { status: 201, headers: cors });
+    }
   } catch (err) {
     console.error("[API/clients] POST:", err);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });
@@ -126,7 +189,7 @@ export async function PUT(req: NextRequest) {
 
     // Whitelist allowed fields
     const allowed: Record<string, unknown> = {};
-    const fields = ["pseudo_snap", "pseudo_insta", "nickname", "tier", "total_spent", "total_tokens_bought", "total_tokens_spent", "is_verified", "is_blocked", "notes", "firstname", "tag", "preferences", "delivery_platform"];
+    const fields = ["pseudo_snap", "pseudo_insta", "phone", "nickname", "tier", "total_spent", "total_tokens_bought", "total_tokens_spent", "is_verified", "is_blocked", "notes", "firstname", "tag", "preferences", "delivery_platform"];
     for (const f of fields) {
       if (updates[f] !== undefined) allowed[f] = updates[f];
     }

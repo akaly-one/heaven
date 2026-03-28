@@ -162,6 +162,40 @@ export async function PUT(req: NextRequest) {
   }
 }
 
+// PATCH /api/posts — Edit post content/tier
+export async function PATCH(req: NextRequest) {
+  const cors = getCorsHeaders(req);
+  try {
+    const body = await req.json();
+    const { id, content, tier_required } = body;
+    if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
+
+    const supabase = getServerSupabase();
+    if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
+
+    const updates: Record<string, unknown> = {};
+    if (content !== undefined) updates.content = content ? sanitize(content) : null;
+    if (tier_required !== undefined) updates.tier_required = tier_required;
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: "Rien a modifier" }, { status: 400, headers: cors });
+    }
+
+    const { data, error } = await supabase
+      .from("agence_posts")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json({ post: data }, { headers: cors });
+  } catch (err) {
+    console.error("[API/posts] PATCH:", err);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });
+  }
+}
+
 // DELETE /api/posts?id=xxx
 export async function DELETE(req: NextRequest) {
   const cors = getCorsHeaders(req);

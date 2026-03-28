@@ -63,10 +63,15 @@ export interface AccessCode {
 
 // ── Clients ──
 
+export type VisitorPlatform = "snap" | "insta" | "phone" | "pseudo";
+
 export interface ClientInfo {
   id: string;
   pseudo_snap?: string;
   pseudo_insta?: string;
+  phone?: string;
+  nickname?: string;
+  delivery_platform?: string;
   tier?: string;
   is_verified?: boolean;
   is_blocked?: boolean;
@@ -117,6 +122,8 @@ export interface WallPost {
   created_at: string;
   pseudo_snap?: string | null;
   pseudo_insta?: string | null;
+  client_id?: string | null;
+  likes_count?: number;
 }
 
 // ── Model ──
