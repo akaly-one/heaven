@@ -1,14 +1,14 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, DollarSign, Settings, ChevronLeft, ChevronRight, Crown } from "lucide-react";
+import { LayoutDashboard, MessageCircle, Settings, ChevronLeft, ChevronRight, Crown } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { HeavenAuth } from "./auth-guard";
 
 // ── Only essential pages ──
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/agence", color: "#E63329" },
-  { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances", color: "#10B981" },
+  { id: "messages", label: "Messages", icon: MessageCircle, href: "/agence/messages", color: "#F43F5E" },
   { id: "settings", label: "Reglages", icon: Settings, href: "/agence/settings", color: "#64748B" },
 ] as const;
 

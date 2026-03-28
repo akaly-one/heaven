@@ -24,9 +24,12 @@ function isExpired(expiresAt: string): boolean { return new Date(expiresAt).getT
 // ── Constants ──
 
 const PLATFORMS = [
-  { id: "instagram", label: "Instagram", icon: Instagram, color: "#E1306C", urlPrefix: "https://instagram.com/" },
-  { id: "fanvue", label: "Fanvue", icon: Globe, color: "#7C3AED", urlPrefix: "https://fanvue.com/" },
-  { id: "snapchat", label: "Snapchat", icon: Globe, color: "#FFFC00", urlPrefix: "https://snapchat.com/add/" },
+  { id: "instagram", label: "Instagram", icon: Instagram, color: "#C13584", urlPrefix: "https://instagram.com/" },
+  { id: "fanvue", label: "Fanvue", icon: Globe, color: "#6D28D9", urlPrefix: "https://fanvue.com/" },
+  { id: "snapchat", label: "Snapchat", icon: Globe, color: "#C4A600", urlPrefix: "https://snapchat.com/add/" },
+  { id: "onlyfans", label: "OnlyFans", icon: Globe, color: "#008CCF", urlPrefix: "https://onlyfans.com/" },
+  { id: "mym", label: "MYM", icon: Globe, color: "#CC2952", urlPrefix: "https://mym.fans/" },
+  { id: "tiktok", label: "TikTok", icon: Globe, color: "#333333", urlPrefix: "https://tiktok.com/@" },
 ];
 
 // ══════════ MAIN ══════════
@@ -245,7 +248,7 @@ export default function AgenceDashboard() {
                 )}
               </div>
               <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center"
-                style={{ borderColor: "#0a0a0a", background: modelInfo?.online ? "#10B981" : "#6B7280" }}>
+                style={{ borderColor: "var(--bg)", background: modelInfo?.online ? "#10B981" : "#6B7280" }}>
                 {modelInfo?.online && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
               </span>
             </div>
@@ -345,7 +348,7 @@ export default function AgenceDashboard() {
                   <div key={post.id} className="rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                     <div className="flex items-start gap-3">
                       <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                        style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "var(--text)" }}>
+                        style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "#fff" }}>
                         {modelSlug.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -359,9 +362,9 @@ export default function AgenceDashboard() {
                             }}>{post.tier_required.toUpperCase()}</span>
                           )}
                         </div>
-                        {post.content && <p className="text-sm text-[var(--text)]/90 whitespace-pre-wrap mb-2">{post.content}</p>}
+                        {post.content && <p className="text-sm text-[var(--text)] whitespace-pre-wrap mb-2">{post.content}</p>}
                         {post.media_url && (
-                          <div className="rounded-xl overflow-hidden mb-2" style={{ border: "1px solid #222" }}>
+                          <div className="rounded-xl overflow-hidden mb-2" style={{ border: "1px solid var(--border)" }}>
                             <img src={post.media_url} alt="" className="w-full max-h-[400px] object-cover" loading="lazy" />
                           </div>
                         )}
