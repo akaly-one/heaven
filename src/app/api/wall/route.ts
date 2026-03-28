@@ -3,19 +3,20 @@ import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 
 export const runtime = "nodejs";
-const cors = getCorsHeaders();
 
 // Sanitize text: strip HTML tags
 function sanitize(text: string): string {
   return text.replace(/<[^>]*>/g, "").trim();
 }
 
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
 /** GET /api/wall?model=yumi — List public wall posts */
 export async function GET(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const model = req.nextUrl.searchParams.get("model");
     if (!model) return NextResponse.json({ posts: [] }, { headers: cors });
@@ -40,6 +41,7 @@ export async function GET(req: NextRequest) {
 
 /** POST /api/wall — Create a public wall post (anyone with a pseudo) */
 export async function POST(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const { model } = body;

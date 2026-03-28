@@ -8,54 +8,9 @@ import { StatCards } from "@/components/cockpit/stat-cards";
 import { CodesList } from "@/components/cockpit/codes-list";
 import { GenerateModal } from "@/components/cockpit/generate-modal";
 
-// ── Types ──
-interface PackConfig {
-  id: string; name: string; price: number; color: string;
-  features: string[];
-  bonuses: { fanvueAccess: boolean; freeNudeExpress: boolean; nudeDedicaceLevres: boolean; freeVideoOffer: boolean; };
-  face: boolean; badge: string | null; active: boolean;
-  wise_url?: string;
-  stripe_link?: string;
-  code?: string; // AG-P150, AG-P200, etc.
-}
-
-interface AccessCode {
-  code: string; model: string; client: string; platform: string;
-  role: "client" | "admin"; tier: string; pack: string; type: "paid" | "promo" | "gift" | "trial";
-  duration: number; expiresAt: string; created: string;
-  used: boolean; active: boolean; revoked: boolean; isTrial: boolean; lastUsed: string | null;
-}
-
-interface ClientInfo {
-  id: string;
-  pseudo_snap?: string;
-  pseudo_insta?: string;
-  tier?: string;
-  is_verified?: boolean;
-  is_blocked?: boolean;
-  notes?: string;
-  tag?: string;
-  preferences?: string;
-  total_spent?: number;
-  total_tokens_bought?: number;
-  total_tokens_spent?: number;
-  firstname?: string;
-  last_active?: string;
-}
-
-interface FeedPost {
-  id: string; model: string; content: string | null; media_url: string | null;
-  media_type: string | null; tier_required: string; pinned: boolean;
-  likes_count: number; comments_count: number; created_at: string;
-}
-
-// ── Defaults ──
-const DEFAULT_PACKS: PackConfig[] = [
-  { id: "vip", name: "VIP Glamour", code: "AG-P150", price: 150, color: "#F43F5E", features: ["Pieds glamour/sales + accessoires", "Lingerie sexy + haul", "Teasing + demandes custom", "Dedicaces personnalisees"], bonuses: { fanvueAccess: false, freeNudeExpress: true, nudeDedicaceLevres: false, freeVideoOffer: false }, face: false, badge: null, active: true, wise_url: "https://wise.com/pay/r/uQcY2-5PTQqyvko" },
-  { id: "gold", name: "Gold", code: "AG-P200", price: 200, color: "#F59E0B", features: ["TOUT du VIP inclus", "Nudes complets", "Cosplay", "Sextape sans visage"], bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: false }, face: false, badge: "Populaire", active: true },
-  { id: "diamond", name: "Diamond", code: "AG-P250", price: 250, color: "#7C3AED", features: ["TOUT du Gold inclus", "Nudes avec visage", "Cosplay avec visage", "Sextape avec visage", "Hard illimite"], bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: false }, face: true, badge: null, active: true },
-  { id: "platinum", name: "Platinum All-Access", code: "AG-P320", price: 320, color: "#A78BFA", features: ["Acces TOTAL aux 3 packs", "Demandes personnalisees", "Video calls prives", "Contenu exclusif illimite"], bonuses: { fanvueAccess: true, freeNudeExpress: true, nudeDedicaceLevres: true, freeVideoOffer: true }, face: true, badge: "Ultimate", active: true },
-];
+// ── Types & Constants (centralized) ──
+import type { PackConfig, AccessCode, ClientInfo, FeedPost } from "@/types/heaven";
+import { DEFAULT_PACKS } from "@/constants/packs";
 
 // ── API helpers ──
 function generateCodeString(model: string): string {

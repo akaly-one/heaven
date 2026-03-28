@@ -4,14 +4,14 @@ import { getCorsHeaders } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-const cors = getCorsHeaders();
-
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
 /* /api/credits/purchase — Debit credits from client, unlock media */
 export async function POST(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const { client_id, upload_id, model, price } = body;
@@ -38,7 +38,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Insufficient credits", balance }, { status: 402, headers: cors });
     }
 
-    // Record purchase
+    // Atomic deduct: only succeeds if balance is still sufficient (prevents double-spend race)
+    const newSpent = (client.total_tokens_spent || 0) + price;
+    const { data: deducted, error: deductErr } = await sb
+      .from("agence_clients")
+      .update({ total_tokens_spent: newSpent })
+      .eq("id", client_id)
+      .lte("total_tokens_spent", (client.total_tokens_bought || 0) - price)
+      .select("total_tokens_bought, total_tokens_spent")
+      .maybeSingle();
+
+    if (deductErr) {
+      console.error("[Credits/purchase] deduct error:", deductErr);
+      return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
+    }
+    if (!deducted) {
+      return NextResponse.json({ error: "Insufficient credits (concurrent request)", balance }, { status: 402, headers: cors });
+    }
+
+    // Record purchase after successful deduction
     const { error: purchErr } = await sb.from("agence_purchases").insert({
       client_id, upload_id, model, price,
       created_at: new Date().toISOString(),
@@ -46,20 +64,11 @@ export async function POST(req: NextRequest) {
 
     if (purchErr) {
       console.error("[Credits/purchase] insert error:", purchErr);
-      return NextResponse.json({ error: "Database error", detail: purchErr.message }, { status: 502, headers: cors });
+      // Credits already deducted — log for manual reconciliation
     }
 
-    // Deduct credits
-    const { error: deductErr } = await sb
-      .from("agence_clients")
-      .update({ total_tokens_spent: (client.total_tokens_spent || 0) + price })
-      .eq("id", client_id);
-
-    if (deductErr) {
-      console.error("[Credits/purchase] deduct error:", deductErr);
-    }
-
-    return NextResponse.json({ success: true, remaining: balance - price }, { headers: cors });
+    const remaining = (deducted.total_tokens_bought || 0) - (deducted.total_tokens_spent || 0);
+    return NextResponse.json({ success: true, remaining }, { headers: cors });
   } catch (err) {
     console.error("Credits purchase error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500, headers: cors });

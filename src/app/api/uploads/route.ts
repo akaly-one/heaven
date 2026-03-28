@@ -14,20 +14,20 @@ interface UploadRow {
   visibility?: string; tokenPrice?: number;
 }
 
-const cors = getCorsHeaders();
-
 function requireSupabase() {
   const supabase = getServerSupabase();
   if (!supabase) throw new Error("Supabase not configured");
   return supabase;
 }
 
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
 // ── GET ──
 export async function GET(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   const model = req.nextUrl.searchParams.get("model");
   if (!isValidModelSlug(model)) {
     return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       console.error("[API/uploads] GET Supabase error:", error);
-      return NextResponse.json({ error: "Database error", detail: error.message }, { status: 502, headers: cors });
+      return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
     }
 
     const mapped = (data || []).map(mapFromDb);
@@ -54,6 +54,7 @@ export async function GET(req: NextRequest) {
 
 // ── POST ──
 export async function POST(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const model = body.model;
@@ -66,14 +67,14 @@ export async function POST(req: NextRequest) {
       const { error: delErr } = await supabase.from("agence_uploads").delete().eq("model", model);
       if (delErr) {
         console.error("[API/uploads] sync delete error:", delErr);
-        return NextResponse.json({ error: "Database error", detail: delErr.message }, { status: 502, headers: cors });
+        return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
       }
       if (uploads.length > 0) {
         const rows = uploads.map(u => mapToDb(u, model));
         const { error: insErr } = await supabase.from("agence_uploads").insert(rows);
         if (insErr) {
           console.error("[API/uploads] sync insert error:", insErr);
-          return NextResponse.json({ error: "Database error", detail: insErr.message }, { status: 502, headers: cors });
+          return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
         }
       }
       return NextResponse.json({ success: true, count: uploads.length }, { headers: cors });
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
     if (error) {
       if (error.code === "23505") return NextResponse.json({ error: "Upload deja existant" }, { status: 409, headers: cors });
       console.error("[API/uploads] POST Supabase error:", error);
-      return NextResponse.json({ error: "Database error", detail: error.message }, { status: 502, headers: cors });
+      return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
     }
 
     const mapped = mapFromDb(data);
@@ -113,6 +114,7 @@ export async function POST(req: NextRequest) {
 
 // ── PUT ──
 export async function PUT(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const model = body.model;
@@ -139,7 +141,7 @@ export async function PUT(req: NextRequest) {
 
     if (error) {
       console.error("[API/uploads] PUT Supabase error:", error);
-      return NextResponse.json({ error: "Database error", detail: error.message }, { status: 502, headers: cors });
+      return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
     }
     if (!data) return NextResponse.json({ error: "Upload introuvable" }, { status: 404, headers: cors });
 
@@ -153,6 +155,7 @@ export async function PUT(req: NextRequest) {
 
 // ── DELETE ──
 export async function DELETE(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   const model = req.nextUrl.searchParams.get("model");
   if (!isValidModelSlug(model)) return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
   const id = req.nextUrl.searchParams.get("id");
@@ -167,7 +170,7 @@ export async function DELETE(req: NextRequest) {
 
     if (error) {
       console.error("[API/uploads] DELETE Supabase error:", error);
-      return NextResponse.json({ error: "Database error", detail: error.message }, { status: 502, headers: cors });
+      return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
     }
     if (!data || data.length === 0) {
       return NextResponse.json({ error: "Upload introuvable" }, { status: 404, headers: cors });

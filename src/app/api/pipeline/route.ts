@@ -8,20 +8,20 @@ export const runtime = "nodejs";
    /api/pipeline — Content Pipeline CRUD
    ══════════════════════════════════════════════ */
 
-const cors = getCorsHeaders();
-
 function requireSupabase() {
   const supabase = getServerSupabase();
   if (!supabase) throw new Error("Supabase not configured");
   return supabase;
 }
 
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
 // ── GET: list content items ──
 export async function GET(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   const model = req.nextUrl.searchParams.get("model");
   const stage = req.nextUrl.searchParams.get("stage");
 
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
     if (error) {
       console.error("[API/pipeline] GET error:", error);
       return NextResponse.json(
-        { error: "Database error", detail: error.message },
+        { error: "Database error" },
         { status: 502, headers: cors }
       );
     }
@@ -61,6 +61,7 @@ export async function GET(req: NextRequest) {
 
 // ── POST: create content item ──
 export async function POST(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const supabase = requireSupabase();
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
     if (error) {
       console.error("[API/pipeline] POST error:", error);
       return NextResponse.json(
-        { error: "Database error", detail: error.message },
+        { error: "Database error" },
         { status: 502, headers: cors }
       );
     }
@@ -118,6 +119,7 @@ export async function POST(req: NextRequest) {
 
 // ── PUT: update content item ──
 export async function PUT(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const { id, ...updates } = body;
@@ -162,7 +164,7 @@ export async function PUT(req: NextRequest) {
     if (error) {
       console.error("[API/pipeline] PUT error:", error);
       return NextResponse.json(
-        { error: "Database error", detail: error.message },
+        { error: "Database error" },
         { status: 502, headers: cors }
       );
     }

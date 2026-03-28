@@ -25,51 +25,9 @@ import {
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 
-// ── Types ──
-
-interface ContentItem {
-  id: string;
-  model_slug: string;
-  title: string;
-  content_type: string;
-  platforms: string[];
-  stage: string;
-  scheduled_date: string | null;
-  published_date: string | null;
-  tier: string | null;
-  price: number | null;
-  views: number;
-  likes: number;
-  revenue: number;
-  notes: string | null;
-  thumbnail_url: string | null;
-  created_at: string;
-}
-
-interface PlatformAccount {
-  id: string;
-  model_slug: string;
-  platform: string;
-  handle: string;
-  profile_url: string | null;
-  status: string;
-  subscribers_count: number;
-  monthly_revenue: number;
-  commission_rate: number;
-  notes: string | null;
-}
-
-interface Goal {
-  id: string;
-  model_slug: string;
-  title: string;
-  category: string;
-  target_value: number;
-  current_value: number;
-  unit: string;
-  deadline: string | null;
-  status: string;
-}
+// ── Types & Constants (centralized) ──
+import type { ContentItem, PlatformAccount, Goal } from "@/types/heaven";
+import { TIER_COLORS, PLATFORM_COLORS } from "@/constants/tiers";
 
 // ── Constants ──
 
@@ -89,28 +47,6 @@ const CONTENT_TYPES: Record<string, { icon: typeof Camera; label: string }> = {
   reel: { icon: Film, label: "Reel" },
   live: { icon: Radio, label: "Live" },
   custom: { icon: Package, label: "Custom" },
-};
-
-const PLATFORM_COLORS: Record<string, string> = {
-  onlyfans: "#00AFF0",
-  fanvue: "#E040FB",
-  instagram: "#E1306C",
-  tiktok: "#69C9D0",
-  twitter: "#1DA1F2",
-  snapchat: "#FFFC00",
-  youtube: "#FF0000",
-};
-
-const TIER_COLORS: Record<string, string> = {
-  free: "#64748B",
-  vip: "#F43F5E",
-  gold: "#F59E0B",
-  diamond: "#7C3AED",
-  platinum: "#A78BFA",
-  // Legacy fallbacks
-  basic: "#10B981",
-  premium: "#F59E0B",
-  ppv: "#F43F5E",
 };
 
 const CATEGORY_ICONS: Record<string, typeof DollarSign> = {

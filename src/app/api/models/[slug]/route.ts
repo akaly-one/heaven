@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders } from "@/lib/auth";
 
-const cors = getCorsHeaders();
-
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
 // GET /api/models/[slug] — Get model public profile
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  const cors = getCorsHeaders(_req);
   const { slug } = await params;
 
   try {
@@ -53,6 +53,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
 
 // PUT /api/models/[slug] — Update model profile (avatar, status, online, bio)
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  const cors = getCorsHeaders(req);
   const { slug } = await params;
 
   try {

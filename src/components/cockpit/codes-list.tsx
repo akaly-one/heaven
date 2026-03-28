@@ -8,42 +8,8 @@ import {
   Package, CalendarPlus, Wallet, Crown
 } from "lucide-react";
 
-interface AccessCode {
-  code: string;
-  model: string;
-  client: string;
-  platform: string;
-  tier: string;
-  type: string;
-  duration: number;
-  expiresAt: string;
-  created: string;
-  used: boolean;
-  active: boolean;
-  revoked: boolean;
-}
-
-interface ClientInfo {
-  id: string;
-  pseudo_snap?: string;
-  pseudo_insta?: string;
-  tier?: string;
-  is_verified?: boolean;
-  is_blocked?: boolean;
-  notes?: string;
-  tag?: string;
-  preferences?: string;
-  total_spent?: number;
-  total_tokens_bought?: number;
-  total_tokens_spent?: number;
-  firstname?: string;
-  last_active?: string;
-}
-
-interface WiseLink {
-  tier: string;
-  url: string;
-}
+import type { AccessCode, ClientInfo, WiseLink } from "@/types/heaven";
+import { TIER_COLORS } from "@/constants/tiers";
 
 interface CodesListProps {
   codes: AccessCode[];
@@ -60,13 +26,6 @@ interface CodesListProps {
   onExtendCode?: (code: string, extraHours: number) => void;
   wiseLinks?: WiseLink[];
 }
-
-const TIER_COLORS: Record<string, string> = {
-  vip: "var(--tier-vip, #F43F5E)",
-  gold: "var(--tier-gold, #C9A84C)",
-  diamond: "var(--tier-diamond, #7C3AED)",
-  platinum: "var(--tier-platinum, #A78BFA)",
-};
 
 const STATUS_FILTERS = [
   { id: "all", label: "Tous" },

@@ -12,47 +12,13 @@ import {
 import { ContentProtection } from "@/components/content-protection";
 import { useScreenshotDetection } from "@/hooks/use-screenshot-detection";
 
-// ── Types ──
-interface ModelInfo {
-  slug: string; display_name: string; bio: string | null;
-  avatar: string | null; online: boolean; status: string | null;
-  banner: string | null;
-}
-interface Post {
-  id: string; model: string; content: string | null;
-  media_url: string | null; media_type: string | null;
-  tier_required: string; likes_count: number; comments_count: number;
-  pinned: boolean; created_at: string;
-}
-interface PackConfig {
-  id: string; name: string; price: number; color: string;
-  features: string[]; face: boolean; badge: string | null; active: boolean;
-  wise_url?: string; stripe_link?: string; code?: string;
-}
-interface UploadedContent {
-  id: string; tier: string; type: "photo" | "video" | "reel"; label: string;
-  dataUrl: string; uploadedAt: string; visibility?: "pack" | "promo"; tokenPrice?: number; isNew?: boolean;
-}
+// ── Types & Constants (centralized) ──
+import type { ModelInfo, Post, PackConfig, UploadedContent, WallPost } from "@/types/heaven";
+import { TIER_META, TIER_HEX } from "@/constants/tiers";
+
 interface ModelAuth {
   role: string; model_slug?: string; display_name?: string; token?: string;
 }
-interface WallPost {
-  id: string; model: string; pseudo: string; content: string | null;
-  photo_url: string | null; created_at: string;
-  pseudo_snap?: string | null; pseudo_insta?: string | null;
-}
-
-// ── Constants ──
-const TIER_META: Record<string, { color: string; symbol: string; label: string }> = {
-  vip: { color: "var(--tier-vip)", symbol: "♥", label: "VIP" },
-  gold: { color: "var(--tier-gold)", symbol: "★", label: "Gold" },
-  diamond: { color: "var(--tier-diamond)", symbol: "♦", label: "Diamond" },
-  platinum: { color: "var(--tier-platinum)", symbol: "♛", label: "Platinum" },
-  public: { color: "var(--text-muted)", symbol: "", label: "Public" },
-};
-const TIER_HEX: Record<string, string> = {
-  vip: "#F43F5E", gold: "#F59E0B", diamond: "#7C3AED", platinum: "#A78BFA",
-};
 const TABS = [
   { id: "wall", label: "Wall", icon: Newspaper },
   { id: "gallery", label: "Gallery", icon: Image },

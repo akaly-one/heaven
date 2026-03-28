@@ -4,14 +4,14 @@ import { getCorsHeaders } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-const cors = getCorsHeaders();
-
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
 /* Public endpoint — returns credit balance for a client_id */
 export async function GET(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   const clientId = req.nextUrl.searchParams.get("client_id");
   if (!clientId) return NextResponse.json({ error: "Missing client_id" }, { status: 400, headers: cors });
 

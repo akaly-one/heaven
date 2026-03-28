@@ -4,14 +4,14 @@ import { getCorsHeaders } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-const cors = getCorsHeaders();
-
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
 // GET /api/accounts — List all accounts
 export async function GET(_req: NextRequest) {
+  const cors = getCorsHeaders(_req);
   try {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
@@ -31,6 +31,7 @@ export async function GET(_req: NextRequest) {
 
 // POST /api/accounts — Create account
 export async function POST(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const { code, role, model_slug, display_name } = body;
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
 
 // PUT /api/accounts — Update account
 export async function PUT(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const { id, ...updates } = body;
@@ -98,6 +100,7 @@ export async function PUT(req: NextRequest) {
 
 // DELETE /api/accounts?id=xxx — Delete account + cascade
 export async function DELETE(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
 

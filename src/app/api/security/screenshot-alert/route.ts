@@ -3,12 +3,11 @@ import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 
 export const runtime = "nodejs";
-const cors = getCorsHeaders();
-
 // Allowed page values
 const VALID_PAGES = ["profile", "gallery", "chat", "wall", "shop"];
 
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
@@ -19,6 +18,7 @@ export async function OPTIONS() {
  * Body: { subscriberId, modelId, page }
  */
 export async function POST(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const { subscriberId, modelId, page } = body;
@@ -123,6 +123,7 @@ export async function POST(req: NextRequest) {
  * GET /api/security/screenshot-alert?model=yumi — List security alerts (auth required)
  */
 export async function GET(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const model = req.nextUrl.searchParams.get("model");
     if (!isValidModelSlug(model)) {

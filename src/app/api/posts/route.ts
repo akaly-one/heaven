@@ -4,9 +4,8 @@ import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-const cors = getCorsHeaders();
-
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
@@ -17,6 +16,7 @@ function sanitize(text: string): string {
 
 // GET /api/posts?model=yumi — List posts (public)
 export async function GET(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ posts: [] }, { headers: cors });
@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
 
 // POST /api/posts — Create post
 export async function POST(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const model = body.model;
@@ -79,6 +80,7 @@ export async function POST(req: NextRequest) {
 
 // PUT /api/posts — Update post (like, pin, etc.)
 export async function PUT(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const { id, action, client_id, content: commentContent } = body;
@@ -162,6 +164,7 @@ export async function PUT(req: NextRequest) {
 
 // DELETE /api/posts?id=xxx
 export async function DELETE(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
 

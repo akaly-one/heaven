@@ -6,9 +6,8 @@ import { getCorsHeaders } from "@/lib/auth";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const cors = getCorsHeaders();
-
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
@@ -23,6 +22,7 @@ export async function OPTIONS() {
  *   dry_run=false — actually delete orphans
  */
 export async function GET(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const dryRun = req.nextUrl.searchParams.get("dry_run") !== "false";
     const supabase = getServerSupabase();
@@ -142,7 +142,7 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     console.error("[API/upload/cleanup] Error:", err);
     return NextResponse.json(
-      { error: "Cleanup failed", detail: String(err) },
+      { error: "Cleanup failed" },
       { status: 500, headers: cors },
     );
   }

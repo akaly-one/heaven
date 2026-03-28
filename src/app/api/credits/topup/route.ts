@@ -4,14 +4,14 @@ import { getCorsHeaders } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-const cors = getCorsHeaders();
-
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
 /* /api/credits/topup — Add credits to a client account */
 export async function POST(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const { client_id, credits, model, price } = body;
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
     if (updateErr) {
       console.error("[Credits/topup] update error:", updateErr);
-      return NextResponse.json({ error: "Database error", detail: updateErr.message }, { status: 502, headers: cors });
+      return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
     }
 
     // Record the transaction

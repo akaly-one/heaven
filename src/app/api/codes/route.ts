@@ -8,15 +8,7 @@ export const runtime = "nodejs";
    /api/codes — Supabase-only (agence_codes)
    ══════════════════════════════════════════════ */
 
-interface CodeRow {
-  code: string; model: string; client: string; platform: string;
-  role: string; tier: string; pack: string; type: string;
-  duration: number; expiresAt: string; created: string;
-  used: boolean; active: boolean; revoked: boolean;
-  isTrial: boolean; lastUsed: string | null;
-}
-
-const cors = getCorsHeaders();
+import type { CodeRow } from "@/types/heaven";
 
 function requireSupabase() {
   const supabase = getServerSupabase();
@@ -24,12 +16,14 @@ function requireSupabase() {
   return supabase;
 }
 
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
 // ── GET ──
 export async function GET(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   const model = req.nextUrl.searchParams.get("model");
   if (model && !isValidModelSlug(model)) {
     return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
@@ -42,7 +36,7 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       console.error("[API/codes] GET Supabase error:", error);
-      return NextResponse.json({ error: "Database error", detail: error.message }, { status: 502, headers: cors });
+      return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
     }
 
     const mapped = (data || []).map(mapFromDb);
@@ -55,6 +49,7 @@ export async function GET(req: NextRequest) {
 
 // ── POST (create or validate) ──
 export async function POST(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const supabase = requireSupabase();
@@ -73,18 +68,28 @@ export async function POST(req: NextRequest) {
 
       if (error) {
         console.error("[API/codes] validate error:", error);
-        return NextResponse.json({ error: "Database error", detail: error.message }, { status: 502, headers: cors });
+        return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
       }
       if (!found) return NextResponse.json({ error: "Code invalide ou revoque." }, { status: 404, headers: cors });
       if (!found.active) return NextResponse.json({ error: "Code desactive." }, { status: 403, headers: cors });
       if (new Date(found.expires_at).getTime() <= Date.now()) return NextResponse.json({ error: "Code expire." }, { status: 410, headers: cors });
 
-      const { error: updateErr } = await supabase.from("agence_codes").update({ used: true, last_used: new Date().toISOString() }).eq("id", found.id);
+      // Atomic update: only succeeds if code is still unused (prevents double-validation race)
+      const { data: updated, error: updateErr } = await supabase
+        .from("agence_codes")
+        .update({ used: true, last_used: new Date().toISOString() })
+        .eq("id", found.id)
+        .eq("used", false)
+        .select()
+        .maybeSingle();
       if (updateErr) {
         console.error("[API/codes] validate update error:", updateErr);
-        return NextResponse.json({ error: "Database error", detail: updateErr.message }, { status: 502, headers: cors });
+        return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
       }
-      const mapped = mapFromDb({ ...found, used: true, last_used: new Date().toISOString() });
+      if (!updated) {
+        return NextResponse.json({ error: "Code deja utilise." }, { status: 409, headers: cors });
+      }
+      const mapped = mapFromDb(updated);
       return NextResponse.json({ code: mapped }, { headers: cors });
     }
 
@@ -155,7 +160,7 @@ export async function POST(req: NextRequest) {
     if (error) {
       if (error.code === "23505") return NextResponse.json({ error: "Code deja existant" }, { status: 409, headers: cors });
       console.error("[API/codes] POST Supabase error:", error);
-      return NextResponse.json({ error: "Database error", detail: error.message }, { status: 502, headers: cors });
+      return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
     }
 
     const mapped = mapFromDb(data);
@@ -168,6 +173,7 @@ export async function POST(req: NextRequest) {
 
 // ── PUT ──
 export async function PUT(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const target = (body.code || "").toUpperCase();
@@ -178,7 +184,7 @@ export async function PUT(req: NextRequest) {
 
     if (findErr) {
       console.error("[API/codes] PUT find error:", findErr);
-      return NextResponse.json({ error: "Database error", detail: findErr.message }, { status: 502, headers: cors });
+      return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
     }
     if (!found) return NextResponse.json({ error: "Code introuvable" }, { status: 404, headers: cors });
 
@@ -198,7 +204,7 @@ export async function PUT(req: NextRequest) {
 
     if (error) {
       console.error("[API/codes] PUT update error:", error);
-      return NextResponse.json({ error: "Database error", detail: error.message }, { status: 502, headers: cors });
+      return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
     }
 
     const mapped = mapFromDb(data);
@@ -211,6 +217,7 @@ export async function PUT(req: NextRequest) {
 
 // ── DELETE ──
 export async function DELETE(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   const code = req.nextUrl.searchParams.get("code")?.toUpperCase();
   if (!code) return NextResponse.json({ error: "Code requis" }, { status: 400, headers: cors });
   try {
@@ -220,7 +227,7 @@ export async function DELETE(req: NextRequest) {
 
     if (error) {
       console.error("[API/codes] DELETE error:", error);
-      return NextResponse.json({ error: "Database error", detail: error.message }, { status: 502, headers: cors });
+      return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
     }
     if (!data || data.length === 0) {
       return NextResponse.json({ error: "Code introuvable" }, { status: 404, headers: cors });

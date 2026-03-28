@@ -14,8 +14,6 @@ const SQWENSY_OS_URL =
   process.env.SQWENSY_OS_API_URL || "https://sqwensy.com";
 const TUNNEL_KEY = process.env.SQWENSY_TUNNEL_KEY || "";
 
-const cors = getCorsHeaders();
-
 function requireSupabase() {
   const supabase = getServerSupabase();
   if (!supabase) throw new Error("Supabase not configured");
@@ -27,12 +25,14 @@ function validateTunnelKey(request: NextRequest): boolean {
   return !!TUNNEL_KEY && key === TUNNEL_KEY;
 }
 
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
 // ── GET: SQWENSY OS pulls aggregated Heaven data ──
 export async function GET(request: NextRequest) {
+  const cors = getCorsHeaders(request);
   if (!validateTunnelKey(request)) {
     return NextResponse.json(
       { error: "Unauthorized" },
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     if (paErr) {
       console.error("[API/sqwensy] platforms error:", paErr);
       return NextResponse.json(
-        { error: "Database error", detail: paErr.message },
+        { error: "Database error" },
         { status: 502, headers: cors }
       );
     }
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     if (ciErr) {
       console.error("[API/sqwensy] content error:", ciErr);
       return NextResponse.json(
-        { error: "Database error", detail: ciErr.message },
+        { error: "Database error" },
         { status: 502, headers: cors }
       );
     }
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     if (fErr) {
       console.error("[API/sqwensy] fans error:", fErr);
       return NextResponse.json(
-        { error: "Database error", detail: fErr.message },
+        { error: "Database error" },
         { status: 502, headers: cors }
       );
     }
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
     if (gErr) {
       console.error("[API/sqwensy] goals error:", gErr);
       return NextResponse.json(
-        { error: "Database error", detail: gErr.message },
+        { error: "Database error" },
         { status: 502, headers: cors }
       );
     }
@@ -178,6 +178,7 @@ export async function GET(request: NextRequest) {
 
 // ── POST: SQWENSY OS pushes data to Heaven ──
 export async function POST(request: NextRequest) {
+  const cors = getCorsHeaders(request);
   if (!validateTunnelKey(request)) {
     return NextResponse.json(
       { error: "Unauthorized" },
@@ -212,7 +213,7 @@ export async function POST(request: NextRequest) {
         if (error) {
           console.error("[API/sqwensy] sync_client error:", error);
           return NextResponse.json(
-            { error: "Database error", detail: error.message },
+            { error: "Database error" },
             { status: 502, headers: cors }
           );
         }
@@ -249,7 +250,7 @@ export async function POST(request: NextRequest) {
         if (error) {
           console.error("[API/sqwensy] update_goal error:", error);
           return NextResponse.json(
-            { error: "Database error", detail: error.message },
+            { error: "Database error" },
             { status: 502, headers: cors }
           );
         }
@@ -292,7 +293,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ success: true, sqwensy_response: result }, { headers: cors });
         } catch (syncErr) {
           console.error("[API/sqwensy] sync_to_sqwensy error:", syncErr);
-          return NextResponse.json({ error: "Failed to reach SQWENSY OS", detail: String(syncErr) }, { status: 502, headers: cors });
+          return NextResponse.json({ error: "Failed to reach SQWENSY OS" }, { status: 502, headers: cors });
         }
       }
 
@@ -397,7 +398,7 @@ export async function POST(request: NextRequest) {
         if (error) {
           console.error("[API/sqwensy] push_notification error:", error);
           return NextResponse.json(
-            { error: "Database error", detail: error.message },
+            { error: "Database error" },
             { status: 502, headers: cors }
           );
         }

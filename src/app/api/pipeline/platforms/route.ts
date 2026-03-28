@@ -8,20 +8,20 @@ export const runtime = "nodejs";
    /api/pipeline/platforms — Platform Accounts CRUD
    ══════════════════════════════════════════════ */
 
-const cors = getCorsHeaders();
-
 function requireSupabase() {
   const supabase = getServerSupabase();
   if (!supabase) throw new Error("Supabase not configured");
   return supabase;
 }
 
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
 // ── GET: list platform accounts ──
 export async function GET(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   const model = req.nextUrl.searchParams.get("model");
 
   try {
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     if (error) {
       console.error("[API/platforms] GET error:", error);
       return NextResponse.json(
-        { error: "Database error", detail: error.message },
+        { error: "Database error" },
         { status: 502, headers: cors }
       );
     }
@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
 
 // ── POST: add platform account ──
 export async function POST(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const supabase = requireSupabase();
@@ -90,7 +91,7 @@ export async function POST(req: NextRequest) {
     if (error) {
       console.error("[API/platforms] POST error:", error);
       return NextResponse.json(
-        { error: "Database error", detail: error.message },
+        { error: "Database error" },
         { status: 502, headers: cors }
       );
     }
@@ -110,6 +111,7 @@ export async function POST(req: NextRequest) {
 
 // ── PUT: update platform account ──
 export async function PUT(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const { id, ...updates } = body;
@@ -149,7 +151,7 @@ export async function PUT(req: NextRequest) {
     if (error) {
       console.error("[API/platforms] PUT error:", error);
       return NextResponse.json(
-        { error: "Database error", detail: error.message },
+        { error: "Database error" },
         { status: 502, headers: cors }
       );
     }

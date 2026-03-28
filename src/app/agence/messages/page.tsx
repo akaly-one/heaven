@@ -8,11 +8,10 @@ import {
   Heart, MessageCircle, Pin, PinOff, Image, Plus, X,
 } from "lucide-react";
 
-// ── Types ──
-interface Message {
-  id: string; model: string; client_id: string; sender_type: "client" | "model";
-  content: string; read: boolean; created_at: string;
-}
+// ── Types & Constants (centralized) ──
+import type { Message, FeedPost as Post } from "@/types/heaven";
+import { TIER_COLORS } from "@/constants/tiers";
+
 interface Client {
   id: string; pseudo_snap: string | null; pseudo_insta: string | null;
   model: string; is_verified: boolean; is_blocked: boolean; total_spent: number;
@@ -20,15 +19,6 @@ interface Client {
 interface Conversation {
   client: Client; messages: Message[]; lastMessage: Message; unread: number;
 }
-interface Post {
-  id: string; model: string; content: string | null; media_url: string | null;
-  media_type: string | null; tier_required: string; pinned: boolean;
-  likes_count: number; comments_count: number; created_at: string;
-}
-
-const TIER_COLORS: Record<string, string> = {
-  public: "#10B981", vip: "#F43F5E", gold: "#F59E0B", diamond: "#7C3AED", platinum: "#A78BFA",
-};
 
 export default function MessagesPage() {
   const { currentModel, authHeaders } = useModel();

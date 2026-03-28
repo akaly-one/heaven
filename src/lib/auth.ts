@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export type HeavenRole = "root" | "model" | "client";
+export type { HeavenRole } from "@/types/heaven";
 
 // ── Validation ──
 

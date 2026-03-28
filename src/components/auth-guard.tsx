@@ -3,13 +3,8 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-export interface HeavenAuth {
-  role: "root" | "model" | "client";
-  scope: string[];
-  model_slug: string | null;
-  display_name: string;
-  loggedAt: string;
-}
+import type { HeavenAuth } from "@/types/heaven";
+export type { HeavenAuth };
 
 export function getHeavenAuth(): HeavenAuth | null {
   try {

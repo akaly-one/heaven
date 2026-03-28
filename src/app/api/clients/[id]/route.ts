@@ -3,14 +3,15 @@ import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders } from "@/lib/auth";
 
 export const runtime = "nodejs";
-const cors = getCorsHeaders();
 
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
 // GET /api/clients/[id] — Full client detail with messages + codes history
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const cors = getCorsHeaders(_req);
   try {
     const { id } = await params;
     const supabase = getServerSupabase();

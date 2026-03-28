@@ -8,20 +8,20 @@ export const runtime = "nodejs";
    /api/pipeline/goals — Strategic Goals CRUD
    ══════════════════════════════════════════════ */
 
-const cors = getCorsHeaders();
-
 function requireSupabase() {
   const supabase = getServerSupabase();
   if (!supabase) throw new Error("Supabase not configured");
   return supabase;
 }
 
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
 // ── GET: list goals ──
 export async function GET(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   const model = req.nextUrl.searchParams.get("model");
   const status = req.nextUrl.searchParams.get("status");
 
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     if (error) {
       console.error("[API/goals] GET error:", error);
       return NextResponse.json(
-        { error: "Database error", detail: error.message },
+        { error: "Database error" },
         { status: 502, headers: cors }
       );
     }
@@ -57,6 +57,7 @@ export async function GET(req: NextRequest) {
 
 // ── POST: create goal ──
 export async function POST(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const supabase = requireSupabase();
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
     if (error) {
       console.error("[API/goals] POST error:", error);
       return NextResponse.json(
-        { error: "Database error", detail: error.message },
+        { error: "Database error" },
         { status: 502, headers: cors }
       );
     }
@@ -118,6 +119,7 @@ export async function POST(req: NextRequest) {
 
 // ── PUT: update goal progress ──
 export async function PUT(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const { id, ...updates } = body;
@@ -165,7 +167,7 @@ export async function PUT(req: NextRequest) {
     if (error) {
       console.error("[API/goals] PUT error:", error);
       return NextResponse.json(
-        { error: "Database error", detail: error.message },
+        { error: "Database error" },
         { status: 502, headers: cors }
       );
     }

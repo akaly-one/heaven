@@ -24,57 +24,11 @@ import {
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 
-// ── Types ──
-
-interface AccessCode {
-  code: string;
-  model: string;
-  client: string;
-  platform: string;
-  tier: string;
-  type: string;
-  duration: number;
-  expiresAt: string;
-  created: string;
-  used: boolean;
-  active: boolean;
-  revoked: boolean;
-  lastUsed: string | null;
-}
-
-interface ClientInfo {
-  id: string;
-  pseudo_snap?: string;
-  pseudo_insta?: string;
-  tier?: string;
-  is_verified?: boolean;
-  is_blocked?: boolean;
-  notes?: string;
-  tag?: string;
-  preferences?: string;
-  total_spent?: number;
-  total_tokens_bought?: number;
-  total_tokens_spent?: number;
-  firstname?: string;
-  last_active?: string;
-}
-
-interface ClientWithSubs {
-  client: ClientInfo;
-  codes: AccessCode[];
-  activeCode: AccessCode | null;
-  status: "active" | "expiring" | "expired" | "blocked";
-  timeLeft: string;
-}
+// ── Types & Constants (centralized) ──
+import type { AccessCode, ClientInfo, ClientWithSubs } from "@/types/heaven";
+import { TIER_COLORS } from "@/constants/tiers";
 
 // ── Helpers ──
-
-const TIER_COLORS: Record<string, string> = {
-  vip: "#F43F5E",
-  gold: "#F59E0B",
-  diamond: "#7C3AED",
-  platinum: "#A78BFA",
-};
 
 function getTimeLeft(expiresAt: string): { text: string; urgent: boolean } {
   const diff = new Date(expiresAt).getTime() - Date.now();

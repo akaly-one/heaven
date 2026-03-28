@@ -5,9 +5,8 @@ import { getCorsHeaders } from "@/lib/auth";
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-const cors = getCorsHeaders();
-
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
@@ -19,6 +18,7 @@ export async function OPTIONS() {
  * Returns: { url, public_id, width, height, format, bytes }
  */
 export async function POST(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const { file, folder, type } = body;
@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
  * Deletes a file from Cloudinary.
  */
 export async function DELETE(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const publicId = req.nextUrl.searchParams.get("public_id");
     const type = (req.nextUrl.searchParams.get("type") || "image") as "image" | "video";

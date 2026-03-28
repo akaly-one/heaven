@@ -4,14 +4,14 @@ import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-const cors = getCorsHeaders();
-
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
 // GET /api/clients?model=yumi — List clients
 export async function GET(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
 
 // POST /api/clients — Register/upsert client (public — used by messenger widget)
 export async function POST(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const { model } = body;
@@ -114,6 +115,7 @@ export async function POST(req: NextRequest) {
 
 // PUT /api/clients — Update client
 export async function PUT(req: NextRequest) {
+  const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
     const { id, ...updates } = body;
