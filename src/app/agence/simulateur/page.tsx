@@ -5,10 +5,11 @@ import {
   Target, Check, ChevronRight, DollarSign, TrendingUp,
   Camera, Eye, Lock, Unlock, Zap, Users, Star,
   BarChart3, Circle, CheckCircle, Flame, Crown, Shield,
-  Sparkles, Play, MessageSquare, Video, Heart,
+  Sparkles, Play, MessageSquare, Video, Heart, Bot,
 } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
+import { AutomationContent } from "@/components/automation-content";
 
 // ══════════════════════════════════════════════
 //  MARKET DATA — Prix moyens du marche (EUR)
@@ -184,9 +185,9 @@ function saveState(s: StrategyState) {
 // ══════════ COMPONENT ══════════
 
 export default function StrategiePage() {
-  const { auth } = useModel();
+  const { auth, currentModel } = useModel();
   const [state, setState] = useState<StrategyState>(loadState);
-  const [tab, setTab] = useState<"objectif" | "contenu" | "pipeline" | "projections">("objectif");
+  const [tab, setTab] = useState<"objectif" | "contenu" | "pipeline" | "projections" | "automation">("objectif");
 
   // Auto-save
   useEffect(() => { saveState(state); }, [state]);
@@ -360,6 +361,7 @@ export default function StrategiePage() {
               { id: "contenu" as const, label: "Contenu & Prix", icon: Camera },
               { id: "pipeline" as const, label: "Pipeline", icon: BarChart3 },
               { id: "projections" as const, label: "Projections", icon: TrendingUp },
+              { id: "automation" as const, label: "Automation", icon: Bot },
             ]).map(t => (
               <button key={t.id} onClick={() => setTab(t.id)}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-all"
@@ -576,88 +578,97 @@ export default function StrategiePage() {
             <div className="space-y-4 fade-up">
 
               {/* Pipeline progress */}
-              <div className="rounded-xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs font-bold" style={{ color: "var(--text)" }}>Progression globale</h3>
-                  <span className="text-sm font-black" style={{ color: pipelineProgress === 100 ? "#10B981" : "#60A5FA" }}>
-                    {pipelineProgress}%
-                  </span>
+              <div className="rounded-xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-semibold" style={{ color: "var(--text-muted)" }}>Progression globale</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>
+                      {state.completedSteps.filter(s => visibleSteps.some(vs => vs.id === s)).length}/{visibleSteps.length}
+                    </span>
+                    <span className="text-xs font-black" style={{ color: pipelineProgress === 100 ? "#10B981" : "#60A5FA" }}>
+                      {pipelineProgress}%
+                    </span>
+                  </div>
                 </div>
-                <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "var(--bg2)" }}>
+                <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg2)" }}>
                   <div className="h-full rounded-full transition-all duration-500" style={{
                     width: `${pipelineProgress}%`,
                     background: pipelineProgress === 100 ? "#10B981" : "linear-gradient(90deg, #60A5FA, #7C3AED)",
                   }} />
                 </div>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>
-                    {state.completedSteps.filter(s => visibleSteps.some(vs => vs.id === s)).length}/{visibleSteps.length} etapes
-                  </span>
-                  {pipelineProgress === 100 && (
-                    <span className="text-[9px] font-bold flex items-center gap-1" style={{ color: "#10B981" }}>
-                      <CheckCircle className="w-3 h-3" /> Pipeline complete!
-                    </span>
-                  )}
-                </div>
               </div>
 
-              {/* Steps by category */}
-              {(["setup", "content", "sales", "growth"] as const).map(cat => {
-                const catMeta = CATEGORY_META[cat];
-                const catSteps = visibleSteps.filter(s => s.category === cat);
-                if (catSteps.length === 0) return null;
-                const catCompleted = catSteps.filter(s => state.completedSteps.includes(s.id)).length;
+              {/* Category blocks — horizontal scroll on mobile, grid on desktop */}
+              <div className="flex md:grid md:grid-cols-2 gap-3 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none"
+                style={{ scrollbarWidth: "none" }}>
+                {(["setup", "content", "sales", "growth"] as const).map(cat => {
+                  const catMeta = CATEGORY_META[cat];
+                  const catSteps = visibleSteps.filter(s => s.category === cat);
+                  if (catSteps.length === 0) return null;
+                  const catCompleted = catSteps.filter(s => state.completedSteps.includes(s.id)).length;
+                  const catDone = catCompleted === catSteps.length;
 
-                return (
-                  <div key={cat}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <catMeta.icon className="w-3.5 h-3.5" style={{ color: catMeta.color }} />
-                      <span className="text-[11px] font-bold" style={{ color: catMeta.color }}>{catMeta.label}</span>
-                      <span className="text-[9px] font-medium" style={{ color: "var(--text-muted)" }}>
-                        {catCompleted}/{catSteps.length}
-                      </span>
-                      {/* Category progress mini bar */}
-                      <div className="flex-1 h-1 rounded-full" style={{ background: "var(--bg2)" }}>
-                        <div className="h-full rounded-full transition-all" style={{
+                  return (
+                    <div key={cat} className="min-w-[260px] md:min-w-0 snap-start rounded-xl overflow-hidden flex flex-col"
+                      style={{
+                        background: "var(--surface)",
+                        border: `1px solid ${catDone ? "rgba(16,185,129,0.2)" : "var(--border)"}`,
+                      }}>
+                      {/* Category header */}
+                      <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: "1px solid var(--border)" }}>
+                        <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ background: `${catMeta.color}15` }}>
+                          <catMeta.icon className="w-3 h-3" style={{ color: catMeta.color }} />
+                        </div>
+                        <span className="text-[11px] font-bold flex-1" style={{ color: catMeta.color }}>{catMeta.label}</span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+                          style={{
+                            background: catDone ? "rgba(16,185,129,0.1)" : `${catMeta.color}10`,
+                            color: catDone ? "#10B981" : catMeta.color,
+                          }}>
+                          {catCompleted}/{catSteps.length}
+                        </span>
+                      </div>
+                      {/* Mini progress */}
+                      <div className="h-0.5" style={{ background: "var(--bg2)" }}>
+                        <div className="h-full transition-all" style={{
                           width: `${(catCompleted / catSteps.length) * 100}%`,
-                          background: catMeta.color,
+                          background: catDone ? "#10B981" : catMeta.color,
                         }} />
                       </div>
+                      {/* Steps — compact */}
+                      <div className="flex-1 p-1.5 space-y-0.5">
+                        {catSteps.map(step => {
+                          const done = state.completedSteps.includes(step.id);
+                          return (
+                            <button key={step.id} onClick={() => toggleStep(step.id)}
+                              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-all hover:opacity-80 text-left"
+                              style={{
+                                background: done ? "rgba(16,185,129,0.05)" : "transparent",
+                              }}>
+                              {done
+                                ? <CheckCircle className="w-3.5 h-3.5 shrink-0" style={{ color: "#10B981" }} />
+                                : <Circle className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--border3)" }} />}
+                              <div className="flex-1 min-w-0">
+                                <span className="text-[10px] font-medium block truncate" style={{
+                                  color: done ? "#10B981" : "var(--text)",
+                                  textDecoration: done ? "line-through" : "none",
+                                }}>{step.label}</span>
+                              </div>
+                              {step.requiresLevel !== undefined && (
+                                <span className="text-[7px] font-bold px-1 py-0.5 rounded shrink-0"
+                                  style={{ background: `${CONTENT_LEVELS[step.requiresLevel].color}15`, color: CONTENT_LEVELS[step.requiresLevel].color }}>
+                                  N{step.requiresLevel}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      {catSteps.map(step => {
-                        const done = state.completedSteps.includes(step.id);
-                        return (
-                          <button key={step.id} onClick={() => toggleStep(step.id)}
-                            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-all hover:scale-[1.005] text-left"
-                            style={{
-                              background: done ? "rgba(16,185,129,0.06)" : "rgba(255,255,255,0.03)",
-                              border: `1px solid ${done ? "rgba(16,185,129,0.15)" : "var(--border)"}`,
-                            }}>
-                            {done
-                              ? <CheckCircle className="w-4 h-4 shrink-0" style={{ color: "#10B981" }} />
-                              : <Circle className="w-4 h-4 shrink-0" style={{ color: "var(--border3)" }} />}
-                            <div className="flex-1 min-w-0">
-                              <span className="text-[11px] font-semibold block" style={{
-                                color: done ? "#10B981" : "var(--text)",
-                                textDecoration: done ? "line-through" : "none",
-                              }}>{step.label}</span>
-                              <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{step.desc}</span>
-                            </div>
-                            {step.requiresLevel !== undefined && (
-                              <span className="text-[7px] font-bold px-1 py-0.5 rounded shrink-0"
-                                style={{ background: `${CONTENT_LEVELS[step.requiresLevel].color}15`, color: CONTENT_LEVELS[step.requiresLevel].color }}>
-                                N{step.requiresLevel}
-                              </span>
-                            )}
-                            <ChevronRight className="w-3 h-3 shrink-0" style={{ color: "var(--text-muted)", opacity: 0.3 }} />
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -782,6 +793,15 @@ export default function StrategiePage() {
                 Les revenus reels dependent de ta niche, ton engagement, et ta regularite.
               </p>
             </div>
+          )}
+
+          {/* ═══ TAB: Automation ═══ */}
+          {tab === "automation" && (
+            <AutomationContent
+              modelName={(currentModel || "model").toUpperCase()}
+              storageKey={`heaven_automation_${currentModel || "yumi"}`}
+              compact
+            />
           )}
 
         </div>

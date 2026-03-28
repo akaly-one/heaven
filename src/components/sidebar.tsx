@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { DollarSign, Settings, ChevronLeft, ChevronRight, Crown, Map, TrendingUp, Users, Calculator } from "lucide-react";
+import { DollarSign, Settings, ChevronLeft, ChevronRight, Crown, Map, TrendingUp, Users, Calculator, Bot } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { HeavenAuth } from "./auth-guard";
 
@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { id: "strategie", label: "Strategie", icon: Calculator, href: "/agence/simulateur", color: "#E040FB" },
   { id: "clients", label: "Clients", icon: Users, href: "/agence/clients", color: "#F59E0B" },
   { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances", color: "var(--success)" },
+  { id: "automation", label: "Automation", icon: Bot, href: "/agence/automation", color: "#06B6D4" },
   { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings", color: "var(--text-muted)" },
   { id: "architecture", label: "Architecture", icon: Map, href: "/agence/architecture", color: "#7C3AED", rootOnly: true },
 ] as const;

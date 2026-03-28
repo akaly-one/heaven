@@ -138,6 +138,7 @@ export default function ModelPage() {
   const [wallInstaHandle, setWallInstaHandle] = useState("");
   const [wallContent, setWallContent] = useState("");
   const [wallPosting, setWallPosting] = useState(false);
+  const [pseudoConfirmed, setPseudoConfirmed] = useState(false);
   const [socialPopup, setSocialPopup] = useState<{ pseudo: string; snap?: string | null; insta?: string | null; x: number; y: number } | null>(null);
 
   // Chat
@@ -547,7 +548,7 @@ export default function ModelPage() {
       const saved = sessionStorage.getItem(`heaven_client_${slug}`);
       if (saved) setClientId(JSON.parse(saved).id);
       const savedPseudo = sessionStorage.getItem(`heaven_wall_pseudo_${slug}`);
-      if (savedPseudo) setWallPseudo(savedPseudo);
+      if (savedPseudo) { setWallPseudo(savedPseudo); setPseudoConfirmed(true); }
       const savedSnap = sessionStorage.getItem(`heaven_wall_snap_${slug}`);
       if (savedSnap) setWallSnapHandle(savedSnap);
       const savedInsta = sessionStorage.getItem(`heaven_wall_insta_${slug}`);
@@ -666,7 +667,7 @@ export default function ModelPage() {
       if (wallSnapHandle.trim()) sessionStorage.setItem(`heaven_wall_snap_${slug}`, wallSnapHandle.trim());
       if (wallInstaHandle.trim()) sessionStorage.setItem(`heaven_wall_insta_${slug}`, wallInstaHandle.trim());
 
-      await fetch("/api/wall", {
+      const postRes = await fetch("/api/wall", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -677,10 +678,23 @@ export default function ModelPage() {
           pseudo_insta: wallInstaHandle.trim() || null,
         }),
       });
+
+      if (!postRes.ok) {
+        const errData = await postRes.json().catch(() => ({ error: "Post failed" }));
+        console.error("[Profile] wall post error:", errData);
+        return;
+      }
+
+      const { post: newPost } = await postRes.json();
       setWallContent("");
-      // Refresh wall
-      const res = await fetch(`/api/wall?model=${slug}`);
-      if (res.ok) { const d = await res.json(); setWallPosts(d.posts || []); }
+
+      // Optimistic: add new post to feed immediately, then refresh
+      if (newPost) {
+        setWallPosts(prev => [newPost, ...prev]);
+      } else {
+        const res = await fetch(`/api/wall?model=${slug}`);
+        if (res.ok) { const d = await res.json(); setWallPosts(d.posts || []); }
+      }
     } catch (err) { console.error("[Profile] wall post failed:", err); } finally {
       setWallPosting(false);
     }
@@ -1015,7 +1029,7 @@ export default function ModelPage() {
                     {wallPseudo ? wallPseudo.charAt(0).toUpperCase() : "?"}
                   </div>
                   <div className="flex-1 min-w-0 space-y-2">
-                    {!wallPseudo ? (
+                    {!pseudoConfirmed ? (
                       <div className="space-y-2">
                         <input
                           value={wallPseudo}
@@ -1024,6 +1038,7 @@ export default function ModelPage() {
                           className="w-full px-3 py-2 rounded-lg text-xs outline-none"
                           style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }}
                           maxLength={30}
+                          onKeyDown={e => { if (e.key === "Enter" && wallPseudo.trim()) setPseudoConfirmed(true); }}
                         />
                         <div className="flex gap-2">
                           <div className="flex-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
@@ -1049,12 +1064,18 @@ export default function ModelPage() {
                             />
                           </div>
                         </div>
+                        <button
+                          onClick={() => setPseudoConfirmed(true)}
+                          disabled={!wallPseudo.trim()}
+                          className="w-full py-2 rounded-lg text-[10px] font-semibold cursor-pointer btn-gradient disabled:opacity-30 transition-opacity">
+                          Continue
+                        </button>
                       </div>
                     ) : (
                       <>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-[11px] font-semibold" style={{ color: "var(--accent)" }}>@{wallPseudo}</span>
-                          <button onClick={() => setWallPseudo("")} className="text-[9px] cursor-pointer" style={{ color: "var(--text-muted)" }}>change</button>
+                          <button onClick={() => setPseudoConfirmed(false)} className="text-[9px] cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>change</button>
                         </div>
                         <div className="flex items-center gap-2">
                           <input

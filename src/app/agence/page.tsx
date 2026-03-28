@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Plus, KeyRound, Pencil, Eye, CheckCircle, Circle, RotateCcw, TrendingUp, Instagram, Camera as CameraIcon, Globe, MessageCircle, Heart, Pin, Newspaper, Wifi, WifiOff, Send, Compass, X, ImagePlus, Target, CalendarDays, ChevronRight, Bell } from "lucide-react";
+import { Plus, KeyRound, Pencil, Eye, CheckCircle, Circle, RotateCcw, TrendingUp, Instagram, Camera as CameraIcon, Globe, MessageCircle, Heart, Pin, Newspaper, Wifi, WifiOff, Send, Compass, X, ImagePlus, Target, CalendarDays, ChevronRight, Bell, Bot } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
@@ -479,6 +479,7 @@ export default function AgenceDashboard() {
               { label: "Strategie", href: "/agence/simulateur", icon: Target, color: "#E040FB" },
               { label: "Galerie", href: `/m/${modelSlug}?edit=true#gallery`, icon: CameraIcon, color: "var(--accent)" },
               { label: "Nouveau post", href: "#", icon: Plus, color: "#10B981" },
+              { label: "Automation", href: "/agence/automation", icon: Bot, color: "#06B6D4" },
             ].map(action => (
               <a key={action.label} href={action.href}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-semibold no-underline transition-all duration-200 hover:scale-105 active:scale-95"
@@ -953,6 +954,13 @@ export default function AgenceDashboard() {
                   color: "#F59E0B",
                   action: () => { window.location.href = "/agence/simulateur"; },
                   delay: "50ms",
+                },
+                {
+                  label: "Automation",
+                  icon: Bot,
+                  color: "#06B6D4",
+                  action: () => { window.location.href = "/agence/automation"; },
+                  delay: "0ms",
                 },
               ].map(item => (
                 <button key={item.label}

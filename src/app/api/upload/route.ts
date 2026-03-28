@@ -3,10 +3,9 @@ import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary";
 import { getCorsHeaders } from "@/lib/auth";
 
 export const runtime = "nodejs";
-const cors = getCorsHeaders();
-
-// Max body size: Next.js default is 4MB, we increase via route config
 export const maxDuration = 30;
+
+const cors = getCorsHeaders();
 
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: cors });
@@ -50,8 +49,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result, { headers: cors });
   } catch (err) {
-    console.error("[API/upload] POST:", err);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500, headers: cors });
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error("[API/upload] POST:", errMsg, err);
+    return NextResponse.json({ error: `Upload failed: ${errMsg}` }, { status: 500, headers: cors });
   }
 }
 
