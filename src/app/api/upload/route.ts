@@ -49,7 +49,16 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result, { headers: cors });
   } catch (err) {
-    const errMsg = err instanceof Error ? err.message : String(err);
+    // Cloudinary errors can be objects with nested message/error properties
+    let errMsg = "Unknown error";
+    if (err instanceof Error) {
+      errMsg = err.message;
+    } else if (typeof err === "object" && err !== null) {
+      const e = err as Record<string, unknown>;
+      errMsg = (e.message || e.error || e.http_code ? `Cloudinary ${e.http_code}: ${e.message || e.error}` : JSON.stringify(err)) as string;
+    } else {
+      errMsg = String(err);
+    }
     console.error("[API/upload] POST:", errMsg, err);
     return NextResponse.json({ error: `Upload failed: ${errMsg}` }, { status: 500, headers: cors });
   }
