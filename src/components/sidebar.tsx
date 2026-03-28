@@ -1,16 +1,19 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { DollarSign, Settings, ChevronLeft, ChevronRight, Crown, Map, TrendingUp, Users, Calculator, Bot } from "lucide-react";
+import { DollarSign, Settings, ChevronLeft, ChevronRight, Crown, Map, Users, Bot, MessageCircle, Layers, Target, FileText } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { HeavenAuth } from "./auth-guard";
 
 const NAV_ITEMS = [
   { id: "cockpit", label: "Dashboard", icon: Crown, href: "/agence", color: "var(--accent)" },
-  { id: "strategie", label: "Strategie", icon: Calculator, href: "/agence/simulateur", color: "#E040FB" },
+  { id: "messages", label: "Messages", icon: MessageCircle, href: "/agence/messages", color: "#F43F5E" },
   { id: "clients", label: "Clients", icon: Users, href: "/agence/clients", color: "var(--warning)" },
+  { id: "pipeline", label: "Pipeline", icon: Layers, href: "/agence/pipeline", color: "#8B5CF6" },
+  { id: "strategie", label: "Strategie", icon: Target, href: "/agence/simulateur", color: "#E040FB" },
   { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances", color: "var(--success)" },
-  { id: "automation", label: "Automation", icon: Bot, href: "/agence/automation", color: "#06B6D4" },
+  { id: "cms", label: "CMS", icon: FileText, href: "/agence/cms", color: "#06B6D4" },
+  { id: "automation", label: "Automation", icon: Bot, href: "/agence/automation", color: "#14B8A6" },
   { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings", color: "var(--text-muted)" },
   { id: "architecture", label: "Architecture", icon: Map, href: "/agence/architecture", color: "var(--tier-platinum)", rootOnly: true },
 ] as const;
@@ -41,7 +44,7 @@ export function Sidebar() {
     if ("rootOnly" in item && item.rootOnly && !isRoot) return false;
     if (isAdmin) return true;
     if (auth?.role === "model") {
-      return ["cockpit", "strategie", "settings"].includes(item.id);
+      return ["cockpit", "messages", "clients", "pipeline", "strategie", "settings"].includes(item.id);
     }
     return scope.some(s => item.href === s || item.href.startsWith(s + "/"));
   });
@@ -57,13 +60,13 @@ export function Sidebar() {
           borderRight: "1px solid var(--border)",
         }}
       >
-        <a href="/agence" className="flex items-center justify-center mb-6 no-underline">
+        <div className="flex items-center justify-center mb-6">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, var(--accent), var(--tier-platinum))", boxShadow: "0 0 20px rgba(230,51,41,0.25)" }}>
+            style={{ background: "linear-gradient(135deg, var(--accent), var(--tier-platinum))" }}>
             <Crown className="w-4 h-4" style={{ color: "#fff" }} />
           </div>
-          {!collapsed && <span className="ml-2 text-xs font-bold tracking-widest" style={{ color: "var(--accent)", fontFamily: "'Inter', sans-serif" }}>HEAVEN</span>}
-        </a>
+          {!collapsed && <span className="ml-2 text-[10px] font-bold tracking-widest" style={{ color: "var(--text-muted)" }}>HEAVEN</span>}
+        </div>
 
         {!collapsed && auth && (
           <div className="px-3 mb-4">
@@ -106,7 +109,7 @@ export function Sidebar() {
       <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden safe-area-bottom glass-strong"
         style={{ borderTop: "1px solid var(--border)" }}>
         <div className="flex items-center justify-around py-2">
-          {visibleItems.map((item) => {
+          {visibleItems.filter(item => ["cockpit", "messages", "clients", "pipeline", "settings"].includes(item.id)).map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <a key={item.id} href={item.href}
