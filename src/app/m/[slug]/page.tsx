@@ -931,31 +931,14 @@ export default function ModelPage() {
                       {displayModel?.display_name}
                       <Check className="w-4 h-4 inline ml-1.5 -mt-0.5" style={{ color: "var(--accent)" }} />
                     </h1>
-                    <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                      {displayModel?.status || "Creatrice exclusive"}
+                    {/* Status MSN style — italic, visible */}
+                    <p className="text-xs mt-1 italic" style={{ color: "var(--text-secondary)" }}>
+                      {displayModel?.online ? "🟢" : "⚫"} {displayModel?.status || "Creatrice exclusive"}
                     </p>
                   </>
                 )}
               </div>
             </div>
-
-            {/* Subscription status — inline, not a sticky bar */}
-            {!isEditMode && visitorRegistered && !isModelLoggedIn && (
-              <div className="flex items-center justify-center gap-2 mt-2 profile-stagger-3">
-                {unlockedTier ? (
-                  <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase"
-                    style={{ background: "rgba(16,185,129,0.1)", color: "#10B981", border: "1px solid rgba(16,185,129,0.2)" }}>
-                    {unlockedTier} active
-                  </span>
-                ) : (
-                  <button onClick={() => setTab("shop")}
-                    className="px-4 py-1.5 rounded-full text-[10px] font-bold cursor-pointer hover:scale-105 transition-transform"
-                    style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff" }}>
-                    Voir les packs
-                  </button>
-                )}
-              </div>
-            )}
 
             {/* Stats row — centered with dividers */}
             {!isEditMode && (
@@ -974,31 +957,28 @@ export default function ModelPage() {
               </div>
             )}
 
-            {/* CTA Subscribe button */}
-            {!isEditMode && activePacks.length > 0 && (
-              <div className="text-center mb-3 profile-stagger-3">
-                <button onClick={() => setShowSubscriptionPanel(true)}
-                  className="px-8 py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                  style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff", boxShadow: "0 4px 20px rgba(244,63,94,0.3)" }}>
-                  S&apos;abonner &middot; {activePacks.length} pack{activePacks.length > 1 ? "s" : ""}
-                </button>
-              </div>
-            )}
-
-            {/* Skills badges — compact */}
+            {/* Access: code input + subscribe — ONE section */}
             {!isEditMode && (
-              <div className="flex flex-wrap justify-center gap-1.5 mb-3 profile-stagger-3">
-                {([
-                  { label: "Exclusif", icon: Flame, color: "#F43F5E" },
-                  { label: "Rapide", icon: Zap, color: "#F59E0B" },
-                  { label: "Custom", icon: Palette, color: "#7C3AED" },
-                ] as { label: string; icon: LucideIcon; color: string }[]).map(skill => (
-                  <span key={skill.label} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold"
-                    style={{ background: `${skill.color}10`, color: skill.color, border: `1px solid ${skill.color}20` }}>
-                    <skill.icon size={10} />
-                    {skill.label}
+              <div className="flex items-center justify-center gap-2 mb-3 profile-stagger-3">
+                {unlockedTier ? (
+                  <span className="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase"
+                    style={{ background: "rgba(16,185,129,0.1)", color: "#10B981", border: "1px solid rgba(16,185,129,0.2)" }}>
+                    {unlockedTier} active
                   </span>
-                ))}
+                ) : (
+                  <>
+                    <button onClick={() => setShowUnlock(true)}
+                      className="px-5 py-2 rounded-xl text-xs font-bold cursor-pointer hover:scale-105 transition-transform"
+                      style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff", boxShadow: "0 4px 16px rgba(244,63,94,0.25)" }}>
+                      Entrer un code
+                    </button>
+                    <button onClick={() => setTab("shop")}
+                      className="px-4 py-2 rounded-xl text-xs font-medium cursor-pointer hover:scale-105 transition-transform"
+                      style={{ background: "rgba(255,255,255,0.06)", color: "var(--text-secondary)", border: "1px solid var(--border2)" }}>
+                      Acheter
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
@@ -1246,7 +1226,54 @@ export default function ModelPage() {
                   <X className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
                 </button>
               </div>
-              <div className="px-6 pb-6 space-y-2.5 overflow-y-auto" style={{ maxHeight: "60vh" }}>
+              <div className="px-6 pb-6 space-y-3 overflow-y-auto" style={{ maxHeight: "60vh" }}>
+                {/* CODE INPUT — main way to unlock */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>
+                    Tu as un code ?
+                  </label>
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    const input = (e.target as HTMLFormElement).querySelector("input") as HTMLInputElement;
+                    const code = input?.value?.trim();
+                    if (!code) return;
+                    try {
+                      const res = await fetch("/api/codes", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "validate", code, model: slug }),
+                      });
+                      const data = await res.json();
+                      if (data.code?.tier) {
+                        setUnlockedTier(data.code.tier);
+                        setActiveCode(data.code);
+                        setShowUnlock(false);
+                        sessionStorage.setItem(`heaven_access_${slug}`, JSON.stringify({
+                          tier: data.code.tier, expiresAt: data.code.expiresAt, code: data.code.code,
+                        }));
+                      } else {
+                        input.style.borderColor = "#EF4444";
+                        input.placeholder = data.error || "Code invalide";
+                        input.value = "";
+                      }
+                    } catch { input.placeholder = "Erreur — reessaye"; input.value = ""; }
+                  }} className="flex gap-2">
+                    <input type="text" placeholder="ABC-2026-XXXX"
+                      className="flex-1 px-3 py-2.5 rounded-xl text-sm font-mono uppercase tracking-wider outline-none text-center"
+                      style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }}
+                    />
+                    <button type="submit"
+                      className="px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer hover:scale-105 transition-transform"
+                      style={{ background: "var(--accent)", color: "#fff" }}>
+                      Valider
+                    </button>
+                  </form>
+                </div>
+
+                <div className="text-center">
+                  <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>ou achete un pack</span>
+                </div>
+
                 {activePacks.map(pack => {
                   const hex = TIER_HEX[pack.id] || pack.color;
                   const bonus = TIER_CREDIT_BONUS[pack.id];
