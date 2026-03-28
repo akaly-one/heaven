@@ -19,17 +19,26 @@ export async function GET(req: NextRequest) {
   const cors = getCorsHeaders(req);
   try {
     const model = req.nextUrl.searchParams.get("model");
+    const clientId = req.nextUrl.searchParams.get("client_id");
+    const pseudoSnap = req.nextUrl.searchParams.get("pseudo_snap");
+    const pseudoInsta = req.nextUrl.searchParams.get("pseudo_insta");
     if (!model) return NextResponse.json({ posts: [] }, { headers: cors });
 
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ posts: [] }, { headers: cors });
 
-    const { data, error } = await supabase
+    let q = supabase
       .from("agence_wall_posts")
       .select("*")
       .eq("model", model)
       .order("created_at", { ascending: false })
       .limit(100);
+
+    if (clientId) q = q.eq("client_id", clientId);
+    if (pseudoSnap) q = q.ilike("pseudo_snap", pseudoSnap);
+    if (pseudoInsta) q = q.ilike("pseudo_insta", pseudoInsta);
+
+    const { data, error } = await q;
 
     if (error) throw error;
     return NextResponse.json({ posts: data || [] }, { headers: cors });

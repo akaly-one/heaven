@@ -20,12 +20,18 @@ import {
   Filter,
   Smartphone,
   Camera,
+  Ban,
+  ShieldCheck,
+  StickyNote,
+  Loader2,
+  Activity,
 } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
+import { ClientActivityTimeline } from "@/components/cockpit/client-activity-timeline";
 
 // ── Types & Constants (centralized) ──
-import type { AccessCode, ClientInfo, ClientWithSubs } from "@/types/heaven";
+import type { AccessCode, ClientInfo, ClientWithSubs, WallPost } from "@/types/heaven";
 import { TIER_COLORS } from "@/constants/tiers";
 
 // ── Helpers ──
@@ -64,6 +70,10 @@ export default function ClientsPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "expiring" | "expired">("all");
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [expandedClient, setExpandedClient] = useState<string | null>(null);
+  const [activityData, setActivityData] = useState<Record<string, { wallPosts: WallPost[]; messages: { id: string; sender_type: string; content: string; created_at: string }[]; purchases: { id: string; upload_id: string; price: number; created_at: string }[]; loaded: boolean }>>({});
+  const [activityLoading, setActivityLoading] = useState<string | null>(null);
+  const [noteInput, setNoteInput] = useState<Record<string, string>>({});
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // ── Load data ──
   useEffect(() => {
@@ -121,8 +131,10 @@ export default function ClientsPage() {
       const name = (e.client.firstname || e.client.id || "").toLowerCase();
       const snap = (e.client.pseudo_snap || "").toLowerCase();
       const insta = (e.client.pseudo_insta || "").toLowerCase();
+      const phone = (e.client.phone || "").toLowerCase();
+      const nick = (e.client.nickname || "").toLowerCase();
       const q = search.toLowerCase();
-      if (q && !name.includes(q) && !snap.includes(q) && !insta.includes(q)) return false;
+      if (q && !name.includes(q) && !snap.includes(q) && !insta.includes(q) && !phone.includes(q) && !nick.includes(q)) return false;
       if (statusFilter !== "all" && e.status !== statusFilter) return false;
       if (tierFilter !== "all") {
         const tier = e.activeCode?.tier || e.codes[0]?.tier || "";
@@ -140,6 +152,64 @@ export default function ClientsPage() {
     expired: enriched.filter(e => e.status === "expired").length,
     revenue: enriched.reduce((sum, e) => sum + (e.client.total_spent || 0), 0),
   }), [enriched]);
+
+  // ── Load activity data when expanding a client ──
+  const loadActivity = async (clientId: string) => {
+    if (activityData[clientId]?.loaded) return;
+    setActivityLoading(clientId);
+    const headers = authHeaders();
+    try {
+      const [wallRes, msgRes, purchRes] = await Promise.all([
+        fetch(`/api/wall?model=${modelSlug}&client_id=${clientId}`, { headers }).then(r => r.ok ? r.json() : { posts: [] }),
+        fetch(`/api/messages?model=${modelSlug}&client_id=${clientId}`, { headers }).then(r => r.ok ? r.json() : { messages: [] }),
+        fetch(`/api/credits/purchase?client_id=${clientId}`, { headers }).then(r => r.ok ? r.json() : { purchases: [] }),
+      ]);
+      setActivityData(prev => ({
+        ...prev,
+        [clientId]: {
+          wallPosts: wallRes.posts || [],
+          messages: msgRes.messages || [],
+          purchases: purchRes.purchases || [],
+          loaded: true,
+        },
+      }));
+    } catch {
+      setActivityData(prev => ({ ...prev, [clientId]: { wallPosts: [], messages: [], purchases: [], loaded: true } }));
+    }
+    setActivityLoading(null);
+  };
+
+  // ── Quick actions ──
+  const toggleBlock = async (clientId: string, isBlocked: boolean) => {
+    setActionLoading(clientId);
+    const headers = authHeaders();
+    try {
+      await fetch("/api/clients", {
+        method: "PUT",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ id: clientId, is_blocked: !isBlocked }),
+      });
+      setClients(prev => prev.map(c => c.id === clientId ? { ...c, is_blocked: !isBlocked } : c));
+    } catch {}
+    setActionLoading(null);
+  };
+
+  const saveNote = async (clientId: string) => {
+    const note = noteInput[clientId];
+    if (!note?.trim()) return;
+    setActionLoading(clientId);
+    const headers = authHeaders();
+    try {
+      await fetch("/api/clients", {
+        method: "PUT",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ id: clientId, notes: note.trim() }),
+      });
+      setClients(prev => prev.map(c => c.id === clientId ? { ...c, notes: note.trim() } : c));
+      setNoteInput(prev => ({ ...prev, [clientId]: "" }));
+    } catch {}
+    setActionLoading(null);
+  };
 
   const STATUS_CONFIG = {
     active: { label: "Actif", color: "var(--success)", icon: CheckCircle2 },
@@ -268,7 +338,7 @@ export default function ClientsPage() {
                 <div key={e.client.id} className="card-premium overflow-hidden">
                   {/* Row */}
                   <button
-                    onClick={() => setExpandedClient(expanded ? null : e.client.id)}
+                    onClick={() => { setExpandedClient(expanded ? null : e.client.id); if (!expanded) loadActivity(e.client.id); }}
                     className="w-full flex items-center gap-3 p-3 sm:p-4 cursor-pointer text-left"
                     style={{ background: "transparent", border: "none", color: "var(--text)" }}
                   >
@@ -337,7 +407,26 @@ export default function ClientsPage() {
                   {/* Expanded */}
                   {expanded && (
                     <div className="px-4 pb-4 animate-fade-in" style={{ borderTop: "1px solid var(--border2)" }}>
-                      <div className="pt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <div className="pt-4 space-y-4">
+
+                      {/* Quick actions */}
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => toggleBlock(e.client.id, !!e.client.is_blocked)}
+                          disabled={actionLoading === e.client.id}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold cursor-pointer transition-all"
+                          style={{
+                            background: e.client.is_blocked ? "rgba(22,163,74,0.1)" : "rgba(220,38,38,0.1)",
+                            color: e.client.is_blocked ? "var(--success)" : "var(--danger)",
+                            border: `1px solid ${e.client.is_blocked ? "rgba(22,163,74,0.2)" : "rgba(220,38,38,0.2)"}`,
+                          }}
+                        >
+                          {actionLoading === e.client.id ? <Loader2 className="w-3 h-3 animate-spin" /> : e.client.is_blocked ? <ShieldCheck className="w-3 h-3" /> : <Ban className="w-3 h-3" />}
+                          {e.client.is_blocked ? "Debloquer" : "Bloquer"}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
                         {/* Client info */}
                         <div className="flex flex-col gap-3">
@@ -414,6 +503,53 @@ export default function ClientsPage() {
                             })}
                           </div>
                         </div>
+                      </div>
+
+                      {/* Activity timeline */}
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Activity className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Activite recente</p>
+                        </div>
+                        {activityLoading === e.client.id ? (
+                          <div className="flex justify-center py-4">
+                            <Loader2 className="w-4 h-4 animate-spin" style={{ color: "var(--text-muted)" }} />
+                          </div>
+                        ) : activityData[e.client.id]?.loaded ? (
+                          <ClientActivityTimeline
+                            wallPosts={activityData[e.client.id].wallPosts}
+                            messages={activityData[e.client.id].messages}
+                            codes={e.codes}
+                            purchases={activityData[e.client.id].purchases}
+                          />
+                        ) : null}
+                      </div>
+
+                      {/* Add note */}
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <StickyNote className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Ajouter une note</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            value={noteInput[e.client.id] || ""}
+                            onChange={ev => setNoteInput(prev => ({ ...prev, [e.client.id]: ev.target.value }))}
+                            placeholder={e.client.notes || "Note interne..."}
+                            className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
+                            style={{ background: "var(--bg3)", border: "1px solid var(--border2)", color: "var(--text)" }}
+                            onKeyDown={ev => { if (ev.key === "Enter") saveNote(e.client.id); }}
+                          />
+                          <button
+                            onClick={() => saveNote(e.client.id)}
+                            disabled={!noteInput[e.client.id]?.trim() || actionLoading === e.client.id}
+                            className="px-3 py-2 rounded-lg text-[10px] font-semibold cursor-pointer btn-gradient disabled:opacity-30"
+                          >
+                            {actionLoading === e.client.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Sauver"}
+                          </button>
+                        </div>
+                      </div>
+
                       </div>
                     </div>
                   )}
