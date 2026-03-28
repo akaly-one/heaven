@@ -7,7 +7,7 @@ import {
   Coins, Pin, Eye, Star, Camera, Video, Play, X, Check,
   Instagram, Ghost, ChevronRight, Crown, Plus, Edit3, Wifi,
   ImagePlus, Trash2, Save, RotateCcw, ToggleLeft, ToggleRight,
-  Upload, Pencil, GripVertical, Flame, Zap, Palette, Diamond,
+  Upload, Pencil, GripVertical, Flame, Zap, Palette, Diamond, AlertTriangle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ContentProtection } from "@/components/content-protection";
@@ -553,6 +553,8 @@ export default function ModelPage() {
   }, [slug]);
 
   // ── Validate access token from URL (?access=CODE or ?code=CODE) ──
+  const [expiredCodeInfo, setExpiredCodeInfo] = useState<{ tier: string; pack: string } | null>(null);
+
   useEffect(() => {
     const accessToken = searchParams.get("access") || searchParams.get("code");
     if (!accessToken || !slug || accessChecked) return;
@@ -563,22 +565,45 @@ export default function ModelPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "validate", code: accessToken, model: slug }),
     })
-      .then(r => r.json())
-      .then(data => {
+      .then(async r => {
+        const data = await r.json();
         if (data.code?.tier) {
           setUnlockedTier(data.code.tier);
           setActiveCode(data.code);
           setTab("gallery");
-          // Save in session so refresh doesn't lose access
           sessionStorage.setItem(`heaven_access_${slug}`, JSON.stringify({
-            tier: data.code.tier,
-            expiresAt: data.code.expiresAt,
-            code: data.code.code,
+            tier: data.code.tier, expiresAt: data.code.expiresAt, code: data.code.code,
           }));
+          // Auto-identify visitor from code's clientId
+          if (data.code.clientId && !visitorRegistered) {
+            try {
+              const clientRes = await fetch(`/api/clients/${data.code.clientId}`);
+              if (clientRes.ok) {
+                const clientData = await clientRes.json();
+                const client = clientData.client;
+                if (client) {
+                  let p: VisitorPlatform = "pseudo";
+                  let h = client.id?.slice(0, 8) || "";
+                  if (client.pseudo_snap) { p = "snap"; h = client.pseudo_snap; }
+                  else if (client.pseudo_insta) { p = "insta"; h = client.pseudo_insta; }
+                  else if (client.phone) { p = "phone"; h = client.phone; }
+                  else if (client.nickname) { p = "pseudo"; h = client.nickname; }
+                  setClientId(client.id);
+                  setVisitorPlatform(p);
+                  setVisitorHandle(h);
+                  setVisitorRegistered(true);
+                  sessionStorage.setItem(`heaven_client_${slug}`, JSON.stringify(client));
+                }
+              }
+            } catch {}
+          }
+        } else if (r.status === 410) {
+          // Code expired — show renewal banner
+          setExpiredCodeInfo({ tier: data.tier || "vip", pack: data.pack || "vip" });
         }
       })
       .catch(() => {});
-  }, [searchParams, slug, accessChecked]);
+  }, [searchParams, slug, accessChecked, visitorRegistered]);
 
   // Refresh on focus
   useEffect(() => {
@@ -1020,6 +1045,26 @@ export default function ModelPage() {
             onUpgrade={() => { setTab("shop"); }}
             onManage={() => { setShowSubscriptionPanel(true); }}
           />
+        )}
+
+        {/* ═══ EXPIRED CODE BANNER ═══ */}
+        {expiredCodeInfo && !unlockedTier && (
+          <div className="max-w-2xl mx-auto px-4 mb-3">
+            <div className="flex items-center justify-between px-4 py-3 rounded-xl"
+              style={{ background: "rgba(217,119,6,0.1)", border: "1px solid rgba(217,119,6,0.2)" }}>
+              <div className="flex items-center gap-2 text-[12px] font-medium" style={{ color: "var(--warning)" }}>
+                <AlertTriangle className="w-4 h-4" />
+                <span>Ton code a expire</span>
+              </div>
+              <button
+                onClick={() => { setTab("shop"); setExpiredCodeInfo(null); }}
+                className="px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all"
+                style={{ background: "var(--warning)", color: "#fff" }}
+              >
+                Renouveler
+              </button>
+            </div>
+          </div>
         )}
 
         {/* ═══ TABS ═══ */}

@@ -59,6 +59,7 @@ export interface AccessCode {
   revoked: boolean;
   isTrial?: boolean;
   lastUsed: string | null;
+  clientId?: string;
 }
 
 // ── Clients ──
@@ -236,6 +237,7 @@ export interface CodeRow {
   revoked: boolean;
   isTrial: boolean;
   lastUsed: string | null;
+  clientId?: string;
 }
 
 // ── Wise link (codes-list) ──

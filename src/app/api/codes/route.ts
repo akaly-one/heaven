@@ -254,6 +254,7 @@ function mapFromDb(row: any): CodeRow {
     duration: row.duration, expiresAt: row.expires_at || row.expiresAt,
     created: row.created_at || row.created, used: row.used, active: row.active,
     revoked: row.revoked, isTrial: row.is_trial ?? row.isTrial, lastUsed: row.last_used ?? row.lastUsed,
+    clientId: row.client_id || undefined,
   };
 }
 function mapToDb(u: Record<string, unknown>) {
