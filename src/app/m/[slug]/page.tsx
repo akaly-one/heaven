@@ -14,6 +14,7 @@ import { ContentProtection } from "@/components/content-protection";
 import { useScreenshotDetection } from "@/hooks/use-screenshot-detection";
 import { IdentityGate } from "@/components/identity-gate";
 import { SubscriptionStatusBar } from "@/components/subscription-status-bar";
+import { SubscriptionPanel } from "@/components/subscription-panel";
 
 // ── Types & Constants (centralized) ──
 import type { ModelInfo, Post, PackConfig, UploadedContent, WallPost, AccessCode, VisitorPlatform } from "@/types/heaven";
@@ -118,6 +119,7 @@ export default function ModelPage() {
 
   // Unlock sheet
   const [showUnlock, setShowUnlock] = useState(false);
+  const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(false);
 
   // Gallery filter
   const [galleryTier, setGalleryTier] = useState("all");
@@ -1016,7 +1018,7 @@ export default function ModelPage() {
             unlockedTier={unlockedTier}
             activeCode={activeCode}
             onUpgrade={() => { setTab("shop"); }}
-            onManage={() => { setTab("shop"); }}
+            onManage={() => { setShowSubscriptionPanel(true); }}
           />
         )}
 
@@ -2021,6 +2023,28 @@ export default function ModelPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ═══ SUBSCRIPTION PANEL (self-service) ═══ */}
+        {showSubscriptionPanel && clientId && (
+          <SubscriptionPanel
+            slug={slug}
+            clientId={clientId}
+            activeCode={activeCode}
+            packs={packs}
+            unlockedTier={unlockedTier}
+            uploads={uploads}
+            visitorPlatform={visitorPlatform}
+            visitorHandle={visitorHandle}
+            onCodeValidated={(code) => {
+              setActiveCode(code);
+              if (code.tier) setUnlockedTier(code.tier);
+              sessionStorage.setItem(`heaven_access_${slug}`, JSON.stringify({
+                tier: code.tier, expiresAt: code.expiresAt, code: code.code,
+              }));
+            }}
+            onClose={() => setShowSubscriptionPanel(false)}
+          />
         )}
 
         {/* ═══ UNLOCK SHEET (quick access from hero button) ═══ */}

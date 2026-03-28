@@ -9,7 +9,35 @@ export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
-/* /api/credits/purchase — Debit credits from client, unlock media */
+/* GET /api/credits/purchase?client_id=XXX — Purchase history */
+export async function GET(req: NextRequest) {
+  const cors = getCorsHeaders(req);
+  const clientId = req.nextUrl.searchParams.get("client_id");
+  if (!clientId) return NextResponse.json({ purchases: [] }, { headers: cors });
+
+  try {
+    const sb = getServerSupabase();
+    if (!sb) return NextResponse.json({ purchases: [] }, { headers: cors });
+
+    const { data, error } = await sb
+      .from("agence_purchases")
+      .select("*")
+      .eq("client_id", clientId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error("[Credits/purchase] GET error:", error);
+      return NextResponse.json({ purchases: [] }, { headers: cors });
+    }
+    return NextResponse.json({ purchases: data || [] }, { headers: cors });
+  } catch (err) {
+    console.error("[Credits/purchase] GET:", err);
+    return NextResponse.json({ purchases: [] }, { headers: cors });
+  }
+}
+
+/* POST /api/credits/purchase — Debit credits from client, unlock media */
 export async function POST(req: NextRequest) {
   const cors = getCorsHeaders(req);
   try {
