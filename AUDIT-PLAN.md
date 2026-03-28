@@ -27,28 +27,28 @@ Audit realise par 6 equipes specialisees. **149 issues identifiees** sur l'ensem
 - **Probleme**: Aucune route API ne verifie d'authentification. Toute personne connaissant un model slug peut lire/ecrire donnees.
 - **Fichiers**: Toutes les routes dans `src/app/api/`
 - **Solution**: Creer `src/lib/auth-middleware.ts` avec validation JWT + role-based access
-- **Status**: [ ] A FAIRE
+- **Status**: [ ] A FAIRE (hors scope fondations — necessite refonte auth)
 
 ### 1.2 Race condition credits (double-depense)
 - **Probleme**: `src/app/api/credits/purchase/route.ts` — check-then-act sans transaction. Requetes concurrentes peuvent debiter plus que le solde.
-- **Solution**: Utiliser Supabase RPC avec `FOR UPDATE` lock ou colonne version
-- **Status**: [ ] A FAIRE
+- **Solution**: UPDATE atomique avec `.lte("total_tokens_spent", bought - price)` guard
+- **Status**: [x] CORRIGE (28/03/2026)
 
 ### 1.3 Code validation double-spending
-- **Probleme**: `src/app/api/codes/route.ts` (ligne 63-88) — un code peut etre valide 2 fois si 2 requetes arrivent en meme temps
-- **Solution**: Ajouter `.eq("used", false)` dans l'update atomique
-- **Status**: [ ] A FAIRE
+- **Probleme**: `src/app/api/codes/route.ts` — un code peut etre valide 2 fois si 2 requetes arrivent en meme temps
+- **Solution**: `.eq("used", false)` dans l'UPDATE atomique + `.maybeSingle()` pour detecter conflit
+- **Status**: [x] CORRIGE (28/03/2026)
 
 ### 1.4 CORS wildcard par defaut
-- **Probleme**: `src/lib/auth.ts` — quand `req` est undefined, origin = `"*"` avec credentials
-- **Solution**: Fallback sur `ALLOWED_ORIGINS[0]` au lieu de `"*"`
-- **Status**: [ ] A FAIRE
+- **Probleme**: 21 routes API appelaient `getCorsHeaders()` au niveau module (sans `req`) → origin `"*"`
+- **Solution**: `getCorsHeaders(req)` dans chaque handler (GET/POST/PUT/DELETE/OPTIONS)
+- **Status**: [x] CORRIGE (28/03/2026) — 21/21 routes
 
 ### 1.5 Confirmation avant actions destructives
 - **Probleme**: Revoke/pause/delete code = 1 clic, pas de confirmation visuelle
 - **Fichiers**: `src/components/cockpit/codes-list.tsx`
-- **Solution**: Modal de confirmation avec message clair
-- **Status**: [ ] A FAIRE
+- **Solution**: Composant `<ConfirmDialog>` cree dans `src/components/ui/confirm-dialog.tsx` — a integrer
+- **Status**: [~] COMPOSANT PRET — integration Couche 4
 
 ### 1.6 Cascade delete non atomique
 - **Probleme**: `src/app/api/accounts/route.ts` DELETE — Promise.all de 7+ deletes, si un fail = DB inconsistante
@@ -56,9 +56,9 @@ Audit realise par 6 equipes specialisees. **149 issues identifiees** sur l'ensem
 - **Status**: [ ] A FAIRE
 
 ### 1.7 Error messages leak info DB
-- **Probleme**: Certaines routes retournent `error.message` de Supabase au client
-- **Solution**: Log server-side, retourner message generique au client
-- **Status**: [ ] A FAIRE
+- **Probleme**: Certaines routes retournaient `detail: error.message` de Supabase au client (31 occurrences)
+- **Solution**: Suppression de tous les `detail:` dans les reponses JSON, log server-side conserve
+- **Status**: [x] CORRIGE (28/03/2026) — 0 leak restant
 
 ---
 
@@ -66,35 +66,34 @@ Audit realise par 6 equipes specialisees. **149 issues identifiees** sur l'ensem
 
 ### 2.1 Loading skeletons
 - **Probleme**: Ecran blanc pendant fetch sur profile (`m/[slug]`) et dashboard (`agence/`)
-- **Solution**: Composant `<Skeleton />` affiche pendant `loading && !data`
-- **Status**: [ ] A FAIRE
+- **Solution**: Composant `<Skeleton />` + `<SkeletonCard />` + `<SkeletonStat />` crees
+- **Status**: [~] COMPOSANT PRET (`src/components/ui/skeleton.tsx`) — integration Couche 4
 
 ### 2.2 Toast/error system global
 - **Probleme**: 90% des erreurs reseau sont console.error — user ne voit rien
-- **Fichiers**: Tous les `catch { }` vides dans agence/page.tsx et m/[slug]/page.tsx
-- **Solution**: Systeme de toast global (Sonner ou custom) + `role="alert"` aria
-- **Status**: [ ] A FAIRE
+- **Solution**: `<ToastProvider>` + `useToast()` hook avec 4 types (success/error/warning/info), auto-dismiss 3s, `aria-live`
+- **Status**: [~] COMPOSANT PRET (`src/components/ui/toast.tsx`) — integration Couche 4
 
 ### 2.3 Remplacer emojis par lucide-react
-- **Probleme**: Pipeline stages utilisent 💡📋📸🎬✅🚀 — non scalable, inaccessible
-- **Fichiers**: `src/app/agence/page.tsx` (lignes 102-107), `src/app/m/[slug]/page.tsx` (lignes 944-948)
-- **Mapping**: 💡→Lightbulb, 📋→ClipboardList, 📸→Camera, 🎬→Film, ✅→Check, 🚀→Rocket, 🔥→Flame, ⚡→Zap, 🎨→Palette, 💎→Diamond, 💬→MessageCircle
-- **Status**: [ ] A FAIRE
+- **Probleme**: Pipeline stages utilisent emojis — non scalable, inaccessible
+- **Fichiers**: `src/app/agence/page.tsx`, `src/app/m/[slug]/page.tsx`
+- **Mapping**: Lightbulb, ClipboardList, Camera, Film, Check, Rocket, Flame, Zap, Palette, Diamond, MessageCircle
+- **Status**: [ ] A FAIRE (Couche 4)
 
 ### 2.4 Font sizes minimum 11px
 - **Probleme**: 138 occurrences de `text-[7px]`, `text-[8px]`, `text-[9px]` — non WCAG
-- **Solution**: Remplacer par `text-[10px]` minimum (idealement `text-[11px]`)
-- **Status**: [ ] A FAIRE
+- **Solution**: Remplacer par `text-[10px]` minimum
+- **Status**: [ ] A FAIRE (Couche 4)
 
 ### 2.5 Tabs accessibles (ARIA)
 - **Probleme**: Pivot tabs Feed/Messages dans agence/ n'ont pas `role="tablist"`, `role="tab"`, `aria-selected`
-- **Fichiers**: `src/app/agence/page.tsx` (lignes 540-561)
-- **Status**: [ ] A FAIRE
+- **Solution**: Composant `<Tabs />` accessible avec keyboard nav cree
+- **Status**: [~] COMPOSANT PRET (`src/components/ui/tabs.tsx`) — integration Couche 4
 
 ### 2.6 FAB + sidebar accessibilite
 - **Probleme**: Boutons sans `aria-label`, sidebar toggle sans `aria-expanded`
 - **Fichiers**: `src/components/sidebar.tsx`, `src/components/pilot-assistant.tsx`
-- **Status**: [ ] A FAIRE
+- **Status**: [ ] A FAIRE (Couche 4)
 
 ---
 
@@ -112,23 +111,23 @@ Audit realise par 6 equipes specialisees. **149 issues identifiees** sur l'ensem
 
 ### 3.2 Centraliser types
 - **Probleme**: `AccessCode`, `PackConfig`, `ClientInfo` definis 3-4 fois inline
-- **Solution**: Creer `src/types/heaven.ts` avec tous les types partages
-- **Status**: [ ] A FAIRE
+- **Solution**: `src/types/heaven.ts` — 20 interfaces centralisees, imports dans 10 fichiers
+- **Status**: [x] CORRIGE (28/03/2026)
 
 ### 3.3 Centraliser constantes tiers
-- **Probleme**: TIER_COLORS, TIER_META, TIER_HEX dupliques dans 4 fichiers
-- **Solution**: Creer `src/constants/tiers.ts` avec config unique
-- **Status**: [ ] A FAIRE
+- **Probleme**: TIER_COLORS, TIER_META, TIER_HEX dupliques dans 5 fichiers
+- **Solution**: `src/constants/tiers.ts` — TIER_CONFIG unique + exports backward-compat
+- **Status**: [x] CORRIGE (28/03/2026)
 
 ### 3.4 CSS vars pour shadows et gradients
 - **Probleme**: 15+ box-shadow inline differentes, aucune standardisee
-- **Solution**: Ajouter `--shadow-sm`, `--shadow-md`, `--shadow-lg`, `--shadow-xl` dans globals.css
-- **Status**: [ ] A FAIRE
+- **Solution**: `--shadow-xs/sm/md/lg/xl/accent` + `--gradient-gold/accent` dans globals.css
+- **Status**: [x] CORRIGE (28/03/2026)
 
 ### 3.5 Couleurs hardcodees → CSS vars
 - **Probleme**: Hex (#C9A84C, #7C3AED, etc.) utilises au lieu de var(--gold), var(--accent)
 - **Fichiers**: pilot-assistant.tsx, agence/page.tsx, sidebar.tsx, login/page.tsx
-- **Status**: [ ] A FAIRE
+- **Status**: [ ] A FAIRE (Couche 4)
 
 ### 3.6 Error boundaries
 - **Probleme**: Aucun `error.tsx` dans /agence ou /m — page crash = ecran blanc
@@ -185,6 +184,28 @@ Audit realise par 6 equipes specialisees. **149 issues identifiees** sur l'ensem
 | - | `src/components/pilot-assistant.tsx` | Nouveau composant PILOT (chatbot guide admin) |
 | - | `src/lib/pilot-flows.ts` | Config flows PILOT (3 flows: post, code, contenu) |
 
+### 28 mars 2026 — Fondations (Couches 0-3)
+| Heure | Fichier | Modification |
+|-------|---------|-------------|
+| - | `src/types/heaven.ts` | **NOUVEAU** — 20 interfaces centralisees (PackConfig, AccessCode, ClientInfo, FeedPost, Post, WallPost, ModelInfo, UploadedContent, Message, Conversation, ContentItem, PlatformAccount, Goal, CodeRow, etc.) |
+| - | `src/constants/tiers.ts` | **NOUVEAU** — TIER_CONFIG, TIER_COLORS, TIER_META, TIER_HEX, PLATFORM_COLORS — source unique |
+| - | `src/constants/packs.ts` | **NOUVEAU** — DEFAULT_PACKS reconcilie (couleurs alignees sur CSS vars) |
+| - | `src/lib/api-utils.ts` | **NOUVEAU** — sanitize(), apiError(), apiSuccess() |
+| - | `src/components/ui/toast.tsx` | **NOUVEAU** — ToastProvider + useToast() hook, 4 types, auto-dismiss, aria-live |
+| - | `src/components/ui/spinner.tsx` | **NOUVEAU** — Spinner sm/md/lg reutilisable |
+| - | `src/components/ui/empty-state.tsx` | **NOUVEAU** — EmptyState avec icon, title, description, action |
+| - | `src/components/ui/confirm-dialog.tsx` | **NOUVEAU** — ConfirmDialog avec backdrop, destructive mode, Escape |
+| - | `src/components/ui/tabs.tsx` | **NOUVEAU** — Tabs accessible (role=tablist, aria-selected, keyboard nav) |
+| - | `src/components/ui/skeleton.tsx` | **NOUVEAU** — Skeleton line/circle/card + SkeletonCard + SkeletonStat |
+| - | `src/components/ui/tier-badge.tsx` | **NOUVEAU** — TierBadge utilisant TIER_CONFIG |
+| - | `src/app/globals.css` | Ajout shadow scale (xs→xl), gradient tokens, tier vars (free, public) |
+| - | 10 fichiers pages/components | Remplacement types inline par imports `@/types/heaven` |
+| - | 5 fichiers pages/components | Remplacement TIER_COLORS/TIER_META inline par imports `@/constants/tiers` |
+| - | 21 routes API | Fix CORS: `getCorsHeaders(req)` dans chaque handler (etait module-level sans req) |
+| - | 21 routes API | Suppression 31 occurrences `detail: error.message` (leak info DB) |
+| - | `src/app/api/codes/route.ts` | Fix race condition: `.eq("used", false)` dans UPDATE atomique |
+| - | `src/app/api/credits/purchase/route.ts` | Fix race condition: `.lte()` balance guard, deduct-before-record |
+
 ---
 
 ## Notes Techniques
@@ -209,19 +230,33 @@ src/
 │   ├── m/[slug]/
 │   │   ├── layout.tsx      ← Layout profil (robots: noindex)
 │   │   └── page.tsx        ← Profil model (2392 lignes!)
-│   └── api/                ← 20+ routes API (AUCUNE AUTH)
+│   └── api/                ← 21 routes API (CORS fixe, detail leak supprime)
+├── types/
+│   └── heaven.ts           ← Types centralises (20 interfaces)
+├── constants/
+│   ├── tiers.ts            ← TIER_CONFIG/COLORS/META/HEX + PLATFORM_COLORS
+│   └── packs.ts            ← DEFAULT_PACKS reconcilie
 ├── components/
 │   ├── sidebar.tsx
 │   ├── os-layout.tsx
 │   ├── pilot-assistant.tsx
 │   ├── auth-guard.tsx
 │   ├── content-protection.tsx
-│   └── cockpit/
-│       ├── stat-cards.tsx
-│       ├── codes-list.tsx
-│       └── generate-modal.tsx
+│   ├── cockpit/
+│   │   ├── stat-cards.tsx
+│   │   ├── codes-list.tsx
+│   │   └── generate-modal.tsx
+│   └── ui/                 ← Composants atomiques reutilisables
+│       ├── toast.tsx        ← ToastProvider + useToast()
+│       ├── spinner.tsx      ← Spinner sm/md/lg
+│       ├── empty-state.tsx  ← EmptyState
+│       ├── confirm-dialog.tsx ← ConfirmDialog
+│       ├── tabs.tsx         ← Tabs accessible (ARIA)
+│       ├── skeleton.tsx     ← Skeleton + SkeletonCard + SkeletonStat
+│       └── tier-badge.tsx   ← TierBadge
 └── lib/
     ├── auth.ts             ← CORS + validation slug
+    ├── api-utils.ts        ← sanitize(), apiError(), apiSuccess()
     ├── cloudinary.ts       ← Upload/delete/transform
     ├── model-context.tsx   ← Context models (hardcode)
     └── supabase-server.ts  ← Client Supabase service_role
@@ -232,10 +267,12 @@ src/
 - Surfaces: `--surface`, `--surface-hover`
 - Borders: `--border`, `--border2`, `--border3`
 - Accents: `--accent`, `--accent-hover`, `--rose`, `--gold`, `--gold2`
-- Tiers: `--tier-vip`, `--tier-gold`, `--tier-diamond`, `--tier-platinum`
+- Tiers: `--tier-vip`, `--tier-gold`, `--tier-diamond`, `--tier-platinum`, `--tier-free`, `--tier-public`
 - Status: `--success`, `--danger`, `--warning`
 - Text: `--text`, `--text-secondary`, `--text-muted`
 - Radius: `--radius` (12px), `--radius-lg` (16px), `--radius-xl` (20px)
+- Shadows: `--shadow-xs`, `--shadow-sm`, `--shadow-md`, `--shadow-lg`, `--shadow-xl`, `--shadow-accent`
+- Gradients: `--gradient-gold`, `--gradient-accent`
 
 ### Tables Supabase utilisees
 - `agence_accounts` — comptes model
