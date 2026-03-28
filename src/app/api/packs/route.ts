@@ -28,7 +28,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
   }
   try {
-    const supabase = requireSupabase();
+    const supabase = getServerSupabase();
+    if (!supabase) {
+      return NextResponse.json({ packs: DEFAULT_PACKS }, { headers: cors });
+    }
     const { data, error } = await supabase
       .from("agence_packs").select("*")
       .eq("model", model)
