@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { getCorsHeaders } from "@/lib/auth";
+import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -25,8 +25,8 @@ export async function GET(req: NextRequest) {
     const clientIdFilter = req.nextUrl.searchParams.get("client_id");
 
     // Require at least a model filter to prevent full table dump
-    if (!modelFilter) {
-      return NextResponse.json({ error: "model parameter required" }, { status: 400, headers: cors });
+    if (!isValidModelSlug(modelFilter)) {
+      return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
     }
 
     let q = supabase
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { model, client_id, sender_type, content } = body;
 
-    if (!model || !client_id || !sender_type || !content) {
+    if (!isValidModelSlug(model) || !client_id || !sender_type || !content) {
       return NextResponse.json({ error: "model, client_id, sender_type, content requis" }, { status: 400, headers: cors });
     }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { getCorsHeaders } from "@/lib/auth";
+import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -40,7 +40,10 @@ export async function OPTIONS() {
 }
 
 export async function GET(req: NextRequest) {
-  const model = req.nextUrl.searchParams.get("model") || "yumi";
+  const model = req.nextUrl.searchParams.get("model");
+  if (!isValidModelSlug(model)) {
+    return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
+  }
   try {
     const supabase = requireSupabase();
     const { data, error } = await supabase
@@ -76,7 +79,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const model = body.model || "yumi";
+    const model = body.model;
+    if (!isValidModelSlug(model)) return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
 
     const packs = body.packs;
     if (!Array.isArray(packs)) return NextResponse.json({ error: "packs array requis" }, { status: 400, headers: cors });

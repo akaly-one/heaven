@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { getCorsHeaders } from "@/lib/auth";
+import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -27,10 +27,14 @@ export async function GET(req: NextRequest) {
 
   try {
     const supabase = requireSupabase();
+    if (model && !isValidModelSlug(model)) {
+      return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
+    }
     let q = supabase
       .from("agence_content_pipeline")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
 
     if (model) q = q.eq("model_slug", model);
     if (stage) q = q.eq("stage", stage);
@@ -62,7 +66,7 @@ export async function POST(req: NextRequest) {
     const supabase = requireSupabase();
 
     const payload = {
-      model_slug: body.model_slug || "yumi",
+      model_slug: body.model_slug,
       title: body.title,
       content_type: body.content_type || "photo_set",
       platforms: body.platforms || [],
@@ -75,6 +79,9 @@ export async function POST(req: NextRequest) {
       thumbnail_url: body.thumbnail_url || null,
     };
 
+    if (!isValidModelSlug(payload.model_slug)) {
+      return NextResponse.json({ error: "model_slug requis" }, { status: 400, headers: cors });
+    }
     if (!payload.title) {
       return NextResponse.json(
         { error: "Title is required" },

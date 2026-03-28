@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 
 export type HeavenRole = "root" | "model" | "client";
 
+// ── Validation ──
+
+/** Validate model slug: alphanumeric + hyphens, 1-30 chars */
+export function isValidModelSlug(slug: string | null | undefined): slug is string {
+  if (!slug) return false;
+  return /^[a-z0-9][a-z0-9-]{0,29}$/.test(slug);
+}
+
+/** Standard API error response */
+export function apiError(message: string, status: number, cors: Record<string, string>) {
+  return NextResponse.json({ error: message }, { status, headers: cors });
+}
+
 // ── CORS ──
 
 const ALLOWED_ORIGINS = [

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { getCorsHeaders } from "@/lib/auth";
+import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     const supabase = requireSupabase();
 
     const payload = {
-      model_slug: body.model_slug || "yumi",
+      model_slug: body.model_slug,
       platform: body.platform,
       handle: body.handle,
       profile_url: body.profile_url || null,
@@ -71,6 +71,9 @@ export async function POST(req: NextRequest) {
       notes: body.notes || null,
     };
 
+    if (!isValidModelSlug(payload.model_slug)) {
+      return NextResponse.json({ error: "model_slug requis" }, { status: 400, headers: cors });
+    }
     if (!payload.platform || !payload.handle) {
       return NextResponse.json(
         { error: "Platform and handle are required" },

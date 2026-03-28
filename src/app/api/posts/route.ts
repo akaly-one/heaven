@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { getCorsHeaders } from "@/lib/auth";
+import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -22,6 +22,9 @@ export async function GET(req: NextRequest) {
     if (!supabase) return NextResponse.json({ posts: [] }, { headers: cors });
 
     const model = req.nextUrl.searchParams.get("model");
+    if (model && !isValidModelSlug(model)) {
+      return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
+    }
 
     let q = supabase
       .from("agence_posts")
@@ -48,7 +51,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const model = body.model;
 
-    if (!model) return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
+    if (!isValidModelSlug(model)) return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
 
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });

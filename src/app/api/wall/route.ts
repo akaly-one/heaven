@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { getCorsHeaders } from "@/lib/auth";
+import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 
 export const runtime = "nodejs";
 const cors = getCorsHeaders();
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     const pseudo_snap = body.pseudo_snap ? sanitize(body.pseudo_snap) : null;
     const pseudo_insta = body.pseudo_insta ? sanitize(body.pseudo_insta) : null;
 
-    if (!model || !pseudo) {
+    if (!isValidModelSlug(model) || !pseudo) {
       return NextResponse.json({ error: "model and pseudo required" }, { status: 400, headers: cors });
     }
     if (!content && !photo_url) {

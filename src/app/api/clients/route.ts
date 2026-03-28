@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { getCorsHeaders } from "@/lib/auth";
+import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -17,11 +17,15 @@ export async function GET(req: NextRequest) {
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
     const modelFilter = req.nextUrl.searchParams.get("model");
+    if (modelFilter && !isValidModelSlug(modelFilter)) {
+      return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
+    }
 
     let q = supabase
       .from("agence_clients")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
 
     if (modelFilter) q = q.eq("model", modelFilter);
 
@@ -44,7 +48,7 @@ export async function POST(req: NextRequest) {
     const pseudo_snap = body.pseudo_snap ? body.pseudo_snap.trim().toLowerCase() : null;
     const pseudo_insta = body.pseudo_insta ? body.pseudo_insta.trim().toLowerCase() : null;
 
-    if (!model) return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
+    if (!model || !isValidModelSlug(model)) return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
     if (!pseudo_snap && !pseudo_insta) {
       return NextResponse.json({ error: "pseudo_snap ou pseudo_insta requis" }, { status: 400, headers: cors });
     }

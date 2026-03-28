@@ -680,9 +680,8 @@ export default function ModelPage() {
       setWallContent("");
       // Refresh wall
       const res = await fetch(`/api/wall?model=${slug}`);
-      const d = await res.json();
-      setWallPosts(d.posts || []);
-    } catch {} finally {
+      if (res.ok) { const d = await res.json(); setWallPosts(d.posts || []); }
+    } catch (err) { console.error("[Profile] wall post failed:", err); } finally {
       setWallPosting(false);
     }
   };

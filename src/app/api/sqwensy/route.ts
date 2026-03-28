@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { getCorsHeaders } from "@/lib/auth";
+import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
       case "sync_client": {
         // Create or update a client from SQWENSY referral
         const clientData = {
-          model: body.model_slug || "yumi",
+          model: body.model_slug,
           pseudo_snap: body.pseudo_snap || null,
           pseudo_insta: body.pseudo_insta || null,
           firstname: body.firstname || null,
@@ -299,7 +299,10 @@ export async function POST(request: NextRequest) {
       case "register_packs": {
         // Register Heaven packs as shop items on SQWENSY OS
         // Returns secret link URLs for each pack
-        const modelSlug = body.model_slug || "yumi";
+        const modelSlug = body.model_slug;
+        if (!isValidModelSlug(modelSlug)) {
+          return NextResponse.json({ error: "model_slug requis" }, { status: 400, headers: cors });
+        }
         const packsList = body.packs as Array<{
           id: string; name: string; price: number; code: string;
         }>;
@@ -377,7 +380,7 @@ export async function POST(request: NextRequest) {
       case "push_notification": {
         // Log a notification from SQWENSY OS (store in content pipeline as note)
         const notePayload = {
-          model_slug: body.model_slug || "yumi",
+          model_slug: body.model_slug,
           title: body.title || "SQWENSY Notification",
           content_type: "custom",
           platforms: [],

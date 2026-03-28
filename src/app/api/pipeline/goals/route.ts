@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { getCorsHeaders } from "@/lib/auth";
+import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     const supabase = requireSupabase();
 
     const payload = {
-      model_slug: body.model_slug || "yumi",
+      model_slug: body.model_slug,
       title: body.title,
       category: body.category || "revenue",
       target_value: body.target_value || 0,
@@ -72,6 +72,9 @@ export async function POST(req: NextRequest) {
       status: body.status || "active",
     };
 
+    if (!isValidModelSlug(payload.model_slug)) {
+      return NextResponse.json({ error: "model_slug requis" }, { status: 400, headers: cors });
+    }
     if (!payload.title) {
       return NextResponse.json(
         { error: "Title is required" },

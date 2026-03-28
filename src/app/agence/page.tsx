@@ -189,52 +189,39 @@ export default function AgenceDashboard() {
   // ── Load data ──
   useEffect(() => {
     const headers = authHeaders();
+    const safeFetch = (url: string) => fetch(url, { headers }).then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); });
 
-    // Fetch codes
-    fetch(`/api/codes?model=${modelSlug}`, { headers })
-      .then(r => r.json())
+    safeFetch(`/api/codes?model=${modelSlug}`)
       .then(d => setCodes(d.codes || []))
-      .catch(err => console.error("[Cockpit] Failed to fetch codes:", err));
+      .catch(err => console.error("[Cockpit] codes:", err));
 
-    // Fetch clients
-    fetch(`/api/clients?model=${modelSlug}`, { headers })
-      .then(r => r.json())
+    safeFetch(`/api/clients?model=${modelSlug}`)
       .then(d => setClients(d.clients || []))
-      .catch(() => {});
+      .catch(err => console.error("[Cockpit] clients:", err));
 
-    // Fetch packs
-    fetch(`/api/packs?model=${modelSlug}`, { headers })
-      .then(r => r.json())
+    safeFetch(`/api/packs?model=${modelSlug}`)
       .then(d => { if (d.packs?.length > 0) setPacks(d.packs); })
-      .catch(() => {});
+      .catch(err => console.error("[Cockpit] packs:", err));
 
-    // Fetch model info
-    fetch(`/api/models/${modelSlug}`, { headers })
-      .then(r => r.json())
+    safeFetch(`/api/models/${modelSlug}`)
       .then(d => setModelInfo(d))
-      .catch(() => {});
+      .catch(err => console.error("[Cockpit] model info:", err));
 
-    // Fetch recent feed posts
-    fetch(`/api/posts?model=${modelSlug}`, { headers })
-      .then(r => r.json())
+    safeFetch(`/api/posts?model=${modelSlug}`)
       .then(d => setFeedPosts((d.posts || []).slice(0, 5)))
-      .catch(() => {});
+      .catch(err => console.error("[Cockpit] posts:", err));
 
-    // Fetch pending messages count + recent messages
-    fetch(`/api/messages?model=${modelSlug}`, { headers })
-      .then(r => r.json())
+    safeFetch(`/api/messages?model=${modelSlug}`)
       .then(d => {
         const msgs = d.messages || [];
         setChatMessages(msgs.slice(0, 20));
         setPendingMessages(msgs.filter((m: { sender_type: string; read?: boolean }) => m.sender_type === "client" && !m.read).length);
       })
-      .catch(() => {});
+      .catch(err => console.error("[Cockpit] messages:", err));
 
-    // Fetch pipeline goals
-    fetch(`/api/pipeline/goals?model=${modelSlug}`, { headers })
-      .then(r => r.json())
+    safeFetch(`/api/pipeline/goals?model=${modelSlug}`)
       .then(d => setPipelineGoals((d.goals || []).slice(0, 6)))
-      .catch(() => {});
+      .catch(err => console.error("[Cockpit] goals:", err));
   }, [modelSlug, authHeaders]);
 
   useEffect(() => { const iv = setInterval(() => setTick(t => t + 1), 60000); return () => clearInterval(iv); }, []);
@@ -432,7 +419,8 @@ export default function AgenceDashboard() {
     if (!file) return;
     setUploadError(null);
     setNewPostPhotoFile(file);
-    // Create a local preview URL (fast, no network)
+    // Revoke previous blob URL to prevent memory leak
+    setNewPostPhoto(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
     const previewUrl = URL.createObjectURL(file);
     setNewPostPhoto(previewUrl);
   }, []);

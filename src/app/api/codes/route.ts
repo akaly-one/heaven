@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { getCorsHeaders } from "@/lib/auth";
+import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -31,9 +31,12 @@ export async function OPTIONS() {
 // ── GET ──
 export async function GET(req: NextRequest) {
   const model = req.nextUrl.searchParams.get("model");
+  if (model && !isValidModelSlug(model)) {
+    return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
+  }
   try {
     const supabase = requireSupabase();
-    let q = supabase.from("agence_codes").select("*").order("created_at", { ascending: false });
+    let q = supabase.from("agence_codes").select("*").order("created_at", { ascending: false }).limit(500);
     if (model) q = q.eq("model", model);
     const { data, error } = await q;
 
@@ -59,8 +62,9 @@ export async function POST(req: NextRequest) {
     // ── VALIDATE ──
     if (body.action === "validate") {
       const trimmed = (body.code || "").trim().toUpperCase().replace(/\s+/g, "");
-      const model = body.model || "yumi";
+      const model = body.model;
       if (!trimmed) return NextResponse.json({ error: "Code requis" }, { status: 400, headers: cors });
+      if (!isValidModelSlug(model)) return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
 
       const { data: found, error } = await supabase
         .from("agence_codes").select("*")
@@ -86,7 +90,8 @@ export async function POST(req: NextRequest) {
 
     // ── CREATE ──
     const normalizedClient = (body.client || "").trim().toLowerCase();
-    const model = body.model || "yumi";
+    const model = body.model;
+    if (!isValidModelSlug(model)) return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
     const platform = body.platform || "snapchat";
 
     const newCode: CodeRow = {

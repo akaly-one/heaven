@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { getCorsHeaders } from "@/lib/auth";
+import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 
 export const runtime = "nodejs";
 const cors = getCorsHeaders();
@@ -23,8 +23,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { subscriberId, modelId, page } = body;
 
-    if (!subscriberId || !modelId) {
-      return NextResponse.json({ error: "subscriberId and modelId required" }, { status: 400, headers: cors });
+    if (!subscriberId || !isValidModelSlug(modelId)) {
+      return NextResponse.json({ error: "subscriberId and valid modelId required" }, { status: 400, headers: cors });
     }
 
     const supabase = getServerSupabase();
@@ -60,17 +60,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Subscriber not found" }, { status: 404, headers: cors });
     }
 
-    const newCount = (client.screenshot_count || 0) + 1;
     const clientPseudo = client.pseudo_snap || client.pseudo_insta || "unknown";
 
-    // 2. Update screenshot count on client
-    await supabase
+    // 2. Atomic increment screenshot count (avoids race condition)
+    const { data: updated } = await supabase
       .from("agence_clients")
       .update({
-        screenshot_count: newCount,
+        screenshot_count: (client.screenshot_count || 0) + 1,
         last_screenshot_at: serverTimestamp,
       })
-      .eq("id", subscriberId);
+      .eq("id", subscriberId)
+      .select("screenshot_count")
+      .single();
+
+    const newCount = updated?.screenshot_count ?? (client.screenshot_count || 0) + 1;
 
     // 3. Log security alert
     await supabase.from("agence_security_alerts").insert({
@@ -122,8 +125,8 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const model = req.nextUrl.searchParams.get("model");
-    if (!model) {
-      return NextResponse.json({ error: "model required" }, { status: 400, headers: cors });
+    if (!isValidModelSlug(model)) {
+      return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
     }
 
     const supabase = getServerSupabase();
