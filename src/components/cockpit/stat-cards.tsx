@@ -12,10 +12,10 @@ interface StatCardsProps {
 
 export function StatCards({ activeCodes, totalCodes, revenue, pendingCount, uniqueClients }: StatCardsProps) {
   const stats = [
-    { icon: Key, value: activeCodes, label: "Actifs", sub: `/${totalCodes}`, color: "#C9A84C" },
+    { icon: Key, value: activeCodes, label: "Actifs", sub: `/${totalCodes}`, color: "#7C6A2F" },
     { icon: Users, value: uniqueClients ?? 0, label: "Clients", color: "#E63329" },
     { icon: DollarSign, value: `${revenue}€`, label: "Revenue", color: "#16A34A" },
-    { icon: Clock, value: pendingCount, label: "Attente", color: "#D97706" },
+    { icon: Clock, value: pendingCount, label: "Attente", color: "#B45309" },
   ];
 
   return (

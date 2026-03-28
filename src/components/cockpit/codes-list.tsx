@@ -145,7 +145,7 @@ export function CodesList({
   const getStatus = (c: AccessCode) => {
     if (c.revoked) return { label: "Revoque", color: "var(--danger)", bg: "rgba(244,63,94,0.1)" };
     if (isExpired(c.expiresAt)) return { label: "Expire", color: "var(--text-muted)", bg: "rgba(255,255,255,0.04)" };
-    if (!c.active) return { label: "Pause", color: "#F59E0B", bg: "rgba(245,158,11,0.1)" };
+    if (!c.active) return { label: "Pause", color: "#B45309", bg: "rgba(245,158,11,0.1)" };
     return { label: "Actif", color: "var(--success)", bg: "rgba(16,185,129,0.1)" };
   };
 
@@ -251,7 +251,7 @@ export function CodesList({
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       {ci?.pseudo_snap && (
-                        <span className="text-[10px]" style={{ color: "#FFFC00" }}>@{ci.pseudo_snap}</span>
+                        <span className="text-[10px]" style={{ color: "#997A00" }}>@{ci.pseudo_snap}</span>
                       )}
                       {ci?.pseudo_insta && (
                         <span className="text-[10px]" style={{ color: "#E1306C" }}>@{ci.pseudo_insta}</span>
@@ -535,7 +535,7 @@ export function CodesList({
                                         {c.active && !c.revoked && (
                                           <button onClick={() => { onPause(c.code); setMenuOpen(null); }}
                                             className="w-full px-3 py-1.5 text-left text-[11px] flex items-center gap-2 cursor-pointer hover:opacity-80"
-                                            style={{ color: "#F59E0B" }}>
+                                            style={{ color: "#B45309" }}>
                                             <Pause className="w-3 h-3" /> Pause
                                           </button>
                                         )}
@@ -600,7 +600,7 @@ export function CodesList({
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="flex-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer hover:scale-105 transition-transform flex items-center justify-center gap-1 no-underline"
-                                      style={{ background: "rgba(255,252,0,0.08)", color: "#FFFC00", border: "1px solid rgba(255,252,0,0.2)" }}>
+                                      style={{ background: "rgba(153,122,0,0.08)", color: "#997A00", border: "1px solid rgba(153,122,0,0.2)" }}>
                                       <ExternalLink className="w-3 h-3" /> Snap @{snapHandle}
                                     </a>
                                   )}

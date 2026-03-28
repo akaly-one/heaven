@@ -43,7 +43,7 @@ const PLATFORMS: Platform[] = [
     tasks: ["Publier 3+ stories", "Poster 1 reel", "Repondre DMs", "Interagir avec followers", "Bio link a jour"],
   },
   {
-    id: "snapchat", name: "Snapchat", icon: Camera, color: "#FFFC00",
+    id: "snapchat", name: "Snapchat", icon: Camera, color: "#997A00",
     commission: "0%", automation: "manual",
     tasks: ["Envoyer snaps prives VIP+", "Verifier codes expirants", "Repondre aux messages", "Poster story publique"],
   },

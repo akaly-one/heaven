@@ -221,7 +221,7 @@ export default function AgenceDashboard() {
   const TIER_OPTIONS = [
     { id: "public", label: "Public", color: "#64748B" },
     { id: "vip", label: "VIP", color: "#F43F5E" },
-    { id: "gold", label: "Gold", color: "#F59E0B" },
+    { id: "gold", label: "Gold", color: "#B45309" },
     { id: "diamond", label: "Diamond", color: "#7C3AED" },
     { id: "platinum", label: "Platinum", color: "#A78BFA" },
   ];

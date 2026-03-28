@@ -422,7 +422,7 @@ export default function ModelPage() {
         id: `pack-${Date.now()}`,
         name: "New Pack",
         price: 100,
-        color: "#C9A84C",
+        color: "#7C6A2F",
         features: ["Feature 1"],
         face: false,
         badge: null,

@@ -36,10 +36,10 @@ export const TIER_CONFIG: Record<string, TierConfig> = {
   },
   gold: {
     color: "var(--tier-gold)",
-    hex: "#D4A017",
+    hex: "#9E7C1F",
     symbol: "\u2605",
     label: "Gold",
-    bg: "rgba(212,160,23,0.08)",
+    bg: "rgba(158,124,31,0.08)",
   },
   diamond: {
     color: "var(--tier-diamond)",
@@ -81,6 +81,6 @@ export const PLATFORM_COLORS: Record<string, string> = {
   instagram: "#E1306C",
   tiktok: "#69C9D0",
   twitter: "#1DA1F2",
-  snapchat: "#FFFC00",
+  snapchat: "#997A00",
   youtube: "#FF0000",
 };

@@ -47,7 +47,7 @@ export default function FinancesPage() {
     { label: "Revenue total", value: `${totalRevenue.toFixed(0)}€`, icon: DollarSign, color: "#00D68F" },
     { label: "Clients payants", value: activeClients.toString(), icon: Users, color: "#5B8DEF" },
     { label: "Panier moyen", value: `${avgSpend.toFixed(0)}€`, icon: CreditCard, color: "#E84393" },
-    { label: "Commission 25%", value: `${(totalRevenue * 0.25).toFixed(0)}€`, icon: TrendingUp, color: "#C9A84C" },
+    { label: "Commission 25%", value: `${(totalRevenue * 0.25).toFixed(0)}€`, icon: TrendingUp, color: "#7C6A2F" },
   ];
 
   return (

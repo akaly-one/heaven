@@ -126,8 +126,8 @@ export function GenerateModal({ open, onClose, onGenerate, modelSlug, prefillCli
                       : `https://www.snapchat.com/`;
                     window.open(snapUrl, "_blank");
                   }}
-                  className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-medium cursor-pointer hover:scale-105 active:scale-95 transition-transform ${platform === "snapchat" ? "ring-1 ring-[#FFFC00]/40" : ""}`}
-                  style={{ background: "rgba(255,252,0,0.08)", color: "#FFFC00", border: "1px solid rgba(255,252,0,0.2)" }}>
+                  className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-medium cursor-pointer hover:scale-105 active:scale-95 transition-transform ${platform === "snapchat" ? "ring-1 ring-[#997A00]/40" : ""}`}
+                  style={{ background: "rgba(153,122,0,0.08)", color: "#997A00", border: "1px solid rgba(153,122,0,0.2)" }}>
                   <Send className="w-3.5 h-3.5" /> Snap
                   {platform === "snapchat" && client.trim() && <span className="text-[10px] opacity-70">@{client.trim().replace(/^@/, "").slice(0, 10)}</span>}
                 </button>
