@@ -517,22 +517,36 @@ export default function AgenceDashboard() {
           {/* ── Quick Actions ── */}
           <div className="flex gap-2 flex-wrap fade-up">
             {[
-              { label: "Strategie", href: "/agence/simulateur", icon: Target, color: "#E040FB" },
-              { label: "Galerie", href: `/m/${modelSlug}?edit=true#gallery`, icon: CameraIcon, color: "var(--accent)" },
-              { label: "Nouveau post", href: "#", icon: Plus, color: "#10B981" },
-              { label: "Automation", href: "/agence/automation", icon: Bot, color: "#06B6D4" },
+              { label: "Strategie", href: "/agence/simulateur", icon: Target, color: "#E040FB", onClick: undefined as (() => void) | undefined },
+              { label: "Galerie", href: `/m/${modelSlug}?edit=true#gallery`, icon: CameraIcon, color: "var(--accent)", onClick: undefined as (() => void) | undefined },
+              { label: "Nouveau post", href: undefined as string | undefined, icon: Plus, color: "#10B981", onClick: () => setShowNewPost(true) },
+              { label: "Automation", href: "/agence/automation", icon: Bot, color: "#06B6D4", onClick: undefined as (() => void) | undefined },
             ].map(action => (
-              <a key={action.label} href={action.href}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-semibold no-underline transition-all duration-200 hover:scale-105 active:scale-95"
-                style={{
-                  background: `${action.color}10`,
-                  border: `1px solid ${action.color}20`,
-                  color: action.color,
-                  boxShadow: `0 2px 8px ${action.color}08`,
-                }}>
-                <action.icon className="w-3.5 h-3.5" />
-                {action.label}
-              </a>
+              action.onClick ? (
+                <button key={action.label} onClick={action.onClick}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-semibold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+                  style={{
+                    background: `${action.color}10`,
+                    border: `1px solid ${action.color}20`,
+                    color: action.color,
+                    boxShadow: `0 2px 8px ${action.color}08`,
+                  }}>
+                  <action.icon className="w-3.5 h-3.5" />
+                  {action.label}
+                </button>
+              ) : (
+                <a key={action.label} href={action.href}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-semibold no-underline transition-all duration-200 hover:scale-105 active:scale-95"
+                  style={{
+                    background: `${action.color}10`,
+                    border: `1px solid ${action.color}20`,
+                    color: action.color,
+                    boxShadow: `0 2px 8px ${action.color}08`,
+                  }}>
+                  <action.icon className="w-3.5 h-3.5" />
+                  {action.label}
+                </a>
+              )
             ))}
           </div>
 

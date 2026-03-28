@@ -15,6 +15,9 @@ import { useScreenshotDetection } from "@/hooks/use-screenshot-detection";
 import { IdentityGate } from "@/components/identity-gate";
 import { SubscriptionStatusBar } from "@/components/subscription-status-bar";
 import { SubscriptionPanel } from "@/components/subscription-panel";
+import { WallTab } from "@/components/profile/wall-tab";
+import { GalleryTab } from "@/components/profile/gallery-tab";
+import { ShopTab } from "@/components/profile/shop-tab";
 
 // ── Types & Constants (centralized) ──
 import type { ModelInfo, Post, PackConfig, UploadedContent, WallPost, AccessCode, VisitorPlatform } from "@/types/heaven";
@@ -30,15 +33,7 @@ const TABS = [
 ] as const;
 type TabId = typeof TABS[number]["id"];
 
-// ── Credit packs for top-up ──
-const CREDIT_PACKS = [
-  { credits: 10, price: 5 },
-  { credits: 25, price: 10 },
-  { credits: 50, price: 18 },
-  { credits: 100, price: 30 },
-];
-
-// ── Tier bonus config ──
+// ── Tier bonus config (used by unlock sheet + checkout modal + handleTopup) ──
 const TIER_CREDIT_BONUS: Record<string, { multiplier: number; label: string; bonus?: string }> = {
   platinum: { multiplier: 3, label: "x3", bonus: "Triple crédits sur chaque recharge" },
   diamond: { multiplier: 2, label: "x2", bonus: "Double crédits sur chaque recharge" },
@@ -93,7 +88,13 @@ export default function ModelPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [packs, setPacks] = useState<PackConfig[]>([]);
   const [uploads, setUploads] = useState<UploadedContent[]>([]);
-  const [tab, setTab] = useState<TabId>("wall");
+  const [tab, setTab] = useState<TabId>(() => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.replace("#", "");
+      if (hash === "gallery" || hash === "shop" || hash === "wall") return hash as TabId;
+    }
+    return "wall";
+  });
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -1083,942 +1084,85 @@ export default function ModelPage() {
         {/* ═══ TAB CONTENT ═══ */}
         <div className="max-w-2xl mx-auto px-4">
 
-          {/* ── WALL (public visitor posts) ── */}
+          {/* ── WALL ── */}
           {tab === "wall" && (
-            <div className="space-y-3 fade-up">
-              {/* Composer — visitor always identified via gate */}
-              <div className="card-premium p-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                    style={{
-                      background: visitorPlatform === "snap" ? "rgba(255,252,0,0.15)"
-                        : visitorPlatform === "insta" ? "rgba(225,48,108,0.15)"
-                        : visitorPlatform === "phone" ? "rgba(22,163,74,0.12)"
-                        : "rgba(99,102,241,0.12)",
-                      color: visitorPlatform === "snap" ? "#FFFC00"
-                        : visitorPlatform === "insta" ? "#E1306C"
-                        : visitorPlatform === "phone" ? "#16A34A"
-                        : "#6366F1",
-                    }}>
-                    {visitorPlatform === "snap" ? <Ghost className="w-4 h-4" />
-                      : visitorPlatform === "insta" ? <Instagram className="w-4 h-4" />
-                      : visitorPlatform === "phone" ? <span className="text-[11px]">Tel</span>
-                      : <span className="text-[11px]">U</span>
-                    }
-                  </div>
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <div className="flex items-center gap-2">
-                      {visitorPlatform === "snap" ? <Ghost className="w-3.5 h-3.5 shrink-0" style={{ color: "#FFFC00" }} />
-                        : visitorPlatform === "insta" ? <Instagram className="w-3.5 h-3.5 shrink-0" style={{ color: "#E1306C" }} />
-                        : null
-                      }
-                      <span className="text-[12px] font-bold" style={{ color: "var(--text)" }}>@{visitorHandle}</span>
-                      <div className="flex-1" />
-                      <button onClick={() => { setVisitorRegistered(false); setClientId(null); sessionStorage.removeItem(`heaven_client_${slug}`); }}
-                        className="text-[10px] cursor-pointer opacity-50 hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>changer</button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        value={wallContent}
-                        onChange={e => setWallContent(e.target.value)}
-                        placeholder={`Un message pour ${model.display_name}...`}
-                        className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none transition-all focus:ring-1"
-                        style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)", "--tw-ring-color": "var(--accent)" } as React.CSSProperties}
-                        maxLength={500}
-                        onKeyDown={e => { if (e.key === "Enter" && wallContent.trim()) submitWallPost(); }}
-                      />
-                      <button onClick={submitWallPost} disabled={wallPosting || !wallContent.trim()}
-                        className="px-4 py-2.5 rounded-xl text-[11px] font-semibold cursor-pointer btn-gradient disabled:opacity-30 shrink-0 transition-all"
-                        style={{ minWidth: 56 }}>
-                        {wallPosting ? (
-                          <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                          <Send className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Unified feed: model posts + wall posts sorted by date ── */}
-              {(() => {
-                // Merge model posts and wall posts into a single timeline
-                const feedItems: Array<{ type: "model"; data: Post } | { type: "wall"; data: WallPost }> = [
-                  ...posts.map(p => ({ type: "model" as const, data: p })),
-                  ...wallPosts.map(w => ({ type: "wall" as const, data: w })),
-                ].sort((a, b) => new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime());
-
-                if (feedItems.length === 0) {
-                  return <EmptyState icon={Newspaper} text="Be the first to leave a message!" />;
-                }
-
-                return feedItems.map((item, i) => {
-                  if (item.type === "model") {
-                    const post = item.data;
-                    const postTier = post.tier_required || "public";
-                    const mediaUnlocked = postTier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, postTier));
-                    const tierMeta = TIER_META[postTier];
-                    const tierHex = TIER_HEX[postTier] || "#64748B";
-                    return (
-                      <div key={`post-${post.id}`} className="card-premium overflow-hidden post-hover" style={{ animation: `slideUp 0.4s ease-out ${i * 0.06}s both` }}>
-                        {post.pinned && (
-                          <div className="flex items-center gap-1.5 px-4 pt-3 pb-0">
-                            <Pin className="w-3 h-3" style={{ color: "var(--tier-gold)" }} />
-                            <span className="text-[10px] font-medium" style={{ color: "var(--tier-gold)" }}>Pinned</span>
-                          </div>
-                        )}
-                        <div className="flex items-start gap-3 p-4 pb-0">
-                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                            style={{ background: "linear-gradient(135deg, var(--accent), #7C3AED)", color: "#fff" }}>
-                            {model.display_name.charAt(0)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <p className="text-[13px] font-bold" style={{ color: "var(--text)" }}>{model.display_name}</p>
-                              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>@{slug}</span>
-                              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>·</span>
-                              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{timeAgo(post.created_at)}</span>
-                              {postTier !== "public" && (
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${tierHex}18`, color: tierHex }}>
-                                  {tierMeta?.label || postTier}
-                                </span>
-                              )}
-                            </div>
-
-                            {post.content && (
-                              <p className="text-[13px] sm:text-sm leading-relaxed mt-1.5 whitespace-pre-wrap" style={{ color: "var(--text)" }}>{post.content}</p>
-                            )}
-
-                            {post.media_url && (
-                              mediaUnlocked ? (
-                                <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
-                                  <div className="mt-2.5 rounded-xl overflow-hidden" style={{ border: "1px solid var(--border2)" }}>
-                                    <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover" loading="lazy" />
-                                  </div>
-                                </ContentProtection>
-                              ) : (
-                                <div className="mt-2.5 rounded-xl overflow-hidden relative cursor-pointer" onClick={() => setShowUnlock(true)} style={{ border: "1px solid var(--border2)" }}>
-                                  <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover content-locked" />
-                                  <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(20px)" }}>
-                                    <div className="text-center">
-                                      <Lock className="w-6 h-6 mx-auto mb-1.5" style={{ color: tierHex }} />
-                                      <span className="text-xs font-bold" style={{ color: tierHex }}>{tierMeta?.label || postTier} Only</span>
-                                      <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.5)" }}>Unlock to view</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              )
-                            )}
-
-                            <div className="flex items-center gap-6 mt-3 mb-1">
-                              <button className="flex items-center gap-1.5 text-[12px] cursor-pointer transition-colors hover:text-[#F43F5E] group/like" style={{ color: "var(--text-muted)" }}>
-                                <Heart className="w-4 h-4 transition-transform group-hover/like:scale-110" fill={post.likes_count > 0 ? "#F43F5E" : "none"} style={{ color: post.likes_count > 0 ? "#F43F5E" : undefined }} />
-                                <span>{post.likes_count || ""}</span>
-                              </button>
-                              <button className="flex items-center gap-1.5 text-[12px] cursor-pointer transition-colors hover:text-[#7C3AED] group/comment" style={{ color: "var(--text-muted)" }}>
-                                <MessageCircle className="w-4 h-4 transition-transform group-hover/comment:scale-110" />
-                                <span>{post.comments_count || ""}</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  // Wall post — Twitter-style card
-                  const wp = item.data;
-                  return (
-                    <div key={`wall-${wp.id}`} className="card-premium px-4 py-3" style={{ animation: `slideUp 0.3s ease-out ${i * 0.04}s both` }}>
-                      <div className="flex items-start gap-2.5 min-w-0">
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5"
-                          style={{ background: "rgba(167,139,250,0.12)", color: "var(--tier-platinum)" }}>
-                          {wp.pseudo.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <button
-                              className="text-[12px] font-bold shrink-0 cursor-pointer hover:underline"
-                              style={{ color: "var(--text)", background: "none", border: "none", padding: 0 }}
-                              onClick={(e) => {
-                                const rect = (e.target as HTMLElement).getBoundingClientRect();
-                                setSocialPopup({
-                                  pseudo: wp.pseudo,
-                                  snap: wp.pseudo_snap,
-                                  insta: wp.pseudo_insta,
-                                  x: rect.left,
-                                  y: rect.bottom + 4,
-                                });
-                              }}
-                            >
-                              {wp.pseudo}
-                            </button>
-                            {(wp.pseudo_snap || wp.pseudo_insta) && (
-                              <div className="flex items-center gap-1">
-                                {wp.pseudo_snap && <Ghost className="w-3 h-3" style={{ color: "#FFFC00" }} />}
-                                {wp.pseudo_insta && <Instagram className="w-3 h-3" style={{ color: "#E1306C" }} />}
-                              </div>
-                            )}
-                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>· {timeAgo(wp.created_at)}</span>
-                          </div>
-                          <p className="text-[13px] leading-relaxed mt-1 whitespace-pre-wrap" style={{ color: "var(--text-secondary)" }}>
-                            {wp.content || ""}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                });
-              })()}
-
-              {/* Social popup — shows snap/insta on pseudo click */}
-              {socialPopup && (
-                <div className="fixed inset-0 z-[999]" onClick={() => setSocialPopup(null)}>
-                  <div
-                    className="absolute rounded-xl p-3 shadow-2xl space-y-2 min-w-[180px]"
-                    style={{
-                      left: Math.min(socialPopup.x, window.innerWidth - 200),
-                      top: socialPopup.y,
-                      background: "rgba(20,20,25,0.95)",
-                      backdropFilter: "blur(20px)",
-                      border: "1px solid var(--border2)",
-                    }}
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <p className="text-[11px] font-bold" style={{ color: "var(--text)" }}>@{socialPopup.pseudo}</p>
-                    {socialPopup.snap && (
-                      <div className="flex items-center gap-2">
-                        <Ghost className="w-3.5 h-3.5" style={{ color: "#FFFC00" }} />
-                        <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>{socialPopup.snap}</span>
-                      </div>
-                    )}
-                    {socialPopup.insta && (
-                      <div className="flex items-center gap-2">
-                        <Instagram className="w-3.5 h-3.5" style={{ color: "#E1306C" }} />
-                        <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>{socialPopup.insta}</span>
-                      </div>
-                    )}
-                    {!socialPopup.snap && !socialPopup.insta && (
-                      <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>No social accounts linked</p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+            <WallTab
+              slug={slug}
+              model={model}
+              posts={posts}
+              wallPosts={wallPosts}
+              wallContent={wallContent}
+              setWallContent={setWallContent}
+              wallPosting={wallPosting}
+              submitWallPost={submitWallPost}
+              visitorPlatform={visitorPlatform}
+              visitorHandle={visitorHandle}
+              setVisitorRegistered={setVisitorRegistered}
+              setClientId={setClientId}
+              socialPopup={socialPopup}
+              setSocialPopup={setSocialPopup}
+              isModelLoggedIn={isModelLoggedIn}
+              unlockedTier={unlockedTier}
+              setShowUnlock={setShowUnlock}
+              subscriberUsername={subscriberUsername}
+              hasSubscriberIdentity={hasSubscriberIdentity}
+              timeAgo={timeAgo}
+              tierIncludes={tierIncludes}
+            />
           )}
 
           {/* ── GALLERY ── */}
           {tab === "gallery" && (
-            <div className="fade-up">
-              {/* Pack folders — Instagram-style tab bar */}
-              {!isEditMode && (
-                <div className="flex mb-4 -mx-4 px-4" style={{ borderBottom: "1px solid var(--border2)" }}>
-                  <button onClick={() => setGalleryTier("all")}
-                    className="flex-1 py-2.5 text-center text-[11px] font-semibold cursor-pointer transition-all relative"
-                    style={{ color: galleryTier === "all" ? "var(--text)" : "var(--text-muted)" }}>
-                    All
-                    {galleryTier === "all" && (
-                      <div className="absolute bottom-0 left-1/4 right-1/4 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />
-                    )}
-                  </button>
-                  {(["vip", "gold", "diamond", "platinum"] as const).filter(k => tierCounts[k]).map(tier => {
-                    const hex = TIER_HEX[tier];
-                    return (
-                      <button key={tier} onClick={() => setGalleryTier(tier)}
-                        className="flex-1 py-2.5 text-center text-[11px] font-semibold cursor-pointer transition-all relative"
-                        style={{ color: galleryTier === tier ? hex : "var(--text-muted)" }}>
-                        {TIER_META[tier]?.symbol} {TIER_META[tier]?.label}
-                        {galleryTier === tier && (
-                          <div className="absolute bottom-0 left-1/4 right-1/4 h-[2px] rounded-full" style={{ background: hex }} />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Edit mode: header with add button */}
-              {isEditMode && (
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>{uploads.length} médias</p>
-                  <button onClick={() => mediaInputRef.current?.click()}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-semibold cursor-pointer transition-all hover:scale-[1.02]"
-                    style={{ background: "rgba(230,51,41,0.12)", color: "var(--accent)", border: "1px solid rgba(230,51,41,0.25)" }}
-                    disabled={uploading}>
-                    {uploading ? (
-                      <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(230,51,41,0.2)", borderTopColor: "var(--accent)" }} />
-                    ) : (
-                      <Plus className="w-3.5 h-3.5" />
-                    )}
-                    Ajouter
-                  </button>
-                  <input ref={mediaInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleAddMedia} />
-                </div>
-              )}
-
-              {(isEditMode ? uploads : galleryItems).length === 0 ? (
-                isEditMode ? (
-                  <div className="text-center py-8">
-                    <Upload className="w-6 h-6 mx-auto mb-2" style={{ color: "var(--text-muted)" }} />
-                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>Utilisez le bouton ci-dessus pour ajouter des medias</p>
-                  </div>
-                ) : (
-                  <EmptyState icon={Image} text="No content available" />
-                )
-              ) : (
-                <div className="grid grid-cols-3 gap-1.5 rounded-xl overflow-hidden">
-                  {(isEditMode ? uploads : galleryItems).map((item, i) => {
-                    const hex = TIER_HEX[item.tier] || "#64748B";
-                    const isCreditItem = (item.tokenPrice || 0) > 0;
-                    const isCreditUnlocked = purchasedItems.has(item.id);
-                    const isUnlocked = item.visibility === "promo" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, item.tier)) || isCreditUnlocked;
-                    return (
-                      <div key={item.id} className="relative aspect-square group cursor-pointer overflow-hidden rounded-lg"
-                        style={{ animationDelay: `${i * 20}ms` }}>
-                        {/* In edit mode, always show the image */}
-                        {isEditMode || isUnlocked ? (
-                          <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">
-                            <img src={item.dataUrl} alt={item.label} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                          </ContentProtection>
-                        ) : isCreditItem ? (
-                          <div className="w-full h-full flex items-center justify-center relative cursor-pointer"
-                            onClick={() => handleCreditPurchase(item)}
-                            style={{ background: `${hex}08` }}>
-                            <img src={item.dataUrl} alt="" className="absolute inset-0 w-full h-full object-cover content-locked" />
-                            <div className="relative text-center z-10">
-                              <Coins className="w-5 h-5 mx-auto mb-1" style={{ color: "var(--gold)" }} />
-                              <span className="text-[10px] font-bold block" style={{ color: "var(--gold)" }}>
-                                {item.tokenPrice}
-                              </span>
-                              <span className="text-[10px] font-medium uppercase tracking-wide" style={{ color: "var(--gold2)" }}>
-                                crédits
-                              </span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center relative cursor-pointer" onClick={() => setShowUnlock(true)} style={{ background: `${hex}08` }}>
-                            <div className="absolute inset-0 content-locked" style={{ background: `linear-gradient(135deg, ${hex}12, rgba(0,0,0,0.25))` }} />
-                            <div className="relative text-center z-10">
-                              <Lock className="w-4 h-4 mx-auto mb-0.5" style={{ color: hex }} />
-                              <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: hex }}>
-                                {TIER_META[item.tier]?.label}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Edit mode overlay: edit + delete */}
-                        {isEditMode ? (
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-3">
-                            <button onClick={() => { setEditingUploadId(item.id); setEditUploadData({ tier: item.tier, label: item.label, visibility: item.visibility, tokenPrice: item.tokenPrice }); }}
-                              className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer"
-                              style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(4px)" }}>
-                              <Pencil className="w-3.5 h-3.5 text-white" />
-                            </button>
-                            <button onClick={() => handleDeleteMedia(item.id)}
-                              className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer"
-                              style={{ background: "rgba(239,68,68,0.4)", backdropFilter: "blur(4px)" }}>
-                              <Trash2 className="w-3.5 h-3.5 text-white" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                            {item.type === "video" ? <Play className="w-5 h-5 text-white" /> :
-                             item.type === "reel" ? <Camera className="w-4 h-4 text-white" /> :
-                             <Eye className="w-4 h-4 text-white" />}
-                          </div>
-                        )}
-
-                        {/* Tier badge */}
-                        {!isEditMode && isCreditItem && !isCreditUnlocked && !isModelLoggedIn && (
-                          <div className="absolute top-1.5 right-1.5">
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(230,51,41,0.9)", color: "#000" }}>
-                              {item.tokenPrice} 💰
-                            </span>
-                          </div>
-                        )}
-
-                        {isEditMode && (
-                          <div className="absolute top-1.5 left-1.5">
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: `${hex}CC`, color: "#fff" }}>
-                              {TIER_META[item.tier]?.label || item.tier}
-                            </span>
-                          </div>
-                        )}
-
-                        {!isEditMode && item.type !== "photo" && (
-                          <div className="absolute top-1.5 right-1.5">
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(0,0,0,0.7)", color: "#fff" }}>
-                              {item.type === "video" ? <Video className="w-2.5 h-2.5 inline" /> : "REEL"}
-                            </span>
-                          </div>
-                        )}
-
-                        {!isEditMode && item.isNew && (
-                          <div className="absolute top-1.5 left-1.5">
-                            <span className="badge badge-success text-[10px]">NEW</span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* ── Edit Upload Sheet ── */}
-              {isEditMode && editingUploadId && (
-                <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center sheet-backdrop" onClick={() => { setEditingUploadId(null); setEditUploadData({}); }}>
-                  <div className="w-full max-w-sm rounded-t-2xl md:rounded-2xl overflow-hidden animate-slide-up"
-                    style={{ background: "var(--surface)", border: "1px solid var(--border2)" }}
-                    onClick={e => e.stopPropagation()}>
-                    <div className="flex justify-center pt-3 md:hidden">
-                      <div className="w-10 h-1 rounded-full" style={{ background: "var(--border3)" }} />
-                    </div>
-                    <div className="p-5 space-y-4">
-                      <h3 className="text-sm font-bold" style={{ color: "var(--text)" }}>Modifier le média</h3>
-
-                      {/* Label */}
-                      <div>
-                        <label className="text-[10px] font-medium uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Label</label>
-                        <input value={editUploadData.label || ""} onChange={e => setEditUploadData(prev => ({ ...prev, label: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
-                      </div>
-
-                      {/* Tier */}
-                      <div>
-                        <label className="text-[10px] font-medium uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Tier</label>
-                        <div className="flex gap-1.5">
-                          {Object.entries(TIER_HEX).map(([tier, hex]) => (
-                            <button key={tier} onClick={() => setEditUploadData(prev => ({ ...prev, tier: tier as UploadedContent["tier"] }))}
-                              className="flex-1 py-2 rounded-lg text-[10px] font-semibold cursor-pointer transition-all"
-                              style={{
-                                background: editUploadData.tier === tier ? `${hex}20` : "rgba(255,255,255,0.03)",
-                                color: editUploadData.tier === tier ? hex : "var(--text-muted)",
-                                border: `1px solid ${editUploadData.tier === tier ? `${hex}40` : "var(--border2)"}`,
-                              }}>
-                              {TIER_META[tier]?.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Visibility */}
-                      <div>
-                        <label className="text-[10px] font-medium uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Visibilité</label>
-                        <div className="flex gap-1.5">
-                          {(["pack", "promo", "credits"] as const).map(vis => (
-                            <button key={vis} onClick={() => setEditUploadData(prev => ({ ...prev, visibility: vis === "credits" ? "pack" : vis, tokenPrice: vis === "credits" ? (prev.tokenPrice || 5) : 0 }))}
-                              className="flex-1 py-2 rounded-lg text-[10px] font-semibold cursor-pointer transition-all"
-                              style={{
-                                background: (vis === "credits" ? (editUploadData.tokenPrice || 0) > 0 : editUploadData.visibility === vis && !(editUploadData.tokenPrice || 0)) ? "rgba(230,51,41,0.12)" : "rgba(255,255,255,0.03)",
-                                color: (vis === "credits" ? (editUploadData.tokenPrice || 0) > 0 : editUploadData.visibility === vis && !(editUploadData.tokenPrice || 0)) ? "var(--accent)" : "var(--text-muted)",
-                                border: `1px solid ${(vis === "credits" ? (editUploadData.tokenPrice || 0) > 0 : editUploadData.visibility === vis && !(editUploadData.tokenPrice || 0)) ? "rgba(230,51,41,0.25)" : "var(--border2)"}`,
-                              }}>
-                              {vis === "pack" ? "Privé" : vis === "promo" ? "Public" : "Crédits"}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Credit price */}
-                      {(editUploadData.tokenPrice || 0) > 0 && (
-                        <div>
-                          <label className="text-[10px] font-medium uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Prix crédits</label>
-                          <div className="flex gap-1.5">
-                            {[3, 5, 10, 20, 50].map(p => (
-                              <button key={p} onClick={() => setEditUploadData(prev => ({ ...prev, tokenPrice: p }))}
-                                className="flex-1 py-2 rounded-lg text-[10px] font-bold cursor-pointer transition-all"
-                                style={{
-                                  background: editUploadData.tokenPrice === p ? "rgba(230,51,41,0.15)" : "rgba(255,255,255,0.03)",
-                                  color: editUploadData.tokenPrice === p ? "var(--gold)" : "var(--text-muted)",
-                                  border: `1px solid ${editUploadData.tokenPrice === p ? "rgba(230,51,41,0.3)" : "var(--border2)"}`,
-                                }}>
-                                {p}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Actions */}
-                      <div className="flex gap-2 pt-2">
-                        <button onClick={() => { setEditingUploadId(null); setEditUploadData({}); }}
-                          className="flex-1 py-2.5 rounded-xl text-xs font-medium cursor-pointer"
-                          style={{ background: "rgba(255,255,255,0.04)", color: "var(--text-muted)" }}>
-                          Annuler
-                        </button>
-                        <button onClick={() => handleUpdateMedia(editingUploadId, editUploadData)}
-                          className="flex-1 py-2.5 rounded-xl text-xs font-semibold cursor-pointer"
-                          style={{ background: "var(--accent)", color: "#000" }}>
-                          Sauvegarder
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <GalleryTab
+              isEditMode={isEditMode}
+              isModelLoggedIn={isModelLoggedIn}
+              uploads={uploads}
+              galleryItems={galleryItems}
+              galleryTier={galleryTier}
+              setGalleryTier={setGalleryTier}
+              tierCounts={tierCounts}
+              unlockedTier={unlockedTier}
+              purchasedItems={purchasedItems}
+              handleCreditPurchase={handleCreditPurchase}
+              setShowUnlock={setShowUnlock}
+              subscriberUsername={subscriberUsername}
+              hasSubscriberIdentity={hasSubscriberIdentity}
+              editingUploadId={editingUploadId}
+              setEditingUploadId={setEditingUploadId}
+              editUploadData={editUploadData}
+              setEditUploadData={setEditUploadData}
+              handleDeleteMedia={handleDeleteMedia}
+              handleUpdateMedia={handleUpdateMedia}
+              handleAddMedia={handleAddMedia}
+              mediaInputRef={mediaInputRef}
+              uploading={uploading}
+              tierIncludes={tierIncludes}
+            />
           )}
 
           {/* ── SHOP ── */}
           {tab === "shop" && (
-            <div className="space-y-4 fade-up">
-
-              {/* Client balance bar */}
-              {clientId && (
-                <div className="card-premium p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(230,51,41,0.12)" }}>
-                      <Coins className="w-4.5 h-4.5" style={{ color: "var(--gold)" }} />
-                    </div>
-                    <div>
-                      <p className="text-lg font-black tabular-nums" style={{ color: "var(--gold)" }}>{clientBalance}</p>
-                      <p className="text-[10px] font-medium uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Crédits disponibles</p>
-                    </div>
-                  </div>
-                  {unlockedTier && TIER_CREDIT_BONUS[unlockedTier]?.multiplier > 1 && (
-                    <span className="badge text-[10px] font-bold" style={{ background: `${TIER_HEX[unlockedTier]}15`, color: TIER_HEX[unlockedTier] }}>
-                      {TIER_CREDIT_BONUS[unlockedTier].label} bonus
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Sub-tabs: Packs | Crédits */}
-              <div className="flex gap-2">
-                <button onClick={() => setShopSection("packs")}
-                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all flex items-center justify-center gap-1.5"
-                  style={{
-                    background: shopSection === "packs" ? "rgba(230,51,41,0.1)" : "rgba(255,255,255,0.03)",
-                    color: shopSection === "packs" ? "var(--accent)" : "var(--text-muted)",
-                    border: `1px solid ${shopSection === "packs" ? "rgba(230,51,41,0.25)" : "var(--border2)"}`,
-                  }}>
-                  <ShoppingBag className="w-3.5 h-3.5" /> Packs
-                </button>
-                <button onClick={() => setShopSection("credits")}
-                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all flex items-center justify-center gap-1.5"
-                  style={{
-                    background: shopSection === "credits" ? "rgba(230,51,41,0.1)" : "rgba(255,255,255,0.03)",
-                    color: shopSection === "credits" ? "var(--gold)" : "var(--text-muted)",
-                    border: `1px solid ${shopSection === "credits" ? "rgba(230,51,41,0.25)" : "var(--border2)"}`,
-                  }}>
-                  <Coins className="w-3.5 h-3.5" /> Crédits
-                </button>
-              </div>
-
-              {/* ──── PACKS SECTION — Scrollable tiles ──── */}
-              {shopSection === "packs" && (
-                <div>
-                  {(isEditMode ? displayPacks : activePacks).length === 0 ? (
-                    <EmptyState icon={ShoppingBag} text="No packs available" />
-                  ) : (
-                    <>
-                      {/* Horizontal scrollable tiles */}
-                      <div className="flex gap-3 overflow-x-auto pb-3 -mx-4 px-4 snap-x snap-mandatory scrollbar-hide"
-                        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
-                        {(isEditMode ? displayPacks : activePacks).map((pack, i) => {
-                          const hex = TIER_HEX[pack.id] || pack.color;
-                          const isSelected = expandedPack === pack.id;
-                          const isCurrentTier = unlockedTier === pack.id;
-                          return (
-                            <button
-                              key={pack.id}
-                              onClick={() => setExpandedPack(isSelected ? null : pack.id)}
-                              className="snap-center shrink-0 relative overflow-hidden rounded-2xl cursor-pointer group"
-                              style={{
-                                width: isSelected ? "180px" : "140px",
-                                height: isSelected ? "200px" : "170px",
-                                background: isSelected ? `linear-gradient(160deg, ${hex}25, ${hex}08)` : "var(--bg2)",
-                                border: `${isSelected ? "2px" : "1px"} solid ${isSelected ? `${hex}50` : "var(--border2)"}`,
-                                transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                                transform: isSelected ? "scale(1.05)" : "scale(1)",
-                                boxShadow: isSelected ? `0 8px 32px ${hex}30, 0 0 0 1px ${hex}20` : "none",
-                                animation: `slideUp 0.4s ease-out ${i * 0.08}s both`,
-                              }}>
-                              {/* Top glow line */}
-                              <div className="absolute top-0 left-0 right-0 h-[2px]" style={{
-                                background: `linear-gradient(90deg, transparent, ${hex}, transparent)`,
-                                opacity: isSelected ? 1 : 0.3,
-                                transition: "opacity 0.3s",
-                              }} />
-
-                              {/* Badge */}
-                              {pack.badge && (
-                                <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
-                                  style={{ background: `${hex}20`, color: hex }}>
-                                  {pack.badge}
-                                </div>
-                              )}
-
-                              {/* Active indicator */}
-                              {isCurrentTier && (
-                                <div className="absolute top-2 left-2 w-2 h-2 rounded-full" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.6)" }} />
-                              )}
-
-                              {/* Content */}
-                              <div className="flex flex-col items-center justify-center h-full px-3 py-4 text-center">
-                                <div className="rounded-xl flex items-center justify-center mb-2"
-                                  style={{
-                                    width: isSelected ? "48px" : "40px",
-                                    height: isSelected ? "48px" : "40px",
-                                    fontSize: isSelected ? "24px" : "20px",
-                                    background: `${hex}15`,
-                                    border: `1px solid ${hex}30`,
-                                    transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                                  }}>
-                                  {TIER_META[pack.id]?.symbol}
-                                </div>
-                                <h3 className="font-bold truncate w-full" style={{
-                                  color: hex,
-                                  fontSize: isSelected ? "14px" : "12px",
-                                  transition: "font-size 0.3s",
-                                }}>{pack.name}</h3>
-                                <p className="font-black tabular-nums mt-1" style={{
-                                  color: hex,
-                                  fontSize: isSelected ? "24px" : "18px",
-                                  transition: "font-size 0.3s ease",
-                                }}>{pack.price}€</p>
-                                {isCurrentTier && (
-                                  <span className="text-[10px] font-bold uppercase mt-0.5" style={{ color: "var(--success)" }}>Actif</span>
-                                )}
-                                {!isCurrentTier && isSelected && (
-                                  <span className="text-[10px] font-medium mt-1" style={{ color: "var(--text-muted)" }}>Voir details ↓</span>
-                                )}
-                              </div>
-
-                              {/* Bottom pulse on hover */}
-                              <div className="absolute bottom-0 left-0 right-0 h-1 opacity-0 group-hover:opacity-100" style={{
-                                background: `linear-gradient(90deg, transparent, ${hex}, transparent)`,
-                                transition: "opacity 0.3s",
-                              }} />
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Expanded pack detail panel */}
-                      {expandedPack && !isEditMode && (() => {
-                        const pack = activePacks.find(p => p.id === expandedPack);
-                        if (!pack) return null;
-                        const hex = TIER_HEX[pack.id] || pack.color;
-                        const tierBonus = TIER_CREDIT_BONUS[pack.id];
-                        const isCurrentTier = unlockedTier === pack.id;
-                        return (
-                          <div className="mt-3 rounded-2xl overflow-hidden relative" style={{
-                            background: "var(--bg2)",
-                            border: `1px solid ${hex}30`,
-                            animation: "slideUp 0.35s ease-out",
-                          }}>
-                            <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${hex}, transparent)` }} />
-
-                            <div className="p-5">
-                              {/* Header recap */}
-                              <div className="flex items-center gap-3 mb-4">
-                                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
-                                  style={{ background: `${hex}12`, border: `1px solid ${hex}25` }}>
-                                  {TIER_META[pack.id]?.symbol}
-                                </div>
-                                <div className="flex-1">
-                                  <h3 className="text-base font-bold" style={{ color: hex }}>{pack.name}</h3>
-                                  {pack.badge && <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>{pack.badge}</span>}
-                                </div>
-                                <span className="text-2xl font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
-                              </div>
-
-                              {/* Features — staggered */}
-                              <ul className="space-y-2 mb-4">
-                                {pack.features.map((f, j) => (
-                                  <li key={j} className="flex items-center gap-2.5 text-[12px]"
-                                    style={{ color: "var(--text-secondary)", animation: `slideUp 0.3s ease-out ${j * 0.04}s both` }}>
-                                    <Check className="w-3.5 h-3.5 shrink-0" style={{ color: hex }} />
-                                    {f}
-                                  </li>
-                                ))}
-                              </ul>
-
-                              {/* Bonus */}
-                              {tierBonus && (tierBonus.multiplier > 1 || tierBonus.bonus) && (
-                                <div className="flex items-center gap-2.5 p-3 rounded-xl mb-4"
-                                  style={{ background: `${hex}08`, border: `1px dashed ${hex}20` }}>
-                                  <Crown className="w-4 h-4 shrink-0" style={{ color: hex }} />
-                                  <p className="text-[11px] font-semibold" style={{ color: hex }}>
-                                    {tierBonus.multiplier > 1 ? `Bonus ${tierBonus.label} — ${tierBonus.bonus}` : `🎁 ${tierBonus.bonus}`}
-                                  </p>
-                                </div>
-                              )}
-
-                              {/* CTA */}
-                              {isCurrentTier ? (
-                                <div className="w-full py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2"
-                                  style={{ background: `${hex}10`, color: hex, border: `1px solid ${hex}20` }}>
-                                  <Check className="w-4 h-4" /> Pack actif
-                                </div>
-                              ) : (pack.stripe_link || pack.wise_url) ? (
-                                <a href={pack.stripe_link || pack.wise_url} target="_blank" rel="noopener noreferrer"
-                                  className="w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 no-underline"
-                                  style={{ background: hex, color: "#fff" }}>
-                                  Payer {pack.price}€{pack.stripe_link ? "" : " via Wise"}
-                                  <ChevronRight className="w-4 h-4" />
-                                </a>
-                              ) : (
-                                <div className="w-full py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 opacity-50"
-                                  style={{ background: `${hex}15`, color: hex, border: `1px solid ${hex}20` }}>
-                                  Paiement bientot disponible
-                                </div>
-                              )}
-                              {!isCurrentTier && (pack.stripe_link || pack.wise_url) && (
-                                <p className="text-[10px] text-center mt-2" style={{ color: "var(--text-muted)" }}>
-                                  Paiement securise · Acces active sous 15 min
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Edit mode: full cards (unchanged) */}
-                      {isEditMode && (
-                        <div className="space-y-3 mt-3">
-                          {displayPacks.map((pack) => {
-                            const hex = TIER_HEX[pack.id] || pack.color;
-                            const tierBonus = TIER_CREDIT_BONUS[pack.id];
-                            return (
-                              <div key={pack.id} className="card-premium relative overflow-hidden">
-                                <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${hex}, transparent)`, opacity: 0.5 }} />
-                                <div className="p-5">
-                                  <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-2.5">
-                                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
-                                        style={{ background: `${hex}12`, border: `1px solid ${hex}25` }}>
-                                        {TIER_META[pack.id]?.symbol}
-                                      </div>
-                                      <div>
-                                        <input value={pack.name} onChange={e => handleUpdatePack(pack.id, { name: e.target.value })}
-                                          className="text-sm font-bold bg-transparent outline-none w-full rounded px-1"
-                                          style={{ color: hex, border: "1px dashed var(--border3)" }} />
-                                        {pack.badge && <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{pack.badge}</span>}
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <div className="flex items-center gap-1">
-                                        <input value={pack.price} onChange={e => handleUpdatePack(pack.id, { price: Number(e.target.value) || 0 })}
-                                          type="number" className="w-16 text-right text-xl font-black tabular-nums bg-transparent outline-none rounded px-1"
-                                          style={{ color: hex, border: "1px dashed var(--border3)" }} />
-                                        <span className="text-xl font-black" style={{ color: hex }}>€</span>
-                                      </div>
-                                      <button onClick={() => handleDeletePack(pack.id)}
-                                        className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer"
-                                        style={{ background: "rgba(239,68,68,0.1)" }}>
-                                        <Trash2 className="w-3.5 h-3.5" style={{ color: "var(--danger)" }} />
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  {/* Features */}
-                                  <div className="space-y-1.5 mb-3">
-                                    {pack.features.map((f, j) => (
-                                      <div key={j} className="flex items-center gap-2">
-                                        <Check className="w-3 h-3 shrink-0" style={{ color: hex }} />
-                                        <input value={f} onChange={e => {
-                                          const newFeatures = [...pack.features];
-                                          newFeatures[j] = e.target.value;
-                                          handleUpdatePack(pack.id, { features: newFeatures });
-                                        }}
-                                          className="flex-1 text-[11px] bg-transparent outline-none rounded px-1 py-0.5"
-                                          style={{ color: "var(--text-secondary)", border: "1px dashed var(--border3)" }} />
-                                        <button onClick={() => {
-                                          const newFeatures = pack.features.filter((_, idx) => idx !== j);
-                                          handleUpdatePack(pack.id, { features: newFeatures });
-                                        }}
-                                          className="cursor-pointer" style={{ color: "var(--text-muted)" }}>
-                                          <X className="w-3 h-3" />
-                                        </button>
-                                      </div>
-                                    ))}
-                                    <button onClick={() => handleUpdatePack(pack.id, { features: [...pack.features, ""] })}
-                                      className="flex items-center gap-1 text-[10px] cursor-pointer"
-                                      style={{ color: "var(--text-muted)" }}>
-                                      <Plus className="w-3 h-3" /> Ajouter
-                                    </button>
-                                  </div>
-
-                                  {/* Bonus */}
-                                  {tierBonus && (tierBonus.multiplier > 1 || tierBonus.bonus) && (
-                                    <div className="flex items-center gap-2 p-2.5 rounded-lg mb-3"
-                                      style={{ background: `${hex}08`, border: `1px dashed ${hex}20` }}>
-                                      <Crown className="w-3.5 h-3.5 shrink-0" style={{ color: hex }} />
-                                      <p className="text-[10px] font-semibold" style={{ color: hex }}>
-                                        {tierBonus.multiplier > 1 ? `Bonus ${tierBonus.label} — ${tierBonus.bonus}` : `🎁 ${tierBonus.bonus}`}
-                                      </p>
-                                    </div>
-                                  )}
-
-                                  {/* Payment links + Toggle */}
-                                  <div className="space-y-2">
-                                    <div>
-                                      <label className="text-[10px] font-medium uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>
-                                        Lien Stripe (paiement via SQWENSY)
-                                      </label>
-                                      <input
-                                        value={pack.stripe_link || ""}
-                                        onChange={e => handleUpdatePack(pack.id, { stripe_link: e.target.value })}
-                                        placeholder="https://sqwensy.com/p/..."
-                                        className="w-full text-[11px] bg-transparent outline-none rounded-lg px-3 py-2"
-                                        style={{ color: "var(--text-secondary)", border: "1px dashed var(--border3)" }}
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="text-[10px] font-medium uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>
-                                        Lien Wise (alternatif)
-                                      </label>
-                                      <input
-                                        value={pack.wise_url || ""}
-                                        onChange={e => handleUpdatePack(pack.id, { wise_url: e.target.value })}
-                                        placeholder="https://wise.com/pay/..."
-                                        className="w-full text-[11px] bg-transparent outline-none rounded-lg px-3 py-2"
-                                        style={{ color: "var(--text-secondary)", border: "1px dashed var(--border3)" }}
-                                      />
-                                    </div>
-                                    <button onClick={() => handleUpdatePack(pack.id, { active: !pack.active })}
-                                      className="flex items-center gap-1.5 cursor-pointer"
-                                      style={{ color: pack.active ? "var(--success)" : "var(--text-muted)" }}>
-                                      {pack.active ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
-                                      <span className="text-[10px] font-medium">{pack.active ? "Actif" : "Inactif"}</span>
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {/* Add Pack button (edit mode) */}
-                      {isEditMode && (
-                        <button onClick={handleAddPack}
-                          className="w-full mt-3 py-4 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.01]"
-                          style={{ border: "2px dashed var(--border3)", background: "rgba(255,255,255,0.02)" }}>
-                          <Plus className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
-                          <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>Ajouter un pack</span>
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* ──── CREDITS SECTION ──── */}
-              {shopSection === "credits" && (
-                <div className="space-y-3">
-                  {/* Multiplier info */}
-                  {unlockedTier && TIER_CREDIT_BONUS[unlockedTier] && (
-                    <div className="card-premium p-4 relative overflow-hidden">
-                      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, var(--gold), transparent)`, opacity: 0.4 }} />
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black"
-                          style={{ background: `${TIER_HEX[unlockedTier]}15`, color: TIER_HEX[unlockedTier] }}>
-                          {TIER_CREDIT_BONUS[unlockedTier].multiplier > 1 ? TIER_CREDIT_BONUS[unlockedTier].label : TIER_META[unlockedTier]?.symbol}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs font-semibold" style={{ color: "var(--text)" }}>
-                            {TIER_CREDIT_BONUS[unlockedTier].multiplier > 1
-                              ? `Ton pack ${TIER_META[unlockedTier]?.label} te donne ${TIER_CREDIT_BONUS[unlockedTier].label} sur chaque recharge`
-                              : TIER_CREDIT_BONUS[unlockedTier].bonus
-                                ? `Ton pack ${TIER_META[unlockedTier]?.label} inclut un bonus spécial`
-                                : `Pack ${TIER_META[unlockedTier]?.label} actif`
-                            }
-                          </p>
-                          {TIER_CREDIT_BONUS[unlockedTier].bonus && (
-                            <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{TIER_CREDIT_BONUS[unlockedTier].bonus}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {!unlockedTier && (
-                    <div className="card-premium p-4 text-center">
-                      <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
-                        Prends un pack pour débloquer des bonus crédits
-                      </p>
-                      <div className="flex items-center justify-center gap-3 text-[10px]" style={{ color: "var(--text-muted)" }}>
-                        <span style={{ color: TIER_HEX.platinum }}>♛ Platinum = x3</span>
-                        <span style={{ color: TIER_HEX.diamond }}>♦ Diamond = x2</span>
-                        <span style={{ color: TIER_HEX.gold }}>★ Gold = 🎁 Nude</span>
-                      </div>
-                      <button onClick={() => setShopSection("packs")}
-                        className="mt-3 px-4 py-2 rounded-xl text-[11px] font-semibold cursor-pointer btn-gradient">
-                        Voir les packs
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Credit packs */}
-                  {!clientId ? (
-                    <div className="card-premium p-5 text-center">
-                      <Coins className="w-8 h-8 mx-auto mb-3" style={{ color: "var(--gold)", opacity: 0.5 }} />
-                      <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>Identifie-toi pour acheter des crédits</p>
-                      <button onClick={() => setChatOpen(true)}
-                        className="px-6 py-2.5 rounded-xl text-xs font-semibold cursor-pointer btn-gradient">
-                        S&apos;identifier
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2.5">
-                      {CREDIT_PACKS.map((cp, i) => {
-                        const mult = TIER_CREDIT_BONUS[unlockedTier || ""]?.multiplier || 1;
-                        const finalCredits = cp.credits * mult;
-                        const hasBonus = mult > 1;
-                        return (
-                          <button key={i} onClick={() => handleTopup(cp.credits, cp.price)} disabled={topupLoading}
-                            className="card-premium p-4 text-center cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 relative overflow-hidden"
-                            style={{ animationDelay: `${i * 40}ms` }}>
-                            {hasBonus && (
-                              <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, var(--gold), transparent)` }} />
-                            )}
-                            <div className="flex items-center justify-center gap-1 mb-1">
-                              <Coins className="w-4 h-4" style={{ color: "var(--gold)" }} />
-                              <span className="text-xl font-black tabular-nums" style={{ color: "var(--gold)" }}>{finalCredits}</span>
-                            </div>
-                            {hasBonus && (
-                              <p className="text-[10px] font-bold mb-1" style={{ color: TIER_HEX[unlockedTier || ""] }}>
-                                {cp.credits} × {mult} = {finalCredits}
-                              </p>
-                            )}
-                            <p className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>crédits</p>
-                            <div className="mt-2 py-1.5 rounded-lg text-[11px] font-bold"
-                              style={{ background: "rgba(230,51,41,0.08)", color: "var(--gold)", border: "1px solid rgba(230,51,41,0.15)" }}>
-                              {cp.price}€
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* What can you buy with credits */}
-                  <div className="pt-2">
-                    <p className="text-[10px] font-medium uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>
-                      Avec tes crédits tu peux
-                    </p>
-                    <div className="space-y-1.5">
-                      {([
-                        { icon: Camera, text: "Débloquer des photos & vidéos exclusives" },
-                        { icon: Palette, text: "Commander du contenu personnalisé" },
-                        { icon: MessageCircle, text: "Envoyer des messages prioritaires" },
-                      ] as { icon: LucideIcon; text: string }[]).map((item, i) => (
-                        <div key={i} className="flex items-center gap-2 py-1.5 px-3 rounded-lg" style={{ background: "rgba(255,255,255,0.02)" }}>
-                          <item.icon size={14} style={{ color: "var(--text-muted)" }} />
-                          <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>{item.text}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <ShopTab
+              clientId={clientId}
+              unlockedTier={unlockedTier}
+              isEditMode={isEditMode}
+              packs={packs}
+              activePacks={activePacks}
+              displayPacks={displayPacks}
+              expandedPack={expandedPack}
+              setExpandedPack={setExpandedPack}
+              shopSection={shopSection}
+              setShopSection={setShopSection}
+              clientBalance={clientBalance}
+              topupLoading={topupLoading}
+              handleTopup={handleTopup}
+              setChatOpen={setChatOpen}
+              handleUpdatePack={handleUpdatePack}
+              handleDeletePack={handleDeletePack}
+              handleAddPack={handleAddPack}
+            />
           )}
+
         </div>
 
         {/* ═══ CREDIT PURCHASE MODAL ═══ */}
