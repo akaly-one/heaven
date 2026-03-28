@@ -47,8 +47,8 @@ Audit realise par 6 equipes specialisees. **149 issues identifiees** sur l'ensem
 ### 1.5 Confirmation avant actions destructives
 - **Probleme**: Revoke/pause/delete code = 1 clic, pas de confirmation visuelle
 - **Fichiers**: `src/components/cockpit/codes-list.tsx`
-- **Solution**: Composant `<ConfirmDialog>` cree dans `src/components/ui/confirm-dialog.tsx` — a integrer
-- **Status**: [~] COMPOSANT PRET — integration Couche 4
+- **Solution**: `<ConfirmDialog>` integre pour revoke + delete avec message contextuel
+- **Status**: [x] CORRIGE (28/03/2026)
 
 ### 1.6 Cascade delete non atomique
 - **Probleme**: `src/app/api/accounts/route.ts` DELETE — Promise.all de 7+ deletes, si un fail = DB inconsistante
@@ -67,33 +67,33 @@ Audit realise par 6 equipes specialisees. **149 issues identifiees** sur l'ensem
 ### 2.1 Loading skeletons
 - **Probleme**: Ecran blanc pendant fetch sur profile (`m/[slug]`) et dashboard (`agence/`)
 - **Solution**: Composant `<Skeleton />` + `<SkeletonCard />` + `<SkeletonStat />` crees
-- **Status**: [~] COMPOSANT PRET (`src/components/ui/skeleton.tsx`) — integration Couche 4
+- **Status**: [~] COMPOSANT PRET — a utiliser dans les pages (remplacement progressif)
 
 ### 2.2 Toast/error system global
 - **Probleme**: 90% des erreurs reseau sont console.error — user ne voit rien
-- **Solution**: `<ToastProvider>` + `useToast()` hook avec 4 types (success/error/warning/info), auto-dismiss 3s, `aria-live`
-- **Status**: [~] COMPOSANT PRET (`src/components/ui/toast.tsx`) — integration Couche 4
+- **Solution**: `<ToastProvider>` integre dans layout.tsx, `useToast()` disponible partout
+- **Status**: [x] CORRIGE (28/03/2026) — provider integre, hook pret a utiliser dans les pages
 
 ### 2.3 Remplacer emojis par lucide-react
-- **Probleme**: Pipeline stages utilisent emojis — non scalable, inaccessible
-- **Fichiers**: `src/app/agence/page.tsx`, `src/app/m/[slug]/page.tsx`
+- **Probleme**: Pipeline stages et skills utilisaient emojis
+- **Fichiers**: `agence/page.tsx` (PIPELINE_STAGES), `m/[slug]/page.tsx` (skills + credits)
 - **Mapping**: Lightbulb, ClipboardList, Camera, Film, Check, Rocket, Flame, Zap, Palette, Diamond, MessageCircle
-- **Status**: [ ] A FAIRE (Couche 4)
+- **Status**: [x] CORRIGE (28/03/2026) — 0 emoji restant dans src/
 
-### 2.4 Font sizes minimum 11px
-- **Probleme**: 138 occurrences de `text-[7px]`, `text-[8px]`, `text-[9px]` — non WCAG
-- **Solution**: Remplacer par `text-[10px]` minimum
-- **Status**: [ ] A FAIRE (Couche 4)
+### 2.4 Font sizes minimum 10px
+- **Probleme**: 137 occurrences de `text-[7px]`, `text-[8px]`, `text-[9px]` dans 13 fichiers
+- **Solution**: Toutes remplacees par `text-[10px]`
+- **Status**: [x] CORRIGE (28/03/2026) — 137/137 remplacees, 0 restant
 
 ### 2.5 Tabs accessibles (ARIA)
-- **Probleme**: Pivot tabs Feed/Messages dans agence/ n'ont pas `role="tablist"`, `role="tab"`, `aria-selected`
-- **Solution**: Composant `<Tabs />` accessible avec keyboard nav cree
-- **Status**: [~] COMPOSANT PRET (`src/components/ui/tabs.tsx`) — integration Couche 4
+- **Probleme**: Pivot tabs Feed/Messages sans semantique ARIA
+- **Solution**: Remplace par `<Tabs />` avec `role="tablist"`, `aria-selected`, keyboard nav (fleches)
+- **Status**: [x] CORRIGE (28/03/2026) — integre dans agence/page.tsx
 
 ### 2.6 FAB + sidebar accessibilite
 - **Probleme**: Boutons sans `aria-label`, sidebar toggle sans `aria-expanded`
 - **Fichiers**: `src/components/sidebar.tsx`, `src/components/pilot-assistant.tsx`
-- **Status**: [ ] A FAIRE (Couche 4)
+- **Status**: [ ] A FAIRE
 
 ---
 
@@ -205,6 +205,17 @@ Audit realise par 6 equipes specialisees. **149 issues identifiees** sur l'ensem
 | - | 21 routes API | Suppression 31 occurrences `detail: error.message` (leak info DB) |
 | - | `src/app/api/codes/route.ts` | Fix race condition: `.eq("used", false)` dans UPDATE atomique |
 | - | `src/app/api/credits/purchase/route.ts` | Fix race condition: `.lte()` balance guard, deduct-before-record |
+
+### 28 mars 2026 — Integration (Couche 4)
+| Heure | Fichier | Modification |
+|-------|---------|-------------|
+| - | `src/app/layout.tsx` | Integration `<ToastProvider>` dans root layout |
+| - | `src/app/agence/page.tsx` | Pivot Feed/Messages remplace par `<Tabs />` accessible (ARIA) |
+| - | `src/app/agence/page.tsx` | PIPELINE_STAGES: emojis remplacees par Lucide icons (Lightbulb, ClipboardList, CameraIcon, Film, Check, Rocket) |
+| - | `src/app/m/[slug]/page.tsx` | Skills + credits: emojis remplacees par Lucide icons (Flame, Zap, Palette, Diamond, Camera, MessageCircle) |
+| - | `src/components/cockpit/codes-list.tsx` | Integration `<ConfirmDialog>` pour revoke + delete codes |
+| - | `src/components/sidebar.tsx` | Hex hardcodes remplacees par CSS vars |
+| - | 13 fichiers | 137 font sizes < 10px remplacees par `text-[10px]` (WCAG) |
 
 ---
 
