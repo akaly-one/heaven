@@ -28,7 +28,6 @@ interface ModelAuth {
 }
 const TABS = [
   { id: "feed", label: "Feed", icon: Newspaper },
-  { id: "wall", label: "Wall", icon: MessageCircle },
   { id: "gallery", label: "Gallery", icon: Image },
   { id: "shop", label: "Shop", icon: ShoppingBag },
 ] as const;
@@ -1102,46 +1101,64 @@ export default function ModelPage() {
                           </div>
                         )
                       )}
-                      <div className="flex items-center gap-5 px-4 py-3" style={{ borderTop: "1px solid var(--border)" }}>
+                      {/* Like + comment count */}
+                      <div className="flex items-center gap-5 px-4 py-2" style={{ borderTop: "1px solid var(--border)" }}>
                         <button className="flex items-center gap-1.5 text-xs cursor-pointer transition-colors hover:text-[#F43F5E]" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
                           <Heart className="w-4 h-4" /> {post.likes_count || 0}
                         </button>
-                        <button className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
-                          <MessageCircle className="w-4 h-4" /> {post.comments_count || 0}
-                        </button>
+                        <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
+                          <MessageCircle className="w-4 h-4" /> {wallPosts.filter(w => w.content?.includes(`#post-${post.id}`)).length + (post.comments_count || 0)}
+                        </span>
                       </div>
+                      {/* Recent comments on this post */}
+                      {wallPosts.filter(w => w.content?.includes(`#post-${post.id}`)).slice(0, 3).map(w => (
+                        <div key={w.id} className="px-4 py-1.5 flex items-start gap-2" style={{ borderTop: "1px solid var(--border)" }}>
+                          <span className="text-[11px] font-bold shrink-0" style={{ color: "var(--text)" }}>@{w.pseudo}</span>
+                          <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>{w.content?.replace(`#post-${post.id}`, "").trim()}</span>
+                        </div>
+                      ))}
+                      {/* Comment input */}
+                      {visitorRegistered && (
+                        <div className="px-4 py-2 flex items-center gap-2" style={{ borderTop: "1px solid var(--border)" }}>
+                          <input
+                            placeholder="Ajouter un commentaire..."
+                            className="flex-1 text-xs bg-transparent outline-none"
+                            style={{ color: "var(--text)" }}
+                            onKeyDown={async (e) => {
+                              if (e.key === "Enter") {
+                                const input = e.target as HTMLInputElement;
+                                const text = input.value.trim();
+                                if (!text) return;
+                                input.value = "";
+                                try {
+                                  await fetch("/api/wall", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      model: slug,
+                                      pseudo: visitorHandle,
+                                      content: `${text} #post-${post.id}`,
+                                      pseudo_snap: visitorPlatform === "snap" ? visitorHandle : null,
+                                      pseudo_insta: visitorPlatform === "insta" ? visitorHandle : null,
+                                      client_id: clientId,
+                                    }),
+                                  });
+                                  // Refresh wall posts
+                                  const res = await fetch(`/api/wall?model=${slug}`);
+                                  const data = await res.json();
+                                  setWallPosts(data.posts || []);
+                                } catch {}
+                              }
+                            }}
+                          />
+                          <Send className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                        </div>
+                      )}
                     </div>
                   );
                 })
               )}
             </div>
-          )}
-
-          {/* ── WALL — visitor comments ── */}
-          {tab === "wall" && (
-            <WallTab
-              slug={slug}
-              model={model}
-              posts={posts}
-              wallPosts={wallPosts}
-              wallContent={wallContent}
-              setWallContent={setWallContent}
-              wallPosting={wallPosting}
-              submitWallPost={submitWallPost}
-              visitorPlatform={visitorPlatform}
-              visitorHandle={visitorHandle}
-              setVisitorRegistered={setVisitorRegistered}
-              setClientId={setClientId}
-              socialPopup={socialPopup}
-              setSocialPopup={setSocialPopup}
-              isModelLoggedIn={isModelLoggedIn}
-              unlockedTier={unlockedTier}
-              setShowUnlock={setShowUnlock}
-              subscriberUsername={subscriberUsername}
-              hasSubscriberIdentity={hasSubscriberIdentity}
-              timeAgo={timeAgo}
-              tierIncludes={tierIncludes}
-            />
           )}
 
           {/* ── GALLERY ── */}
