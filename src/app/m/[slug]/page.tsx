@@ -7,8 +7,9 @@ import {
   Coins, Pin, Eye, Star, Camera, Video, Play, X, Check,
   Instagram, Ghost, ChevronRight, Crown, Plus, Edit3, Wifi,
   ImagePlus, Trash2, Save, RotateCcw, ToggleLeft, ToggleRight,
-  Upload, Pencil, GripVertical,
+  Upload, Pencil, GripVertical, Flame, Zap, Palette, Diamond,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { ContentProtection } from "@/components/content-protection";
 import { useScreenshotDetection } from "@/hooks/use-screenshot-detection";
 
@@ -876,7 +877,7 @@ export default function ModelPage() {
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h1 className="text-lg sm:text-xl font-bold truncate" style={{ color: "var(--text)" }}>{displayModel?.display_name}</h1>
-                      <span className="badge badge-success text-[9px]">Verified</span>
+                      <span className="badge badge-success text-[10px]">Verified</span>
                     </div>
                     <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
                       {displayModel?.status || `${uploads.length} media · ${posts.length} posts`}
@@ -906,16 +907,16 @@ export default function ModelPage() {
             {/* Skills / Psychological triggers — what the model offers */}
             {!isEditMode && (
               <div className="flex flex-wrap gap-1.5 mb-3 profile-stagger-3">
-                {[
-                  { label: "Contenu Exclusif", icon: "🔥", color: "#F43F5E" },
-                  { label: "Reponse Rapide", icon: "⚡", color: "#F59E0B" },
-                  { label: "Custom Content", icon: "🎨", color: "#7C3AED" },
-                  ...(activePacks.length > 0 ? [{ label: `${activePacks.length} Pack${activePacks.length > 1 ? "s" : ""}`, icon: "💎", color: "#A78BFA" }] : []),
-                  ...(uploads.length >= 10 ? [{ label: "Media Regulier", icon: "📸", color: "#10B981" }] : []),
-                ].map(skill => (
-                  <span key={skill.label} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-semibold"
+                {([
+                  { label: "Contenu Exclusif", icon: Flame, color: "#F43F5E" },
+                  { label: "Reponse Rapide", icon: Zap, color: "#F59E0B" },
+                  { label: "Custom Content", icon: Palette, color: "#7C3AED" },
+                  ...(activePacks.length > 0 ? [{ label: `${activePacks.length} Pack${activePacks.length > 1 ? "s" : ""}`, icon: Diamond, color: "#A78BFA" }] : []),
+                  ...(uploads.length >= 10 ? [{ label: "Media Regulier", icon: Camera, color: "#10B981" }] : []),
+                ] as { label: string; icon: LucideIcon; color: string }[]).map(skill => (
+                  <span key={skill.label} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold"
                     style={{ background: `${skill.color}12`, color: skill.color, border: `1px solid ${skill.color}25` }}>
-                    <span className="text-[10px]">{skill.icon}</span>
+                    <skill.icon size={11} />
                     {skill.label}
                   </span>
                 ))}
@@ -1041,7 +1042,7 @@ export default function ModelPage() {
                       <>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-[11px] font-semibold" style={{ color: "var(--accent)" }}>@{wallPseudo}</span>
-                          <button onClick={() => setPseudoConfirmed(false)} className="text-[9px] cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>change</button>
+                          <button onClick={() => setPseudoConfirmed(false)} className="text-[10px] cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>change</button>
                         </div>
                         <div className="flex items-center gap-2">
                           <input
@@ -1103,7 +1104,7 @@ export default function ModelPage() {
                               <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>·</span>
                               <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{timeAgo(post.created_at)}</span>
                               {postTier !== "public" && (
-                                <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${tierHex}18`, color: tierHex }}>
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${tierHex}18`, color: tierHex }}>
                                   {tierMeta?.label || postTier}
                                 </span>
                               )}
@@ -1155,7 +1156,7 @@ export default function ModelPage() {
                   return (
                     <div key={`wall-${wp.id}`} className="card-premium px-4 py-3" style={{ animation: `slideUp 0.3s ease-out ${i * 0.04}s both` }}>
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
                           style={{ background: "rgba(167,139,250,0.12)", color: "var(--tier-platinum)" }}>
                           {wp.pseudo.charAt(0).toUpperCase()}
                         </div>
@@ -1178,7 +1179,7 @@ export default function ModelPage() {
                         <p className="text-xs truncate flex-1 min-w-0" style={{ color: "var(--text-secondary)" }}>
                           {wp.content || ""}
                         </p>
-                        <span className="text-[9px] shrink-0" style={{ color: "var(--text-muted)" }}>{timeAgo(wp.created_at)}</span>
+                        <span className="text-[10px] shrink-0" style={{ color: "var(--text-muted)" }}>{timeAgo(wp.created_at)}</span>
                       </div>
                     </div>
                   );
@@ -1304,7 +1305,7 @@ export default function ModelPage() {
                               <span className="text-[10px] font-bold block" style={{ color: "var(--gold)" }}>
                                 {item.tokenPrice}
                               </span>
-                              <span className="text-[7px] font-medium uppercase tracking-wide" style={{ color: "var(--gold2)" }}>
+                              <span className="text-[10px] font-medium uppercase tracking-wide" style={{ color: "var(--gold2)" }}>
                                 crédits
                               </span>
                             </div>
@@ -1314,7 +1315,7 @@ export default function ModelPage() {
                             <div className="absolute inset-0 content-locked" style={{ background: `linear-gradient(135deg, ${hex}12, rgba(0,0,0,0.25))` }} />
                             <div className="relative text-center z-10">
                               <Lock className="w-4 h-4 mx-auto mb-0.5" style={{ color: hex }} />
-                              <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color: hex }}>
+                              <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: hex }}>
                                 {TIER_META[item.tier]?.label}
                               </span>
                             </div>
@@ -1346,7 +1347,7 @@ export default function ModelPage() {
                         {/* Tier badge */}
                         {!isEditMode && isCreditItem && !isCreditUnlocked && !isModelLoggedIn && (
                           <div className="absolute top-1.5 right-1.5">
-                            <span className="px-1.5 py-0.5 rounded text-[7px] font-bold" style={{ background: "rgba(230,51,41,0.9)", color: "#000" }}>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(230,51,41,0.9)", color: "#000" }}>
                               {item.tokenPrice} 💰
                             </span>
                           </div>
@@ -1354,7 +1355,7 @@ export default function ModelPage() {
 
                         {isEditMode && (
                           <div className="absolute top-1.5 left-1.5">
-                            <span className="px-1.5 py-0.5 rounded text-[7px] font-bold" style={{ background: `${hex}CC`, color: "#fff" }}>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: `${hex}CC`, color: "#fff" }}>
                               {TIER_META[item.tier]?.label || item.tier}
                             </span>
                           </div>
@@ -1362,7 +1363,7 @@ export default function ModelPage() {
 
                         {!isEditMode && item.type !== "photo" && (
                           <div className="absolute top-1.5 right-1.5">
-                            <span className="px-1.5 py-0.5 rounded text-[7px] font-bold" style={{ background: "rgba(0,0,0,0.7)", color: "#fff" }}>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(0,0,0,0.7)", color: "#fff" }}>
                               {item.type === "video" ? <Video className="w-2.5 h-2.5 inline" /> : "REEL"}
                             </span>
                           </div>
@@ -1370,7 +1371,7 @@ export default function ModelPage() {
 
                         {!isEditMode && item.isNew && (
                           <div className="absolute top-1.5 left-1.5">
-                            <span className="badge badge-success text-[7px]">NEW</span>
+                            <span className="badge badge-success text-[10px]">NEW</span>
                           </div>
                         )}
                       </div>
@@ -1487,11 +1488,11 @@ export default function ModelPage() {
                     </div>
                     <div>
                       <p className="text-lg font-black tabular-nums" style={{ color: "var(--gold)" }}>{clientBalance}</p>
-                      <p className="text-[9px] font-medium uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Crédits disponibles</p>
+                      <p className="text-[10px] font-medium uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Crédits disponibles</p>
                     </div>
                   </div>
                   {unlockedTier && TIER_CREDIT_BONUS[unlockedTier]?.multiplier > 1 && (
-                    <span className="badge text-[9px] font-bold" style={{ background: `${TIER_HEX[unlockedTier]}15`, color: TIER_HEX[unlockedTier] }}>
+                    <span className="badge text-[10px] font-bold" style={{ background: `${TIER_HEX[unlockedTier]}15`, color: TIER_HEX[unlockedTier] }}>
                       {TIER_CREDIT_BONUS[unlockedTier].label} bonus
                     </span>
                   )}
@@ -1558,7 +1559,7 @@ export default function ModelPage() {
 
                               {/* Badge */}
                               {pack.badge && (
-                                <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full text-[7px] font-bold"
+                                <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
                                   style={{ background: `${hex}20`, color: hex }}>
                                   {pack.badge}
                                 </div>
@@ -1593,10 +1594,10 @@ export default function ModelPage() {
                                   transition: "font-size 0.3s ease",
                                 }}>{pack.price}€</p>
                                 {isCurrentTier && (
-                                  <span className="text-[8px] font-bold uppercase mt-0.5" style={{ color: "var(--success)" }}>Actif</span>
+                                  <span className="text-[10px] font-bold uppercase mt-0.5" style={{ color: "var(--success)" }}>Actif</span>
                                 )}
                                 {!isCurrentTier && isSelected && (
-                                  <span className="text-[8px] font-medium mt-1" style={{ color: "var(--text-muted)" }}>Voir details ↓</span>
+                                  <span className="text-[10px] font-medium mt-1" style={{ color: "var(--text-muted)" }}>Voir details ↓</span>
                                 )}
                               </div>
 
@@ -1634,7 +1635,7 @@ export default function ModelPage() {
                                 </div>
                                 <div className="flex-1">
                                   <h3 className="text-base font-bold" style={{ color: hex }}>{pack.name}</h3>
-                                  {pack.badge && <span className="text-[9px] font-medium" style={{ color: "var(--text-muted)" }}>{pack.badge}</span>}
+                                  {pack.badge && <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>{pack.badge}</span>}
                                 </div>
                                 <span className="text-2xl font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
                               </div>
@@ -1681,7 +1682,7 @@ export default function ModelPage() {
                                 </div>
                               )}
                               {!isCurrentTier && (pack.stripe_link || pack.wise_url) && (
-                                <p className="text-[9px] text-center mt-2" style={{ color: "var(--text-muted)" }}>
+                                <p className="text-[10px] text-center mt-2" style={{ color: "var(--text-muted)" }}>
                                   Paiement securise · Acces active sous 15 min
                                 </p>
                               )}
@@ -1710,7 +1711,7 @@ export default function ModelPage() {
                                         <input value={pack.name} onChange={e => handleUpdatePack(pack.id, { name: e.target.value })}
                                           className="text-sm font-bold bg-transparent outline-none w-full rounded px-1"
                                           style={{ color: hex, border: "1px dashed var(--border3)" }} />
-                                        {pack.badge && <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{pack.badge}</span>}
+                                        {pack.badge && <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{pack.badge}</span>}
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -1770,7 +1771,7 @@ export default function ModelPage() {
                                   {/* Payment links + Toggle */}
                                   <div className="space-y-2">
                                     <div>
-                                      <label className="text-[9px] font-medium uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>
+                                      <label className="text-[10px] font-medium uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>
                                         Lien Stripe (paiement via SQWENSY)
                                       </label>
                                       <input
@@ -1782,7 +1783,7 @@ export default function ModelPage() {
                                       />
                                     </div>
                                     <div>
-                                      <label className="text-[9px] font-medium uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>
+                                      <label className="text-[10px] font-medium uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>
                                         Lien Wise (alternatif)
                                       </label>
                                       <input
@@ -1895,7 +1896,7 @@ export default function ModelPage() {
                               <span className="text-xl font-black tabular-nums" style={{ color: "var(--gold)" }}>{finalCredits}</span>
                             </div>
                             {hasBonus && (
-                              <p className="text-[8px] font-bold mb-1" style={{ color: TIER_HEX[unlockedTier || ""] }}>
+                              <p className="text-[10px] font-bold mb-1" style={{ color: TIER_HEX[unlockedTier || ""] }}>
                                 {cp.credits} × {mult} = {finalCredits}
                               </p>
                             )}
@@ -1916,13 +1917,13 @@ export default function ModelPage() {
                       Avec tes crédits tu peux
                     </p>
                     <div className="space-y-1.5">
-                      {[
-                        { icon: "📸", text: "Débloquer des photos & vidéos exclusives" },
-                        { icon: "🎨", text: "Commander du contenu personnalisé" },
-                        { icon: "💬", text: "Envoyer des messages prioritaires" },
-                      ].map((item, i) => (
+                      {([
+                        { icon: Camera, text: "Débloquer des photos & vidéos exclusives" },
+                        { icon: Palette, text: "Commander du contenu personnalisé" },
+                        { icon: MessageCircle, text: "Envoyer des messages prioritaires" },
+                      ] as { icon: LucideIcon; text: string }[]).map((item, i) => (
                         <div key={i} className="flex items-center gap-2 py-1.5 px-3 rounded-lg" style={{ background: "rgba(255,255,255,0.02)" }}>
-                          <span className="text-sm">{item.icon}</span>
+                          <item.icon size={14} style={{ color: "var(--text-muted)" }} />
                           <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>{item.text}</span>
                         </div>
                       ))}
@@ -2020,12 +2021,12 @@ export default function ModelPage() {
                       </p>
                       <div className="flex items-center gap-1.5">
                         <ChevronRight className="w-3 h-3" style={{ color: hex }} />
-                        <span className="text-[9px] font-semibold" style={{ color: hex }}>Payer maintenant</span>
+                        <span className="text-[10px] font-semibold" style={{ color: hex }}>Payer maintenant</span>
                       </div>
                       {bonus && (bonus.multiplier > 1 || bonus.bonus) && (
                         <div className="flex items-center gap-1.5 mt-1">
                           <Crown className="w-3 h-3" style={{ color: hex }} />
-                          <span className="text-[9px] font-semibold" style={{ color: hex }}>
+                          <span className="text-[10px] font-semibold" style={{ color: hex }}>
                             {bonus.multiplier > 1 ? `${bonus.label} crédits` : `🎁 ${bonus.bonus}`}
                           </span>
                         </div>
@@ -2045,11 +2046,11 @@ export default function ModelPage() {
                       <p className="text-[10px] leading-relaxed mb-1.5" style={{ color: "var(--text-muted)" }}>
                         {pack.features.slice(0, 2).join(" · ")}
                       </p>
-                      <p className="text-[9px] font-semibold" style={{ color: hex }}>Paiement bientot disponible</p>
+                      <p className="text-[10px] font-semibold" style={{ color: hex }}>Paiement bientot disponible</p>
                       {bonus && (bonus.multiplier > 1 || bonus.bonus) && (
                         <div className="flex items-center gap-1.5 mt-1">
                           <Crown className="w-3 h-3" style={{ color: hex }} />
-                          <span className="text-[9px] font-semibold" style={{ color: hex }}>
+                          <span className="text-[10px] font-semibold" style={{ color: hex }}>
                             {bonus.multiplier > 1 ? `${bonus.label} crédits` : `🎁 ${bonus.bonus}`}
                           </span>
                         </div>
@@ -2122,7 +2123,7 @@ export default function ModelPage() {
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
                         Payer {selectedPack.price}€
                       </a>
-                      <p className="text-[9px] text-center mt-3 leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                      <p className="text-[10px] text-center mt-3 leading-relaxed" style={{ color: "var(--text-muted)" }}>
                         Paiement securise. L&apos;acces est active sous 15 min apres confirmation.
                       </p>
                     </>
@@ -2132,7 +2133,7 @@ export default function ModelPage() {
                         style={{ background: `${hex}15`, color: hex, border: `1px solid ${hex}20` }}>
                         Paiement bientot disponible
                       </div>
-                      <p className="text-[9px] text-center mt-3 leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                      <p className="text-[10px] text-center mt-3 leading-relaxed" style={{ color: "var(--text-muted)" }}>
                         Le lien de paiement sera active prochainement.
                       </p>
                     </>
@@ -2161,7 +2162,7 @@ export default function ModelPage() {
                 }}>
                 <MessageCircle className="w-6 h-6 text-white" />
                 {chatMessages.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[9px] font-bold flex items-center justify-center"
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center"
                     style={{ background: "var(--success)", color: "#fff" }}>
                     {chatMessages.length}
                   </span>
@@ -2194,7 +2195,7 @@ export default function ModelPage() {
                         background: model.online ? "var(--success)" : "var(--text-muted)",
                         boxShadow: model.online ? "0 0 4px rgba(16,185,129,0.5)" : "none",
                       }} />
-                      <span className="text-[9px]" style={{ color: model.online ? "var(--success)" : "var(--text-muted)" }}>
+                      <span className="text-[10px]" style={{ color: model.online ? "var(--success)" : "var(--text-muted)" }}>
                         {model.online ? "En ligne" : "Hors ligne"}
                       </span>
                     </div>
@@ -2243,7 +2244,7 @@ export default function ModelPage() {
                               color: "var(--text)",
                             }}>
                             {msg.content}
-                            <p className="text-[8px] mt-0.5 opacity-40">{timeAgo(msg.created_at)}</p>
+                            <p className="text-[10px] mt-0.5 opacity-40">{timeAgo(msg.created_at)}</p>
                           </div>
                         </div>
                       ))}

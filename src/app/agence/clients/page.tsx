@@ -354,7 +354,7 @@ export default function ClientsPage() {
                               { label: "Tag", value: e.client.tag || "—" },
                             ].map((item) => (
                               <div key={item.label} className="p-2 rounded-lg" style={{ background: "var(--bg3)" }}>
-                                <p className="text-[9px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{item.label}</p>
+                                <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{item.label}</p>
                                 <p className="text-xs font-medium capitalize" style={{ color: "color" in item ? item.color : "var(--text)" }}>
                                   {item.value}
                                 </p>
@@ -363,7 +363,7 @@ export default function ClientsPage() {
                           </div>
                           {e.client.notes && (
                             <div className="p-2 rounded-lg" style={{ background: "var(--bg3)" }}>
-                              <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "var(--text-muted)" }}>Notes</p>
+                              <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--text-muted)" }}>Notes</p>
                               <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{e.client.notes}</p>
                             </div>
                           )}
@@ -395,7 +395,7 @@ export default function ClientsPage() {
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
                                       <span className="text-[11px] font-mono font-medium" style={{ color: "var(--text)" }}>{code.code}</span>
-                                      <span className="text-[9px] capitalize" style={{ color: TIER_COLORS[code.tier] || "var(--text-muted)" }}>{code.tier}</span>
+                                      <span className="text-[10px] capitalize" style={{ color: TIER_COLORS[code.tier] || "var(--text-muted)" }}>{code.tier}</span>
                                     </div>
                                     <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                                       {code.platform} · {code.type} · {code.duration}h
@@ -405,7 +405,7 @@ export default function ClientsPage() {
                                     <p className="text-[10px]" style={{ color: isActive ? "var(--success)" : "var(--text-muted)" }}>
                                       {isActive ? getTimeLeft(code.expiresAt).text : isRevoked ? "Revoque" : "Expire"}
                                     </p>
-                                    <p className="text-[9px]" style={{ color: "var(--text-muted)" }}>
+                                    <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                                       {new Date(code.created).toLocaleDateString("fr-BE")}
                                     </p>
                                   </div>

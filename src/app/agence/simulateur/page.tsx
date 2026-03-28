@@ -326,7 +326,7 @@ export default function StrategiePage() {
               <div key={card.label} className="rounded-xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                 <div className="flex items-center gap-1.5 mb-1">
                   <card.icon className="w-3 h-3" style={{ color: card.color }} />
-                  <span className="text-[9px] font-medium uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{card.label}</span>
+                  <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{card.label}</span>
                 </div>
                 <span className="text-sm font-bold" style={{ color: card.color }}>{card.value}</span>
               </div>
@@ -348,7 +348,7 @@ export default function StrategiePage() {
               }} />
             </div>
             {!goalReached && totalProjectedRevenue > 0 && (
-              <p className="text-[9px] mt-1" style={{ color: "var(--text-muted)" }}>
+              <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>
                 Il manque {(state.monthlyGoal - totalProjectedRevenue).toLocaleString()}€ — augmente le volume ou active un niveau superieur
               </p>
             )}
@@ -395,8 +395,8 @@ export default function StrategiePage() {
                         }}>
                         <exp.icon className="w-4 h-4 mb-1" style={{ color: active ? exp.color : "var(--text-muted)" }} />
                         <p className="text-[11px] font-bold" style={{ color: active ? exp.color : "var(--text)" }}>{exp.label}</p>
-                        <p className="text-[9px]" style={{ color: "var(--text-muted)" }}>{exp.subsRange} abonnes</p>
-                        <p className="text-[8px] mt-0.5" style={{ color: "var(--text-muted)" }}>{exp.desc}</p>
+                        <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{exp.subsRange} abonnes</p>
+                        <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{exp.desc}</p>
                       </button>
                     );
                   })}
@@ -419,7 +419,7 @@ export default function StrategiePage() {
                     <span className="text-sm font-black" style={{ color: "#F59E0B" }}>{state.monthlyGoal.toLocaleString()}€</span>
                   </div>
                 </div>
-                <div className="flex justify-between text-[8px]" style={{ color: "var(--text-muted)" }}>
+                <div className="flex justify-between text-[10px]" style={{ color: "var(--text-muted)" }}>
                   <span>200€</span>
                   <span>5 000€</span>
                   <span>10 000€</span>
@@ -446,7 +446,7 @@ export default function StrategiePage() {
                         </div>
                         <div className="text-left flex-1">
                           <p className="text-[11px] font-bold" style={{ color: active ? "var(--text)" : "var(--text-muted)" }}>{ch.label}</p>
-                          <p className="text-[8px]" style={{ color: "var(--text-muted)" }}>{ch.desc}</p>
+                          <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{ch.desc}</p>
                         </div>
                         {active && <Check className="w-4 h-4 shrink-0" style={{ color: ch.color }} />}
                       </button>
@@ -492,11 +492,11 @@ export default function StrategiePage() {
                                 N{level.id}
                               </span>
                               <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{level.label}</span>
-                              <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-md" style={{ background: `${level.color}15`, color: level.color }}>
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md" style={{ background: `${level.color}15`, color: level.color }}>
                                 {level.tierLabel}
                               </span>
                             </div>
-                            <p className="text-[9px] mt-0.5" style={{ color: "var(--text-muted)" }}>{level.desc}</p>
+                            <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{level.desc}</p>
                           </div>
                           {active && level.id > 0 && (
                             <level.icon className="w-4 h-4 shrink-0" style={{ color: level.color }} />
@@ -507,13 +507,13 @@ export default function StrategiePage() {
                         {active && level.id > 0 && (
                           <div className="px-4 pb-3 space-y-2" style={{ borderTop: `1px solid ${level.color}15` }}>
                             <div className="pt-2">
-                              <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: level.color }}>
+                              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: level.color }}>
                                 Prix moyens du marche ({expMeta.label})
                               </span>
                               <div className="grid grid-cols-4 gap-2 mt-1.5">
                                 {CHANNELS.filter(ch => state.activeChannels.includes(ch.id)).map(ch => (
                                   <div key={ch.id} className="text-center p-2 rounded-lg" style={{ background: `${ch.color}08` }}>
-                                    <span className="text-[8px] font-medium block" style={{ color: "var(--text-muted)" }}>{ch.label.split(" ")[0]}</span>
+                                    <span className="text-[10px] font-medium block" style={{ color: "var(--text-muted)" }}>{ch.label.split(" ")[0]}</span>
                                     <span className="text-xs font-black" style={{ color: ch.color }}>{prices[ch.id]}€</span>
                                   </div>
                                 ))}
@@ -521,7 +521,7 @@ export default function StrategiePage() {
                             </div>
                             {/* Volume slider */}
                             <div className="flex items-center gap-3">
-                              <span className="text-[9px] font-medium shrink-0" style={{ color: "var(--text-muted)" }}>Volume/mois:</span>
+                              <span className="text-[10px] font-medium shrink-0" style={{ color: "var(--text-muted)" }}>Volume/mois:</span>
                               <input type="range" min={0} max={60} step={1} value={volume}
                                 onChange={e => setVolume(level.id, Number(e.target.value))}
                                 className="flex-1" style={{ accentColor: level.color }} />
@@ -529,7 +529,7 @@ export default function StrategiePage() {
                             </div>
                             {volume > 0 && (
                               <div className="flex items-center justify-between px-2 py-1.5 rounded-lg" style={{ background: `${level.color}08` }}>
-                                <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>Revenu estime ce niveau:</span>
+                                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Revenu estime ce niveau:</span>
                                 <span className="text-[11px] font-bold" style={{ color: "#10B981" }}>
                                   {(state.activeChannels.reduce((sum, ch) => sum + prices[ch] * volume, 0)).toLocaleString()}€/mois
                                 </span>
@@ -553,14 +553,14 @@ export default function StrategiePage() {
                   <div className="space-y-2">
                     {recommendedPrices.map(({ level, bestChannel }) => (
                       <div key={level.id} className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ background: "var(--surface)" }}>
-                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded shrink-0" style={{ background: `${level.color}20`, color: level.color }}>
+                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded shrink-0" style={{ background: `${level.color}20`, color: level.color }}>
                           N{level.id}
                         </span>
                         <span className="text-[10px] font-medium flex-1" style={{ color: "var(--text)" }}>{level.label}</span>
                         {bestChannel && (
                           <div className="text-right">
                             <span className="text-[11px] font-bold" style={{ color: "#10B981" }}>{bestChannel.price}€</span>
-                            <span className="text-[8px] ml-1" style={{ color: "var(--text-muted)" }}>
+                            <span className="text-[10px] ml-1" style={{ color: "var(--text-muted)" }}>
                               via {CHANNELS.find(c => c.id === bestChannel.ch)?.label.split(" ")[0]}
                             </span>
                           </div>
@@ -582,7 +582,7 @@ export default function StrategiePage() {
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] font-semibold" style={{ color: "var(--text-muted)" }}>Progression globale</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>
+                    <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                       {state.completedSteps.filter(s => visibleSteps.some(vs => vs.id === s)).length}/{visibleSteps.length}
                     </span>
                     <span className="text-xs font-black" style={{ color: pipelineProgress === 100 ? "#10B981" : "#60A5FA" }}>
@@ -621,7 +621,7 @@ export default function StrategiePage() {
                           <catMeta.icon className="w-3 h-3" style={{ color: catMeta.color }} />
                         </div>
                         <span className="text-[11px] font-bold flex-1" style={{ color: catMeta.color }}>{catMeta.label}</span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
                           style={{
                             background: catDone ? "rgba(16,185,129,0.1)" : `${catMeta.color}10`,
                             color: catDone ? "#10B981" : catMeta.color,
@@ -656,7 +656,7 @@ export default function StrategiePage() {
                                 }}>{step.label}</span>
                               </div>
                               {step.requiresLevel !== undefined && (
-                                <span className="text-[7px] font-bold px-1 py-0.5 rounded shrink-0"
+                                <span className="text-[10px] font-bold px-1 py-0.5 rounded shrink-0"
                                   style={{ background: `${CONTENT_LEVELS[step.requiresLevel].color}15`, color: CONTENT_LEVELS[step.requiresLevel].color }}>
                                   N{step.requiresLevel}
                                 </span>
@@ -693,11 +693,11 @@ export default function StrategiePage() {
                       <div key={r.level}>
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded" style={{ background: `${r.color}20`, color: r.color }}>
+                            <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: `${r.color}20`, color: r.color }}>
                               N{r.level}
                             </span>
                             <span className="text-[10px] font-medium" style={{ color: "var(--text)" }}>{r.label}</span>
-                            <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{r.volume} posts</span>
+                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{r.volume} posts</span>
                           </div>
                           <span className="text-[11px] font-bold" style={{ color: "#10B981" }}>{r.channelRevenue.toLocaleString()}€</span>
                         </div>
@@ -788,7 +788,7 @@ export default function StrategiePage() {
               </div>
 
               {/* Disclaimer */}
-              <p className="text-[8px] text-center" style={{ color: "var(--text-muted)", opacity: 0.5 }}>
+              <p className="text-[10px] text-center" style={{ color: "var(--text-muted)", opacity: 0.5 }}>
                 Les projections sont basees sur les moyennes du marche pour ton niveau d'experience.
                 Les revenus reels dependent de ta niche, ton engagement, et ta regularite.
               </p>

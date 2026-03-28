@@ -8,11 +8,11 @@ import type { HeavenAuth } from "./auth-guard";
 const NAV_ITEMS = [
   { id: "cockpit", label: "Dashboard", icon: Crown, href: "/agence", color: "var(--accent)" },
   { id: "strategie", label: "Strategie", icon: Calculator, href: "/agence/simulateur", color: "#E040FB" },
-  { id: "clients", label: "Clients", icon: Users, href: "/agence/clients", color: "#F59E0B" },
+  { id: "clients", label: "Clients", icon: Users, href: "/agence/clients", color: "var(--warning)" },
   { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances", color: "var(--success)" },
   { id: "automation", label: "Automation", icon: Bot, href: "/agence/automation", color: "#06B6D4" },
   { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings", color: "var(--text-muted)" },
-  { id: "architecture", label: "Architecture", icon: Map, href: "/agence/architecture", color: "#7C3AED", rootOnly: true },
+  { id: "architecture", label: "Architecture", icon: Map, href: "/agence/architecture", color: "var(--tier-platinum)", rootOnly: true },
 ] as const;
 
 function useAuth(): HeavenAuth | null {
@@ -59,7 +59,7 @@ export function Sidebar() {
       >
         <a href="/agence" className="flex items-center justify-center mb-6 no-underline">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, var(--accent), #7C3AED)", boxShadow: "0 0 20px rgba(230,51,41,0.25)" }}>
+            style={{ background: "linear-gradient(135deg, var(--accent), var(--tier-platinum))", boxShadow: "0 0 20px rgba(230,51,41,0.25)" }}>
             <Crown className="w-4 h-4" style={{ color: "#fff" }} />
           </div>
           {!collapsed && <span className="ml-2 text-xs font-bold tracking-widest" style={{ color: "var(--accent)", fontFamily: "'Inter', sans-serif" }}>HEAVEN</span>}

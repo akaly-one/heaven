@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Plus, KeyRound, Pencil, Eye, CheckCircle, Circle, RotateCcw, TrendingUp, Instagram, Camera as CameraIcon, Globe, MessageCircle, Heart, Pin, Newspaper, Wifi, WifiOff, Send, Compass, X, ImagePlus, Target, CalendarDays, ChevronRight, Bell, Bot } from "lucide-react";
+import { Plus, KeyRound, Pencil, Eye, CheckCircle, Circle, RotateCcw, TrendingUp, Instagram, Camera as CameraIcon, Globe, MessageCircle, Heart, Pin, Newspaper, Wifi, WifiOff, Send, Compass, X, ImagePlus, Target, CalendarDays, ChevronRight, Bell, Bot, Lightbulb, ClipboardList, Film, Check, Rocket } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
@@ -11,6 +12,7 @@ import { GenerateModal } from "@/components/cockpit/generate-modal";
 // ── Types & Constants (centralized) ──
 import type { PackConfig, AccessCode, ClientInfo, FeedPost } from "@/types/heaven";
 import { DEFAULT_PACKS } from "@/constants/packs";
+import { Tabs, TabPanel } from "@/components/ui/tabs";
 
 // ── API helpers ──
 function generateCodeString(model: string): string {
@@ -53,13 +55,13 @@ const PACK_CODES: Record<string, string> = {
 };
 
 // ── Pipeline stages ──
-const PIPELINE_STAGES = [
-  { id: "idea", label: "Idee", color: "#F59E0B", icon: "💡" },
-  { id: "planned", label: "Planifie", color: "#3B82F6", icon: "📋" },
-  { id: "shooting", label: "Shooting", color: "#8B5CF6", icon: "📸" },
-  { id: "editing", label: "Montage", color: "#EC4899", icon: "🎬" },
-  { id: "ready", label: "Pret", color: "#10B981", icon: "✅" },
-  { id: "published", label: "Publie", color: "#06B6D4", icon: "🚀" },
+const PIPELINE_STAGES: { id: string; label: string; color: string; icon: LucideIcon }[] = [
+  { id: "idea", label: "Idee", color: "#F59E0B", icon: Lightbulb },
+  { id: "planned", label: "Planifie", color: "#3B82F6", icon: ClipboardList },
+  { id: "shooting", label: "Shooting", color: "#8B5CF6", icon: CameraIcon },
+  { id: "editing", label: "Montage", color: "#EC4899", icon: Film },
+  { id: "ready", label: "Pret", color: "#10B981", icon: Check },
+  { id: "published", label: "Publie", color: "#06B6D4", icon: Rocket },
 ];
 
 // ══════════ MAIN ══════════
@@ -521,30 +523,17 @@ export default function AgenceDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 fade-up-3">
             {/* Feed / Chat pivot column */}
             <div>
-              {/* Pivot tabs */}
-              <div className="flex items-center gap-1 mb-3 p-0.5 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", backdropFilter: "blur(12px)", border: "1px solid var(--border)" }}>
-                {([
-                  { id: "feed" as const, label: "Feed", icon: Newspaper },
-                  { id: "messages" as const, label: "Messages", icon: MessageCircle },
-                ] as const).map(tab => (
-                  <button key={tab.id} onClick={() => setDashTab(tab.id)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[11px] font-semibold cursor-pointer transition-all duration-200 relative"
-                    style={{
-                      background: dashTab === tab.id ? "rgba(255,255,255,0.08)" : "transparent",
-                      color: dashTab === tab.id ? "var(--text)" : "var(--text-muted)",
-                      boxShadow: dashTab === tab.id ? "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)" : "none",
-                      transform: dashTab === tab.id ? "scale(1)" : "scale(0.98)",
-                    }}>
-                    <tab.icon className="w-3.5 h-3.5" />
-                    {tab.label}
-                    {tab.id === "messages" && pendingMessages > 0 && (
-                      <span className="absolute -top-1.5 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[8px] font-bold px-1"
-                        style={{ background: "var(--accent)", color: "#fff", boxShadow: "0 2px 6px rgba(230,51,41,0.4)" }}>
-                        {pendingMessages}
-                      </span>
-                    )}
-                  </button>
-                ))}
+              {/* Pivot tabs (accessible) */}
+              <div className="mb-3">
+                <Tabs
+                  tabs={[
+                    { id: "feed", label: "Feed", icon: Newspaper },
+                    { id: "messages", label: "Messages", icon: MessageCircle, badge: pendingMessages },
+                  ]}
+                  activeTab={dashTab}
+                  onTabChange={(id) => setDashTab(id as "feed" | "messages")}
+                  size="sm"
+                />
               </div>
 
               {/* Feed tab content */}
@@ -553,7 +542,7 @@ export default function AgenceDashboard() {
                   {/* Inline new post composer */}
                   <div className="rounded-2xl p-3 mb-2" style={{ background: "rgba(255,255,255,0.03)", backdropFilter: "blur(12px)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }}>
                     <div className="flex gap-2.5">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold"
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold"
                         style={{ background: "linear-gradient(135deg, var(--accent), #7C3AED)", color: "#fff" }}>
                         {modelSlug.charAt(0).toUpperCase()}
                       </div>
@@ -596,7 +585,7 @@ export default function AgenceDashboard() {
                         )}
                         {/* Upload error */}
                         {uploadError && (
-                          <div className="flex items-center gap-1.5 mt-1.5 px-2 py-1 rounded-lg text-[9px] font-medium"
+                          <div className="flex items-center gap-1.5 mt-1.5 px-2 py-1 rounded-lg text-[10px] font-medium"
                             style={{ background: "rgba(239,68,68,0.1)", color: "#EF4444" }}>
                             <X className="w-3 h-3 shrink-0" />
                             {uploadError}
@@ -611,7 +600,7 @@ export default function AgenceDashboard() {
                             {/* Tier folder selector — determines where the post/photo is published */}
                             <select value={newPostTier} onChange={e => setNewPostTier(e.target.value)}
                               disabled={posting}
-                              className="text-[9px] font-bold px-2 py-1 rounded-lg outline-none cursor-pointer uppercase tracking-wide disabled:opacity-50"
+                              className="text-[10px] font-bold px-2 py-1 rounded-lg outline-none cursor-pointer uppercase tracking-wide disabled:opacity-50"
                               style={{
                                 background: TIER_COLORS[newPostTier]?.bg || "var(--bg3)",
                                 color: TIER_COLORS[newPostTier]?.text || "var(--text-muted)",
@@ -654,7 +643,7 @@ export default function AgenceDashboard() {
                           <div key={post.id} className="rounded-xl px-3 py-2.5 transition-all duration-200 hover:bg-white/[0.02]" style={{ borderBottom: "1px solid var(--border)" }}>
                             {/* Single line: avatar + pseudo + message + photo */}
                             <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold"
+                              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold"
                                 style={{ background: "linear-gradient(135deg, var(--accent), #7C3AED)", color: "#fff" }}>
                                 {modelSlug.charAt(0).toUpperCase()}
                               </div>
@@ -675,7 +664,7 @@ export default function AgenceDashboard() {
                               )}
                               {/* Tier badge */}
                               {post.tier_required !== "public" && (
-                                <span className="px-1.5 py-0.5 rounded-md text-[7px] font-bold uppercase shrink-0"
+                                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase shrink-0"
                                   style={{ background: tier.bg, color: tier.text }}>
                                   {tier.label}
                                 </span>
@@ -684,11 +673,11 @@ export default function AgenceDashboard() {
                             </div>
                             {/* Meta row */}
                             <div className="flex items-center gap-3 mt-1 ml-[38px]">
-                              <span className="text-[8px]" style={{ color: "var(--text-muted)" }}>{timeAgo}</span>
-                              <span className="flex items-center gap-0.5 text-[8px]" style={{ color: post.likes_count > 0 ? "#F43F5E" : "var(--text-muted)" }}>
+                              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{timeAgo}</span>
+                              <span className="flex items-center gap-0.5 text-[10px]" style={{ color: post.likes_count > 0 ? "#F43F5E" : "var(--text-muted)" }}>
                                 <Heart className="w-2.5 h-2.5" fill={post.likes_count > 0 ? "#F43F5E" : "none"} /> {post.likes_count || 0}
                               </span>
-                              <span className="flex items-center gap-0.5 text-[8px]" style={{ color: "var(--text-muted)" }}>
+                              <span className="flex items-center gap-0.5 text-[10px]" style={{ color: "var(--text-muted)" }}>
                                 <MessageCircle className="w-2.5 h-2.5" /> {post.comments_count || 0}
                               </span>
                             </div>
@@ -725,12 +714,12 @@ export default function AgenceDashboard() {
                         <MessageCircle className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
                         <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Conversations</span>
                         {pendingMessages > 0 && (
-                          <span className="px-1.5 py-0.5 rounded-md text-[8px] font-bold" style={{ background: "rgba(230,51,41,0.12)", color: "var(--accent)" }}>
+                          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold" style={{ background: "rgba(230,51,41,0.12)", color: "var(--accent)" }}>
                             {pendingMessages} non lu{pendingMessages > 1 ? "s" : ""}
                           </span>
                         )}
                       </div>
-                      <span className="text-[9px] font-medium" style={{ color: "var(--text-muted)" }}>
+                      <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>
                         {sortedConvos.length} client{sortedConvos.length > 1 ? "s" : ""}
                       </span>
                     </div>
@@ -769,7 +758,7 @@ export default function AgenceDashboard() {
                                   style={{ background: "rgba(124,58,237,0.12)", color: "#7C3AED" }}>
                                   {clientName.charAt(0).toUpperCase()}
                                   {unreadCount > 0 && (
-                                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold"
+                                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold"
                                       style={{ background: "var(--accent)", color: "#fff", boxShadow: "0 2px 6px rgba(230,51,41,0.4)" }}>
                                       {unreadCount}
                                     </span>
@@ -780,12 +769,12 @@ export default function AgenceDashboard() {
                                   <div className="flex items-center gap-1.5">
                                     <span className="text-[11px] font-bold truncate" style={{ color: "var(--text)" }}>{clientName}</span>
                                     {platform === "snap" && (
-                                      <span className="px-1 py-0.5 rounded text-[7px] font-bold" style={{ background: "rgba(255,252,0,0.15)", color: "#FFFC00" }}>SNAP</span>
+                                      <span className="px-1 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(255,252,0,0.15)", color: "#FFFC00" }}>SNAP</span>
                                     )}
                                     {platform === "insta" && (
-                                      <span className="px-1 py-0.5 rounded text-[7px] font-bold" style={{ background: "rgba(225,48,108,0.12)", color: "#E1306C" }}>INSTA</span>
+                                      <span className="px-1 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(225,48,108,0.12)", color: "#E1306C" }}>INSTA</span>
                                     )}
-                                    <span className="text-[8px] ml-auto shrink-0" style={{ color: "var(--text-muted)" }}>{timeAgo(lastMsg.created_at)}</span>
+                                    <span className="text-[10px] ml-auto shrink-0" style={{ color: "var(--text-muted)" }}>{timeAgo(lastMsg.created_at)}</span>
                                   </div>
                                   <p className="text-[10px] mt-0.5 truncate" style={{ color: "var(--text-secondary)", opacity: 0.7 }}>
                                     {lastMsg.sender_type === "model" ? <span style={{ color: "var(--text-muted)" }}>Vous: </span> : null}
@@ -812,7 +801,7 @@ export default function AgenceDashboard() {
                                             borderBottomLeftRadius: msg.sender_type === "client" ? "4px" : "12px",
                                           }}>
                                           {msg.content}
-                                          <span className="block text-[7px] mt-0.5" style={{ opacity: 0.5 }}>{timeAgo(msg.created_at)}</span>
+                                          <span className="block text-[10px] mt-0.5" style={{ opacity: 0.5 }}>{timeAgo(msg.created_at)}</span>
                                         </div>
                                       </div>
                                     ))}
@@ -886,7 +875,7 @@ export default function AgenceDashboard() {
                         <div className="flex gap-0.5">
                           {DAYS.map(day => (
                             <button key={day} onClick={() => assignDay(task.id, day)}
-                              className="w-5 h-5 rounded text-[7px] font-bold cursor-pointer transition-all hover:scale-110"
+                              className="w-5 h-5 rounded text-[10px] font-bold cursor-pointer transition-all hover:scale-110"
                               style={{
                                 background: taskDays[task.id] === day ? "var(--accent)" : "var(--bg2)",
                                 color: taskDays[task.id] === day ? "#fff" : "var(--text-muted)",
@@ -920,7 +909,7 @@ export default function AgenceDashboard() {
                     return (
                       <div key={stage.id} className="flex-1 text-center">
                         <div className="h-1.5 rounded-full mb-1" style={{ background: count > 0 ? stage.color : "var(--bg2)" }} />
-                        <span className="text-[7px] font-semibold" style={{ color: count > 0 ? stage.color : "var(--text-muted)" }}>
+                        <span className="text-[10px] font-semibold" style={{ color: count > 0 ? stage.color : "var(--text-muted)" }}>
                           {stage.label}
                         </span>
                       </div>
@@ -942,18 +931,18 @@ export default function AgenceDashboard() {
                       return (
                         <div key={goal.id} className="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-200 hover:scale-[1.008]"
                           style={{ background: goal.completed ? "rgba(22,163,74,0.06)" : "rgba(255,255,255,0.03)", border: `1px solid ${goal.completed ? "rgba(22,163,74,0.15)" : "var(--border)"}` }}>
-                          <span className="text-sm" role="img">{stage?.icon || "📋"}</span>
+                          {(() => { const Icon = stage?.icon || ClipboardList; return <Icon size={14} style={{ color: stage?.color || "var(--text-muted)" }} />; })()}
                           <span className="text-[11px] font-medium flex-1" style={{
                             color: goal.completed ? "var(--success)" : "var(--text-secondary)",
                             textDecoration: goal.completed ? "line-through" : "none",
                           }}>
                             {goal.title}
                           </span>
-                          <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-md" style={{ background: `${stage?.color || "var(--bg2)"}20`, color: stage?.color || "var(--text-muted)" }}>
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md" style={{ background: `${stage?.color || "var(--bg2)"}20`, color: stage?.color || "var(--text-muted)" }}>
                             {stage?.label || goal.stage}
                           </span>
                           {goal.target_date && (
-                            <span className="text-[8px]" style={{ color: "var(--text-muted)" }}>
+                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                               <CalendarDays className="w-2.5 h-2.5 inline mr-0.5" />
                               {new Date(goal.target_date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
                             </span>
@@ -1179,7 +1168,7 @@ export default function AgenceDashboard() {
                 <div className="flex-1 min-w-0">
                   <span className="text-[12px] font-bold" style={{ color: "var(--text)" }}>{expandedImage.author}</span>
                   {expandedImage.tier && expandedImage.tier !== "public" && (
-                    <span className="ml-2 px-1.5 py-0.5 rounded-md text-[8px] font-bold uppercase"
+                    <span className="ml-2 px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase"
                       style={{ background: TIER_COLORS[expandedImage.tier]?.bg, color: TIER_COLORS[expandedImage.tier]?.text }}>
                       {TIER_COLORS[expandedImage.tier]?.label}
                     </span>

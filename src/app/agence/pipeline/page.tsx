@@ -527,7 +527,7 @@ export default function PipelineDashboard() {
                               {item.platforms.map((p: string) => (
                                 <span
                                   key={p}
-                                  className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-md"
+                                  className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-md"
                                   style={{
                                     background: `${PLATFORM_COLORS[p] || "#666"}20`,
                                     color: PLATFORM_COLORS[p] || "#666",
@@ -543,7 +543,7 @@ export default function PipelineDashboard() {
                           <div className="flex items-center justify-between">
                             {item.tier && (
                               <span
-                                className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-md"
+                                className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-md"
                                 style={{
                                   background: `${TIER_COLORS[item.tier] || "#666"}20`,
                                   color: TIER_COLORS[item.tier] || "#666",
@@ -554,7 +554,7 @@ export default function PipelineDashboard() {
                             )}
                             {item.scheduled_date && (
                               <span
-                                className="text-[9px] flex items-center gap-0.5"
+                                className="text-[10px] flex items-center gap-0.5"
                                 style={{ color: "var(--text-muted)" }}
                               >
                                 <Calendar className="w-2.5 h-2.5" />
@@ -567,14 +567,14 @@ export default function PipelineDashboard() {
                           {item.stage === "published" && (
                             <div className="flex items-center gap-2 mt-1.5 pt-1.5" style={{ borderTop: "1px solid var(--border2)" }}>
                               <span
-                                className="text-[9px] flex items-center gap-0.5"
+                                className="text-[10px] flex items-center gap-0.5"
                                 style={{ color: "var(--text-muted)" }}
                               >
                                 <Eye className="w-2.5 h-2.5" />
                                 {item.views}
                               </span>
                               <span
-                                className="text-[9px] flex items-center gap-0.5"
+                                className="text-[10px] flex items-center gap-0.5"
                                 style={{ color: "var(--text-muted)" }}
                               >
                                 <Heart className="w-2.5 h-2.5" />
@@ -582,7 +582,7 @@ export default function PipelineDashboard() {
                               </span>
                               {item.revenue > 0 && (
                                 <span
-                                  className="text-[9px] flex items-center gap-0.5"
+                                  className="text-[10px] flex items-center gap-0.5"
                                   style={{ color: "var(--accent)" }}
                                 >
                                   <DollarSign className="w-2.5 h-2.5" />
@@ -655,7 +655,7 @@ export default function PipelineDashboard() {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <div
-                          className="w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-black uppercase"
+                          className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black uppercase"
                           style={{
                             background: `${PLATFORM_COLORS[account.platform] || "#666"}25`,
                             color:
@@ -680,7 +680,7 @@ export default function PipelineDashboard() {
                         </div>
                       </div>
                       <span
-                        className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-md"
+                        className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-md"
                         style={{
                           background:
                             account.status === "active"
@@ -836,14 +836,14 @@ export default function PipelineDashboard() {
                         </div>
                         <div className="flex items-center justify-between mt-1">
                           <span
-                            className="text-[9px] capitalize"
+                            className="text-[10px] capitalize"
                             style={{ color: "var(--text-muted)" }}
                           >
                             {goal.category}
                           </span>
                           {goal.deadline && (
                             <span
-                              className="text-[9px] flex items-center gap-0.5"
+                              className="text-[10px] flex items-center gap-0.5"
                               style={{ color: "var(--text-muted)" }}
                             >
                               <Calendar className="w-2.5 h-2.5" />
@@ -968,7 +968,7 @@ export default function PipelineDashboard() {
                       <button
                         key={p}
                         onClick={() => togglePlatform(p)}
-                        className="text-[9px] font-bold uppercase px-2 py-1 rounded-md cursor-pointer transition-all"
+                        className="text-[10px] font-bold uppercase px-2 py-1 rounded-md cursor-pointer transition-all"
                         style={{
                           background: selected
                             ? `${PLATFORM_COLORS[p]}30`

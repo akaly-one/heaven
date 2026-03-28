@@ -10,6 +10,7 @@ import {
 
 import type { AccessCode, ClientInfo, WiseLink } from "@/types/heaven";
 import { TIER_COLORS } from "@/constants/tiers";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface CodesListProps {
   codes: AccessCode[];
@@ -85,6 +86,7 @@ export function CodesList({
   const [messageText, setMessageText] = useState("");
   const [sendingMessage, setSendingMessage] = useState<string | null>(null);
   const [deliveryCode, setDeliveryCode] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: "revoke" | "delete"; code: string } | null>(null);
 
   const handleCopy = (text: string, id?: string) => {
     navigator.clipboard.writeText(text);
@@ -242,20 +244,20 @@ export function CodesList({
                       {ci?.is_verified && <Shield className="w-3 h-3 shrink-0" style={{ color: "var(--success)" }} />}
                       {ci?.is_blocked && <ShieldOff className="w-3 h-3 shrink-0" style={{ color: "var(--danger)" }} />}
                       {ci?.tag && (
-                        <span className="text-[8px] px-1 py-0.5 rounded-full shrink-0" style={{ background: "rgba(167,139,250,0.1)", color: "#A78BFA" }}>
+                        <span className="text-[10px] px-1 py-0.5 rounded-full shrink-0" style={{ background: "rgba(167,139,250,0.1)", color: "#A78BFA" }}>
                           {ci.tag}
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       {ci?.pseudo_snap && (
-                        <span className="text-[9px]" style={{ color: "#FFFC00" }}>@{ci.pseudo_snap}</span>
+                        <span className="text-[10px]" style={{ color: "#FFFC00" }}>@{ci.pseudo_snap}</span>
                       )}
                       {ci?.pseudo_insta && (
-                        <span className="text-[9px]" style={{ color: "#E1306C" }}>@{ci.pseudo_insta}</span>
+                        <span className="text-[10px]" style={{ color: "#E1306C" }}>@{ci.pseudo_insta}</span>
                       )}
                       {!ci?.pseudo_snap && !ci?.pseudo_insta && group.name !== "—" && (
-                        <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>@{group.name}</span>
+                        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>@{group.name}</span>
                       )}
                     </div>
                   </div>
@@ -267,13 +269,13 @@ export function CodesList({
                       <span key={t} className="w-2 h-2 rounded-full" style={{ background: TIER_COLORS[t] || "var(--text-muted)" }} />
                     ))}
                     {/* Active/expired count */}
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-md font-medium tabular-nums"
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium tabular-nums"
                       style={{ background: group.activeCodes > 0 ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.04)", color: group.activeCodes > 0 ? "var(--success)" : "var(--text-muted)" }}>
                       {group.activeCodes}A{group.expiredCodes > 0 ? `/${group.expiredCodes}E` : ""}
                     </span>
                     {/* Spent */}
                     {ci?.total_spent ? (
-                      <span className="text-[9px] font-semibold tabular-nums" style={{ color: "var(--success)" }}>{ci.total_spent}€</span>
+                      <span className="text-[10px] font-semibold tabular-nums" style={{ color: "var(--success)" }}>{ci.total_spent}€</span>
                     ) : null}
                     {isExpanded ? (
                       <ChevronDown className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
@@ -289,7 +291,7 @@ export function CodesList({
                     {/* Client detail strip */}
                     {ci && (
                       <div className="px-3 py-2 flex flex-wrap items-center gap-1.5" style={{ background: "rgba(255,255,255,0.01)", borderTop: "1px solid var(--border2)" }}>
-                        <div className="flex items-center gap-3 text-[9px] flex-wrap" style={{ color: "var(--text-muted)" }}>
+                        <div className="flex items-center gap-3 text-[10px] flex-wrap" style={{ color: "var(--text-muted)" }}>
                           <span>Tokens: <b style={{ color: "var(--text)" }}>{ci.total_tokens_bought || 0}</b> achet. / <b style={{ color: "var(--text)" }}>{ci.total_tokens_spent || 0}</b> dep.</span>
                           <span>Tier: <b className="uppercase" style={{ color: TIER_COLORS[ci.tier || ""] || "var(--text)" }}>{ci.tier || "—"}</b></span>
                           {ci.last_active && <span>Vu: {new Date(ci.last_active).toLocaleDateString("fr-FR")}</span>}
@@ -392,8 +394,8 @@ export function CodesList({
                                 <div key={sub.code} className="flex items-center gap-2 p-2 rounded-lg" style={{ background: "rgba(255,255,255,0.02)" }}>
                                   <Crown className="w-3 h-3 shrink-0" style={{ color: tierColor }} />
                                   <span className="text-[10px] font-bold uppercase" style={{ color: tierColor }}>{sub.tier}</span>
-                                  <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>·</span>
-                                  <span className="text-[9px] tabular-nums" style={{ color: "var(--text-secondary)" }}>
+                                  <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>·</span>
+                                  <span className="text-[10px] tabular-nums" style={{ color: "var(--text-secondary)" }}>
                                     Expire {new Date(sub.expiresAt).toLocaleDateString("fr-FR")} ({timeLeft(sub.expiresAt)})
                                   </span>
                                   <div className="flex-1" />
@@ -401,7 +403,7 @@ export function CodesList({
                                     <div className="flex gap-1">
                                       {EXTEND_OPTIONS.map(opt => (
                                         <button key={opt.hours} onClick={() => onExtendCode(sub.code, opt.hours)}
-                                          className="px-1.5 py-0.5 rounded text-[8px] font-medium cursor-pointer hover:scale-105 transition-transform"
+                                          className="px-1.5 py-0.5 rounded text-[10px] font-medium cursor-pointer hover:scale-105 transition-transform"
                                           style={{ background: "rgba(16,185,129,0.08)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.15)" }}>
                                           {opt.label}
                                         </button>
@@ -416,7 +418,7 @@ export function CodesList({
                           {activeSubs.length > 0 && (
                             <div className="mt-2 p-2 rounded-lg flex items-center gap-2" style={{ background: "rgba(230,51,41,0.04)", border: "1px solid rgba(230,51,41,0.1)" }}>
                               <Link2 className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--accent)" }} />
-                              <span className="text-[9px] flex-1" style={{ color: "var(--text-secondary)" }}>
+                              <span className="text-[10px] flex-1" style={{ color: "var(--text-secondary)" }}>
                                 Code unifie: acces {activeSubs.map(s => s.tier.toUpperCase()).join(" + ")}
                               </span>
                               <button
@@ -424,7 +426,7 @@ export function CodesList({
                                   const primary = activeSubs.sort((a, b) => new Date(b.expiresAt).getTime() - new Date(a.expiresAt).getTime())[0];
                                   handleCopy(getAccessLink(modelSlug, primary.code), `unified-${group.name}`);
                                 }}
-                                className="px-2 py-1 rounded-lg text-[9px] font-medium cursor-pointer hover:scale-105 transition-transform flex items-center gap-1"
+                                className="px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer hover:scale-105 transition-transform flex items-center gap-1"
                                 style={{ background: "var(--accent)", color: "#fff" }}>
                                 {copied === `unified-${group.name}` ? <Check className="w-2.5 h-2.5" /> : <Copy className="w-2.5 h-2.5" />}
                                 Copier
@@ -489,19 +491,19 @@ export function CodesList({
                                     </button>
                                   </div>
                                   <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-[9px] font-semibold uppercase" style={{ color: tierColor }}>{c.tier}</span>
-                                    <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{c.platform}</span>
-                                    <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{c.type}</span>
+                                    <span className="text-[10px] font-semibold uppercase" style={{ color: tierColor }}>{c.tier}</span>
+                                    <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{c.platform}</span>
+                                    <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{c.type}</span>
                                   </div>
                                 </div>
                               </div>
 
                               <div className="flex items-center gap-1.5 shrink-0">
-                                <span className="text-[9px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: status.bg, color: status.color }}>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: status.bg, color: status.color }}>
                                   {status.label}
                                 </span>
                                 {!c.revoked && !isExpired(c.expiresAt) && (
-                                  <span className="text-[9px] tabular-nums" style={{ color: "var(--text-muted)" }}>
+                                  <span className="text-[10px] tabular-nums" style={{ color: "var(--text-muted)" }}>
                                     <Clock className="w-2.5 h-2.5 inline mr-0.5" />{timeLeft(c.expiresAt)}
                                   </span>
                                 )}
@@ -545,13 +547,13 @@ export function CodesList({
                                           </button>
                                         )}
                                         {!c.revoked && (
-                                          <button onClick={() => { onRevoke(c.code); setMenuOpen(null); }}
+                                          <button onClick={() => { setConfirmAction({ type: "revoke", code: c.code }); setMenuOpen(null); }}
                                             className="w-full px-3 py-1.5 text-left text-[11px] flex items-center gap-2 cursor-pointer hover:opacity-80"
                                             style={{ color: "var(--danger)" }}>
                                             <Ban className="w-3 h-3" /> Revoquer
                                           </button>
                                         )}
-                                        <button onClick={() => { onDelete(c.code); setMenuOpen(null); }}
+                                        <button onClick={() => { setConfirmAction({ type: "delete", code: c.code }); setMenuOpen(null); }}
                                           className="w-full px-3 py-1.5 text-left text-[11px] flex items-center gap-2 cursor-pointer hover:opacity-80"
                                           style={{ color: "var(--danger)" }}>
                                           <Trash2 className="w-3 h-3" /> Supprimer
@@ -626,6 +628,21 @@ export function CodesList({
           })}
         </div>
       )}
+      <ConfirmDialog
+        open={!!confirmAction}
+        destructive
+        title={confirmAction?.type === "delete" ? "Supprimer ce code ?" : "Revoquer ce code ?"}
+        description={confirmAction?.type === "delete"
+          ? `Le code ${confirmAction?.code} sera supprime definitivement.`
+          : `Le code ${confirmAction?.code} sera desactive et le client perdra son acces.`}
+        confirmLabel={confirmAction?.type === "delete" ? "Supprimer" : "Revoquer"}
+        onConfirm={() => {
+          if (confirmAction?.type === "delete") onDelete(confirmAction.code);
+          else if (confirmAction?.type === "revoke") onRevoke(confirmAction.code);
+          setConfirmAction(null);
+        }}
+        onCancel={() => setConfirmAction(null)}
+      />
     </div>
   );
 }

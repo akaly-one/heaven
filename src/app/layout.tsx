@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthGuard } from "@/components/auth-guard";
 import { ModelProvider } from "@/lib/model-context";
+import { ToastProvider } from "@/components/ui/toast";
 
 import type { Viewport } from "next";
 
@@ -26,7 +27,9 @@ export default function RootLayout({
     <html lang="fr" className="dark">
       <body className="antialiased min-h-screen">
         <AuthGuard>
-          <ModelProvider>{children}</ModelProvider>
+          <ModelProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </ModelProvider>
         </AuthGuard>
       </body>
     </html>

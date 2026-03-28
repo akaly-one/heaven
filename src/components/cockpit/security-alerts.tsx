@@ -118,7 +118,7 @@ export function SecurityAlerts({ modelSlug, authHeaders }: SecurityAlertsProps) 
                 <p className="text-xs mb-2" style={{ color: "var(--text)" }}>
                   Subscriber: <span className="font-semibold" style={{ color: tierColor }}>@{alert.client_pseudo}</span>
                   {alert.client_tier && (
-                    <span className="badge text-[8px] ml-1.5" style={{ background: `${tierColor}15`, color: tierColor }}>
+                    <span className="badge text-[10px] ml-1.5" style={{ background: `${tierColor}15`, color: tierColor }}>
                       {alert.client_tier.toUpperCase()}
                     </span>
                   )}
@@ -131,9 +131,9 @@ export function SecurityAlerts({ modelSlug, authHeaders }: SecurityAlertsProps) 
 
                 {/* Actions */}
                 {alert.action_taken === "revoked" ? (
-                  <span className="badge badge-danger text-[9px]">Access revoked</span>
+                  <span className="badge badge-danger text-[10px]">Access revoked</span>
                 ) : alert.action_taken === "warning_sent" ? (
-                  <span className="badge badge-warning text-[9px]">Warning sent</span>
+                  <span className="badge badge-warning text-[10px]">Warning sent</span>
                 ) : (
                   <div className="flex gap-1.5">
                     <a href={`/agence/clients`}
@@ -160,7 +160,7 @@ export function SecurityAlerts({ modelSlug, authHeaders }: SecurityAlertsProps) 
       })}
 
       {/* Disclaimer */}
-      <p className="text-[9px] text-center pt-2 px-4" style={{ color: "var(--text-muted)" }}>
+      <p className="text-[10px] text-center pt-2 px-4" style={{ color: "var(--text-muted)" }}>
         Screenshot detection reduces casual captures but cannot prevent determined users.
         The dynamic watermark is the primary protection layer.
       </p>

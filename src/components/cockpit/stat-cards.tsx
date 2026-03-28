@@ -13,9 +13,9 @@ interface StatCardsProps {
 export function StatCards({ activeCodes, totalCodes, revenue, pendingCount, uniqueClients }: StatCardsProps) {
   const stats = [
     { icon: Key, value: activeCodes, label: "Actifs", sub: `/${totalCodes}`, color: "#C9A84C" },
-    { icon: Users, value: uniqueClients ?? 0, label: "Clients", color: "#F43F5E" },
-    { icon: DollarSign, value: `${revenue}€`, label: "Revenue", color: "#10B981" },
-    { icon: Clock, value: pendingCount, label: "Attente", color: "#F59E0B" },
+    { icon: Users, value: uniqueClients ?? 0, label: "Clients", color: "#E63329" },
+    { icon: DollarSign, value: `${revenue}€`, label: "Revenue", color: "#16A34A" },
+    { icon: Clock, value: pendingCount, label: "Attente", color: "#D97706" },
   ];
 
   return (

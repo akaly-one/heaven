@@ -180,7 +180,7 @@ export default function MessagesPage() {
                 <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>·</span>
                 <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{timeAgo(post.created_at)}</span>
                 {post.tier_required !== "public" && (
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase"
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase"
                     style={{ background: `${TIER_COLORS[post.tier_required] || "#64748B"}18`, color: TIER_COLORS[post.tier_required] || "#64748B" }}>
                     {post.tier_required}
                   </span>
@@ -264,14 +264,14 @@ export default function MessagesPage() {
             <button onClick={() => setSubTab("messages")} className={subTab === "messages" ? "active" : ""}>
               Messages
               {totalUnread > 0 && (
-                <span className="ml-1.5 w-4 h-4 inline-flex items-center justify-center rounded-full text-[9px] font-bold"
+                <span className="ml-1.5 w-4 h-4 inline-flex items-center justify-center rounded-full text-[10px] font-bold"
                   style={{ background: "var(--danger)", color: "#fff" }}>{totalUnread}</span>
               )}
             </button>
             <button onClick={() => setSubTab("feed")} className={subTab === "feed" ? "active" : ""}>
               Feed
               {posts.length > 0 && (
-                <span className="ml-1.5 px-1.5 h-4 inline-flex items-center justify-center rounded-full text-[9px] font-medium"
+                <span className="ml-1.5 px-1.5 h-4 inline-flex items-center justify-center rounded-full text-[10px] font-medium"
                   style={{ background: "rgba(230,51,41,0.12)", color: "var(--accent)" }}>{posts.length}</span>
               )}
             </button>
@@ -318,11 +318,11 @@ export default function MessagesPage() {
                         </div>
                         <p className="text-[11px] truncate mt-0.5" style={{ color: "var(--text-muted)" }}>{conv.lastMessage.content}</p>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>
+                          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                             {new Date(conv.lastMessage.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                           </span>
                           {conv.client.total_spent > 0 && (
-                            <span className="text-[9px] px-1 rounded" style={{ background: "rgba(230,51,41,0.1)", color: "var(--accent)" }}>
+                            <span className="text-[10px] px-1 rounded" style={{ background: "rgba(230,51,41,0.1)", color: "var(--accent)" }}>
                               {Number(conv.client.total_spent).toFixed(0)}€
                             </span>
                           )}
@@ -368,7 +368,7 @@ export default function MessagesPage() {
                           <div className="max-w-[75%] rounded-2xl px-4 py-2.5 text-xs relative group"
                             style={{ background: msg.sender_type === "model" ? "rgba(230,51,41,0.12)" : "var(--bg3)", color: "var(--text)" }}>
                             <p>{msg.content}</p>
-                            <p className="text-[9px] mt-1 opacity-50">
+                            <p className="text-[10px] mt-1 opacity-50">
                               {new Date(msg.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                             </p>
                             {msg.sender_type === "model" && (

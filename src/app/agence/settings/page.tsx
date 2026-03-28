@@ -172,7 +172,7 @@ export default function SettingsPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 rounded text-[9px] font-bold"
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold"
                               style={{ background: account.active ? "rgba(0,214,143,0.1)" : "rgba(239,68,68,0.1)", color: account.active ? "#00D68F" : "#EF4444" }}>
                               {account.active ? "ACTIF" : "INACTIF"}
                             </span>

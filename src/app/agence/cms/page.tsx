@@ -276,7 +276,7 @@ export default function AgenceCmsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-sm font-bold" style={{ color: "var(--text)" }}>{page.name}</span>
-                      <span className="text-[9px] px-2 py-0.5 rounded-full"
+                      <span className="text-[10px] px-2 py-0.5 rounded-full"
                         style={{
                           background: page.status === "published" ? "#00D68F15" : page.status === "draft" ? "#FF9F4315" : "#8E8EA315",
                           color: page.status === "published" ? "#00D68F" : page.status === "draft" ? "#FF9F43" : "#8E8EA3",
@@ -468,7 +468,7 @@ export default function AgenceCmsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>{c.name}</span>
-                      <span className="text-[9px] px-2 py-0.5 rounded-full"
+                      <span className="text-[10px] px-2 py-0.5 rounded-full"
                         style={{ background: c.active ? "#00D68F15" : "#8E8EA315", color: c.active ? "#00D68F" : "#8E8EA3" }}>
                         {c.active ? "Actif" : "Inactif"}
                       </span>

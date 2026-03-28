@@ -1054,7 +1054,7 @@ export default function StrategiePage() {
                       </div>
                       <div className="text-left">
                         <div className="font-bold">{p.name}</div>
-                        <div className="text-[9px] opacity-70">{p.automationLevel}</div>
+                        <div className="text-[10px] opacity-70">{p.automationLevel}</div>
                       </div>
                       {isActive && <CheckCircle2 className="w-3.5 h-3.5 ml-auto" />}
                     </button>
@@ -1130,7 +1130,7 @@ export default function StrategiePage() {
                       <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: cat.color }}>
                         {cat.label}
                       </span>
-                      <span className="text-[9px] font-medium ml-auto" style={{ color: "var(--text-muted)" }}>
+                      <span className="text-[10px] font-medium ml-auto" style={{ color: "var(--text-muted)" }}>
                         {doneCount}/{items.length}
                       </span>
                     </div>
