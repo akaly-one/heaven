@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Plus, KeyRound, Eye, Pencil, Wifi, WifiOff, Instagram, Globe, ExternalLink } from "lucide-react";
+import { Plus, KeyRound, Eye, Pencil, Wifi, WifiOff, Instagram, Globe, ExternalLink, Send, Image, Heart, MessageCircle, Trash2, ChevronDown } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
@@ -45,6 +45,11 @@ export default function AgenceDashboard() {
   const [, setTick] = useState(0);
   const [feedPosts, setFeedPosts] = useState<FeedPost[]>([]);
   const [wallPosts, setWallPosts] = useState<WallPost[]>([]);
+
+  // Feed composer
+  const [newPostContent, setNewPostContent] = useState("");
+  const [newPostTier, setNewPostTier] = useState("public");
+  const [posting, setPosting] = useState(false);
 
   // FAB
   const [fabOpen, setFabOpen] = useState(false);
@@ -183,10 +188,45 @@ export default function AgenceDashboard() {
     setFabOpen(false);
   }, [modelSlug, modelInfo, authHeaders]);
 
+  // ── Feed handlers ──
+  const handleCreatePost = useCallback(async () => {
+    if (!newPostContent.trim() || posting) return;
+    setPosting(true);
+    try {
+      const res = await fetch("/api/posts", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ model: modelSlug, content: newPostContent, tier_required: newPostTier }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.post) setFeedPosts(prev => [data.post, ...prev]);
+        setNewPostContent("");
+        setNewPostTier("public");
+      }
+    } catch (err) { console.error("[Feed] create:", err); }
+    finally { setPosting(false); }
+  }, [newPostContent, newPostTier, posting, modelSlug, authHeaders]);
+
+  const handleDeletePost = useCallback(async (postId: string) => {
+    try {
+      await fetch(`/api/posts?id=${postId}&model=${modelSlug}`, { method: "DELETE", headers: authHeaders() });
+      setFeedPosts(prev => prev.filter(p => p.id !== postId));
+    } catch (err) { console.error("[Feed] delete:", err); }
+  }, [modelSlug, authHeaders]);
+
+  const TIER_OPTIONS = [
+    { id: "public", label: "Public", color: "#64748B" },
+    { id: "vip", label: "VIP", color: "#F43F5E" },
+    { id: "gold", label: "Gold", color: "#F59E0B" },
+    { id: "diamond", label: "Diamond", color: "#7C3AED" },
+    { id: "platinum", label: "Platinum", color: "#A78BFA" },
+  ];
+
   // ══════════ RENDER ══════════
   return (
     <OsLayout cpId="agence">
-      <div className="min-h-screen p-4 md:p-8 pb-28 md:pb-8" style={{ background: "#0a0a0a" }}>
+      <div className="min-h-screen p-4 md:p-8 pb-28 md:pb-8" style={{ background: "var(--bg)" }}>
         <div className="max-w-4xl mx-auto space-y-5">
 
           {/* ── Header: Avatar + Name + Status + Links ── */}
@@ -195,7 +235,7 @@ export default function AgenceDashboard() {
               <div className="w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center text-lg font-black"
                 style={{
                   background: modelInfo?.avatar ? "transparent" : "linear-gradient(135deg, var(--rose), var(--accent))",
-                  color: "#fff",
+                  color: "var(--text)",
                   boxShadow: "0 0 20px rgba(244,63,94,0.15)",
                 }}>
                 {modelInfo?.avatar ? (
@@ -210,11 +250,11 @@ export default function AgenceDashboard() {
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-base font-bold truncate text-white">
+              <h1 className="text-base font-bold truncate text-[var(--text)]">
                 {modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase()}
               </h1>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-[#888]">
+                <span className="text-[10px] text-[var(--text-muted)]">
                   {auth?.role === "root" ? "Root Admin" : "Creatrice exclusive"}
                 </span>
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold"
@@ -229,8 +269,8 @@ export default function AgenceDashboard() {
             <a href={`/m/${modelSlug}`} target="_blank"
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-transform no-underline"
               style={{ background: "rgba(255,255,255,0.04)", border: "1px solid #222" }}>
-              <Eye className="w-3.5 h-3.5 text-[#888]" />
-              <span className="text-[11px] font-semibold hidden md:inline text-[#888]">Voir profil</span>
+              <Eye className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+              <span className="text-[11px] font-semibold hidden md:inline text-[var(--text-muted)]">Voir profil</span>
             </a>
             <a href={`/m/${modelSlug}?edit=true`}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-transform no-underline"
@@ -251,24 +291,110 @@ export default function AgenceDashboard() {
             />
           </div>
 
+          {/* ── Feed: Post composer + feed ── */}
+          <div className="fade-up-2">
+            {/* Composer */}
+            <div className="rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                  style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "var(--text)" }}>
+                  {modelSlug.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <textarea
+                    value={newPostContent}
+                    onChange={e => setNewPostContent(e.target.value)}
+                    placeholder="Quoi de neuf ?"
+                    rows={2}
+                    className="w-full bg-transparent text-sm text-[var(--text)] outline-none resize-none placeholder:text-[var(--text-muted)]"
+                  />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {/* Tier selector */}
+                      <div className="flex items-center gap-1">
+                        {TIER_OPTIONS.map(t => (
+                          <button key={t.id} onClick={() => setNewPostTier(t.id)}
+                            className="px-2 py-0.5 rounded-full text-[9px] font-bold cursor-pointer transition-all"
+                            style={{
+                              background: newPostTier === t.id ? `${t.color}20` : "transparent",
+                              color: newPostTier === t.id ? t.color : "#555",
+                              border: `1px solid ${newPostTier === t.id ? `${t.color}40` : "transparent"}`,
+                            }}>
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <button onClick={handleCreatePost} disabled={!newPostContent.trim() || posting}
+                      className="px-4 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-105 disabled:opacity-30"
+                      style={{ background: "#E63329", color: "var(--text)" }}>
+                      {posting ? "..." : "Publier"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Feed posts */}
+            {feedPosts.length > 0 && (
+              <div className="space-y-3 mt-3">
+                {feedPosts.slice(0, 10).map(post => (
+                  <div key={post.id} className="rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                        style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "var(--text)" }}>
+                        {modelSlug.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold text-[var(--text)]">{modelInfo?.display_name || modelSlug}</span>
+                          <span className="text-[10px] text-[var(--text-muted)]">@{modelSlug}</span>
+                          {post.tier_required !== "public" && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{
+                              background: TIER_OPTIONS.find(t => t.id === post.tier_required)?.color + "20" || "#64748B20",
+                              color: TIER_OPTIONS.find(t => t.id === post.tier_required)?.color || "#64748B",
+                            }}>{post.tier_required.toUpperCase()}</span>
+                          )}
+                        </div>
+                        {post.content && <p className="text-sm text-[var(--text)]/90 whitespace-pre-wrap mb-2">{post.content}</p>}
+                        {post.media_url && (
+                          <div className="rounded-xl overflow-hidden mb-2" style={{ border: "1px solid #222" }}>
+                            <img src={post.media_url} alt="" className="w-full max-h-[400px] object-cover" loading="lazy" />
+                          </div>
+                        )}
+                        <div className="flex items-center gap-4 text-[var(--text-muted)]">
+                          <span className="flex items-center gap-1 text-xs"><Heart className="w-3.5 h-3.5" /> {post.likes_count || 0}</span>
+                          <span className="flex items-center gap-1 text-xs"><MessageCircle className="w-3.5 h-3.5" /> {post.comments_count || 0}</span>
+                          <button onClick={() => handleDeletePost(post.id)} className="ml-auto text-xs cursor-pointer hover:text-red-400 transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* ── Codes & Clients ── */}
           <div className="fade-up-2">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-white">Codes &amp; Clients</h2>
+              <h2 className="text-sm font-bold text-[var(--text)]">Codes &amp; Clients</h2>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-medium text-[#888]">
+                <span className="text-[10px] font-medium text-[var(--text-muted)]">
                   {activeCodes.length} actif{activeCodes.length > 1 ? "s" : ""} / {clients.length} client{clients.length > 1 ? "s" : ""}
                 </span>
                 <button
                   onClick={() => setShowGenerator(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold cursor-pointer hover:scale-105 active:scale-95 transition-transform btn-gradient"
-                  style={{ color: "#fff" }}>
+                  style={{ color: "var(--text)" }}>
                   <KeyRound className="w-3.5 h-3.5" />
                   Generer
                 </button>
               </div>
             </div>
-            <div className="rounded-2xl overflow-hidden" style={{ background: "#111", border: "1px solid #222" }}>
+            <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
               <CodesList
                 codes={modelCodes}
                 clients={clients}
@@ -289,27 +415,27 @@ export default function AgenceDashboard() {
 
           {/* ── Platforms (bonus links) ── */}
           <div className="fade-up-2">
-            <h2 className="text-sm font-bold text-white mb-3">Plateformes</h2>
+            <h2 className="text-sm font-bold text-[var(--text)] mb-3">Plateformes</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {PLATFORMS.map(p => {
                 const url = modelInfo?.platforms?.[p.id];
                 return (
                   <div key={p.id} className="rounded-2xl px-4 py-3 flex items-center gap-3"
-                    style={{ background: "#111", border: "1px solid #222" }}>
+                    style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
                       style={{ background: `${p.color}15` }}>
                       <p.icon className="w-4 h-4" style={{ color: p.color }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-[11px] font-bold text-white block">{p.label}</span>
+                      <span className="text-[11px] font-bold text-[var(--text)] block">{p.label}</span>
                       {url ? (
                         <a href={url.startsWith("http") ? url : `${p.urlPrefix}${url}`}
                           target="_blank" rel="noopener noreferrer"
-                          className="text-[10px] text-[#888] hover:text-white transition-colors truncate block no-underline">
+                          className="text-[10px] text-[var(--text-muted)] hover:text-[var(--text)] transition-colors truncate block no-underline">
                           {url}
                         </a>
                       ) : (
-                        <span className="text-[10px] text-[#555]">Non configure</span>
+                        <span className="text-[10px] text-[var(--text-muted)]">Non configure</span>
                       )}
                     </div>
                     {url && (
@@ -317,7 +443,7 @@ export default function AgenceDashboard() {
                         target="_blank" rel="noopener noreferrer"
                         className="w-7 h-7 rounded-lg flex items-center justify-center hover:scale-110 transition-transform"
                         style={{ background: "rgba(255,255,255,0.04)" }}>
-                        <ExternalLink className="w-3 h-3 text-[#888]" />
+                        <ExternalLink className="w-3 h-3 text-[var(--text-muted)]" />
                       </a>
                     )}
                   </div>
@@ -368,7 +494,7 @@ export default function AgenceDashboard() {
                   onClick={item.action}
                   disabled={item.loading}
                   className="flex items-center gap-2.5 pl-3 pr-4 py-2.5 rounded-full shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition-transform disabled:opacity-50"
-                  style={{ background: item.color, color: "#fff", animation: fabOpen ? `fabItemIn 0.3s ease ${item.delay} both` : "none" }}>
+                  style={{ background: item.color, color: "var(--text)", animation: fabOpen ? `fabItemIn 0.3s ease ${item.delay} both` : "none" }}>
                   {item.loading ? (
                     <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(255,255,255,0.3)", borderTopColor: "#fff" }} />
                   ) : (
@@ -385,7 +511,7 @@ export default function AgenceDashboard() {
                 background: "linear-gradient(135deg, var(--rose), var(--accent))",
                 transform: fabOpen ? "rotate(45deg)" : "rotate(0deg)",
               }}>
-              <Plus className="w-6 h-6 text-white" />
+              <Plus className="w-6 h-6 text-[var(--text)]" />
             </button>
           </div>
 

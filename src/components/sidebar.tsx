@@ -41,12 +41,12 @@ export function Sidebar() {
     <>
       {/* Desktop sidebar */}
       <aside className="fixed left-0 top-0 h-screen z-40 hidden md:flex flex-col py-4 transition-all duration-200"
-        style={{ width: collapsed ? 56 : 170, background: "#111", borderRight: "1px solid #222" }}>
+        style={{ width: collapsed ? 56 : 170, background: "var(--surface)", borderRight: "1px solid var(--border)" }}>
 
         {/* Logo */}
         <div className="flex items-center justify-center mb-6">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#E63329" }}>
-            <Crown className="w-4 h-4 text-white" />
+            <Crown className="w-4 h-4" style={{ color: "#fff" }} />
           </div>
           {!collapsed && <span className="ml-2 text-[10px] font-bold tracking-widest text-white/50">HEAVEN</span>}
         </div>
@@ -72,7 +72,7 @@ export function Sidebar() {
                 className="flex items-center gap-3 px-2.5 py-2.5 rounded-lg transition-all no-underline"
                 style={{
                   background: active ? "rgba(255,255,255,0.08)" : "transparent",
-                  color: active ? "#fff" : "#666",
+                  color: active ? "var(--accent)" : "var(--text-muted)",
                 }}>
                 <item.icon className="w-4 h-4 flex-shrink-0" />
                 {!collapsed && <span className="text-xs font-medium">{item.label}</span>}
@@ -83,14 +83,14 @@ export function Sidebar() {
 
         <button onClick={() => setCollapsed(!collapsed)}
           className="mx-auto w-6 h-6 rounded-full flex items-center justify-center cursor-pointer hover:bg-white/10"
-          style={{ color: "#555" }}>
+          style={{ color: "var(--text-muted)" }}>
           {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
         </button>
       </aside>
 
       {/* Mobile bottom tab */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden safe-area-bottom"
-        style={{ background: "#111", borderTop: "1px solid #222" }}>
+        style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
         <div className="flex items-center justify-around py-2.5">
           {visibleItems.filter(item => !("rootOnly" in item && item.rootOnly)).map((item) => {
             const isActive = pathname === item.href || (item.href !== "/agence" && pathname.startsWith(item.href));
@@ -99,7 +99,7 @@ export function Sidebar() {
             return (
               <a key={item.id} href={item.href}
                 className="flex flex-col items-center gap-0.5 px-3 py-1 no-underline"
-                style={{ color: active ? "#E63329" : "#555" }}>
+                style={{ color: active ? "var(--accent)" : "var(--text-muted)" }}>
                 <item.icon className="w-5 h-5" />
                 <span className="text-[9px] font-medium">{item.label}</span>
               </a>
