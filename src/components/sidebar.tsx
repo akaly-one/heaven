@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { id: "messages", label: "Messages", icon: MessageCircle, href: "/agence/messages", color: "#F43F5E" },
   { id: "clients", label: "Clients", icon: Users, href: "/agence/clients", color: "var(--warning)" },
   { id: "pipeline", label: "Pipeline", icon: Layers, href: "/agence/pipeline", color: "#8B5CF6" },
-  { id: "strategie", label: "Strategie", icon: Target, href: "/agence/simulateur", color: "#E040FB" },
+  { id: "strategie", label: "Strategie", icon: Target, href: "/agence/strategie", color: "#E040FB" },
   { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances", color: "var(--success)" },
   { id: "cms", label: "CMS", icon: FileText, href: "/agence/cms", color: "#06B6D4" },
   { id: "automation", label: "Automation", icon: Bot, href: "/agence/automation", color: "#14B8A6" },
