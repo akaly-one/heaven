@@ -853,7 +853,7 @@ export default function ModelPage() {
             const latestImagePost = posts.find(p => p.media_url);
             const bannerUrl = displayModel?.banner || latestImagePost?.media_url || null;
             return (
-              <div className="h-40 sm:h-48 md:h-56 relative overflow-hidden" style={{
+              <div className="h-32 sm:h-36 md:h-44 relative overflow-hidden" style={{
                 background: bannerUrl
                   ? `url(${bannerUrl}) center/cover`
                   : "linear-gradient(135deg, #1a1a2e, #16213e, #0f3460)",
@@ -874,12 +874,12 @@ export default function ModelPage() {
             </div>
           )}
 
-          <div className="max-w-2xl mx-auto px-4 -mt-14 sm:-mt-16 relative z-10">
+          <div className="max-w-2xl mx-auto px-4 -mt-12 sm:-mt-14 relative z-10">
             {/* ── Instagram-style centered profile ── */}
             <div className="text-center profile-stagger-2">
               {/* Avatar — round, centered */}
               <div className="relative inline-block mx-auto">
-                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-[3px] flex items-center justify-center text-2xl font-black overflow-hidden mx-auto"
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-[3px] flex items-center justify-center text-xl font-black overflow-hidden mx-auto"
                   style={{
                     borderColor: displayModel?.online ? "var(--accent)" : "var(--border)",
                     background: displayModel?.avatar ? "transparent" : "linear-gradient(135deg, var(--rose), var(--accent))",
@@ -907,7 +907,7 @@ export default function ModelPage() {
               </div>
 
               {/* Name + status */}
-              <div className="mt-3">
+              <div className="mt-2">
                 {isEditMode ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-center gap-2 mb-1">
@@ -943,7 +943,7 @@ export default function ModelPage() {
 
             {/* Stats row — centered with dividers */}
             {!isEditMode && (
-              <div className="flex items-center justify-center gap-6 sm:gap-8 mt-4 mb-3 profile-stagger-3">
+              <div className="flex items-center justify-center gap-5 sm:gap-6 mt-2 mb-2 profile-stagger-3">
                 {[
                   { label: "Posts", value: posts.length },
                   { label: "Media", value: uploads.length },
@@ -960,7 +960,7 @@ export default function ModelPage() {
 
             {/* Access: code input + subscribe — ONE section */}
             {!isEditMode && (
-              <div className="flex items-center justify-center gap-2 mb-3 profile-stagger-3">
+              <div className="flex items-center justify-center gap-2 mb-2 profile-stagger-3">
                 {unlockedTier ? (
                   <span className="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase"
                     style={{ background: "rgba(16,185,129,0.1)", color: "#10B981", border: "1px solid rgba(16,185,129,0.2)" }}>
@@ -1008,16 +1008,7 @@ export default function ModelPage() {
               )
             )}
 
-            {/* Unlock button (shown only in edit mode or when no tier and no gate) */}
-            {!isEditMode && !unlockedTier && !activeCode && (
-              <div className="mb-6 fade-up-1">
-                <button onClick={() => setShowUnlock(true)}
-                  className="w-full btn-gradient py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-transform">
-                  <Lock className="w-3.5 h-3.5" /> Unlock Exclusive Content
-                </button>
-              </div>
-            )}
-            {isEditMode && <div className="mb-4" />}
+            {isEditMode && <div className="mb-2" />}
           </div>
         </div>
 
