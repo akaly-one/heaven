@@ -1,6 +1,7 @@
 "use client";
 
 import { Sidebar } from "./sidebar";
+import { PilotAssistant } from "./pilot-assistant";
 
 interface OsLayoutProps {
   children: React.ReactNode;
@@ -8,7 +9,7 @@ interface OsLayoutProps {
   showChat?: boolean;
 }
 
-export function OsLayout({ children }: OsLayoutProps) {
+export function OsLayout({ children, cpId = "group", showChat = true }: OsLayoutProps) {
   return (
     <div className="flex h-dvh md:h-auto md:min-h-screen overflow-hidden md:overflow-visible">
       <Sidebar />
@@ -25,6 +26,7 @@ export function OsLayout({ children }: OsLayoutProps) {
           {children}
         </div>
       </main>
+      {showChat && <PilotAssistant cpId={cpId} />}
     </div>
   );
 }
