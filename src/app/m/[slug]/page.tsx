@@ -1049,10 +1049,55 @@ export default function ModelPage() {
         {/* ═══ TAB CONTENT ═══ */}
         <div className="max-w-2xl mx-auto px-4">
 
-          {/* ── FEED — model posts (synced with dashboard) ── */}
+          {/* ── FEED — model posts + visitor posts ── */}
           {tab === "feed" && (
             <div className="space-y-3 fade-up">
-              {posts.length === 0 ? (
+              {/* Visitor post composer */}
+              {visitorRegistered && !isModelLoggedIn && (
+                <div className="rounded-2xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold"
+                      style={{ background: visitorPlatform === "snap" ? "rgba(153,122,0,0.15)" : "rgba(193,53,132,0.15)", color: visitorPlatform === "snap" ? "#997A00" : "#C13584" }}>
+                      {visitorHandle.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>@{visitorHandle}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      value={wallContent}
+                      onChange={e => setWallContent(e.target.value)}
+                      placeholder={`Ecrire quelque chose...`}
+                      className="flex-1 px-3 py-2 rounded-xl text-xs outline-none"
+                      style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
+                      onKeyDown={e => { if (e.key === "Enter" && wallContent.trim()) submitWallPost(); }}
+                    />
+                    <button onClick={submitWallPost} disabled={wallPosting || !wallContent.trim()}
+                      className="px-3 py-2 rounded-xl text-xs font-bold cursor-pointer disabled:opacity-30"
+                      style={{ background: "var(--accent)", color: "#fff" }}>
+                      {wallPosting ? "..." : "Poster"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Visitor wall posts (text posts from fans) */}
+              {wallPosts.filter(w => !w.content?.includes("#post-")).map(w => (
+                <div key={w.id} className="rounded-2xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                  <div className="flex items-start gap-2">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                      style={{ background: "rgba(100,116,139,0.1)", color: "var(--text-muted)" }}>
+                      {w.pseudo?.charAt(0)?.toUpperCase() || "?"}
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>@{w.pseudo}</span>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{w.content}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Model posts */}
+              {posts.length === 0 && wallPosts.filter(w => !w.content?.includes("#post-")).length === 0 ? (
                 <div className="text-center py-12">
                   <Newspaper className="w-8 h-8 mx-auto mb-2" style={{ color: "var(--text-muted)" }} />
                   <p className="text-sm" style={{ color: "var(--text-muted)" }}>Pas encore de publications</p>
