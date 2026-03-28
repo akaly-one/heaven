@@ -1,17 +1,15 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, DollarSign, Settings, ChevronLeft, ChevronRight, Crown, Map } from "lucide-react";
+import { LayoutDashboard, DollarSign, Settings, ChevronLeft, ChevronRight, Crown } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { HeavenAuth } from "./auth-guard";
 
 // ── Only essential pages ──
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/agence", color: "#E63329" },
-  { id: "clients", label: "Clients", icon: Users, href: "/agence/clients", color: "#F59E0B" },
   { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances", color: "#10B981" },
   { id: "settings", label: "Reglages", icon: Settings, href: "/agence/settings", color: "#64748B" },
-  { id: "architecture", label: "Archi", icon: Map, href: "/agence/architecture", color: "#8B5CF6", rootOnly: true },
 ] as const;
 
 function useAuth(): HeavenAuth | null {

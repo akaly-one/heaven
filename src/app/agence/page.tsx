@@ -56,7 +56,7 @@ export default function AgenceDashboard() {
   const [statusUpdating, setStatusUpdating] = useState(false);
 
   // Messages (kept for handler compatibility)
-  const [, setPendingMessages] = useState(0);
+  const [pendingMessagesCount, setPendingMessages] = useState(0);
   const [, setChatMessages] = useState<{ id: string; client_id: string; content: string; created_at: string; sender_type: string; read?: boolean; model?: string }[]>([]);
 
   // ── Load data ──
@@ -291,13 +291,16 @@ export default function AgenceDashboard() {
             />
           </div>
 
-          {/* ── Feed: Post composer + feed ── */}
-          <div className="fade-up-2">
+          {/* ── 2-column layout: Feed LEFT + Codes/Notifs RIGHT ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 fade-up-2">
+
+            {/* ── LEFT: Feed (3/5) ── */}
+            <div className="lg:col-span-3 space-y-3">
             {/* Composer */}
             <div className="rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
               <div className="flex items-start gap-3">
                 <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                  style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "var(--text)" }}>
+                  style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "#fff" }}>
                   {modelSlug.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 space-y-2">
@@ -375,10 +378,29 @@ export default function AgenceDashboard() {
                 ))}
               </div>
             )}
-          </div>
+            </div>{/* end left column */}
 
-          {/* ── Codes & Clients ── */}
-          <div className="fade-up-2">
+            {/* ── RIGHT: Codes/Clients + Notifs (2/5) ── */}
+            <div className="lg:col-span-2 space-y-3">
+
+            {/* Messages notification */}
+            <div className="rounded-2xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+              <a href="/agence/messages" className="flex items-center gap-2 no-underline">
+                <MessageCircle className="w-4 h-4" style={{ color: "var(--accent)" }} />
+                <span className="text-xs font-bold" style={{ color: "var(--text)" }}>Messages</span>
+                {pendingMessagesCount > 0 && (
+                  <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: "rgba(244,63,94,0.12)", color: "#F43F5E" }}>
+                    {pendingMessagesCount}
+                  </span>
+                )}
+                {pendingMessagesCount === 0 && (
+                  <span className="ml-auto text-[10px]" style={{ color: "var(--text-muted)" }}>0 en attente</span>
+                )}
+              </a>
+            </div>
+
+            {/* Codes & Clients compact */}
+            <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-bold text-[var(--text)]">Codes &amp; Clients</h2>
               <div className="flex items-center gap-2">
@@ -413,44 +435,33 @@ export default function AgenceDashboard() {
             </div>
           </div>
 
-          {/* ── Platforms (bonus links) ── */}
-          <div className="fade-up-2">
-            <h2 className="text-sm font-bold text-[var(--text)] mb-3">Plateformes</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Platforms compact */}
+          <div>
+            <h3 className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>Plateformes</h3>
+            <div className="space-y-1.5">
               {PLATFORMS.map(p => {
                 const url = modelInfo?.platforms?.[p.id];
                 return (
-                  <div key={p.id} className="rounded-2xl px-4 py-3 flex items-center gap-3"
+                  <div key={p.id} className="flex items-center gap-2 px-3 py-2 rounded-xl"
                     style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: `${p.color}15` }}>
-                      <p.icon className="w-4 h-4" style={{ color: p.color }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[11px] font-bold text-[var(--text)] block">{p.label}</span>
-                      {url ? (
-                        <a href={url.startsWith("http") ? url : `${p.urlPrefix}${url}`}
-                          target="_blank" rel="noopener noreferrer"
-                          className="text-[10px] text-[var(--text-muted)] hover:text-[var(--text)] transition-colors truncate block no-underline">
-                          {url}
-                        </a>
-                      ) : (
-                        <span className="text-[10px] text-[var(--text-muted)]">Non configure</span>
-                      )}
-                    </div>
-                    {url && (
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color }} />
+                    <span className="text-[10px] font-medium flex-1" style={{ color: url ? "var(--text)" : "var(--text-muted)" }}>{p.label}</span>
+                    {url ? (
                       <a href={url.startsWith("http") ? url : `${p.urlPrefix}${url}`}
                         target="_blank" rel="noopener noreferrer"
-                        className="w-7 h-7 rounded-lg flex items-center justify-center hover:scale-110 transition-transform"
-                        style={{ background: "rgba(255,255,255,0.04)" }}>
-                        <ExternalLink className="w-3 h-3 text-[var(--text-muted)]" />
+                        className="text-[9px] no-underline hover:opacity-70" style={{ color: p.color }}>
+                        Ouvrir
                       </a>
+                    ) : (
+                      <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>-</span>
                     )}
                   </div>
                 );
               })}
             </div>
           </div>
+          </div>{/* end right column */}
+          </div>{/* end 2-column grid */}
 
           {/* ── Generate Modal ── */}
           <GenerateModal
