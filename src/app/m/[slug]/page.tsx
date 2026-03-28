@@ -13,9 +13,10 @@ import type { LucideIcon } from "lucide-react";
 import { ContentProtection } from "@/components/content-protection";
 import { useScreenshotDetection } from "@/hooks/use-screenshot-detection";
 import { IdentityGate } from "@/components/identity-gate";
+import { SubscriptionStatusBar } from "@/components/subscription-status-bar";
 
 // ── Types & Constants (centralized) ──
-import type { ModelInfo, Post, PackConfig, UploadedContent, WallPost, VisitorPlatform } from "@/types/heaven";
+import type { ModelInfo, Post, PackConfig, UploadedContent, WallPost, AccessCode, VisitorPlatform } from "@/types/heaven";
 import { TIER_META, TIER_HEX } from "@/constants/tiers";
 
 interface ModelAuth {
@@ -98,6 +99,7 @@ export default function ModelPage() {
   // Access link system: ?access=TOKEN unlocks content
   const [unlockedTier, setUnlockedTier] = useState<string | null>(null);
   const [accessChecked, setAccessChecked] = useState(false);
+  const [activeCode, setActiveCode] = useState<AccessCode | null>(null);
 
   // Wall (public posts by visitors)
   const [wallPosts, setWallPosts] = useState<WallPost[]>([]);
@@ -175,6 +177,21 @@ export default function ModelPage() {
   useEffect(() => {
     if (clientId) fetchBalance(clientId);
   }, [clientId, fetchBalance]);
+
+  // Fetch active code for subscription status bar
+  useEffect(() => {
+    if (!clientId || !slug) return;
+    fetch(`/api/codes?model=${slug}&client_id=${clientId}&status=active`)
+      .then(r => r.json())
+      .then(d => {
+        const codes = d.codes || [];
+        if (codes.length > 0) {
+          setActiveCode(codes[0]);
+          if (codes[0].tier) setUnlockedTier(codes[0].tier);
+        }
+      })
+      .catch(() => {});
+  }, [clientId, slug]);
 
   const handleCreditPurchase = useCallback((item: UploadedContent) => {
     if (!clientId) {
@@ -548,6 +565,7 @@ export default function ModelPage() {
       .then(data => {
         if (data.code?.tier) {
           setUnlockedTier(data.code.tier);
+          setActiveCode(data.code);
           setTab("gallery");
           // Save in session so refresh doesn't lose access
           sessionStorage.setItem(`heaven_access_${slug}`, JSON.stringify({
@@ -977,26 +995,30 @@ export default function ModelPage() {
               )
             )}
 
-            {/* Access status or unlock button (hidden in edit mode) */}
-            {!isEditMode && (
+            {/* Unlock button (shown only in edit mode or when no tier and no gate) */}
+            {!isEditMode && !unlockedTier && !activeCode && (
               <div className="mb-6 fade-up-1">
-                {unlockedTier ? (
-                  <div className="w-full py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2"
-                    style={{ background: `${TIER_HEX[unlockedTier] || "var(--accent)"}15`, color: TIER_HEX[unlockedTier] || "var(--accent)", border: `1px solid ${TIER_HEX[unlockedTier] || "var(--accent)"}30` }}>
-                    <Check className="w-3.5 h-3.5" />
-                    Accès {TIER_META[unlockedTier]?.label || unlockedTier.toUpperCase()} actif
-                  </div>
-                ) : (
-                  <button onClick={() => setShowUnlock(true)}
-                    className="w-full btn-gradient py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-transform">
-                    <Lock className="w-3.5 h-3.5" /> Unlock Exclusive Content
-                  </button>
-                )}
+                <button onClick={() => setShowUnlock(true)}
+                  className="w-full btn-gradient py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-transform">
+                  <Lock className="w-3.5 h-3.5" /> Unlock Exclusive Content
+                </button>
               </div>
             )}
             {isEditMode && <div className="mb-4" />}
           </div>
         </div>
+
+        {/* ═══ SUBSCRIPTION STATUS BAR ═══ */}
+        {visitorRegistered && !isModelLoggedIn && (
+          <SubscriptionStatusBar
+            visitorHandle={visitorHandle}
+            visitorPlatform={visitorPlatform}
+            unlockedTier={unlockedTier}
+            activeCode={activeCode}
+            onUpgrade={() => { setTab("shop"); }}
+            onManage={() => { setTab("shop"); }}
+          />
+        )}
 
         {/* ═══ TABS ═══ */}
         <div className="max-w-2xl mx-auto px-4 mb-5 profile-stagger-4">

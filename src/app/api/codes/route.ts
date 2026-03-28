@@ -25,6 +25,8 @@ export async function OPTIONS(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const cors = getCorsHeaders(req);
   const model = req.nextUrl.searchParams.get("model");
+  const clientId = req.nextUrl.searchParams.get("client_id");
+  const status = req.nextUrl.searchParams.get("status"); // "active" = active + not revoked + not expired
   if (model && !isValidModelSlug(model)) {
     return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
   }
@@ -32,6 +34,10 @@ export async function GET(req: NextRequest) {
     const supabase = requireSupabase();
     let q = supabase.from("agence_codes").select("*").order("created_at", { ascending: false }).limit(500);
     if (model) q = q.eq("model", model);
+    if (clientId) q = q.eq("client_id", clientId);
+    if (status === "active") {
+      q = q.eq("active", true).eq("revoked", false).gt("expires_at", new Date().toISOString());
+    }
     const { data, error } = await q;
 
     if (error) {
