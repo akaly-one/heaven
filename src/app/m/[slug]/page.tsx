@@ -27,7 +27,8 @@ interface ModelAuth {
   role: string; model_slug?: string; display_name?: string; token?: string;
 }
 const TABS = [
-  { id: "wall", label: "Wall", icon: Newspaper },
+  { id: "feed", label: "Feed", icon: Newspaper },
+  { id: "wall", label: "Wall", icon: MessageCircle },
   { id: "gallery", label: "Gallery", icon: Image },
   { id: "shop", label: "Shop", icon: ShoppingBag },
 ] as const;
@@ -91,9 +92,9 @@ export default function ModelPage() {
   const [tab, setTab] = useState<TabId>(() => {
     if (typeof window !== "undefined") {
       const hash = window.location.hash.replace("#", "");
-      if (hash === "gallery" || hash === "shop" || hash === "wall") return hash as TabId;
+      if (hash === "gallery" || hash === "shop" || hash === "wall" || hash === "feed") return hash as TabId;
     }
-    return "wall";
+    return "feed";
   });
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -1058,7 +1059,74 @@ export default function ModelPage() {
         {/* ═══ TAB CONTENT ═══ */}
         <div className="max-w-2xl mx-auto px-4">
 
-          {/* ── WALL ── */}
+          {/* ── FEED — model posts (synced with dashboard) ── */}
+          {tab === "feed" && (
+            <div className="space-y-3 fade-up">
+              {posts.length === 0 ? (
+                <div className="text-center py-12">
+                  <Newspaper className="w-8 h-8 mx-auto mb-2" style={{ color: "var(--text-muted)" }} />
+                  <p className="text-sm" style={{ color: "var(--text-muted)" }}>Pas encore de publications</p>
+                </div>
+              ) : (
+                posts.map(post => {
+                  const postTier = post.tier_required || "public";
+                  const mediaUnlocked = postTier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, postTier));
+                  const tierHex = TIER_HEX[postTier] || "#64748B";
+                  return (
+                    <div key={post.id} className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                      <div className="flex items-start gap-3 p-4 pb-2">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                          style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff" }}>
+                          {model.display_name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold" style={{ color: "var(--text)" }}>{model.display_name}</span>
+                            <Check className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
+                            {postTier !== "public" && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${tierHex}15`, color: tierHex }}>
+                                {postTier.toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          {post.content && (
+                            <p className="text-sm mt-1.5 leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text)" }}>{post.content}</p>
+                          )}
+                        </div>
+                      </div>
+                      {post.media_url && (
+                        mediaUnlocked ? (
+                          <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
+                            <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover" loading="lazy" />
+                          </ContentProtection>
+                        ) : (
+                          <div className="relative cursor-pointer" onClick={() => setShowUnlock(true)}>
+                            <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover" style={{ filter: "blur(20px) brightness(0.5)" }} />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="text-center">
+                                <Lock className="w-6 h-6 mx-auto mb-1" style={{ color: tierHex }} />
+                                <span className="text-xs font-bold" style={{ color: tierHex }}>{postTier.toUpperCase()} Only</span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      )}
+                      <div className="flex items-center gap-5 px-4 py-3" style={{ borderTop: "1px solid var(--border)" }}>
+                        <button className="flex items-center gap-1.5 text-xs cursor-pointer transition-colors hover:text-[#F43F5E]" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
+                          <Heart className="w-4 h-4" /> {post.likes_count || 0}
+                        </button>
+                        <button className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
+                          <MessageCircle className="w-4 h-4" /> {post.comments_count || 0}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* ── WALL — visitor comments ── */}
           {tab === "wall" && (
             <WallTab
               slug={slug}
