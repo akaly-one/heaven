@@ -1511,6 +1511,7 @@ export default function ModelPage() {
               handleUpdatePack={handleUpdatePack}
               handleDeletePack={handleDeletePack}
               handleAddPack={handleAddPack}
+              visitorHandle={visitorHandle}
             />
           )}
 
@@ -1654,7 +1655,7 @@ export default function ModelPage() {
                 {activePacks.map(pack => {
                   const hex = TIER_HEX[pack.id] || pack.color;
                   const bonus = TIER_CREDIT_BONUS[pack.id];
-                  const paypalUrl = `https://www.paypal.com/paypalme/aaclaraa/${pack.price}`;
+                  const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=aaclaraa%40gmail.com&amount=${pack.price}&currency_code=EUR&item_name=${encodeURIComponent(`Pack ${pack.name} - @${visitorHandle || "anonyme"}`)}&no_shipping=1`;
                   const payUrl = pack.stripe_link || pack.wise_url || paypalUrl;
                   return (
                     <div key={pack.id} className="w-full p-4 rounded-xl"

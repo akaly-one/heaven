@@ -51,14 +51,20 @@ interface ShopTabProps {
   handleUpdatePack: (packId: string, updates: Partial<PackConfig>) => void;
   handleDeletePack: (packId: string) => void;
   handleAddPack: () => void;
+  visitorHandle?: string;
+}
+
+function paypalUrl(amount: number, description: string): string {
+  return `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=aaclaraa%40gmail.com&amount=${amount}&currency_code=EUR&item_name=${encodeURIComponent(description)}&no_shipping=1`;
 }
 
 export function ShopTab({
   clientId, unlockedTier, isEditMode, activePacks, displayPacks,
   expandedPack, setExpandedPack, shopSection, setShopSection,
   clientBalance, topupLoading, handleTopup, setChatOpen,
-  handleUpdatePack, handleDeletePack, handleAddPack,
+  handleUpdatePack, handleDeletePack, handleAddPack, visitorHandle,
 }: ShopTabProps) {
+  const pseudo = visitorHandle || "anonyme";
   return (
     <div className="space-y-4 fade-up">
 
@@ -252,7 +258,7 @@ export function ShopTab({
                                 Revolut · {pack.price}€
                               </a>
                             )}
-                            <a href={pack.stripe_link || `https://www.paypal.com/paypalme/aaclaraa/${pack.price}`} target="_blank" rel="noopener noreferrer"
+                            <a href={pack.stripe_link || paypalUrl(pack.price, `Pack ${pack.name} - @${pseudo}`)} target="_blank" rel="noopener noreferrer"
                               className={`py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 no-underline transition-all hover:scale-[1.02] active:scale-[0.98] ${!pack.wise_url ? "col-span-2" : ""}`}
                               style={{ background: "#003087", color: "#fff" }}>
                               PayPal · {pack.price}€
@@ -416,7 +422,7 @@ export function ShopTab({
                   <span className="text-sm font-bold" style={{ color: t.color }}>{t.tier}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <a href={`https://www.paypal.com/paypalme/aaclaraa/${t.photo}`}
+                  <a href={paypalUrl(t.photo, `Photo ${t.tier} - @${pseudo}`)}
                     target="_blank" rel="noopener noreferrer"
                     className="py-3 rounded-xl text-center no-underline cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
                     style={{ background: "#003087", color: "#fff" }}>
@@ -424,7 +430,7 @@ export function ShopTab({
                     <span className="text-xs font-bold block">Photo</span>
                     <span className="text-[10px] opacity-80">{t.photo}€</span>
                   </a>
-                  <a href={`https://www.paypal.com/paypalme/aaclaraa/${t.videoPerMin}`}
+                  <a href={paypalUrl(t.videoPerMin, `Video ${t.tier} 1min - @${pseudo}`)}
                     target="_blank" rel="noopener noreferrer"
                     className="py-3 rounded-xl text-center no-underline cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
                     style={{ background: "#003087", color: "#fff" }}>
