@@ -11,10 +11,10 @@ import { TIER_META, TIER_HEX } from "@/constants/tiers";
 
 // ── Credit packs for top-up ──
 const CREDIT_PACKS = [
-  { credits: 10, price: 5 },
-  { credits: 25, price: 10 },
-  { credits: 50, price: 18 },
-  { credits: 100, price: 30 },
+  { credits: 10, price: 10 },
+  { credits: 25, price: 25 },
+  { credits: 50, price: 45 },
+  { credits: 100, price: 80 },
 ];
 
 // ── Tier bonus config ──
@@ -167,7 +167,7 @@ export function ShopTab({
                           color: hex,
                           fontSize: isSelected ? "24px" : "18px",
                           transition: "font-size 0.3s ease",
-                        }}>{pack.price}€</p>
+                        }}>{pack.price} tokens</p>
                         {isCurrentTier && (
                           <span className="text-[10px] font-bold uppercase mt-0.5" style={{ color: "var(--success)" }}>Actif</span>
                         )}
@@ -212,7 +212,7 @@ export function ShopTab({
                           <h3 className="text-base font-bold" style={{ color: hex }}>{pack.name}</h3>
                           {pack.badge && <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>{pack.badge}</span>}
                         </div>
-                        <span className="text-2xl font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
+                        <span className="text-2xl font-black tabular-nums" style={{ color: hex }}>{pack.price} tokens</span>
                       </div>
 
                       {/* Features — staggered */}
@@ -243,23 +243,29 @@ export function ShopTab({
                           style={{ background: `${hex}10`, color: hex, border: `1px solid ${hex}20` }}>
                           <Check className="w-4 h-4" /> Pack actif
                         </div>
-                      ) : (pack.stripe_link || pack.wise_url) ? (
-                        <a href={pack.stripe_link || pack.wise_url} target="_blank" rel="noopener noreferrer"
-                          className="w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 no-underline"
-                          style={{ background: hex, color: "#fff" }}>
-                          Payer {pack.price}€{pack.stripe_link ? "" : " via Wise"}
-                          <ChevronRight className="w-4 h-4" />
-                        </a>
                       ) : (
-                        <div className="w-full py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 opacity-50"
-                          style={{ background: `${hex}15`, color: hex, border: `1px solid ${hex}20` }}>
-                          Paiement bientot disponible
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-bold text-center mb-2" style={{ color: "var(--text-muted)" }}>
+                            Acheter {pack.price} tokens — choisir paiement :
+                          </p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {pack.wise_url && (
+                              <a href={pack.wise_url} target="_blank" rel="noopener noreferrer"
+                                className="py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 no-underline transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                style={{ background: "#00B4D8", color: "#fff" }}>
+                                Revolut
+                              </a>
+                            )}
+                            <a href={pack.stripe_link || `https://paypal.me/sqwensy/${pack.price}`} target="_blank" rel="noopener noreferrer"
+                              className="py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 no-underline transition-all hover:scale-[1.02] active:scale-[0.98]"
+                              style={{ background: "#003087", color: "#fff" }}>
+                              PayPal
+                            </a>
+                          </div>
+                          <p className="text-[9px] text-center" style={{ color: "var(--text-muted)" }}>
+                            Apres paiement tu recevras un code d&apos;acces
+                          </p>
                         </div>
-                      )}
-                      {!isCurrentTier && (pack.stripe_link || pack.wise_url) && (
-                        <p className="text-[10px] text-center mt-2" style={{ color: "var(--text-muted)" }}>
-                          Paiement securise · Acces active sous 15 min
-                        </p>
                       )}
                     </div>
                   </div>

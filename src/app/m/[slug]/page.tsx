@@ -1269,10 +1269,10 @@ export default function ModelPage() {
                             <div className="absolute inset-0 flex flex-col items-center justify-center">
                               <span className="text-lg">{postTier === "vip" ? "♥" : postTier === "gold" ? "★" : postTier === "diamond" ? "♦" : "♛"}</span>
                               <span className="text-xs font-bold mt-0.5" style={{ color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>
-                                {(() => { const bp = postTier === "vip" ? 10 : postTier === "gold" ? 20 : postTier === "diamond" ? 30 : 40; const iv = post.media_type === "video" || post.media_url?.includes("/video/"); return `${iv ? bp * 2 : bp}€`; })()}
+                                {(() => { const bp = postTier === "vip" ? 10 : postTier === "gold" ? 20 : postTier === "diamond" ? 30 : 40; const iv = post.media_type === "video" || post.media_url?.includes("/video/"); return `${iv ? bp * 2 : bp} tokens`; })()}
                               </span>
                               {(post.media_type === "video" || post.media_url?.includes("/video/")) && (
-                                <span className="text-[8px] mt-0.5" style={{ color: "rgba(255,255,255,0.6)" }}>video x2/min</span>
+                                <span className="text-[8px] mt-0.5" style={{ color: "rgba(255,255,255,0.6)" }}>video x2 tokens/min</span>
                               )}
                             </div>
                           </div>
@@ -1428,7 +1428,7 @@ export default function ModelPage() {
                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                                   <span className="text-base">{tier === "vip" ? "♥" : tier === "gold" ? "★" : tier === "diamond" ? "♦" : "♛"}</span>
                                   <span className="text-[10px] font-bold" style={{ color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>
-                                    {(() => { const bp = tier === "vip" ? 10 : tier === "gold" ? 20 : tier === "diamond" ? 30 : 40; const iv = post.media_type === "video" || post.media_url?.includes("/video/"); return `${iv ? bp * 2 : bp}€`; })()}
+                                    {(() => { const bp = tier === "vip" ? 10 : tier === "gold" ? 20 : tier === "diamond" ? 30 : 40; const iv = post.media_type === "video" || post.media_url?.includes("/video/"); return `${iv ? bp * 2 : bp} tokens`; })()}
                                   </span>
                                 </div>
                               </div>
@@ -1634,14 +1634,14 @@ export default function ModelPage() {
                           <span className="text-lg">{TIER_META[pack.id]?.symbol}</span>
                           <span className="text-sm font-bold" style={{ color: hex }}>{pack.name}</span>
                         </div>
-                        <span className="text-base font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
+                        <span className="text-base font-black tabular-nums" style={{ color: hex }}>{pack.price} tokens</span>
                       </div>
                       <p className="text-[10px] leading-relaxed mb-1.5" style={{ color: "var(--text-muted)" }}>
                         {pack.features.slice(0, 2).join(" · ")}
                       </p>
                       <div className="flex items-center gap-1.5">
                         <ChevronRight className="w-3 h-3" style={{ color: hex }} />
-                        <span className="text-[10px] font-semibold" style={{ color: hex }}>Payer maintenant</span>
+                        <span className="text-[10px] font-semibold" style={{ color: hex }}>Acheter</span>
                       </div>
                       {bonus && (bonus.multiplier > 1 || bonus.bonus) && (
                         <div className="flex items-center gap-1.5 mt-1">
@@ -1661,7 +1661,7 @@ export default function ModelPage() {
                           <span className="text-lg">{TIER_META[pack.id]?.symbol}</span>
                           <span className="text-sm font-bold" style={{ color: hex }}>{pack.name}</span>
                         </div>
-                        <span className="text-base font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
+                        <span className="text-base font-black tabular-nums" style={{ color: hex }}>{pack.price} tokens</span>
                       </div>
                       <p className="text-[10px] leading-relaxed mb-1.5" style={{ color: "var(--text-muted)" }}>
                         {pack.features.slice(0, 2).join(" · ")}
