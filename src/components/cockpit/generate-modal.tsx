@@ -68,10 +68,10 @@ export function GenerateModal({ open, onClose, onGenerate, modelSlug, prefillCli
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center sheet-backdrop" onClick={handleClose}>
+    <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center sheet-backdrop" onClick={handleClose}>
       <div
         className="w-full max-w-md rounded-t-2xl md:rounded-2xl overflow-hidden animate-slide-up"
-        style={{ background: "var(--surface)", border: "1px solid var(--border2)" }}
+        style={{ background: "var(--surface)", border: "1px solid var(--border2)", maxHeight: "85vh" }}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex justify-center pt-3 md:hidden">
@@ -111,11 +111,23 @@ export function GenerateModal({ open, onClose, onGenerate, modelSlug, prefillCli
             </div>
 
             <div className="space-y-2">
-              <button onClick={handleCopyLink}
-                className="w-full py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold cursor-pointer btn-gradient hover:scale-[1.01] active:scale-[0.99] transition-transform">
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copied ? "Lien copié !" : "Copier le lien"}
-              </button>
+              {/* Code display */}
+              <div className="p-3 rounded-xl text-center" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
+                <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--text-muted)" }}>Code</p>
+                <p className="text-lg font-black font-mono tracking-widest" style={{ color: "var(--text)" }}>{generatedCode}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => { navigator.clipboard.writeText(generatedCode || ""); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                  className="py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-transform"
+                  style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border)" }}>
+                  <Copy className="w-3.5 h-3.5" /> Code
+                </button>
+                <button onClick={handleCopyLink}
+                  className="py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold cursor-pointer btn-gradient hover:scale-[1.01] active:scale-[0.99] transition-transform">
+                  {copied ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
+                  {copied ? "Copié !" : "Lien"}
+                </button>
+              </div>
               <div className="flex gap-2">
                 <button onClick={() => {
                     handleCopyLink();
@@ -153,7 +165,7 @@ export function GenerateModal({ open, onClose, onGenerate, modelSlug, prefillCli
             </div>
           </div>
         ) : (
-          <div className="px-6 pb-6 space-y-5">
+          <div className="px-6 pb-20 md:pb-6 space-y-4 overflow-y-auto" style={{ maxHeight: "calc(85vh - 80px)" }}>
             {/* Tier */}
             <div>
               <label className="text-[11px] font-medium uppercase tracking-wider mb-2 block" style={{ color: "var(--text-muted)" }}>Pack</label>
