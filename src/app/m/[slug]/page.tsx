@@ -300,9 +300,12 @@ export default function ModelPage() {
         if (res.ok) {
           setModel(prev => prev ? { ...prev, avatar: url } : prev);
           updateEditField("avatar", url);
+          setEditDirty(false);
           setEditToast("Avatar sauvegarde !");
         } else {
-          setEditToast("Erreur sauvegarde avatar");
+          const errData = await res.json().catch(() => ({ error: "?" }));
+          console.error("[Avatar] save error:", errData);
+          setEditToast(`Erreur: ${errData.error || res.status}`);
         }
       } else {
         setEditToast("Erreur upload");

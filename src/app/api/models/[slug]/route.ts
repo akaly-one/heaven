@@ -99,28 +99,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug
     }
 
     // Upsert into agence_models
-    const { data: existing } = await supabase
+    const { error: upsertError } = await supabase
       .from("agence_models")
-      .select("id")
-      .eq("slug", slug)
-      .maybeSingle();
+      .upsert({ slug, ...allowed }, { onConflict: "slug" });
 
-    if (existing) {
-      const { error } = await supabase
-        .from("agence_models")
-        .update(allowed)
-        .eq("slug", slug);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase
-        .from("agence_models")
-        .insert({ slug, ...allowed });
-      if (error) throw error;
+    if (upsertError) {
+      console.error("[API/models] PUT upsert error:", upsertError);
+      return NextResponse.json({ error: upsertError.message, detail: upsertError }, { status: 500, headers: cors });
     }
 
     return NextResponse.json({ success: true }, { headers: cors });
   } catch (err) {
     console.error("[API/models] PUT:", err);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });
+    const msg = err instanceof Error ? err.message : "Erreur serveur";
+    return NextResponse.json({ error: msg }, { status: 500, headers: cors });
   }
 }
