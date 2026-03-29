@@ -426,15 +426,43 @@ export default function AgenceDashboard() {
               </div>
             </div>
 
-            {/* Feed posts */}
-            {feedPosts.length === 0 && (
-              <div className="rounded-2xl p-8 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Publie ton premier post pour le voir ici et dans le profil</p>
-              </div>
-            )}
-            {feedPosts.length > 0 && (
-              <div className="space-y-3 mt-3">
-                {feedPosts.slice(0, 10).map(post => (
+            {/* Feed — all posts merged, newest first */}
+            {(() => {
+              // Merge model posts + wall posts, sorted newest first
+              type FeedItem = { type: "post"; id: string; created_at: string; data: FeedPost } | { type: "wall"; id: string; created_at: string; data: WallPost };
+              const allFeed: FeedItem[] = [
+                ...feedPosts.map(p => ({ type: "post" as const, id: p.id, created_at: p.created_at, data: p })),
+                ...wallPosts.filter(w => !w.content?.includes("#post-")).map(w => ({ type: "wall" as const, id: w.id, created_at: w.created_at, data: w })),
+              ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+              if (allFeed.length === 0) return (
+                <div className="rounded-2xl p-8 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>Publie ton premier post</p>
+                </div>
+              );
+
+              return (
+                <div className="space-y-3 mt-3">
+                  {allFeed.slice(0, 15).map(item => {
+                    if (item.type === "wall") {
+                      const w = item.data as WallPost;
+                      return (
+                        <div key={`w-${w.id}`} className="rounded-2xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                          <div className="flex items-start gap-2">
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                              style={{ background: "rgba(0,0,0,0.06)", color: "var(--text-muted)" }}>
+                              {w.pseudo?.charAt(0)?.toUpperCase() || "?"}
+                            </div>
+                            <div>
+                              <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>@{w.pseudo}</span>
+                              <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{w.content}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    const post = item.data as FeedPost;
+                    return (
                   <div key={post.id} className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                     {/* Image first, full width */}
                     {post.media_url && (
@@ -485,27 +513,11 @@ export default function AgenceDashboard() {
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-            {/* Wall posts from visitors */}
-            {wallPosts.length > 0 && (
-              <div className="space-y-2 mt-2">
-                <h3 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Messages des visiteurs</h3>
-                {wallPosts.filter(w => !w.content?.includes("#post-")).slice(0, 5).map(w => (
-                  <div key={w.id} className="flex items-start gap-2 px-3 py-2 rounded-xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
-                      style={{ background: "rgba(0,0,0,0.06)", color: "var(--text-muted)" }}>
-                      {w.pseudo?.charAt(0)?.toUpperCase() || "?"}
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>@{w.pseudo}</span>
-                      <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>{w.content}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  );
+                  })}
+                </div>
+              );
+            })()}
             </div>{/* end left column */}
 
             {/* ── RIGHT: Codes/Clients + Notifs (2/5) ── */}

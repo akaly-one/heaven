@@ -1130,30 +1130,38 @@ export default function ModelPage() {
                 </div>
               )}
 
-              {/* Visitor wall posts (text posts from fans) */}
-              {wallPosts.filter(w => !w.content?.includes("#post-")).map(w => (
-                <div key={w.id} className="rounded-2xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                  <div className="flex items-start gap-2">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                      style={{ background: "rgba(100,116,139,0.1)", color: "var(--text-muted)" }}>
-                      {w.pseudo?.charAt(0)?.toUpperCase() || "?"}
-                    </div>
-                    <div>
-                      <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>@{w.pseudo}</span>
-                      <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{w.content}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              {/* All posts merged + sorted by date (newest first) */}
+              {(() => {
+                const visitorPosts = wallPosts.filter(w => !w.content?.includes("#post-")).map(w => ({ type: "wall" as const, id: w.id, created_at: w.created_at, data: w }));
+                const modelPosts = posts.map(p => ({ type: "post" as const, id: p.id, created_at: p.created_at, data: p }));
+                const allItems = [...visitorPosts, ...modelPosts].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-              {/* Model posts */}
-              {posts.length === 0 && wallPosts.filter(w => !w.content?.includes("#post-")).length === 0 ? (
-                <div className="text-center py-12">
-                  <Newspaper className="w-8 h-8 mx-auto mb-2" style={{ color: "var(--text-muted)" }} />
-                  <p className="text-sm" style={{ color: "var(--text-muted)" }}>Pas encore de publications</p>
-                </div>
-              ) : (
-                posts.map(post => {
+                if (allItems.length === 0) return (
+                  <div className="text-center py-12">
+                    <Newspaper className="w-8 h-8 mx-auto mb-2" style={{ color: "var(--text-muted)" }} />
+                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>Pas encore de publications</p>
+                  </div>
+                );
+
+                return (<>{allItems.map(item => {
+                  if (item.type === "wall") {
+                    const w = item.data as WallPost;
+                    return (
+                      <div key={`w-${w.id}`} className="rounded-2xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                        <div className="flex items-start gap-2">
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                            style={{ background: "rgba(0,0,0,0.06)", color: "var(--text-muted)" }}>
+                            {w.pseudo?.charAt(0)?.toUpperCase() || "?"}
+                          </div>
+                          <div>
+                            <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>@{w.pseudo}</span>
+                            <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{w.content}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  const post = item.data as Post;
                   const postTier = post.tier_required || "public";
                   const mediaUnlocked = postTier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, postTier));
                   const tierHex = TIER_HEX[postTier] || "#64748B";
@@ -1287,8 +1295,8 @@ export default function ModelPage() {
                         </div>
                     </div>
                   );
-                })
-              )}
+                })}</>);
+              })()}
             </div>
           )}
 
