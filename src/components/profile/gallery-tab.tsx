@@ -92,14 +92,9 @@ export function GalleryTab({
       )}
 
       {(isEditMode ? uploads : galleryItems).length === 0 ? (
-        isEditMode ? (
-          <div className="text-center py-8">
-            <Upload className="w-6 h-6 mx-auto mb-2" style={{ color: "var(--text-muted)" }} />
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>Utilisez le bouton ci-dessus pour ajouter des medias</p>
-          </div>
-        ) : (
-          <EmptyState icon={Image} text="No content available" />
-        )
+        <div className="text-center py-6">
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>{isEditMode ? "Clique sur + Ajouter" : "Pas de contenu"}</p>
+        </div>
       ) : (
         <div className="grid grid-cols-3 gap-1.5 rounded-xl overflow-hidden">
           {(isEditMode ? uploads : galleryItems).map((item, i) => {

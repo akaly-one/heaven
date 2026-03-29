@@ -941,14 +941,6 @@ export default function ModelPage() {
               <div className="mt-2">
                 {isEditMode ? (
                   <div className="space-y-2">
-                    <div className="flex items-center justify-center gap-2 mb-1">
-                      <button onClick={() => updateEditField("online", !displayModel?.online)}
-                        className="flex items-center gap-1 cursor-pointer"
-                        style={{ color: displayModel?.online ? "var(--success)" : "var(--text-muted)" }}>
-                        {displayModel?.online ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
-                        <span className="text-[10px] font-medium">{displayModel?.online ? "Online" : "Offline"}</span>
-                      </button>
-                    </div>
                     <input
                       value={displayModel?.display_name || ""}
                       onChange={e => updateEditField("display_name", e.target.value)}
