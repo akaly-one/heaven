@@ -62,23 +62,11 @@ export function ShopTab({
   return (
     <div className="space-y-4 fade-up">
 
-      {/* Client balance bar */}
-      {clientId && (
-        <div className="card-premium p-4 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(230,51,41,0.12)" }}>
-              <Coins className="w-4.5 h-4.5" style={{ color: "var(--gold)" }} />
-            </div>
-            <div>
-              <p className="text-lg font-black tabular-nums" style={{ color: "var(--gold)" }}>{clientBalance}</p>
-              <p className="text-[10px] font-medium uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Crédits disponibles</p>
-            </div>
-          </div>
-          {unlockedTier && TIER_CREDIT_BONUS[unlockedTier]?.multiplier > 1 && (
-            <span className="badge text-[10px] font-bold" style={{ background: `${TIER_HEX[unlockedTier]}15`, color: TIER_HEX[unlockedTier] }}>
-              {TIER_CREDIT_BONUS[unlockedTier].label} bonus
-            </span>
-          )}
+      {/* Balance — compact cart badge */}
+      {clientId && clientBalance > 0 && (
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full self-end" style={{ background: "rgba(0,0,0,0.05)", border: "1px solid var(--border)" }}>
+          <Coins className="w-3.5 h-3.5" style={{ color: "var(--gold)" }} />
+          <span className="text-xs font-bold" style={{ color: "var(--text)" }}>{clientBalance}€</span>
         </div>
       )}
 
