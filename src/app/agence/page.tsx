@@ -775,16 +775,10 @@ export default function AgenceDashboard() {
               </div>
           )}
 
-          {/* ── FAB — single action: generate code ── */}
+          {/* FAB removed — generate code button is in mobile nav bar */}
           <style>{`
             @keyframes uploadProgress { 0% { width: 10%; } 50% { width: 80%; } 100% { width: 10%; } }
           `}</style>
-          <button
-            onClick={() => setShowGenerator(true)}
-            className="fixed bottom-24 md:bottom-8 right-4 md:right-8 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 hover:shadow-[0_0_30px_rgba(230,51,41,0.4)] active:scale-95"
-            style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))" }}>
-            <KeyRound className="w-5 h-5" style={{ color: "#fff" }} />
-          </button>
 
         </div>
       </div>
