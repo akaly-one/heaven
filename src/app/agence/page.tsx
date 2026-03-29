@@ -259,7 +259,7 @@ export default function AgenceDashboard() {
               <div className="w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center text-lg font-black"
                 style={{
                   background: modelInfo?.avatar ? "transparent" : "linear-gradient(135deg, var(--rose), var(--accent))",
-                  color: "var(--text)",
+                  color: "#fff",
                   boxShadow: "0 0 20px rgba(244,63,94,0.15)",
                 }}>
                 {modelInfo?.avatar ? (
@@ -394,6 +394,11 @@ export default function AgenceDashboard() {
             </div>
 
             {/* Feed posts */}
+            {feedPosts.length === 0 && (
+              <div className="rounded-2xl p-8 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Publie ton premier post pour le voir ici et dans le profil</p>
+              </div>
+            )}
             {feedPosts.length > 0 && (
               <div className="space-y-3 mt-3">
                 {feedPosts.slice(0, 10).map(post => (
@@ -409,7 +414,7 @@ export default function AgenceDashboard() {
                               style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(4px)", color: "#fff" }}>
                               {modelSlug.charAt(0).toUpperCase()}
                             </div>
-                            <span className="text-xs font-bold text-white">{modelInfo?.display_name || modelSlug}</span>
+                            <span className="text-xs font-bold text-white" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>{modelInfo?.display_name || modelSlug}</span>
                             {post.tier_required !== "public" && (
                               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
                                 style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}>

@@ -8,9 +8,9 @@
   --bg4: #D5D6C7;
   --surface: #FFFFFF;
   --surface-hover: #F7F8F0;
-  --border: rgba(0,0,0,0.08);
-  --border2: rgba(0,0,0,0.06);
-  --border3: rgba(0,0,0,0.12);
+  --border: rgba(0,0,0,0.12);
+  --border2: rgba(0,0,0,0.10);
+  --border3: rgba(0,0,0,0.18);
 
   /* Accent — HEAVEN Red */
   --accent: #E63329;
@@ -34,7 +34,7 @@
   /* Text */
   --text: #1A1A1A;
   --text-secondary: #4A4A4A;
-  --text-muted: #5C5C52;
+  --text-muted: #45453C;
 
   /* Radii */
   --radius: 12px;
@@ -50,7 +50,7 @@
   --shadow-accent: 0 4px 24px rgba(230,51,41,0.25);
 
   /* Gradient tokens */
-  --gradient-gold: linear-gradient(135deg, #C9A84C, #E8C76A);
+  --gradient-gold: linear-gradient(135deg, #9E7C1F, #B8922E);
   --gradient-accent: linear-gradient(135deg, var(--accent), #7C3AED);
 
   /* Tier complementary */
@@ -165,8 +165,8 @@ body {
   box-shadow: 0 2px 8px rgba(230,51,41,0.2);
 }
 .segmented-control button:not(.active):hover {
-  color: var(--text-secondary);
-  background: rgba(0,0,0,0.03);
+  color: var(--text);
+  background: rgba(0,0,0,0.06);
 }
 
 /* ═══ Tier dot indicator ═══ */

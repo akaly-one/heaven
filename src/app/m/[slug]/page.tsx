@@ -1030,9 +1030,10 @@ export default function ModelPage() {
 
         {/* ═══ TABS ═══ */}
         <div className="max-w-2xl mx-auto px-4 mb-5 profile-stagger-4">
-          <div className="segmented-control">
+          <div className="segmented-control" role="tablist">
             {TABS.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)} className={tab === t.id ? "active" : ""}
+              <button key={t.id} role="tab" aria-selected={tab === t.id} aria-label={t.label}
+                onClick={() => setTab(t.id)} className={tab === t.id ? "active" : ""}
                 style={{ transition: "all 0.2s ease" }}>
                 <t.icon className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
                 <span className="hidden sm:inline">{t.label}</span>

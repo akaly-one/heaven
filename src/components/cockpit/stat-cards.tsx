@@ -22,7 +22,7 @@ export function StatCards({ activeCodes, totalCodes, revenue, pendingCount, uniq
     <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
       {stats.map((s, i) => (
         <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl flex-shrink-0"
-          style={{ background: `${s.color}08`, border: `1px solid ${s.color}15` }}>
+          style={{ background: `${s.color}10`, border: `1px solid ${s.color}30` }}>
           <s.icon className="w-3.5 h-3.5" style={{ color: s.color }} />
           <span className="text-sm font-bold tabular-nums" style={{ color: "var(--text)" }}>
             {s.value}
