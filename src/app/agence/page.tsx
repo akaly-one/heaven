@@ -447,16 +447,38 @@ export default function AgenceDashboard() {
                     if (item.type === "wall") {
                       const w = item.data as WallPost;
                       return (
-                        <div key={`w-${w.id}`} className="rounded-2xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                        <div key={`w-${w.id}`} className="rounded-2xl p-3 group" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                           <div className="flex items-start gap-2">
                             <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
                               style={{ background: "rgba(0,0,0,0.06)", color: "var(--text-muted)" }}>
                               {w.pseudo?.charAt(0)?.toUpperCase() || "?"}
                             </div>
-                            <div>
-                              <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>@{w.pseudo}</span>
+                            <div className="flex-1 min-w-0">
+                              <button onClick={async () => {
+                                if (confirm(`Ajouter @${w.pseudo} comme client ?`)) {
+                                  try {
+                                    await fetch("/api/clients", {
+                                      method: "POST",
+                                      headers: authHeaders(),
+                                      body: JSON.stringify({ model: modelSlug, pseudo_snap: w.pseudo, last_active: new Date().toISOString() }),
+                                    });
+                                    alert(`@${w.pseudo} ajouté aux clients`);
+                                  } catch {}
+                                }
+                              }} className="text-[10px] font-bold cursor-pointer hover:underline" style={{ color: "var(--text)", background: "none", border: "none", padding: 0 }}>
+                                @{w.pseudo}
+                              </button>
                               <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{w.content}</p>
                             </div>
+                            <button onClick={async () => {
+                              try {
+                                await fetch(`/api/wall?id=${w.id}&model=${modelSlug}`, { method: "DELETE", headers: authHeaders() });
+                                setWallPosts(prev => prev.filter(p => p.id !== w.id));
+                              } catch {}
+                            }} className="opacity-0 group-hover:opacity-100 text-xs cursor-pointer hover:text-red-500 transition-all shrink-0"
+                              style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
                       );
