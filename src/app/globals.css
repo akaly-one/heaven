@@ -99,12 +99,12 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
 }
 .card-premium:hover {
-  border-color: rgba(0,0,0,0.12);
+  border-color: var(--border3);
   transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
 }
 
 /* ═══ Gradient CTA (HEAVEN red) ═══ */
@@ -122,6 +122,10 @@ body {
   background: var(--accent-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 24px rgba(230, 51, 41, 0.25);
+}
+.btn-gradient:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 12px rgba(230, 51, 41, 0.15);
 }
 
 /* ═══ Stat card ═══ */
@@ -167,6 +171,22 @@ body {
 .segmented-control button:not(.active):hover {
   color: var(--text);
   background: rgba(0,0,0,0.06);
+}
+
+/* ═══ Global UX ═══ */
+button:focus-visible, input:focus-visible, a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@keyframes shimmerLoad {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--bg2), var(--bg3), var(--bg2));
+  background-size: 200% 100%;
+  animation: shimmerLoad 1.5s ease-in-out infinite;
+  border-radius: var(--radius);
 }
 
 /* ═══ Tier dot indicator ═══ */
