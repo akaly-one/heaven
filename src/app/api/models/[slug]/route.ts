@@ -43,9 +43,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       .eq("slug", slug)
       .maybeSingle();
 
-    // If no account in DB, return default profile so the page still renders
-    // The model can set up their profile from the cockpit later
-    const displayName = account?.display_name || modelInfo?.display_name || slug.charAt(0).toUpperCase() + slug.slice(1);
+    // Map DB columns to API response
+    const displayName = account?.display_name || modelInfo?.display || slug.charAt(0).toUpperCase() + slug.slice(1);
+    const presence = modelInfo?.presence as { online?: boolean; status?: string } | null;
+    const config = modelInfo?.config as { banner?: string } | null;
 
     return NextResponse.json({
       slug,
@@ -53,8 +54,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       active: account?.active ?? true,
       bio: modelInfo?.bio || null,
       avatar: modelInfo?.avatar || null,
-      banner: modelInfo?.banner || null,
-      online: modelInfo?.online || false,
+      banner: config?.banner || null,
+      online: presence?.online || false,
       status: modelInfo?.status || "Creatrice exclusive",
     }, { headers: cors });
   } catch (err) {
@@ -83,29 +84,35 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug
         .eq("model_slug", slug);
     }
 
-    // Only allow specific fields for agence_models
-    const allowed: Record<string, unknown> = {};
-    const fields = ["avatar", "bio", "online", "status", "banner"];
-    for (const f of fields) {
-      if (body[f] !== undefined) allowed[f] = body[f];
+    // Map request fields to actual DB columns
+    // DB schema: id, slug, display, status, bio, avatar, presence (jsonb), config (jsonb)
+    const updates: Record<string, unknown> = {};
+    if (body.avatar !== undefined) updates.avatar = body.avatar;
+    if (body.bio !== undefined) updates.bio = body.bio;
+    if (body.status !== undefined) updates.status = body.status;
+    if (body.banner !== undefined) {
+      // banner stored in config jsonb
+      updates.config = { ...(body.config || {}), banner: body.banner };
+    }
+    if (body.online !== undefined) {
+      // online stored in presence jsonb
+      updates.presence = { online: body.online, status: body.online ? "online" : "offline" };
     }
 
-    if (Object.keys(allowed).length === 0 && body.display_name === undefined) {
+    if (Object.keys(updates).length === 0 && body.display_name === undefined) {
       return NextResponse.json({ error: "No valid fields" }, { status: 400, headers: cors });
     }
 
-    if (Object.keys(allowed).length === 0) {
+    if (Object.keys(updates).length === 0) {
       return NextResponse.json({ success: true }, { headers: cors });
     }
 
-    // Upsert into agence_models
-    const defaultName = slug.charAt(0).toUpperCase() + slug.slice(1);
+    // Update existing record
+    updates.updated_at = new Date().toISOString();
     const { error: upsertError } = await supabase
       .from("agence_models")
-      .upsert(
-        { slug, display: defaultName, display_name: defaultName, ...allowed },
-        { onConflict: "slug", ignoreDuplicates: false }
-      );
+      .update(updates)
+      .eq("slug", slug);
 
     if (upsertError) {
       console.error("[API/models] PUT upsert error:", upsertError);
