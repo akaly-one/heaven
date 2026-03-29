@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, MessageCircle, Users, Settings, ChevronLeft, ChevronRight, Crown } from "lucide-react";
+import { LayoutDashboard, MessageCircle, Users, Settings, ChevronLeft, ChevronRight, Crown, KeyRound } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { HeavenAuth } from "./auth-guard";
 
@@ -87,23 +87,45 @@ export function Sidebar() {
         </button>
       </aside>
 
-      {/* Mobile bottom tab */}
+      {/* Mobile bottom tab — Dashboard center + Generer button */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden safe-area-bottom"
         style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
-        <div className="flex items-center justify-around py-2.5">
-          {visibleItems.filter(item => !("rootOnly" in item && item.rootOnly)).map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/agence" && pathname.startsWith(item.href));
-            const isDashActive = item.href === "/agence" && pathname === "/agence";
-            const active = isActive || isDashActive;
-            return (
-              <a key={item.id} href={item.href}
-                className="flex flex-col items-center gap-0.5 px-3 py-1 no-underline"
-                style={{ color: active ? "var(--accent)" : "var(--text-muted)" }}>
-                <item.icon className="w-5 h-5" />
-                <span className="text-[9px] font-medium">{item.label}</span>
-              </a>
-            );
-          })}
+        <div className="flex items-center justify-around py-1.5">
+          {/* Messages */}
+          <a href="/agence/messages" className="flex flex-col items-center gap-0.5 px-2 py-1 no-underline"
+            style={{ color: pathname.startsWith("/agence/messages") ? "var(--accent)" : "var(--text-muted)" }}>
+            <MessageCircle className="w-5 h-5" />
+            <span className="text-[8px] font-medium">Messages</span>
+          </a>
+          {/* Clients */}
+          <a href="/agence/clients" className="flex flex-col items-center gap-0.5 px-2 py-1 no-underline"
+            style={{ color: pathname.startsWith("/agence/clients") ? "var(--accent)" : "var(--text-muted)" }}>
+            <Users className="w-5 h-5" />
+            <span className="text-[8px] font-medium">Clients</span>
+          </a>
+          {/* Dashboard — center, prominent */}
+          <a href="/agence" className="flex flex-col items-center gap-0.5 px-2 py-1 no-underline -mt-4"
+            style={{ color: pathname === "/agence" ? "var(--accent)" : "var(--text-muted)" }}>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg"
+              style={{ background: pathname === "/agence" ? "var(--accent)" : "var(--surface)", border: "2px solid var(--border)" }}>
+              <LayoutDashboard className="w-5 h-5" style={{ color: pathname === "/agence" ? "#fff" : "var(--text-muted)" }} />
+            </div>
+          </a>
+          {/* Generer code */}
+          <button onClick={() => {
+            // Dispatch custom event to open generate modal in dashboard
+            window.dispatchEvent(new CustomEvent("heaven:generate"));
+          }} className="flex flex-col items-center gap-0.5 px-2 py-1 cursor-pointer"
+            style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
+            <KeyRound className="w-5 h-5" />
+            <span className="text-[8px] font-medium">Code</span>
+          </button>
+          {/* Reglages */}
+          <a href="/agence/settings" className="flex flex-col items-center gap-0.5 px-2 py-1 no-underline"
+            style={{ color: pathname.startsWith("/agence/settings") ? "var(--accent)" : "var(--text-muted)" }}>
+            <Settings className="w-5 h-5" />
+            <span className="text-[8px] font-medium">Reglages</span>
+          </a>
         </div>
       </nav>
     </>

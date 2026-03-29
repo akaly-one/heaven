@@ -103,6 +103,13 @@ export default function AgenceDashboard() {
       .catch(err => console.error("[Cockpit] messages:", err));
   }, [modelSlug, authHeaders]);
 
+  // Listen for generate event from mobile nav
+  useEffect(() => {
+    const handler = () => setShowGenerator(true);
+    window.addEventListener("heaven:generate", handler);
+    return () => window.removeEventListener("heaven:generate", handler);
+  }, []);
+
   useEffect(() => { const iv = setInterval(() => setTick(t => t + 1), 60000); return () => clearInterval(iv); }, []);
 
   // ── Computed ──
