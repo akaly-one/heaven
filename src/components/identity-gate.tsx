@@ -8,10 +8,11 @@ interface IdentityGateProps {
   slug: string;
   modelName?: string;
   onRegistered: (client: Record<string, unknown>, platform: Platform, handle: string) => void;
+  onNeedShop?: () => void;
   isLoading?: boolean;
 }
 
-export function IdentityGate({ slug, modelName, onRegistered }: IdentityGateProps) {
+export function IdentityGate({ slug, modelName, onRegistered, onNeedShop }: IdentityGateProps) {
   const [platform, setPlatform] = useState<"snap" | "insta">("snap");
   const [handle, setHandle] = useState("");
   const [code, setCode] = useState("");
@@ -78,6 +79,10 @@ export function IdentityGate({ slug, modelName, onRegistered }: IdentityGateProp
       // Save client session
       sessionStorage.setItem(`heaven_client_${slug}`, JSON.stringify(client));
       onRegistered(client, platform, handle.trim());
+      // New account → redirect to shop/packs
+      if (mode === "new" && onNeedShop) {
+        setTimeout(() => onNeedShop(), 300);
+      }
     } catch {
       setError("Erreur de connexion");
     }

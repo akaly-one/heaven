@@ -844,7 +844,7 @@ export default function ModelPage() {
     <div className="min-h-screen pb-20" style={{ background: "var(--bg)" }}>
       {/* Identity Gate — blocks browsing until visitor identifies */}
       {!visitorRegistered && !isModelLoggedIn && model && (
-        <IdentityGate slug={slug} modelName={model.display_name} onRegistered={handleGateRegistered} />
+        <IdentityGate slug={slug} modelName={model.display_name} onRegistered={handleGateRegistered} onNeedShop={() => setTab("shop")} />
       )}
       {/* Ambient gradient — animated pulse */}
       <div className="fixed inset-0 pointer-events-none z-0" style={{
@@ -1624,51 +1624,33 @@ export default function ModelPage() {
                 {activePacks.map(pack => {
                   const hex = TIER_HEX[pack.id] || pack.color;
                   const bonus = TIER_CREDIT_BONUS[pack.id];
-                  const payUrl = pack.stripe_link || pack.wise_url;
-                  return payUrl ? (
-                    <a key={pack.id} href={payUrl} target="_blank" rel="noopener noreferrer"
-                      className="block w-full p-4 rounded-xl text-left cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] no-underline"
+                  const paypalUrl = `https://paypal.me/sqwensy/${pack.price}EUR`;
+                  const payUrl = pack.stripe_link || pack.wise_url || paypalUrl;
+                  return (
+                    <div key={pack.id} className="w-full p-4 rounded-xl"
                       style={{ background: `${hex}08`, border: `1px solid ${hex}20` }}>
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2.5">
                           <span className="text-lg">{TIER_META[pack.id]?.symbol}</span>
                           <span className="text-sm font-bold" style={{ color: hex }}>{pack.name}</span>
                         </div>
-                        <span className="text-base font-black tabular-nums" style={{ color: hex }}>{pack.price} tokens</span>
+                        <span className="text-sm font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
                       </div>
-                      <p className="text-[10px] leading-relaxed mb-1.5" style={{ color: "var(--text-muted)" }}>
+                      <p className="text-[10px] leading-relaxed mb-2" style={{ color: "var(--text-muted)" }}>
                         {pack.features.slice(0, 2).join(" · ")}
                       </p>
-                      <div className="flex items-center gap-1.5">
-                        <ChevronRight className="w-3 h-3" style={{ color: hex }} />
-                        <span className="text-[10px] font-semibold" style={{ color: hex }}>Acheter</span>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {pack.wise_url && (
+                          <a href={pack.wise_url} target="_blank" rel="noopener noreferrer"
+                            className="py-2 rounded-lg text-[10px] font-bold text-center no-underline"
+                            style={{ background: "#00B4D8", color: "#fff" }}>Revolut</a>
+                        )}
+                        <a href={paypalUrl} target="_blank" rel="noopener noreferrer"
+                          className={`py-2 rounded-lg text-[10px] font-bold text-center no-underline ${!pack.wise_url ? "col-span-2" : ""}`}
+                          style={{ background: "#003087", color: "#fff" }}>PayPal</a>
                       </div>
                       {bonus && (bonus.multiplier > 1 || bonus.bonus) && (
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <Crown className="w-3 h-3" style={{ color: hex }} />
-                          <span className="text-[10px] font-semibold" style={{ color: hex }}>
-                            {bonus.multiplier > 1 ? `${bonus.label} crédits` : `🎁 ${bonus.bonus}`}
-                          </span>
-                        </div>
-                      )}
-                    </a>
-                  ) : (
-                    <div key={pack.id}
-                      className="w-full p-4 rounded-xl text-left opacity-60"
-                      style={{ background: `${hex}08`, border: `1px solid ${hex}20` }}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-lg">{TIER_META[pack.id]?.symbol}</span>
-                          <span className="text-sm font-bold" style={{ color: hex }}>{pack.name}</span>
-                        </div>
-                        <span className="text-base font-black tabular-nums" style={{ color: hex }}>{pack.price} tokens</span>
-                      </div>
-                      <p className="text-[10px] leading-relaxed mb-1.5" style={{ color: "var(--text-muted)" }}>
-                        {pack.features.slice(0, 2).join(" · ")}
-                      </p>
-                      <p className="text-[10px] font-semibold" style={{ color: hex }}>Paiement bientot disponible</p>
-                      {bonus && (bonus.multiplier > 1 || bonus.bonus) && (
-                        <div className="flex items-center gap-1.5 mt-1">
+                        <div className="flex items-center gap-1.5 mt-1.5">
                           <Crown className="w-3 h-3" style={{ color: hex }} />
                           <span className="text-[10px] font-semibold" style={{ color: hex }}>
                             {bonus.multiplier > 1 ? `${bonus.label} crédits` : `🎁 ${bonus.bonus}`}

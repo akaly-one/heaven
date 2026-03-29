@@ -246,24 +246,24 @@ export function ShopTab({
                       ) : (
                         <div className="space-y-2">
                           <p className="text-[10px] font-bold text-center mb-2" style={{ color: "var(--text-muted)" }}>
-                            Acheter {pack.price} tokens — choisir paiement :
+                            {pack.price} tokens = {pack.price}€
                           </p>
                           <div className="grid grid-cols-2 gap-2">
                             {pack.wise_url && (
                               <a href={pack.wise_url} target="_blank" rel="noopener noreferrer"
                                 className="py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 no-underline transition-all hover:scale-[1.02] active:scale-[0.98]"
                                 style={{ background: "#00B4D8", color: "#fff" }}>
-                                Revolut
+                                Revolut · {pack.price}€
                               </a>
                             )}
-                            <a href={pack.stripe_link || `https://paypal.me/sqwensy/${pack.price}`} target="_blank" rel="noopener noreferrer"
-                              className="py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 no-underline transition-all hover:scale-[1.02] active:scale-[0.98]"
+                            <a href={pack.stripe_link || `https://paypal.me/sqwensy/${pack.price}EUR`} target="_blank" rel="noopener noreferrer"
+                              className={`py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 no-underline transition-all hover:scale-[1.02] active:scale-[0.98] ${!pack.wise_url ? "col-span-2" : ""}`}
                               style={{ background: "#003087", color: "#fff" }}>
-                              PayPal
+                              PayPal · {pack.price}€
                             </a>
                           </div>
-                          <p className="text-[9px] text-center" style={{ color: "var(--text-muted)" }}>
-                            Apres paiement tu recevras un code d&apos;acces
+                          <p className="text-[9px] text-center mt-1" style={{ color: "var(--text-muted)" }}>
+                            Apres paiement envoie le recu + ton pseudo pour recevoir ton code
                           </p>
                         </div>
                       )}
