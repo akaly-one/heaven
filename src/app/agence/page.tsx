@@ -41,7 +41,7 @@ export default function AgenceDashboard() {
   const [codes, setCodes] = useState<AccessCode[]>([]);
   const [clients, setClients] = useState<ClientInfo[]>([]);
   const [packs, setPacks] = useState<PackConfig[]>(DEFAULT_PACKS);
-  const [modelInfo, setModelInfo] = useState<{ avatar?: string; online?: boolean; display_name?: string; platforms?: Record<string, string> } | null>(null);
+  const [modelInfo, setModelInfo] = useState<{ avatar?: string; online?: boolean; display_name?: string; status?: string; platforms?: Record<string, string> } | null>(null);
 
   const [showGenerator, setShowGenerator] = useState(false);
   const [prefillClient, setPrefillClient] = useState("");
@@ -265,29 +265,35 @@ export default function AgenceDashboard() {
                   modelSlug.charAt(0).toUpperCase()
                 )}
               </div>
-              <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center"
-                style={{ borderColor: "var(--bg)", background: modelInfo?.online ? "#10B981" : "#6B7280" }}>
+              {/* Online dot — click to toggle */}
+              <button onClick={handleToggleStatus} disabled={statusUpdating}
+                className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-125 disabled:opacity-50"
+                style={{ borderColor: "var(--bg)", background: modelInfo?.online ? "#10B981" : "#EF4444", border: "none" }}>
                 {modelInfo?.online && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-              </span>
+              </button>
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-base font-bold truncate text-[var(--text)]">
+              <h1 className="text-base font-bold truncate" style={{ color: "var(--text)" }}>
                 {modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase()}
               </h1>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-[var(--text-muted)]">
-                  {auth?.role === "root" ? "Root Admin" : "Creatrice exclusive"}
-                </span>
-                <button onClick={handleToggleStatus} disabled={statusUpdating}
-                  className="px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
-                  style={{
-                    background: modelInfo?.online ? "rgba(16,185,129,0.12)" : "rgba(107,114,128,0.12)",
-                    color: modelInfo?.online ? "#10B981" : "#6B7280",
-                    border: "none",
-                  }}>
-                  {statusUpdating ? "..." : modelInfo?.online ? "🟢 Dispo" : "🔴 Absent"}
-                </button>
-              </div>
+              {/* Status text — editable short mood */}
+              <input
+                defaultValue={modelInfo?.status || ""}
+                placeholder="Etat d'esprit..."
+                className="text-[11px] bg-transparent outline-none w-full truncate"
+                style={{ color: "var(--text-muted)" }}
+                onBlur={async (e) => {
+                  const newStatus = e.target.value.trim();
+                  try {
+                    await fetch(`/api/models/${modelSlug}`, {
+                      method: "PUT",
+                      headers: authHeaders(),
+                      body: JSON.stringify({ status: newStatus }),
+                    });
+                  } catch {}
+                }}
+                onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+              />
             </div>
             <a href={`/m/${modelSlug}`} target="_blank"
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-transform no-underline"
