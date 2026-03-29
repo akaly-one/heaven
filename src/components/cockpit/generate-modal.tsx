@@ -195,34 +195,28 @@ export function GenerateModal({ open, onClose, onGenerate, modelSlug, prefillCli
               </div>
             </div>
 
-            {/* Client */}
+            {/* Client + Platform inline */}
             <div>
               <label className="text-[11px] font-medium uppercase tracking-wider mb-2 block" style={{ color: "var(--text-muted)" }}>Client</label>
-              <input value={client} onChange={e => setClient(e.target.value)}
-                placeholder="Pseudo snap ou insta..."
-                className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
-                style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
-            </div>
-
-            {/* Platform — icons only */}
-            <div>
-              <label className="text-[11px] font-medium uppercase tracking-wider mb-2 block" style={{ color: "var(--text-muted)" }}>Plateforme</label>
-              <div className="flex gap-3 justify-center">
+              <div className="flex items-center gap-2">
+                {/* Platform dots — click to switch */}
                 {[
-                  { id: "snapchat", color: "#997A00", icon: "👻" },
-                  { id: "instagram", color: "#C13584", icon: "📷" },
-                  { id: "other", color: "#64748B", icon: "🔗" },
+                  { id: "snapchat", color: "#997A00" },
+                  { id: "instagram", color: "#C13584" },
                 ].map(p => (
                   <button key={p.id} onClick={() => setPlatform(p.id)}
-                    className="w-12 h-12 rounded-xl text-lg cursor-pointer transition-all hover:scale-110 active:scale-95 flex items-center justify-center"
+                    className="w-8 h-8 rounded-full cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0 flex items-center justify-center"
                     style={{
-                      background: platform === p.id ? `${p.color}20` : "rgba(0,0,0,0.03)",
-                      border: `3px solid ${platform === p.id ? p.color : "transparent"}`,
-                      boxShadow: platform === p.id ? `0 0 12px ${p.color}30` : "none",
+                      background: platform === p.id ? p.color : `${p.color}20`,
+                      border: `2px solid ${platform === p.id ? p.color : "transparent"}`,
                     }}>
-                    {p.icon}
+                    {platform === p.id && <span className="w-2 h-2 rounded-full bg-white" />}
                   </button>
                 ))}
+                <input value={client} onChange={e => setClient(e.target.value)}
+                  placeholder={platform === "snapchat" ? "pseudo snap..." : "pseudo insta..."}
+                  className="flex-1 px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
               </div>
             </div>
 
