@@ -531,7 +531,8 @@ export default function ModelPage() {
     }).catch(() => setNotFound(true)).finally(() => setLoading(false));
 
     try {
-      const saved = sessionStorage.getItem(`heaven_client_${slug}`);
+      // Restore visitor identity — sessionStorage first, localStorage fallback (persists across sessions)
+      const saved = sessionStorage.getItem(`heaven_client_${slug}`) || localStorage.getItem(`heaven_client_${slug}`);
       if (saved) {
         const client = JSON.parse(saved);
         setClientId(client.id);
@@ -539,9 +540,13 @@ export default function ModelPage() {
         else if (client.pseudo_insta) { setVisitorPlatform("insta"); setVisitorHandle(client.pseudo_insta); setVisitorRegistered(true); }
         else if (client.phone) { setVisitorPlatform("phone"); setVisitorHandle(client.phone); setVisitorRegistered(true); }
         else if (client.nickname) { setVisitorPlatform("pseudo"); setVisitorHandle(client.nickname); setVisitorRegistered(true); }
+        // Sync to sessionStorage if only in localStorage
+        if (!sessionStorage.getItem(`heaven_client_${slug}`)) {
+          sessionStorage.setItem(`heaven_client_${slug}`, saved);
+        }
       }
-      // Check for saved access tier
-      const savedAccess = sessionStorage.getItem(`heaven_access_${slug}`);
+      // Check for saved access tier (localStorage fallback)
+      const savedAccess = sessionStorage.getItem(`heaven_access_${slug}`) || localStorage.getItem(`heaven_access_${slug}`);
       if (savedAccess) {
         const parsed = JSON.parse(savedAccess);
         if (parsed.tier && parsed.expiresAt && new Date(parsed.expiresAt).getTime() > Date.now()) {
@@ -549,6 +554,7 @@ export default function ModelPage() {
           setActiveCode({ code: parsed.code || "", tier: parsed.tier, expiresAt: parsed.expiresAt } as AccessCode);
         } else {
           sessionStorage.removeItem(`heaven_access_${slug}`);
+          localStorage.removeItem(`heaven_access_${slug}`);
         }
       }
     } catch {}
@@ -573,9 +579,9 @@ export default function ModelPage() {
           setUnlockedTier(data.code.tier);
           setActiveCode(data.code);
           setTab("gallery");
-          sessionStorage.setItem(`heaven_access_${slug}`, JSON.stringify({
-            tier: data.code.tier, expiresAt: data.code.expiresAt, code: data.code.code,
-          }));
+          const accessData = JSON.stringify({ tier: data.code.tier, expiresAt: data.code.expiresAt, code: data.code.code });
+          sessionStorage.setItem(`heaven_access_${slug}`, accessData);
+          localStorage.setItem(`heaven_access_${slug}`, accessData);
           // Auto-identify visitor from code's clientId
           if (data.code.clientId && !visitorRegistered) {
             try {
@@ -595,6 +601,7 @@ export default function ModelPage() {
                   setVisitorHandle(h);
                   setVisitorRegistered(true);
                   sessionStorage.setItem(`heaven_client_${slug}`, JSON.stringify(client));
+                  localStorage.setItem(`heaven_client_${slug}`, JSON.stringify(client));
                 }
               }
             } catch {}
@@ -640,6 +647,7 @@ export default function ModelPage() {
       setVisitorHandle(h.trim());
       setVisitorRegistered(true);
       sessionStorage.setItem(`heaven_client_${slug}`, JSON.stringify(data.client));
+      localStorage.setItem(`heaven_client_${slug}`, JSON.stringify(data.client));
       return data.client;
     }
     return null;
@@ -789,6 +797,7 @@ export default function ModelPage() {
     setVisitorHandle(handle);
     setVisitorRegistered(true);
     sessionStorage.setItem(`heaven_client_${slug}`, JSON.stringify(client));
+    localStorage.setItem(`heaven_client_${slug}`, JSON.stringify(client));
   }, [slug]);
 
   const activePacks = displayPacks.filter(p => p.active);
@@ -1432,9 +1441,9 @@ export default function ModelPage() {
             onCodeValidated={(code) => {
               setActiveCode(code);
               if (code.tier) setUnlockedTier(code.tier);
-              sessionStorage.setItem(`heaven_access_${slug}`, JSON.stringify({
-                tier: code.tier, expiresAt: code.expiresAt, code: code.code,
-              }));
+              const ad = JSON.stringify({ tier: code.tier, expiresAt: code.expiresAt, code: code.code });
+              sessionStorage.setItem(`heaven_access_${slug}`, ad);
+              localStorage.setItem(`heaven_access_${slug}`, ad);
             }}
             onClose={() => setShowSubscriptionPanel(false)}
           />
@@ -1478,9 +1487,9 @@ export default function ModelPage() {
                         setUnlockedTier(data.code.tier);
                         setActiveCode(data.code);
                         setShowUnlock(false);
-                        sessionStorage.setItem(`heaven_access_${slug}`, JSON.stringify({
-                          tier: data.code.tier, expiresAt: data.code.expiresAt, code: data.code.code,
-                        }));
+                        const ad2 = JSON.stringify({ tier: data.code.tier, expiresAt: data.code.expiresAt, code: data.code.code });
+                        sessionStorage.setItem(`heaven_access_${slug}`, ad2);
+                        localStorage.setItem(`heaven_access_${slug}`, ad2);
                       } else {
                         input.style.borderColor = "#EF4444";
                         input.placeholder = data.error || "Code invalide";
