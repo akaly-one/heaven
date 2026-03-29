@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useModel } from "@/lib/model-context";
 import { OsLayout } from "@/components/os-layout";
-import { Search, ArrowLeft, Trash2, Check, X, ChevronDown, ChevronRight, Edit3, MessageCircle, Key, ShoppingBag } from "lucide-react";
+import { Search, ArrowLeft, Trash2, Check, X, ChevronRight, Edit3, MessageCircle, Key, Copy, Link2, Clock, Send, Plus } from "lucide-react";
 import type { AccessCode, Message } from "@/types/heaven";
 
 interface Client {
@@ -24,6 +24,11 @@ export default function ClientsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+  const [extending, setExtending] = useState<string | null>(null);
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+
+  const handleCopy = (text: string, id: string) => { navigator.clipboard.writeText(text); setCopied(id); setTimeout(() => setCopied(null), 2000); };
 
   const fetchAll = useCallback(() => {
     Promise.all([
@@ -131,23 +136,85 @@ export default function ClientsPage() {
                   }} />
               </div>
 
-              {/* Codes history */}
+              {/* Codes — full management */}
               <div className="p-3" style={{ borderBottom: "1px solid var(--border)" }}>
                 <div className="flex items-center gap-2 mb-2">
                   <Key className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
-                  <span className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>Codes ({clientCodes(detailClient.id).length})</span>
+                  <span className="text-[10px] font-bold flex-1" style={{ color: "var(--text-muted)" }}>Codes ({clientCodes(detailClient.id).length})</span>
+                  <button onClick={async () => {
+                    const pseudo = detailClient.pseudo_snap || detailClient.pseudo_insta || "";
+                    const codeStr = `${model.slice(0,3).toUpperCase()}-${new Date().getFullYear()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+                    await fetch("/api/codes", { method: "POST", headers: authHeaders(),
+                      body: JSON.stringify({ model, code: codeStr, client: pseudo.toLowerCase(), platform: detailClient.pseudo_snap ? "snapchat" : "instagram", tier: "vip", duration: 720, type: "paid" }) });
+                    fetchAll();
+                  }} className="text-[9px] font-bold px-2 py-1 rounded cursor-pointer"
+                    style={{ background: "var(--accent)", color: "#fff", border: "none" }}>
+                    <Plus className="w-3 h-3 inline mr-0.5" />Nouveau code
+                  </button>
                 </div>
                 {clientCodes(detailClient.id).length === 0 ? (
                   <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Aucun code</p>
                 ) : (
-                  <div className="space-y-1">
-                    {clientCodes(detailClient.id).map(code => (
-                      <div key={code.code} className="flex items-center gap-2 text-[10px] px-2 py-1.5 rounded-lg" style={{ background: "var(--bg)" }}>
-                        <span className="font-mono font-bold" style={{ color: code.active && !code.revoked ? "var(--success)" : "var(--text-muted)" }}>{code.code}</span>
-                        <span className="uppercase" style={{ color: "var(--text-muted)" }}>{code.tier}</span>
-                        <span style={{ color: code.active ? "var(--success)" : "var(--text-muted)" }}>{code.active && !code.revoked ? "actif" : code.revoked ? "revoque" : "expire"}</span>
-                      </div>
-                    ))}
+                  <div className="space-y-1.5">
+                    {clientCodes(detailClient.id).map(code => {
+                      const isActive = code.active && !code.revoked;
+                      const accessLink = `${origin}/m/${model}?access=${code.code}`;
+                      const diff = new Date(code.expiresAt).getTime() - Date.now();
+                      const timeLeft = diff <= 0 ? "exp" : Math.floor(diff / 86400000) > 0 ? `${Math.floor(diff / 86400000)}j` : `${Math.floor(diff / 3600000)}h`;
+                      return (
+                        <div key={code.code} className="rounded-lg px-2.5 py-2" style={{ background: "var(--bg)", border: `1px solid ${isActive ? "rgba(16,185,129,0.2)" : "var(--border)"}` }}>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-mono font-bold flex-1" style={{ color: isActive ? "var(--success)" : "var(--text-muted)" }}>{code.code}</span>
+                            <span className="text-[9px] uppercase font-bold" style={{ color: "var(--text-muted)" }}>{code.tier}</span>
+                            <span className="text-[9px]" style={{ color: isActive ? "var(--success)" : "var(--text-muted)" }}>{timeLeft}</span>
+                            {/* Copy code */}
+                            <button onClick={() => handleCopy(code.code, `c-${code.code}`)} className="p-1 cursor-pointer" style={{ background: "none", border: "none" }}>
+                              {copied === `c-${code.code}` ? <Check className="w-3 h-3" style={{ color: "var(--success)" }} /> : <Copy className="w-3 h-3" style={{ color: "var(--text-muted)" }} />}
+                            </button>
+                            {/* Copy link */}
+                            <button onClick={() => handleCopy(accessLink, `l-${code.code}`)} className="p-1 cursor-pointer" style={{ background: "none", border: "none" }}>
+                              {copied === `l-${code.code}` ? <Check className="w-3 h-3" style={{ color: "var(--success)" }} /> : <Link2 className="w-3 h-3" style={{ color: "var(--text-muted)" }} />}
+                            </button>
+                            {/* Share to snap/insta */}
+                            {detailClient.pseudo_snap && (
+                              <a href={`https://www.snapchat.com/add/${detailClient.pseudo_snap}`} target="_blank" rel="noopener noreferrer"
+                                onClick={() => handleCopy(accessLink, `s-${code.code}`)}
+                                className="p-1 no-underline" title="Envoyer via Snap">
+                                <div className="w-3.5 h-3.5 rounded-full" style={{ background: "#997A00" }} />
+                              </a>
+                            )}
+                            {detailClient.pseudo_insta && (
+                              <a href={`https://ig.me/m/${detailClient.pseudo_insta}`} target="_blank" rel="noopener noreferrer"
+                                onClick={() => handleCopy(accessLink, `i-${code.code}`)}
+                                className="p-1 no-underline" title="Envoyer via Insta">
+                                <div className="w-3.5 h-3.5 rounded-full" style={{ background: "#C13584" }} />
+                              </a>
+                            )}
+                          </div>
+                          {/* Extend / revoke */}
+                          {isActive && extending === code.code && (
+                            <div className="flex gap-1 mt-2 pt-1.5" style={{ borderTop: "1px solid var(--border)" }}>
+                              {[{l:"+7j",h:168},{l:"+30j",h:720},{l:"+90j",h:2160}].map(o => (
+                                <button key={o.l} onClick={async () => {
+                                  await fetch("/api/codes", { method: "PATCH", headers: authHeaders(), body: JSON.stringify({ code: code.code, model, updates: { expires_at: new Date(Date.now() + o.h * 3600000).toISOString() } }) });
+                                  setExtending(null); fetchAll();
+                                }} className="flex-1 py-1 rounded text-[9px] font-bold cursor-pointer" style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)" }}>{o.l}</button>
+                              ))}
+                              <button onClick={async () => {
+                                await fetch("/api/codes", { method: "PATCH", headers: authHeaders(), body: JSON.stringify({ code: code.code, model, updates: { revoked: true } }) });
+                                setExtending(null); fetchAll();
+                              }} className="px-2 py-1 rounded text-[9px] font-bold cursor-pointer" style={{ background: "rgba(220,38,38,0.1)", color: "#DC2626", border: "none" }}>Revoquer</button>
+                            </div>
+                          )}
+                          {isActive && (
+                            <button onClick={() => setExtending(extending === code.code ? null : code.code)}
+                              className="text-[9px] mt-1 cursor-pointer hover:underline" style={{ color: "var(--text-muted)", background: "none", border: "none", padding: 0 }}>
+                              {extending === code.code ? "Fermer" : "Modifier..."}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

@@ -212,19 +212,24 @@ export function GenerateModal({ open, onClose, onGenerate, modelSlug, prefillCli
                 style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
             </div>
 
-            {/* Platform */}
+            {/* Platform — icon only */}
             <div>
               <label className="text-[11px] font-medium uppercase tracking-wider mb-2 block" style={{ color: "var(--text-muted)" }}>Plateforme</label>
               <div className="flex gap-2">
-                {["snapchat", "instagram", "other"].map(p => (
-                  <button key={p} onClick={() => setPlatform(p)}
-                    className="flex-1 py-2 rounded-lg text-xs font-medium cursor-pointer capitalize transition-all"
+                {[
+                  { id: "snapchat", color: "#997A00", label: "Snap" },
+                  { id: "instagram", color: "#C13584", label: "Insta" },
+                  { id: "other", color: "#64748B", label: "Autre" },
+                ].map(p => (
+                  <button key={p.id} onClick={() => setPlatform(p.id)}
+                    className="flex-1 py-2.5 rounded-lg text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5"
                     style={{
-                      background: platform === p ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
-                      color: platform === p ? "var(--text)" : "var(--text-muted)",
-                      border: `1px solid ${platform === p ? "var(--border3)" : "var(--border2)"}`,
+                      background: platform === p.id ? `${p.color}15` : "rgba(0,0,0,0.03)",
+                      color: platform === p.id ? p.color : "var(--text-muted)",
+                      border: `2px solid ${platform === p.id ? p.color : "transparent"}`,
                     }}>
-                    {p}
+                    <div className="w-4 h-4 rounded-full" style={{ background: p.color }} />
+                    {p.label}
                   </button>
                 ))}
               </div>
