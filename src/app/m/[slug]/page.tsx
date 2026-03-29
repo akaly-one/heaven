@@ -876,8 +876,17 @@ export default function ModelPage() {
     );
   }
 
+  // ── Global image protection: block right-click + drag on ALL images ──
+  useEffect(() => {
+    const blockCtx = (e: MouseEvent) => { if ((e.target as HTMLElement)?.tagName === "IMG") e.preventDefault(); };
+    const blockDrag = (e: DragEvent) => { if ((e.target as HTMLElement)?.tagName === "IMG") e.preventDefault(); };
+    document.addEventListener("contextmenu", blockCtx);
+    document.addEventListener("dragstart", blockDrag);
+    return () => { document.removeEventListener("contextmenu", blockCtx); document.removeEventListener("dragstart", blockDrag); };
+  }, []);
+
   return (
-    <div className="min-h-screen pb-20" style={{ background: "var(--bg)" }}>
+    <div className="min-h-screen pb-20" style={{ background: "var(--bg)", userSelect: "none", WebkitUserSelect: "none" }}>
       {/* Identity Gate — blocks browsing until visitor identifies */}
       {!visitorRegistered && !isModelLoggedIn && model && (
         <IdentityGate slug={slug} modelName={model.display_name} onRegistered={handleGateRegistered} onNeedShop={() => setTab("shop")} />
@@ -892,6 +901,8 @@ export default function ModelPage() {
         animation: "ambientPulse 8s ease-in-out infinite alternate",
       }} />
       <style>{`
+        img { -webkit-touch-callout: none; -webkit-user-select: none; pointer-events: none; }
+        img[data-clickable] { pointer-events: auto; }
         @keyframes ambientPulse { 0% { opacity: 0.7; } 100% { opacity: 1; } }
         @keyframes heroGlow { 0%, 100% { box-shadow: 0 0 20px rgba(230,51,41,0.2), 0 0 60px rgba(230,51,41,0.05); } 50% { box-shadow: 0 0 30px rgba(230,51,41,0.35), 0 0 80px rgba(124,58,237,0.1); } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
