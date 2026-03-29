@@ -41,7 +41,7 @@ export default function AgenceDashboard() {
   const [codes, setCodes] = useState<AccessCode[]>([]);
   const [clients, setClients] = useState<ClientInfo[]>([]);
   const [packs, setPacks] = useState<PackConfig[]>(DEFAULT_PACKS);
-  const [modelInfo, setModelInfo] = useState<{ avatar?: string; online?: boolean; display_name?: string; status?: string; platforms?: Record<string, string> } | null>(null);
+  const [modelInfo, setModelInfo] = useState<{ avatar?: string; online?: boolean; display_name?: string; status?: string; platforms?: Record<string, string | null> } | null>(null);
 
   const [showGenerator, setShowGenerator] = useState(false);
   const [prefillClient, setPrefillClient] = useState("");
@@ -60,7 +60,10 @@ export default function AgenceDashboard() {
 
   // Messages (kept for handler compatibility)
   const [pendingMessagesCount, setPendingMessages] = useState(0);
-  const [, setChatMessages] = useState<{ id: string; client_id: string; content: string; created_at: string; sender_type: string; read?: boolean; model?: string }[]>([]);
+  const [chatMessages, setChatMessages] = useState<{ id: string; client_id: string; content: string; created_at: string; sender_type: string; read?: boolean; model?: string }[]>([]);
+  const [messagesOpen, setMessagesOpen] = useState(false);
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
 
   // ── Load data ──
   useEffect(() => {
@@ -536,20 +539,72 @@ export default function AgenceDashboard() {
             {/* ── RIGHT: Codes/Clients + Notifs (2/5) ── */}
             <div className="md:col-span-2 space-y-3">
 
-            {/* Messages notification */}
-            <div className="rounded-2xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-              <a href="/agence/messages" className="flex items-center gap-2 no-underline">
+            {/* Messages accordion */}
+            <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+              <button onClick={() => setMessagesOpen(!messagesOpen)}
+                className="w-full flex items-center gap-2 p-3 cursor-pointer" style={{ background: "none", border: "none" }}>
                 <MessageCircle className="w-4 h-4" style={{ color: "var(--accent)" }} />
-                <span className="text-xs font-bold" style={{ color: "var(--text)" }}>Messages</span>
+                <span className="text-xs font-bold flex-1 text-left" style={{ color: "var(--text)" }}>Messages</span>
                 {pendingMessagesCount > 0 && (
-                  <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: "rgba(244,63,94,0.12)", color: "#F43F5E" }}>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: "rgba(244,63,94,0.12)", color: "#F43F5E" }}>
                     {pendingMessagesCount}
                   </span>
                 )}
-                {pendingMessagesCount === 0 && (
-                  <span className="ml-auto text-[10px]" style={{ color: "var(--text-muted)" }}>0 en attente</span>
-                )}
-              </a>
+              </button>
+              {messagesOpen && (
+                <div className="px-3 pb-3 space-y-2" style={{ borderTop: "1px solid var(--border)" }}>
+                  {chatMessages.filter(m => m.sender_type === "client").length === 0 ? (
+                    <p className="text-[10px] py-2 text-center" style={{ color: "var(--text-muted)" }}>Pas de messages</p>
+                  ) : (
+                    <>
+                      {/* Group by client, show latest message per client */}
+                      {Object.entries(
+                        chatMessages.filter(m => m.sender_type === "client")
+                          .reduce((acc, m) => { if (!acc[m.client_id]) acc[m.client_id] = m; return acc; }, {} as Record<string, typeof chatMessages[0]>)
+                      ).slice(0, 5).map(([clientId, msg]) => (
+                        <div key={clientId} className="space-y-1.5">
+                          <div className="flex items-start gap-2 py-1">
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0"
+                              style={{ background: "rgba(0,0,0,0.06)", color: "var(--text-muted)" }}>
+                              {clientId.slice(0, 2).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[10px] truncate" style={{ color: msg.read ? "var(--text-muted)" : "var(--text)" }}>
+                                {!msg.read && <span style={{ color: "var(--accent)" }}>● </span>}
+                                {msg.content}
+                              </p>
+                            </div>
+                          </div>
+                          {replyTo === clientId ? (
+                            <div className="flex gap-1.5">
+                              <input value={replyText} onChange={e => setReplyText(e.target.value)}
+                                placeholder="Repondre..."
+                                className="flex-1 px-2 py-1.5 rounded-lg text-[10px] outline-none"
+                                style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
+                                onKeyDown={async e => {
+                                  if (e.key === "Enter" && replyText.trim()) {
+                                    await fetch("/api/messages", { method: "POST", headers: authHeaders(),
+                                      body: JSON.stringify({ model: modelSlug, client_id: clientId, content: replyText.trim(), sender_type: "model" }) });
+                                    setReplyText(""); setReplyTo(null);
+                                  }
+                                }} autoFocus />
+                              <button onClick={() => setReplyTo(null)} className="text-[10px] cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>✕</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setReplyTo(clientId)}
+                              className="text-[9px] cursor-pointer hover:underline" style={{ color: "var(--accent)", background: "none", border: "none", padding: 0 }}>
+                              Repondre
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  <a href="/agence/messages" className="block text-center text-[10px] font-medium py-1 no-underline hover:underline" style={{ color: "var(--accent)" }}>
+                    Voir tous les messages →
+                  </a>
+                </div>
+              )}
             </div>
 
             {/* Codes & Clients compact */}
@@ -588,25 +643,39 @@ export default function AgenceDashboard() {
             </div>
           </div>
 
-          {/* Platforms compact */}
+          {/* Platforms — editable handles */}
           <div>
-            <h3 className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>Plateformes</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>Reseaux sociaux</h3>
             <div className="space-y-1.5">
               {PLATFORMS.map(p => {
-                const url = modelInfo?.platforms?.[p.id];
+                const handle = modelInfo?.platforms?.[p.id] || "";
                 return (
-                  <div key={p.id} className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                  <div key={p.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
                     style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color }} />
-                    <span className="text-[10px] font-medium flex-1" style={{ color: url ? "var(--text)" : "var(--text-muted)" }}>{p.label}</span>
-                    {url ? (
-                      <a href={url.startsWith("http") ? url : `${p.urlPrefix}${url}`}
+                    <span className="text-[10px] font-medium shrink-0 w-16" style={{ color: "var(--text-muted)" }}>{p.label}</span>
+                    <input
+                      defaultValue={handle}
+                      placeholder="pseudo..."
+                      className="flex-1 text-[10px] bg-transparent outline-none min-w-0"
+                      style={{ color: "var(--text)" }}
+                      onBlur={async (e) => {
+                        const val = e.target.value.trim();
+                        try {
+                          const currentPlatforms = modelInfo?.platforms || {};
+                          const updated = { ...currentPlatforms, [p.id]: val || null };
+                          await fetch(`/api/models/${modelSlug}`, {
+                            method: "PUT", headers: authHeaders(),
+                            body: JSON.stringify({ config: { platforms: updated } }),
+                          });
+                          setModelInfo(prev => prev ? { ...prev, platforms: updated } : prev);
+                        } catch {}
+                      }}
+                    />
+                    {handle && (
+                      <a href={handle.startsWith("http") ? handle : `${p.urlPrefix}${handle}`}
                         target="_blank" rel="noopener noreferrer"
-                        className="text-[9px] no-underline hover:opacity-70" style={{ color: p.color }}>
-                        Ouvrir
-                      </a>
-                    ) : (
-                      <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>-</span>
+                        className="text-[9px] no-underline shrink-0" style={{ color: p.color }}>↗</a>
                     )}
                   </div>
                 );
