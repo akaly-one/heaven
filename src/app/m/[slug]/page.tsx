@@ -1248,7 +1248,9 @@ export default function ModelPage() {
                         ) : (
                           <div className="relative cursor-pointer my-2 rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}
                             onClick={async () => {
-                              const creditPrice = postTier === "vip" ? 10 : postTier === "gold" ? 20 : postTier === "diamond" ? 30 : 40;
+                              const basePrice = postTier === "vip" ? 10 : postTier === "gold" ? 20 : postTier === "diamond" ? 30 : 40;
+                              const isVideo = post.media_type === "video" || post.media_url?.includes("/video/");
+                              const creditPrice = isVideo ? basePrice * 2 : basePrice;
                               if (purchasedItems.has(post.id)) { setLightboxUrl(post.media_url); return; }
                               if (clientBalance >= creditPrice && clientId) {
                                 try {
@@ -1267,8 +1269,11 @@ export default function ModelPage() {
                             <div className="absolute inset-0 flex flex-col items-center justify-center">
                               <span className="text-lg">{postTier === "vip" ? "♥" : postTier === "gold" ? "★" : postTier === "diamond" ? "♦" : "♛"}</span>
                               <span className="text-xs font-bold mt-0.5" style={{ color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>
-                                {postTier === "vip" ? "10" : postTier === "gold" ? "20" : postTier === "diamond" ? "30" : "40"}€
+                                {(() => { const bp = postTier === "vip" ? 10 : postTier === "gold" ? 20 : postTier === "diamond" ? 30 : 40; const iv = post.media_type === "video" || post.media_url?.includes("/video/"); return `${iv ? bp * 2 : bp}€`; })()}
                               </span>
+                              {(post.media_type === "video" || post.media_url?.includes("/video/")) && (
+                                <span className="text-[8px] mt-0.5" style={{ color: "rgba(255,255,255,0.6)" }}>video x2/min</span>
+                              )}
                             </div>
                           </div>
                         )
@@ -1411,7 +1416,9 @@ export default function ModelPage() {
                                 onClick={() => setLightboxUrl(post.media_url)} loading="lazy" />
                             ) : (
                               <div onClick={async () => {
-                                const creditPrice = tier === "vip" ? 10 : tier === "gold" ? 20 : tier === "diamond" ? 30 : 40;
+                                const basePrice = tier === "vip" ? 10 : tier === "gold" ? 20 : tier === "diamond" ? 30 : 40;
+                                const isVid = post.media_type === "video" || post.media_url?.includes("/video/");
+                                const creditPrice = isVid ? basePrice * 2 : basePrice;
                                 if (purchasedItems.has(post.id)) { setLightboxUrl(post.media_url); return; }
                                 if (clientBalance >= creditPrice && clientId) {
                                   try { await fetch("/api/credits/purchase", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client_id: clientId, upload_id: post.id, price: creditPrice }) }); setPurchasedItems(prev => new Set([...prev, post.id])); } catch {}
@@ -1421,7 +1428,7 @@ export default function ModelPage() {
                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                                   <span className="text-base">{tier === "vip" ? "♥" : tier === "gold" ? "★" : tier === "diamond" ? "♦" : "♛"}</span>
                                   <span className="text-[10px] font-bold" style={{ color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>
-                                    {tier === "vip" ? "10" : tier === "gold" ? "20" : tier === "diamond" ? "30" : "40"}€
+                                    {(() => { const bp = tier === "vip" ? 10 : tier === "gold" ? 20 : tier === "diamond" ? 30 : 40; const iv = post.media_type === "video" || post.media_url?.includes("/video/"); return `${iv ? bp * 2 : bp}€`; })()}
                                   </span>
                                 </div>
                               </div>
