@@ -51,6 +51,41 @@ const PLATFORMS_MAP: Record<string, { color: string; prefix: string }> = {
   mym: { color: "#CC2952", prefix: "https://mym.fans/" },
 };
 
+// ── Live countdown badge ──
+function CountdownBadge({ tier, expiresAt }: { tier: string; expiresAt: string }) {
+  const [timeLeft, setTimeLeft] = useState("");
+  const [isExpiring, setIsExpiring] = useState(false);
+
+  useEffect(() => {
+    if (!expiresAt) return;
+    const update = () => {
+      const diff = new Date(expiresAt).getTime() - Date.now();
+      if (diff <= 0) { setTimeLeft("expiré"); setIsExpiring(true); return; }
+      setIsExpiring(diff < 600000); // < 10 min
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      if (h > 24) setTimeLeft(`${Math.floor(h / 24)}j ${h % 24}h`);
+      else if (h > 0) setTimeLeft(`${h}h${m.toString().padStart(2, "0")}`);
+      else setTimeLeft(`${m}:${s.toString().padStart(2, "0")}`);
+    };
+    update();
+    const iv = setInterval(update, 1000);
+    return () => clearInterval(iv);
+  }, [expiresAt]);
+
+  return (
+    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full font-mono"
+      style={{
+        background: isExpiring ? "rgba(239,68,68,0.1)" : "rgba(16,185,129,0.1)",
+        color: isExpiring ? "#EF4444" : "#10B981",
+        animation: isExpiring ? "pulse 1s infinite" : "none",
+      }}>
+      {tier.toUpperCase()} {timeLeft}
+    </span>
+  );
+}
+
 // ── Detect model session from another tab ──
 function useModelSession(slug: string): ModelAuth | null {
   const [auth, setAuth] = useState<ModelAuth | null>(null);
@@ -594,6 +629,7 @@ export default function ModelPage() {
         const parsed = JSON.parse(savedAccess);
         if (parsed.tier && parsed.expiresAt && new Date(parsed.expiresAt).getTime() > Date.now()) {
           setUnlockedTier(parsed.tier);
+          setActiveCode({ code: parsed.code || "", tier: parsed.tier, expiresAt: parsed.expiresAt } as AccessCode);
         } else {
           sessionStorage.removeItem(`heaven_access_${slug}`);
         }
@@ -915,16 +951,7 @@ export default function ModelPage() {
               <>
                 <span className="text-[10px] font-medium" style={{ color: "var(--text)" }}>@{visitorHandle}</span>
                 {unlockedTier ? (
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981" }}>
-                    {unlockedTier.toUpperCase()}
-                    {activeCode?.expiresAt && (() => {
-                      const diff = new Date(activeCode.expiresAt).getTime() - Date.now();
-                      if (diff <= 0) return " exp";
-                      const d = Math.floor(diff / 86400000);
-                      const h = Math.floor((diff % 86400000) / 3600000);
-                      return ` ${d > 0 ? `${d}j` : `${h}h`}`;
-                    })()}
-                  </span>
+                  <CountdownBadge tier={unlockedTier} expiresAt={activeCode?.expiresAt || ""} />
                 ) : (
                   <button onClick={() => setShowUnlock(true)} className="text-[9px] font-bold px-1.5 py-0.5 rounded-full cursor-pointer"
                     style={{ background: "rgba(230,51,41,0.1)", color: "var(--accent)", border: "none" }}>

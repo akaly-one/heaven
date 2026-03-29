@@ -76,13 +76,51 @@ export function IdentityGate({ slug, modelName, onRegistered, onNeedShop }: Iden
         }
       }
 
+      // New account → auto-generate free 1h trial pass
+      if (mode === "new" && !code.trim()) {
+        try {
+          const trialCode = `FREE-${Date.now().toString(36).toUpperCase()}`;
+          const codeRes = await fetch("/api/codes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: slug,
+              code: trialCode,
+              client: handle.trim().toLowerCase(),
+              platform: platform === "snap" ? "snapchat" : "instagram",
+              tier: "vip",
+              duration: 1, // 1 hour
+              type: "promo",
+              isTrial: true,
+            }),
+          });
+          if (codeRes.ok) {
+            const codeData = await codeRes.json();
+            if (codeData.code) {
+              // Auto-validate the trial code
+              const validateRes = await fetch("/api/codes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "validate", code: trialCode, model: slug }),
+              });
+              if (validateRes.ok) {
+                const vData = await validateRes.json();
+                if (vData.code?.tier) {
+                  sessionStorage.setItem(`heaven_access_${slug}`, JSON.stringify({
+                    tier: vData.code.tier,
+                    expiresAt: vData.code.expiresAt,
+                    code: vData.code.code,
+                  }));
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+
       // Save client session
       sessionStorage.setItem(`heaven_client_${slug}`, JSON.stringify(client));
       onRegistered(client, platform, handle.trim());
-      // New account → redirect to shop/packs
-      if (mode === "new" && onNeedShop) {
-        setTimeout(() => onNeedShop(), 300);
-      }
     } catch {
       setError("Erreur de connexion");
     }
