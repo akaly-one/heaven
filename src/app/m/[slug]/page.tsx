@@ -1047,34 +1047,52 @@ export default function ModelPage() {
           {/* ── FEED — model posts + visitor posts ── */}
           {tab === "feed" && (
             <div className="space-y-3 fade-up">
-              {/* Visitor post composer — always visible */}
+              {/* Visitor post composer — always works */}
               {!isModelLoggedIn && (
                 <div className="rounded-2xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                  {visitorRegistered && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold"
-                        style={{ background: visitorPlatform === "snap" ? "rgba(153,122,0,0.15)" : "rgba(193,53,132,0.15)", color: visitorPlatform === "snap" ? "#997A00" : "#C13584" }}>
-                        {visitorHandle.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>@{visitorHandle}</span>
-                    </div>
-                  )}
                   <div className="flex gap-2">
                     <input
                       value={wallContent}
-                      onChange={e => { if (visitorRegistered) setWallContent(e.target.value); }}
-                      placeholder={visitorRegistered ? "Ecrire quelque chose..." : "Identifie-toi pour poster"}
-                      readOnly={!visitorRegistered}
-                      className="flex-1 px-3 py-2 rounded-xl text-xs outline-none"
-                      style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", cursor: visitorRegistered ? "text" : "pointer" }}
-                      onClick={() => { if (!visitorRegistered) { setVisitorRegistered(false); } }}
-                      onKeyDown={e => { if (visitorRegistered && e.key === "Enter" && wallContent.trim()) submitWallPost(); }}
+                      onChange={e => setWallContent(e.target.value)}
+                      placeholder={`Un message pour ${model.display_name}...`}
+                      className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none"
+                      style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
+                      onKeyDown={async e => {
+                        if (e.key !== "Enter" || !wallContent.trim()) return;
+                        const pseudo = visitorHandle || "Anonyme";
+                        setWallPosting(true);
+                        try {
+                          const res = await fetch("/api/wall", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ model: slug, pseudo, content: wallContent.trim(), client_id: clientId }),
+                          });
+                          if (res.ok) {
+                            const d = await res.json();
+                            if (d.post) setWallPosts(prev => [d.post, ...prev]);
+                            setWallContent("");
+                          }
+                        } catch {} finally { setWallPosting(false); }
+                      }}
                     />
-                    <button onClick={() => {
-                      if (!visitorRegistered) { setVisitorRegistered(false); return; }
-                      submitWallPost();
-                    }} disabled={visitorRegistered && (wallPosting || !wallContent.trim())}
-                      className="px-3 py-2 rounded-xl text-xs font-bold cursor-pointer disabled:opacity-30"
+                    <button disabled={wallPosting || !wallContent.trim()} onClick={async () => {
+                      if (!wallContent.trim()) return;
+                      const pseudo = visitorHandle || "Anonyme";
+                      setWallPosting(true);
+                      try {
+                        const res = await fetch("/api/wall", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ model: slug, pseudo, content: wallContent.trim(), client_id: clientId }),
+                        });
+                        if (res.ok) {
+                          const d = await res.json();
+                          if (d.post) setWallPosts(prev => [d.post, ...prev]);
+                          setWallContent("");
+                        }
+                      } catch {} finally { setWallPosting(false); }
+                    }}
+                      className="px-3 py-2 rounded-xl text-xs font-bold cursor-pointer disabled:opacity-30 shrink-0"
                       style={{ background: "var(--accent)", color: "#fff" }}>
                       {wallPosting ? "..." : "Poster"}
                     </button>
@@ -1133,14 +1151,16 @@ export default function ModelPage() {
                       </div>
                       {post.media_url && (
                         mediaUnlocked ? (
-                          <div className="cursor-pointer" onClick={() => setLightboxUrl(post.media_url)}>
+                          <div className="cursor-pointer my-2 rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}
+                            onClick={() => setLightboxUrl(post.media_url)}>
                             <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
-                              <img src={post.media_url} alt="" className="w-full max-h-[280px] object-cover rounded-sm" loading="lazy" />
+                              <img src={post.media_url} alt="" className="w-full max-h-[200px] object-cover" loading="lazy" />
                             </ContentProtection>
                           </div>
                         ) : (
-                          <div className="relative cursor-pointer" onClick={() => setShowUnlock(true)}>
-                            <img src={post.media_url} alt="" className="w-full max-h-[280px] object-cover rounded-sm" style={{ filter: "blur(20px) brightness(0.5)" }} />
+                          <div className="relative cursor-pointer my-2 rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}
+                            onClick={() => setShowUnlock(true)}>
+                            <img src={post.media_url} alt="" className="w-full max-h-[200px] object-cover" style={{ filter: "blur(20px) brightness(0.5)" }} />
                             <div className="absolute inset-0 flex items-center justify-center">
                               <Lock className="w-5 h-5" style={{ color: tierHex }} />
                             </div>
