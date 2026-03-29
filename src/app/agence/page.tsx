@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { KeyRound, Eye, Pencil, Instagram, Globe, ExternalLink, Image, Heart, MessageCircle, Trash2, X, Settings } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
@@ -103,6 +103,49 @@ export default function AgenceDashboard() {
       .catch(err => console.error("[Cockpit] messages:", err));
   }, [modelSlug, authHeaders]);
 
+  // ── Real-time polling: new messages + pending purchases (every 15s) ──
+  const prevUnreadRef = useRef(0);
+  useEffect(() => {
+    const poll = () => {
+      const headers = authHeaders();
+      fetch(`/api/messages?model=${modelSlug}`, { headers })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (!d) return;
+          const msgs = d.messages || [];
+          setChatMessages(msgs.slice(0, 100));
+          const newUnread = msgs.filter((m: { sender_type: string; read?: boolean }) => m.sender_type === "client" && !m.read).length;
+          // Play notification sound if new unread messages appeared
+          if (newUnread > prevUnreadRef.current && prevUnreadRef.current >= 0) {
+            try {
+              const ctx = new AudioContext();
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.frequency.value = 800;
+              osc.type = "sine";
+              gain.gain.value = 0.15;
+              osc.start();
+              gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+              osc.stop(ctx.currentTime + 0.3);
+            } catch {}
+          }
+          prevUnreadRef.current = newUnread;
+          setPendingMessages(newUnread);
+        })
+        .catch(() => {});
+
+      // Also refresh wall posts for pending purchases
+      fetch(`/api/wall?model=${modelSlug}`, { headers })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setWallPosts((d.posts || []).slice(0, 20)); })
+        .catch(() => {});
+    };
+    const iv = setInterval(poll, 15000);
+    return () => clearInterval(iv);
+  }, [modelSlug, authHeaders]);
+
   // Listen for generate event from mobile nav
   useEffect(() => {
     const handler = () => setShowGenerator(true);
@@ -122,6 +165,7 @@ export default function AgenceDashboard() {
     }, 0);
   }, [modelCodes, packs]);
   const uniqueClients = useMemo(() => new Set(modelCodes.filter(c => !c.revoked).map(c => c.client.toLowerCase())).size, [modelCodes]);
+  const pendingPurchases = useMemo(() => wallPosts.filter(p => p.pseudo === "SYSTEM" && p.content?.startsWith("⏳")), [wallPosts]);
 
   // ── Actions ──
   const handleGenerate = useCallback((data: { client: string; platform: string; tier: string; duration: number; type: "paid" | "promo" | "gift" }) => {
@@ -359,10 +403,51 @@ export default function AgenceDashboard() {
               activeCodes={activeCodes.length}
               totalCodes={modelCodes.length}
               revenue={revenue}
-              pendingCount={0}
+              pendingCount={pendingPurchases.length}
               uniqueClients={uniqueClients}
             />
           </div>
+
+          {/* ── Pending Purchases ── */}
+          {pendingPurchases.length > 0 && (
+            <div className="space-y-2 fade-up-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#B45309" }}>
+                ⏳ {pendingPurchases.length} achat(s) en attente de validation
+              </p>
+              {pendingPurchases.map(p => {
+                // Parse: "⏳ @pseudo souhaite acheter: item (amount€) — en attente de validation"
+                const match = p.content?.match(/@(\S+)\s+souhaite acheter:\s+(.+?)\s+\((\d+)€\)/);
+                const pseudo = match?.[1] || "?";
+                const item = match?.[2] || "Achat";
+                const amount = match?.[3] || "?";
+                return (
+                  <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl"
+                    style={{ background: "rgba(180,83,9,0.08)", border: "1px solid rgba(180,83,9,0.2)" }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
+                      style={{ background: "rgba(180,83,9,0.15)", color: "#B45309" }}>⏳</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold truncate" style={{ color: "var(--text)" }}>
+                        @{pseudo} — {item}
+                      </p>
+                      <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                        {amount}€ · {new Date(p.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                    <button onClick={async () => {
+                      try {
+                        await fetch(`/api/wall?id=${p.id}`, { method: "DELETE", headers: authHeaders() });
+                        setWallPosts(prev => prev.filter(w => w.id !== p.id));
+                      } catch {}
+                    }}
+                      className="px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all hover:scale-105"
+                      style={{ background: "#16A34A", color: "#fff", border: "none" }}>
+                      ✓ Validé
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* ── 2-column layout: Feed LEFT + Codes/Notifs RIGHT ── */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 fade-up-2">
