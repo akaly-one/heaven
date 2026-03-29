@@ -250,25 +250,53 @@ export default function AgenceDashboard() {
       <div className="min-h-screen p-4 md:p-8 pb-28 md:pb-8" style={{ background: "var(--bg)" }}>
         <div className="max-w-4xl mx-auto space-y-5">
 
-          {/* ── Header: Avatar + Name + Status + Links ── */}
+          {/* ── Header: Avatar + Name + Status ── */}
           <div className="flex items-center gap-3 fade-up">
+            {/* Avatar — click to change photo */}
             <div className="relative">
-              <div className="w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center text-lg font-black"
-                style={{
-                  background: modelInfo?.avatar ? "transparent" : "linear-gradient(135deg, var(--rose), var(--accent))",
-                  color: "#fff",
-                  boxShadow: "0 0 20px rgba(244,63,94,0.15)",
-                }}>
-                {modelInfo?.avatar ? (
-                  <img src={modelInfo.avatar} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  modelSlug.charAt(0).toUpperCase()
-                )}
-              </div>
+              <label className="cursor-pointer">
+                <div className="w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center text-lg font-black"
+                  style={{
+                    background: modelInfo?.avatar ? "transparent" : "linear-gradient(135deg, var(--rose), var(--accent))",
+                    color: "#fff",
+                  }}>
+                  {modelInfo?.avatar ? (
+                    <img src={modelInfo.avatar} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    modelSlug.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = async () => {
+                    try {
+                      const upRes = await fetch("/api/upload", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ file: reader.result, folder: `heaven/${modelSlug}/avatar` }),
+                      });
+                      if (upRes.ok) {
+                        const { url } = await upRes.json();
+                        if (url) {
+                          setModelInfo(prev => prev ? { ...prev, avatar: url } : prev);
+                          fetch(`/api/models/${modelSlug}`, {
+                            method: "PUT", headers: authHeaders(),
+                            body: JSON.stringify({ avatar: url }),
+                          });
+                        }
+                      }
+                    } catch {}
+                  };
+                  reader.readAsDataURL(file);
+                  e.target.value = "";
+                }} />
+              </label>
               {/* Online dot — click to toggle */}
               <button onClick={handleToggleStatus} disabled={statusUpdating}
-                className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-125 disabled:opacity-50"
-                style={{ borderColor: "var(--bg)", background: modelInfo?.online ? "#10B981" : "#EF4444", border: "none" }}>
+                className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-125 disabled:opacity-50"
+                style={{ background: modelInfo?.online ? "#10B981" : "#EF4444", boxShadow: "0 0 0 2px var(--bg)" }}>
                 {modelInfo?.online && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
               </button>
             </div>

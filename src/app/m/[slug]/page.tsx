@@ -1293,34 +1293,96 @@ export default function ModelPage() {
           )}
 
           {/* ── GALLERY ── */}
-          {tab === "gallery" && (
-            <GalleryTab
-              isEditMode={isEditMode}
-              isModelLoggedIn={isModelLoggedIn}
-              uploads={uploads}
-              galleryItems={galleryItems}
-              galleryTier={galleryTier}
-              setGalleryTier={setGalleryTier}
-              tierCounts={tierCounts}
-              unlockedTier={unlockedTier}
-              purchasedItems={purchasedItems}
-              handleCreditPurchase={handleCreditPurchase}
-              setShowUnlock={setShowUnlock}
-              subscriberUsername={subscriberUsername}
-              hasSubscriberIdentity={hasSubscriberIdentity}
-              editingUploadId={editingUploadId}
-              setEditingUploadId={setEditingUploadId}
-              editUploadData={editUploadData}
-              setEditUploadData={setEditUploadData}
-              handleDeleteMedia={handleDeleteMedia}
-              handleUpdateMedia={handleUpdateMedia}
-              handleAddMedia={handleAddMedia}
-              mediaInputRef={mediaInputRef}
-              uploading={uploading}
-              tierIncludes={tierIncludes}
-              onImageClick={(url: string) => setLightboxUrl(url)}
-            />
-          )}
+          {tab === "gallery" && (() => {
+            // Gallery = images from feed posts
+            const imagePosts = posts.filter(p => p.media_url);
+            return (
+              <div className="fade-up">
+                {/* Tier filter */}
+                <div className="flex gap-1.5 mb-3 overflow-x-auto">
+                  {["all", "public", "vip", "gold", "diamond", "platinum"].map(t => {
+                    const count = t === "all" ? imagePosts.length : imagePosts.filter(p => (p.tier_required || "public") === t).length;
+                    if (t !== "all" && count === 0) return null;
+                    return (
+                      <button key={t} onClick={() => setGalleryTier(t)}
+                        className="px-2.5 py-1 rounded-lg text-[10px] font-medium cursor-pointer shrink-0"
+                        style={{
+                          background: galleryTier === t ? "var(--accent)" : "rgba(0,0,0,0.04)",
+                          color: galleryTier === t ? "#fff" : "var(--text-muted)",
+                        }}>
+                        {t === "all" ? "Tout" : t.charAt(0).toUpperCase() + t.slice(1)} {count > 0 && `(${count})`}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Grid */}
+                {imagePosts.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>Pas de photos — poste dans le Feed</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1.5 rounded-xl overflow-hidden">
+                    {imagePosts
+                      .filter(p => galleryTier === "all" || (p.tier_required || "public") === galleryTier)
+                      .map(post => {
+                        const tier = post.tier_required || "public";
+                        const unlocked = tier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, tier));
+                        return (
+                          <div key={post.id} className="relative aspect-square overflow-hidden cursor-pointer group">
+                            {unlocked ? (
+                              <img src={post.media_url!} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                onClick={() => setLightboxUrl(post.media_url)} loading="lazy" />
+                            ) : (
+                              <div onClick={() => setShowUnlock(true)}>
+                                <img src={post.media_url!} alt="" className="w-full h-full object-cover" style={{ filter: "blur(16px) brightness(0.5)" }} />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <Lock className="w-4 h-4" style={{ color: "#fff" }} />
+                                </div>
+                              </div>
+                            )}
+                            {tier !== "public" && unlocked && (
+                              <span className="absolute top-1 right-1 text-[8px] font-bold px-1 py-0.5 rounded"
+                                style={{ background: "rgba(0,0,0,0.5)", color: "#fff" }}>{tier.toUpperCase()}</span>
+                            )}
+                            {/* Edit mode: delete + change tier */}
+                            {isEditMode && (
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <button onClick={async () => {
+                                  if (confirm("Supprimer ce post ?")) {
+                                    await fetch(`/api/posts?id=${post.id}&model=${slug}`, { method: "DELETE" });
+                                    setPosts(prev => prev.filter(p => p.id !== post.id));
+                                  }
+                                }} className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer" style={{ background: "rgba(220,38,38,0.8)" }}>
+                                  <Trash2 className="w-3.5 h-3.5 text-white" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+
+                {/* Also show uploaded gallery items */}
+                {galleryItems.length > 0 && (
+                  <GalleryTab
+                    isEditMode={isEditMode} isModelLoggedIn={isModelLoggedIn}
+                    uploads={uploads} galleryItems={galleryItems} galleryTier={galleryTier}
+                    setGalleryTier={setGalleryTier} tierCounts={tierCounts} unlockedTier={unlockedTier}
+                    purchasedItems={purchasedItems} handleCreditPurchase={handleCreditPurchase}
+                    setShowUnlock={setShowUnlock} subscriberUsername={subscriberUsername}
+                    hasSubscriberIdentity={hasSubscriberIdentity} editingUploadId={editingUploadId}
+                    setEditingUploadId={setEditingUploadId} editUploadData={editUploadData}
+                    setEditUploadData={setEditUploadData} handleDeleteMedia={handleDeleteMedia}
+                    handleUpdateMedia={handleUpdateMedia} handleAddMedia={handleAddMedia}
+                    mediaInputRef={mediaInputRef} uploading={uploading} tierIncludes={tierIncludes}
+                    onImageClick={(url: string) => setLightboxUrl(url)}
+                  />
+                )}
+              </div>
+            );
+          })()}
 
           {/* ── SHOP ── */}
           {tab === "shop" && (
