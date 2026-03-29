@@ -56,6 +56,7 @@ export default function AgenceDashboard() {
   const [posting, setPosting] = useState(false);
 
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [clientModal, setClientModal] = useState<{ pseudo: string } | null>(null);
 
   // Messages (kept for handler compatibility)
   const [pendingMessagesCount, setPendingMessages] = useState(0);
@@ -454,18 +455,8 @@ export default function AgenceDashboard() {
                               {w.pseudo?.charAt(0)?.toUpperCase() || "?"}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <button onClick={async () => {
-                                if (confirm(`Ajouter @${w.pseudo} comme client ?`)) {
-                                  try {
-                                    await fetch("/api/clients", {
-                                      method: "POST",
-                                      headers: authHeaders(),
-                                      body: JSON.stringify({ model: modelSlug, pseudo_snap: w.pseudo, last_active: new Date().toISOString() }),
-                                    });
-                                    alert(`@${w.pseudo} ajouté aux clients`);
-                                  } catch {}
-                                }
-                              }} className="text-[10px] font-bold cursor-pointer hover:underline" style={{ color: "var(--text)", background: "none", border: "none", padding: 0 }}>
+                              <button onClick={() => setClientModal({ pseudo: w.pseudo })}
+                                className="text-[10px] font-bold cursor-pointer hover:underline" style={{ color: "var(--text)", background: "none", border: "none", padding: 0 }}>
                                 @{w.pseudo}
                               </button>
                               <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{w.content}</p>
@@ -633,6 +624,80 @@ export default function AgenceDashboard() {
             modelSlug={modelSlug}
             prefillClient={prefillClient}
           />
+
+          {/* ── Client creation modal ── */}
+          {clientModal && (
+              <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center" style={{ background: "rgba(0,0,0,0.4)" }}
+                onClick={() => setClientModal(null)}>
+                <div className="w-full max-w-sm rounded-t-2xl md:rounded-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}
+                  style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold" style={{ color: "var(--text)" }}>Nouveau client</h3>
+                    <button onClick={() => setClientModal(null)} className="cursor-pointer" style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    const form = e.target as HTMLFormElement;
+                    const pseudo = (form.querySelector("[name=pseudo]") as HTMLInputElement).value.trim();
+                    const plat = (form.querySelector("[name=platform]") as HTMLSelectElement).value;
+                    const tier = (form.querySelector("[name=tier]") as HTMLSelectElement).value;
+                    const assignCode = (form.querySelector("[name=assign_code]") as HTMLInputElement).checked;
+                    if (!pseudo) return;
+                    try {
+                      const clientData: Record<string, unknown> = { model: modelSlug, last_active: new Date().toISOString() };
+                      if (plat === "snapchat") clientData.pseudo_snap = pseudo.toLowerCase();
+                      else clientData.pseudo_insta = pseudo.toLowerCase();
+                      await fetch("/api/clients", { method: "POST", headers: authHeaders(), body: JSON.stringify(clientData) });
+                      if (assignCode) {
+                        const codeStr = `${modelSlug.slice(0,3).toUpperCase()}-${new Date().getFullYear()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+                        await fetch("/api/codes", {
+                          method: "POST",
+                          headers: authHeaders(),
+                          body: JSON.stringify({ model: modelSlug, code: codeStr, client: pseudo.toLowerCase(), platform: plat, tier, duration: 720, type: "paid" }),
+                        });
+                      }
+                      setClientModal(null);
+                      window.location.reload();
+                    } catch {}
+                  }} className="space-y-3">
+                    <div>
+                      <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-muted)" }}>Pseudo</label>
+                      <input name="pseudo" defaultValue={clientModal.pseudo} className="w-full px-3 py-2 rounded-xl text-xs outline-none"
+                        style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-muted)" }}>Plateforme</label>
+                        <select name="platform" defaultValue="snapchat" className="w-full px-3 py-2 rounded-xl text-xs outline-none cursor-pointer"
+                          style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}>
+                          <option value="snapchat">Snapchat</option>
+                          <option value="instagram">Instagram</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-muted)" }}>Pack</label>
+                        <select name="tier" defaultValue="vip" className="w-full px-3 py-2 rounded-xl text-xs outline-none cursor-pointer"
+                          style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}>
+                          <option value="vip">VIP</option>
+                          <option value="gold">Gold</option>
+                          <option value="diamond">Diamond</option>
+                          <option value="platinum">Platinum</option>
+                        </select>
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" name="assign_code" defaultChecked className="rounded" />
+                      <span className="text-xs" style={{ color: "var(--text)" }}>Generer et assigner un code d&apos;acces</span>
+                    </label>
+                    <button type="submit" className="w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer btn-gradient">
+                      Creer le client
+                    </button>
+                  </form>
+                </div>
+              </div>
+          )}
 
           {/* ── FAB — single action: generate code ── */}
           <style>{`
