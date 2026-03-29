@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Plus, KeyRound, Eye, Pencil, Wifi, WifiOff, Instagram, Globe, ExternalLink, Send, Image, Heart, MessageCircle, Trash2, ChevronDown, X } from "lucide-react";
+import { KeyRound, Eye, Pencil, Instagram, Globe, ExternalLink, Image, Heart, MessageCircle, Trash2, X } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
@@ -55,8 +55,6 @@ export default function AgenceDashboard() {
   const [newPostImage, setNewPostImage] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
 
-  // FAB
-  const [fabOpen, setFabOpen] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
 
   // Messages (kept for handler compatibility)
@@ -189,7 +187,6 @@ export default function AgenceDashboard() {
       if (res.ok) setModelInfo(prev => prev ? { ...prev, online: newStatus } : prev);
     } catch { /* */ }
     setStatusUpdating(false);
-    setFabOpen(false);
   }, [modelSlug, modelInfo, authHeaders]);
 
   // ── Feed handlers ──
@@ -281,13 +278,15 @@ export default function AgenceDashboard() {
                 <span className="text-[10px] text-[var(--text-muted)]">
                   {auth?.role === "root" ? "Root Admin" : "Creatrice exclusive"}
                 </span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold"
+                <button onClick={handleToggleStatus} disabled={statusUpdating}
+                  className="px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
                   style={{
                     background: modelInfo?.online ? "rgba(16,185,129,0.12)" : "rgba(107,114,128,0.12)",
                     color: modelInfo?.online ? "#10B981" : "#6B7280",
+                    border: "none",
                   }}>
-                  {modelInfo?.online ? "En ligne" : "Hors ligne"}
-                </span>
+                  {statusUpdating ? "..." : modelInfo?.online ? "🟢 Dispo" : "🔴 Absent"}
+                </button>
               </div>
             </div>
             <a href={`/m/${modelSlug}`} target="_blank"
@@ -549,60 +548,16 @@ export default function AgenceDashboard() {
             prefillClient={prefillClient}
           />
 
-          {/* ── FAB ── */}
-          {fabOpen && (
-            <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={() => setFabOpen(false)}
-              style={{ animation: "fadeIn 0.2s ease" }} />
-          )}
+          {/* ── FAB — single action: generate code ── */}
           <style>{`
-            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
             @keyframes uploadProgress { 0% { width: 10%; } 50% { width: 80%; } 100% { width: 10%; } }
-            @keyframes fabItemIn { from { opacity: 0; transform: scale(0.5) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
           `}</style>
-          <div className="fixed bottom-20 md:bottom-8 right-4 md:right-8 z-50 flex flex-col items-end gap-3">
-            <div className={`flex flex-col items-end gap-2.5 transition-all duration-300 ${fabOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8 pointer-events-none"}`}>
-              {[
-                {
-                  label: modelInfo?.online ? "Passer Offline" : "Passer Online",
-                  icon: modelInfo?.online ? WifiOff : Wifi,
-                  color: modelInfo?.online ? "#EF4444" : "#10B981",
-                  action: handleToggleStatus,
-                  delay: "150ms",
-                  loading: statusUpdating,
-                },
-                {
-                  label: "Generer Code",
-                  icon: KeyRound,
-                  color: "var(--accent)",
-                  action: () => { setShowGenerator(true); setFabOpen(false); },
-                  delay: "50ms",
-                  loading: false,
-                },
-              ].map(item => (
-                <button key={item.label}
-                  onClick={item.action}
-                  disabled={item.loading}
-                  className="flex items-center gap-2.5 pl-3 pr-4 py-2.5 rounded-full shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition-transform disabled:opacity-50"
-                  style={{ background: item.color, color: "var(--text)", animation: fabOpen ? `fabItemIn 0.3s ease ${item.delay} both` : "none" }}>
-                  {item.loading ? (
-                    <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(255,255,255,0.3)", borderTopColor: "#fff" }} />
-                  ) : (
-                    <item.icon className="w-4 h-4" />
-                  )}
-                  <span className="text-xs font-semibold whitespace-nowrap">{item.label}</span>
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setFabOpen(!fabOpen)}
-              className="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(230,51,41,0.4)]"
-              style={{
-                background: "linear-gradient(135deg, var(--rose), var(--accent))",
-                transform: fabOpen ? "rotate(45deg)" : "rotate(0deg)",
-              }}>
-              <Plus className="w-6 h-6 text-[var(--text)]" />
-            </button>
-          </div>
+          <button
+            onClick={() => setShowGenerator(true)}
+            className="fixed bottom-24 md:bottom-8 right-4 md:right-8 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 hover:shadow-[0_0_30px_rgba(230,51,41,0.4)] active:scale-95"
+            style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))" }}>
+            <KeyRound className="w-5 h-5" style={{ color: "#fff" }} />
+          </button>
 
         </div>
       </div>
