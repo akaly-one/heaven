@@ -33,6 +33,7 @@ interface GalleryTabProps {
   mediaInputRef: React.RefObject<HTMLInputElement | null>;
   uploading: boolean;
   tierIncludes: (unlockedTier: string, contentTier: string) => boolean;
+  onImageClick?: (url: string) => void;
 }
 
 export function GalleryTab({
@@ -40,7 +41,7 @@ export function GalleryTab({
   tierCounts, unlockedTier, purchasedItems, handleCreditPurchase, setShowUnlock,
   subscriberUsername, hasSubscriberIdentity, editingUploadId, setEditingUploadId,
   editUploadData, setEditUploadData, handleDeleteMedia, handleUpdateMedia,
-  handleAddMedia, mediaInputRef, uploading, tierIncludes,
+  handleAddMedia, mediaInputRef, uploading, tierIncludes, onImageClick,
 }: GalleryTabProps) {
   return (
     <div className="fade-up">
@@ -110,9 +111,11 @@ export function GalleryTab({
               <div key={item.id} className="relative aspect-square group cursor-pointer overflow-hidden rounded-lg"
                 style={{ animationDelay: `${i * 20}ms` }}>
                 {isEditMode || isUnlocked ? (
-                  <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">
-                    <img src={item.dataUrl} alt={item.label} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                  </ContentProtection>
+                  <div onClick={() => onImageClick?.(item.dataUrl)} className="w-full h-full">
+                    <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">
+                      <img src={item.dataUrl} alt={item.label} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                    </ContentProtection>
+                  </div>
                 ) : isCreditItem ? (
                   <div className="w-full h-full flex items-center justify-center relative cursor-pointer"
                     onClick={() => handleCreditPurchase(item)}

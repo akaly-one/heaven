@@ -132,6 +132,7 @@ export default function ModelPage() {
   const [shopSection, setShopSection] = useState<"packs" | "credits">("packs");
   const [expandedPack, setExpandedPack] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [selectedPack, setSelectedPack] = useState<PackConfig | null>(null);
   const [topupLoading, setTopupLoading] = useState(false);
   const [shopToast, setShopToast] = useState<string | null>(null);
@@ -1125,17 +1126,16 @@ export default function ModelPage() {
                       </div>
                       {post.media_url && (
                         mediaUnlocked ? (
-                          <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
-                            <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover" loading="lazy" />
-                          </ContentProtection>
+                          <div className="cursor-pointer" onClick={() => setLightboxUrl(post.media_url)}>
+                            <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
+                              <img src={post.media_url} alt="" className="w-full max-h-[280px] object-cover rounded-sm" loading="lazy" />
+                            </ContentProtection>
+                          </div>
                         ) : (
                           <div className="relative cursor-pointer" onClick={() => setShowUnlock(true)}>
-                            <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover" style={{ filter: "blur(20px) brightness(0.5)" }} />
+                            <img src={post.media_url} alt="" className="w-full max-h-[280px] object-cover rounded-sm" style={{ filter: "blur(20px) brightness(0.5)" }} />
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="text-center">
-                                <Lock className="w-6 h-6 mx-auto mb-1" style={{ color: tierHex }} />
-                                <span className="text-xs font-bold" style={{ color: tierHex }}>{postTier.toUpperCase()} Only</span>
-                              </div>
+                              <Lock className="w-5 h-5" style={{ color: tierHex }} />
                             </div>
                           </div>
                         )
@@ -1261,6 +1261,7 @@ export default function ModelPage() {
               mediaInputRef={mediaInputRef}
               uploading={uploading}
               tierIncludes={tierIncludes}
+              onImageClick={(url: string) => setLightboxUrl(url)}
             />
           )}
 
@@ -1571,6 +1572,18 @@ export default function ModelPage() {
             </div>
           );
         })()}
+
+        {/* ═══ LIGHTBOX ═══ */}
+        {lightboxUrl && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.9)" }}
+            onClick={() => setLightboxUrl(null)}>
+            <button className="absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
+              style={{ background: "rgba(255,255,255,0.1)" }} onClick={() => setLightboxUrl(null)}>
+              <X className="w-5 h-5 text-white" />
+            </button>
+            <img src={lightboxUrl} alt="" className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg" onClick={e => e.stopPropagation()} />
+          </div>
+        )}
 
         {/* ═══ CHAT FLOATING BUBBLE ═══ */}
         {!isModelLoggedIn && model && (
