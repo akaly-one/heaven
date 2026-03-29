@@ -288,12 +288,27 @@ export default function ModelPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const url = await uploadToCloudinary(file, `heaven/${slug}/avatar`);
-    if (url) {
-      updateEditField("avatar", url);
-      setEditToast("Avatar mis à jour");
-    } else {
-      setEditToast("Erreur upload avatar");
+    try {
+      const url = await uploadToCloudinary(file, `heaven/${slug}/avatar`);
+      if (url) {
+        // Save immediately — don't wait for save button
+        const res = await fetch(`/api/models/${slug}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ avatar: url }),
+        });
+        if (res.ok) {
+          setModel(prev => prev ? { ...prev, avatar: url } : prev);
+          updateEditField("avatar", url);
+          setEditToast("Avatar sauvegarde !");
+        } else {
+          setEditToast("Erreur sauvegarde avatar");
+        }
+      } else {
+        setEditToast("Erreur upload");
+      }
+    } catch {
+      setEditToast("Erreur serveur");
     }
     setTimeout(() => setEditToast(null), 2000);
     setUploading(false);
@@ -304,12 +319,26 @@ export default function ModelPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const url = await uploadToCloudinary(file, `heaven/${slug}/banner`);
-    if (url) {
-      updateEditField("banner", url);
-      setEditToast("Bannière mise à jour");
-    } else {
-      setEditToast("Erreur upload bannière");
+    try {
+      const url = await uploadToCloudinary(file, `heaven/${slug}/banner`);
+      if (url) {
+        const res = await fetch(`/api/models/${slug}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ banner: url }),
+        });
+        if (res.ok) {
+          setModel(prev => prev ? { ...prev, banner: url } : prev);
+          updateEditField("banner", url);
+          setEditToast("Banniere sauvegardee !");
+        } else {
+          setEditToast("Erreur sauvegarde");
+        }
+      } else {
+        setEditToast("Erreur upload");
+      }
+    } catch {
+      setEditToast("Erreur serveur");
     }
     setTimeout(() => setEditToast(null), 2000);
     setUploading(false);
