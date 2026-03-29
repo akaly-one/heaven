@@ -41,6 +41,16 @@ const TIER_CREDIT_BONUS: Record<string, { multiplier: number; label: string; bon
   vip: { multiplier: 1, label: "", bonus: undefined },
 };
 
+// ── Platform icons for header ──
+const PLATFORMS_MAP: Record<string, { color: string; prefix: string }> = {
+  instagram: { color: "#C13584", prefix: "https://instagram.com/" },
+  snapchat: { color: "#997A00", prefix: "https://snapchat.com/add/" },
+  onlyfans: { color: "#008CCF", prefix: "https://onlyfans.com/" },
+  fanvue: { color: "#6D28D9", prefix: "https://fanvue.com/" },
+  tiktok: { color: "#333", prefix: "https://tiktok.com/@" },
+  mym: { color: "#CC2952", prefix: "https://mym.fans/" },
+};
+
 // ── Detect model session from another tab ──
 function useModelSession(slug: string): ModelAuth | null {
   const [auth, setAuth] = useState<ModelAuth | null>(null);
@@ -864,18 +874,62 @@ export default function ModelPage() {
 
       <div className="relative z-10">
 
-        {/* ═══ TOP BAR — minimal, overlays banner ═══ */}
-        <div className="fixed top-0 left-0 right-0 z-40 px-4 py-2.5 flex items-center justify-between">
-          {isModelLoggedIn ? (
-            <a href="/agence" className="px-3 py-1.5 rounded-full text-[10px] font-bold no-underline"
-              style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(8px)", color: "#fff" }}>
-              {isEditMode ? "← Quitter" : "← Cockpit"}
-            </a>
-          ) : (
-            <div />
-          )}
-          {/* Message via FAB bubble at bottom — no duplicate here */}
-          <div />
+        {/* ═══ HEADER BAR — sticky, model info left + visitor right ═══ */}
+        <div className="sticky top-0 left-0 right-0 z-40 px-3 py-2 flex items-center gap-2"
+          style={{ background: "color-mix(in srgb, var(--bg) 90%, transparent)", backdropFilter: "blur(12px)", borderBottom: "1px solid var(--border)" }}>
+          {/* Left: model info */}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {isModelLoggedIn && (
+              <a href="/agence" className="text-[10px] font-bold no-underline shrink-0" style={{ color: "var(--accent)" }}>←</a>
+            )}
+            <div className="w-6 h-6 rounded-full overflow-hidden shrink-0" style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))" }}>
+              {model.avatar ? <img src={model.avatar} alt="" className="w-full h-full object-cover" /> :
+                <span className="flex items-center justify-center w-full h-full text-[9px] font-bold text-white">{model.display_name.charAt(0)}</span>}
+            </div>
+            <span className="text-[11px] font-bold truncate" style={{ color: "var(--text)" }}>{model.display_name}</span>
+            <span className="text-[9px] shrink-0" style={{ color: "var(--text-muted)" }}>{posts.length}p · {uploads.length}m</span>
+            {/* Platform icons */}
+            {(() => {
+              const platforms = (model as unknown as Record<string, unknown>).platforms as Record<string, string> | undefined;
+              if (!platforms) return null;
+              return Object.entries(platforms).filter(([, v]) => v).map(([platform, handle]) => {
+                const p = PLATFORMS_MAP[platform];
+                if (!p || !handle) return null;
+                const url = handle.startsWith("http") ? handle : `${p.prefix}${handle}`;
+                return (
+                  <a key={platform} href={url} target="_blank" rel="noopener noreferrer"
+                    className="shrink-0 no-underline hidden sm:block" title={`${platform}: @${handle}`}>
+                    <div className="w-4 h-4 rounded-full" style={{ background: p.color }} />
+                  </a>
+                );
+              });
+            })()}
+          </div>
+          {/* Right: visitor info */}
+          <div className="flex items-center gap-2 shrink-0">
+            {visitorRegistered && (
+              <>
+                <span className="text-[10px] font-medium" style={{ color: "var(--text)" }}>@{visitorHandle}</span>
+                {unlockedTier ? (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981" }}>
+                    {unlockedTier.toUpperCase()}
+                    {activeCode?.expiresAt && (() => {
+                      const diff = new Date(activeCode.expiresAt).getTime() - Date.now();
+                      if (diff <= 0) return " exp";
+                      const d = Math.floor(diff / 86400000);
+                      const h = Math.floor((diff % 86400000) / 3600000);
+                      return ` ${d > 0 ? `${d}j` : `${h}h`}`;
+                    })()}
+                  </span>
+                ) : (
+                  <button onClick={() => setShowUnlock(true)} className="text-[9px] font-bold px-1.5 py-0.5 rounded-full cursor-pointer"
+                    style={{ background: "rgba(230,51,41,0.1)", color: "var(--accent)", border: "none" }}>
+                    Code
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         {/* ═══ HERO — auto banner from latest post image ═══ */}
