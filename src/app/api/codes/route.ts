@@ -245,6 +245,30 @@ export async function DELETE(req: NextRequest) {
   }
 }
 
+// PATCH /api/codes — Update code fields (client reassignment for merge)
+export async function PATCH(req: NextRequest) {
+  const cors = getCorsHeaders(req);
+  try {
+    const body = await req.json();
+    const { code, model, updates } = body;
+    if (!code || !model || !updates) {
+      return NextResponse.json({ error: "code, model, updates requis" }, { status: 400, headers: cors });
+    }
+    const supabase = requireSupabase();
+    const dbUpdates = mapToDb(updates);
+    const { error } = await supabase
+      .from("agence_codes")
+      .update(dbUpdates)
+      .ilike("code", code)
+      .eq("model", model);
+    if (error) throw error;
+    return NextResponse.json({ success: true }, { headers: cors });
+  } catch (err) {
+    console.error("[API/codes] PATCH:", err);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });
+  }
+}
+
 // ── Mappers ──
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function mapFromDb(row: any): CodeRow {

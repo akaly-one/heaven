@@ -124,3 +124,43 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });
   }
 }
+
+// PATCH /api/messages — Mark as read or reassign client_id
+export async function PATCH(req: NextRequest) {
+  const cors = getCorsHeaders(req);
+  try {
+    const body = await req.json();
+    const { id, client_id, model, action } = body;
+
+    const supabase = getServerSupabase();
+    if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
+
+    // Mark all client messages as read for a conversation
+    if (action === "mark_read" && model && client_id) {
+      const { error } = await supabase
+        .from("agence_messages")
+        .update({ read: true })
+        .eq("model", model)
+        .eq("client_id", client_id)
+        .eq("sender_type", "client")
+        .eq("read", false);
+      if (error) throw error;
+      return NextResponse.json({ success: true }, { headers: cors });
+    }
+
+    // Reassign a single message to a different client_id (for merge)
+    if (id && client_id) {
+      const { error } = await supabase
+        .from("agence_messages")
+        .update({ client_id })
+        .eq("id", id);
+      if (error) throw error;
+      return NextResponse.json({ success: true }, { headers: cors });
+    }
+
+    return NextResponse.json({ error: "id+client_id ou action+model+client_id requis" }, { status: 400, headers: cors });
+  } catch (err) {
+    console.error("[API/messages] PATCH:", err);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });
+  }
+}

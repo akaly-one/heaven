@@ -73,33 +73,83 @@ export default function ClientsPage() {
     setAddPseudo(""); setShowAdd(false); fetchAll();
   };
 
-  const mergeSelected = async () => {
-    if (selected.size < 2) return;
-    const ids = [...selected];
-    const keep = clients.find(c => c.id === ids[0]);
-    if (!keep) return;
-    const others = ids.slice(1);
-    const otherClients = others.map(id => clients.find(c => c.id === id)).filter(Boolean) as Client[];
-    const names = [keep, ...otherClients].map(c => `@${c.pseudo_snap || c.pseudo_insta || c.id.slice(0, 6)}`).join(", ");
-    if (!confirm(`Fusionner ${names} → garder @${keep.pseudo_snap || keep.pseudo_insta || keep.id.slice(0, 6)} ?`)) return;
+  // ── Merge modal state ──
+  const [mergeModal, setMergeModal] = useState<Client[] | null>(null);
+  const [mergeChoices, setMergeChoices] = useState<Record<string, string>>({});
+  const [mergeCodeChoice, setMergeCodeChoice] = useState<string | null>(null);
+  const [merging, setMerging] = useState(false);
 
-    // Move codes + messages from others to keep
-    for (const other of otherClients) {
-      const pseudo = other.pseudo_snap || other.pseudo_insta || "";
-      // Update codes: change client field to keep's pseudo
-      for (const code of codes.filter(c => c.client === (other.pseudo_snap || other.pseudo_insta))) {
-        await fetch("/api/codes", { method: "PATCH", headers: authHeaders(),
-          body: JSON.stringify({ code: code.code, model, updates: { client: keep.pseudo_snap || keep.pseudo_insta || "" } }) });
-      }
-      // Update messages: change client_id to keep's id
-      for (const msg of messages.filter(m => m.client_id === other.id)) {
-        await fetch("/api/messages", { method: "PATCH", headers: authHeaders(),
-          body: JSON.stringify({ id: msg.id, client_id: keep.id }) });
-      }
-      // Delete the other client
-      await fetch(`/api/clients?id=${other.id}`, { method: "DELETE", headers: authHeaders() });
+  const openMergeModal = () => {
+    if (selected.size < 2) return;
+    const toMerge = [...selected].map(id => clients.find(c => c.id === id)).filter(Boolean) as Client[];
+    if (toMerge.length < 2) return;
+    // Default choices: first client's values
+    const defaults: Record<string, string> = {};
+    const fields = ["pseudo_snap", "pseudo_insta", "phone", "firstname", "notes", "tier"] as const;
+    for (const f of fields) {
+      const withValue = toMerge.filter(c => c[f as keyof Client]);
+      if (withValue.length > 0) defaults[f] = withValue[0].id;
     }
-    selectNone(); fetchAll();
+    setMergeChoices(defaults);
+    // Default code: first active code found
+    const allMergeCodes = toMerge.flatMap(c => codes.filter(co => co.client === (c.pseudo_snap || c.pseudo_insta) && co.active && !co.revoked));
+    setMergeCodeChoice(allMergeCodes[0]?.code || null);
+    setMergeModal(toMerge);
+  };
+
+  const executeMerge = async () => {
+    if (!mergeModal || mergeModal.length < 2) return;
+    setMerging(true);
+    try {
+      // Build the final client: start with first, override with choices
+      const keepId = mergeModal[0].id;
+      const updates: Record<string, unknown> = {};
+      const fields = ["pseudo_snap", "pseudo_insta", "phone", "firstname", "notes", "tier"] as const;
+      for (const f of fields) {
+        const chosenClientId = mergeChoices[f];
+        if (chosenClientId) {
+          const chosenClient = mergeModal.find(c => c.id === chosenClientId);
+          if (chosenClient) updates[f] = chosenClient[f as keyof Client];
+        }
+      }
+
+      // Update the kept client with chosen values
+      if (Object.keys(updates).length > 0) {
+        await fetch("/api/clients", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders() },
+          body: JSON.stringify({ id: keepId, ...updates }) });
+      }
+
+      // Move all messages from other clients to keepId
+      const otherIds = mergeModal.slice(1).map(c => c.id);
+      for (const otherId of otherIds) {
+        for (const msg of messages.filter(m => m.client_id === otherId)) {
+          await fetch("/api/messages", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders() },
+            body: JSON.stringify({ id: msg.id, client_id: keepId }) });
+        }
+      }
+
+      // Move all codes from other clients to the kept pseudo
+      const keptPseudo = (updates.pseudo_snap || mergeModal[0].pseudo_snap || updates.pseudo_insta || mergeModal[0].pseudo_insta || "") as string;
+      for (const other of mergeModal.slice(1)) {
+        const otherPseudo = other.pseudo_snap || other.pseudo_insta || "";
+        for (const code of codes.filter(c => c.client === otherPseudo)) {
+          await fetch("/api/codes", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders() },
+            body: JSON.stringify({ code: code.code, model, updates: { client: keptPseudo } }) });
+        }
+      }
+
+      // Delete the other clients
+      for (const otherId of otherIds) {
+        await fetch(`/api/clients?id=${otherId}`, { method: "DELETE", headers: authHeaders() });
+      }
+
+      setMergeModal(null);
+      selectNone();
+      fetchAll();
+    } catch (err) {
+      console.error("[Merge] error:", err);
+    }
+    setMerging(false);
   };
 
   const detailClient = clients.find(c => c.id === detail);
@@ -121,7 +171,7 @@ export default function ClientsPage() {
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>{selected.size}</span>
                 {selected.size >= 2 && (
-                  <button onClick={mergeSelected} className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                  <button onClick={openMergeModal} className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
                     style={{ background: "rgba(139,92,246,0.1)", color: "#8B5CF6", border: "none" }}>
                     <GitMerge className="w-3 h-3 inline mr-0.5" />Fusionner
                   </button>
@@ -303,6 +353,134 @@ export default function ClientsPage() {
             <p className="text-xs text-center py-8" style={{ color: "var(--text-muted)" }}>Aucun client</p>
           )}
         </div>
+
+        {/* ═══ MERGE MODAL ═══ */}
+        {mergeModal && mergeModal.length >= 2 && (
+          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" style={{ background: "rgba(0,0,0,0.5)" }} onClick={() => setMergeModal(null)}>
+            <div className="w-full max-w-md rounded-t-2xl md:rounded-2xl overflow-hidden max-h-[85vh] overflow-y-auto"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex justify-center pt-3 md:hidden">
+                <div className="w-10 h-1 rounded-full" style={{ background: "var(--border3)" }} />
+              </div>
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <GitMerge className="w-4 h-4" style={{ color: "#8B5CF6" }} />
+                  <h3 className="text-sm font-bold flex-1" style={{ color: "var(--text)" }}>Fusionner {mergeModal.length} contacts</h3>
+                  <button onClick={() => setMergeModal(null)} className="cursor-pointer" style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <p className="text-[10px] mb-3" style={{ color: "var(--text-muted)" }}>
+                  Choisis quelle info garder pour chaque champ. Les messages et codes seront fusionnés.
+                </p>
+
+                {/* Field-by-field chooser */}
+                <div className="space-y-3">
+                  {([
+                    { key: "pseudo_snap", label: "Snap", icon: "🟡" },
+                    { key: "pseudo_insta", label: "Instagram", icon: "🟣" },
+                    { key: "phone", label: "Telephone", icon: "📱" },
+                    { key: "firstname", label: "Prenom", icon: "👤" },
+                    { key: "notes", label: "Notes", icon: "📝" },
+                    { key: "tier", label: "Tier", icon: "⭐" },
+                  ] as const).map(field => {
+                    const options = mergeModal.filter(c => c[field.key as keyof Client]);
+                    if (options.length === 0) return null;
+                    return (
+                      <div key={field.key}>
+                        <p className="text-[10px] font-bold mb-1" style={{ color: "var(--text-muted)" }}>
+                          {field.icon} {field.label}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {options.map(c => {
+                            const val = String(c[field.key as keyof Client] || "");
+                            const isChosen = mergeChoices[field.key] === c.id;
+                            return (
+                              <button key={c.id} onClick={() => setMergeChoices(prev => ({ ...prev, [field.key]: c.id }))}
+                                className="px-2.5 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer transition-all"
+                                style={{
+                                  background: isChosen ? "rgba(139,92,246,0.15)" : "var(--bg)",
+                                  border: `1.5px solid ${isChosen ? "#8B5CF6" : "var(--border)"}`,
+                                  color: isChosen ? "#8B5CF6" : "var(--text)",
+                                }}>
+                                {isChosen && <Check className="w-3 h-3 inline mr-1" />}
+                                {val.length > 20 ? val.slice(0, 20) + "…" : val}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Active codes */}
+                  {(() => {
+                    const allCodes = mergeModal.flatMap(c => {
+                      const p = c.pseudo_snap || c.pseudo_insta || "";
+                      return codes.filter(co => co.client === p && co.active && !co.revoked).map(co => ({ ...co, fromClient: c }));
+                    });
+                    if (allCodes.length <= 1) return null;
+                    return (
+                      <div>
+                        <p className="text-[10px] font-bold mb-1" style={{ color: "var(--text-muted)" }}>
+                          🔑 Code actif a garder
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {allCodes.map(co => {
+                            const isChosen = mergeCodeChoice === co.code;
+                            const p = co.fromClient.pseudo_snap || co.fromClient.pseudo_insta || "?";
+                            return (
+                              <button key={co.code} onClick={() => setMergeCodeChoice(co.code)}
+                                className="px-2.5 py-1.5 rounded-lg text-[10px] font-mono cursor-pointer transition-all"
+                                style={{
+                                  background: isChosen ? "rgba(16,185,129,0.15)" : "var(--bg)",
+                                  border: `1.5px solid ${isChosen ? "#10B981" : "var(--border)"}`,
+                                  color: isChosen ? "#10B981" : "var(--text-muted)",
+                                }}>
+                                {isChosen && <Check className="w-3 h-3 inline mr-1" />}
+                                {co.code.slice(-6)} ({co.tier}) · @{p}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Summary */}
+                  <div className="p-3 rounded-xl" style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)" }}>
+                    <p className="text-[10px] font-bold mb-1" style={{ color: "#8B5CF6" }}>Résumé</p>
+                    <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                      ✓ Messages de tous les contacts seront fusionnés<br />
+                      ✓ Tous les codes seront transférés<br />
+                      ✓ Les contacts supprimés : {mergeModal.slice(1).map(c => `@${c.pseudo_snap || c.pseudo_insta || c.id.slice(0, 6)}`).join(", ")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 mt-4">
+                  <button onClick={() => setMergeModal(null)}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-medium cursor-pointer"
+                    style={{ background: "var(--bg)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+                    Annuler
+                  </button>
+                  <button onClick={executeMerge} disabled={merging}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50"
+                    style={{ background: "#8B5CF6", color: "#fff", border: "none" }}>
+                    {merging ? "Fusion..." : `Fusionner → @${(() => {
+                      const snapChoice = mergeChoices.pseudo_snap ? mergeModal.find(c => c.id === mergeChoices.pseudo_snap)?.pseudo_snap : null;
+                      const instaChoice = mergeChoices.pseudo_insta ? mergeModal.find(c => c.id === mergeChoices.pseudo_insta)?.pseudo_insta : null;
+                      return snapChoice || instaChoice || mergeModal[0].pseudo_snap || mergeModal[0].pseudo_insta || mergeModal[0].id.slice(0, 6);
+                    })()}`}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </OsLayout>
   );

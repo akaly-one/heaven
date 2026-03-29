@@ -636,7 +636,7 @@ export default function AgenceDashboard() {
             {/* ── RIGHT: Codes/Clients + Notifs (2/5) ── */}
             <div className="md:col-span-2 space-y-3">
 
-            {/* Messages accordion */}
+            {/* Messages — grouped by client */}
             <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
               <button onClick={() => setMessagesOpen(!messagesOpen)}
                 className="w-full flex items-center gap-2 p-3 cursor-pointer" style={{ background: "none", border: "none" }}>
@@ -648,60 +648,89 @@ export default function AgenceDashboard() {
                   </span>
                 )}
               </button>
-              {messagesOpen && (
-                <div className="px-3 pb-3 space-y-2" style={{ borderTop: "1px solid var(--border)" }}>
-                  {chatMessages.filter(m => m.sender_type === "client").length === 0 ? (
-                    <p className="text-[10px] py-2 text-center" style={{ color: "var(--text-muted)" }}>Pas de messages</p>
-                  ) : (
-                    <>
-                      {/* Group by client, show latest message per client */}
-                      {Object.entries(
-                        chatMessages.filter(m => m.sender_type === "client")
-                          .reduce((acc, m) => { if (!acc[m.client_id]) acc[m.client_id] = m; return acc; }, {} as Record<string, typeof chatMessages[0]>)
-                      ).slice(0, 5).map(([clientId, msg]) => (
-                        <div key={clientId} className="space-y-1.5">
-                          <div className="flex items-start gap-2 py-1">
-                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0"
-                              style={{ background: "rgba(0,0,0,0.06)", color: "var(--text-muted)" }}>
-                              {clientId.slice(0, 2).toUpperCase()}
+              {messagesOpen && (() => {
+                // Build conversations grouped by client
+                const clientMap = new Map(clients.map(c => [c.id, c]));
+                const grouped: Record<string, typeof chatMessages> = {};
+                chatMessages.forEach(m => { if (!grouped[m.client_id]) grouped[m.client_id] = []; grouped[m.client_id].push(m); });
+                const convos = Object.entries(grouped).map(([cid, msgs]) => {
+                  const sorted = [...msgs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                  const client = clientMap.get(cid);
+                  const name = client?.pseudo_snap || client?.pseudo_insta || client?.firstname || cid.slice(0, 6);
+                  const unread = sorted.filter(m => m.sender_type === "client" && !m.read).length;
+                  return { cid, name, last: sorted[0], unread, msgs: sorted };
+                }).sort((a, b) => {
+                  if (a.unread > 0 && b.unread === 0) return -1;
+                  if (b.unread > 0 && a.unread === 0) return 1;
+                  return new Date(b.last.created_at).getTime() - new Date(a.last.created_at).getTime();
+                });
+
+                return (
+                  <div className="px-3 pb-3 space-y-1" style={{ borderTop: "1px solid var(--border)" }}>
+                    {convos.length === 0 ? (
+                      <p className="text-[10px] py-2 text-center" style={{ color: "var(--text-muted)" }}>Pas de messages</p>
+                    ) : (
+                      convos.slice(0, 6).map(convo => (
+                        <div key={convo.cid} className="rounded-xl p-2" style={{ background: convo.unread > 0 ? "rgba(244,63,94,0.04)" : "transparent" }}>
+                          {/* Client header + last message */}
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                              style={{ background: convo.unread > 0 ? "rgba(230,51,41,0.12)" : "rgba(0,0,0,0.06)", color: convo.unread > 0 ? "var(--accent)" : "var(--text-muted)" }}>
+                              {convo.name.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-[10px] truncate" style={{ color: msg.read ? "var(--text-muted)" : "var(--text)" }}>
-                                {!msg.read && <span style={{ color: "var(--accent)" }}>● </span>}
-                                {msg.content}
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>@{convo.name}</span>
+                                {convo.unread > 0 && (
+                                  <span className="w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center" style={{ background: "var(--accent)", color: "#fff" }}>
+                                    {convo.unread}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] truncate" style={{ color: convo.unread > 0 ? "var(--text)" : "var(--text-muted)" }}>
+                                {convo.last.sender_type === "model" ? "Toi: " : ""}{convo.last.content}
                               </p>
                             </div>
                           </div>
-                          {replyTo === clientId ? (
-                            <div className="flex gap-1.5">
+
+                          {/* Inline reply */}
+                          {replyTo === convo.cid ? (
+                            <div className="flex gap-1.5 mt-1.5 ml-9">
                               <input value={replyText} onChange={e => setReplyText(e.target.value)}
                                 placeholder="Repondre..."
                                 className="flex-1 px-2 py-1.5 rounded-lg text-[10px] outline-none"
                                 style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
                                 onKeyDown={async e => {
                                   if (e.key === "Enter" && replyText.trim()) {
-                                    await fetch("/api/messages", { method: "POST", headers: authHeaders(),
-                                      body: JSON.stringify({ model: modelSlug, client_id: clientId, content: replyText.trim(), sender_type: "model" }) });
+                                    const content = replyText.trim();
+                                    // Optimistic: add to local state
+                                    setChatMessages(prev => [{ id: `tmp-${Date.now()}`, client_id: convo.cid, content, sender_type: "model", created_at: new Date().toISOString(), read: true, model: modelSlug }, ...prev]);
                                     setReplyText(""); setReplyTo(null);
+                                    // Send to API (also marks client msgs as read)
+                                    await fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() },
+                                      body: JSON.stringify({ model: modelSlug, client_id: convo.cid, content, sender_type: "model" }) });
+                                    // Mark conversation as read
+                                    await fetch("/api/messages", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders() },
+                                      body: JSON.stringify({ model: modelSlug, client_id: convo.cid, action: "mark_read" }) });
                                   }
                                 }} autoFocus />
                               <button onClick={() => setReplyTo(null)} className="text-[10px] cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>✕</button>
                             </div>
                           ) : (
-                            <button onClick={() => setReplyTo(clientId)}
-                              className="text-[9px] cursor-pointer hover:underline" style={{ color: "var(--accent)", background: "none", border: "none", padding: 0 }}>
+                            <button onClick={() => { setReplyTo(convo.cid); setReplyText(""); }}
+                              className="text-[9px] cursor-pointer hover:underline ml-9 mt-0.5" style={{ color: "var(--accent)", background: "none", border: "none", padding: 0 }}>
                               Repondre
                             </button>
                           )}
                         </div>
-                      ))}
-                    </>
-                  )}
-                  <a href="/agence/messages" className="block text-center text-[10px] font-medium py-1 no-underline hover:underline" style={{ color: "var(--accent)" }}>
-                    Voir tous les messages →
-                  </a>
-                </div>
-              )}
+                      ))
+                    )}
+                    <a href="/agence/messages" className="block text-center text-[10px] font-medium py-1 no-underline hover:underline" style={{ color: "var(--accent)" }}>
+                      Voir tous les messages →
+                    </a>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Codes & Clients compact */}
