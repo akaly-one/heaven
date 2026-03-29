@@ -658,8 +658,12 @@ export default function AgenceDashboard() {
                   const client = clientMap.get(cid);
                   const name = client?.pseudo_snap || client?.pseudo_insta || client?.firstname || cid.slice(0, 6);
                   const unread = sorted.filter(m => m.sender_type === "client" && !m.read).length;
-                  return { cid, name, last: sorted[0], unread, msgs: sorted };
+                  const hasAdmin = sorted.some(m => m.sender_type === "admin" && !m.read);
+                  return { cid, name, last: sorted[0], unread, hasAdmin, msgs: sorted };
                 }).sort((a, b) => {
+                  // Admin messages = highest priority
+                  if (a.hasAdmin && !b.hasAdmin) return -1;
+                  if (b.hasAdmin && !a.hasAdmin) return 1;
                   if (a.unread > 0 && b.unread === 0) return -1;
                   if (b.unread > 0 && a.unread === 0) return 1;
                   return new Date(b.last.created_at).getTime() - new Date(a.last.created_at).getTime();
@@ -671,24 +675,27 @@ export default function AgenceDashboard() {
                       <p className="text-[10px] py-2 text-center" style={{ color: "var(--text-muted)" }}>Pas de messages</p>
                     ) : (
                       convos.slice(0, 6).map(convo => (
-                        <div key={convo.cid} className="rounded-xl p-2" style={{ background: convo.unread > 0 ? "rgba(244,63,94,0.04)" : "transparent" }}>
+                        <div key={convo.cid} className="rounded-xl p-2" style={{ background: convo.hasAdmin ? "rgba(59,130,246,0.08)" : convo.unread > 0 ? "rgba(244,63,94,0.04)" : "transparent", border: convo.hasAdmin ? "1px solid rgba(59,130,246,0.2)" : "none" }}>
                           {/* Client header + last message */}
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
-                              style={{ background: convo.unread > 0 ? "rgba(230,51,41,0.12)" : "rgba(0,0,0,0.06)", color: convo.unread > 0 ? "var(--accent)" : "var(--text-muted)" }}>
-                              {convo.name.charAt(0).toUpperCase()}
+                              style={{ background: convo.hasAdmin ? "rgba(59,130,246,0.15)" : convo.unread > 0 ? "rgba(230,51,41,0.12)" : "rgba(0,0,0,0.06)", color: convo.hasAdmin ? "#3B82F6" : convo.unread > 0 ? "var(--accent)" : "var(--text-muted)" }}>
+                              {convo.hasAdmin ? "🔷" : convo.name.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>@{convo.name}</span>
+                                <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>
+                                  {convo.hasAdmin && <span className="text-[8px] font-bold px-1 py-0.5 rounded mr-1" style={{ background: "rgba(59,130,246,0.12)", color: "#3B82F6" }}>ADMIN</span>}
+                                  @{convo.name}
+                                </span>
                                 {convo.unread > 0 && (
-                                  <span className="w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center" style={{ background: "var(--accent)", color: "#fff" }}>
+                                  <span className="w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center" style={{ background: convo.hasAdmin ? "#3B82F6" : "var(--accent)", color: "#fff" }}>
                                     {convo.unread}
                                   </span>
                                 )}
                               </div>
                               <p className="text-[10px] truncate" style={{ color: convo.unread > 0 ? "var(--text)" : "var(--text-muted)" }}>
-                                {convo.last.sender_type === "model" ? "Toi: " : ""}{convo.last.content}
+                                {convo.last.sender_type === "model" ? "Toi: " : convo.last.sender_type === "admin" ? "🔷 Admin: " : ""}{convo.last.content}
                               </p>
                             </div>
                           </div>

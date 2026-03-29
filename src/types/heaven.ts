@@ -159,7 +159,7 @@ export interface Message {
   id: string;
   model: string;
   client_id: string;
-  sender_type: "client" | "model";
+  sender_type: "client" | "model" | "admin";
   content: string;
   read: boolean;
   created_at: string;

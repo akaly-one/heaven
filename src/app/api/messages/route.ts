@@ -88,8 +88,8 @@ export async function POST(req: NextRequest) {
 
     if (error) throw error;
 
-    // Mark messages from client as read if model is replying
-    if (sender_type === "model") {
+    // Mark messages from client as read if model or admin is replying
+    if (sender_type === "model" || sender_type === "admin") {
       await supabase
         .from("agence_messages")
         .update({ read: true })

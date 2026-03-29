@@ -11,7 +11,7 @@ interface Client {
   model: string; is_verified: boolean; is_blocked: boolean;
 }
 interface Conversation {
-  client: Client; messages: Message[]; lastMessage: Message; unread: number;
+  client: Client; messages: Message[]; lastMessage: Message; unread: number; hasAdmin?: boolean;
 }
 
 export default function MessagesPage() {
@@ -38,9 +38,12 @@ export default function MessagesPage() {
           const sorted = msgs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
           const client = clientMap.get(clientId);
           if (!client) return null;
-          return { client, messages: sorted, lastMessage: sorted[0], unread: sorted.filter(m => !m.read && m.sender_type === "client").length };
+          return { client, messages: sorted, lastMessage: sorted[0], unread: sorted.filter(m => !m.read && m.sender_type === "client").length, hasAdmin: sorted.some(m => m.sender_type === "admin") };
         }).filter(Boolean) as Conversation[];
       convs.sort((a, b) => {
+        // Admin messages = highest priority
+        if (a.hasAdmin && !b.hasAdmin) return -1;
+        if (b.hasAdmin && !a.hasAdmin) return 1;
         if (a.unread > 0 && b.unread === 0) return -1;
         if (b.unread > 0 && a.unread === 0) return 1;
         return new Date(b.lastMessage.created_at).getTime() - new Date(a.lastMessage.created_at).getTime();
@@ -136,12 +139,13 @@ export default function MessagesPage() {
               {/* Messages */}
               <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
                 {[...selectedConvo.messages].reverse().map(m => (
-                  <div key={m.id} className={`flex ${m.sender_type === "model" ? "justify-end" : "justify-start"}`}>
+                  <div key={m.id} className={`flex ${m.sender_type === "model" || m.sender_type === "admin" ? "justify-end" : "justify-start"}`}>
                     <div className="max-w-[80%] px-3 py-2 rounded-2xl text-xs group relative"
                       style={{
-                        background: m.sender_type === "model" ? "var(--accent)" : "var(--bg)",
-                        color: m.sender_type === "model" ? "#fff" : "var(--text)",
+                        background: m.sender_type === "admin" ? "#3B82F6" : m.sender_type === "model" ? "var(--accent)" : "var(--bg)",
+                        color: m.sender_type === "model" || m.sender_type === "admin" ? "#fff" : "var(--text)",
                       }}>
+                      {m.sender_type === "admin" && <span className="text-[8px] font-bold opacity-70 block mb-0.5">SQWENSY Admin</span>}
                       {m.content}
                       <button onClick={() => deleteMessage(m.id)}
                         className="absolute -top-1 -right-1 w-5 h-5 rounded-full items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity hidden group-hover:flex"
@@ -174,22 +178,23 @@ export default function MessagesPage() {
               {filtered.map(convo => (
                 <button key={convo.client.id} onClick={() => openConversation(convo.client.id)}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all hover:scale-[1.01]"
-                  style={{ background: "var(--surface)", border: `1px solid ${convo.unread > 0 ? "var(--accent)" : "var(--border)"}` }}>
+                  style={{ background: "var(--surface)", border: `1px solid ${convo.hasAdmin ? "#3B82F6" : convo.unread > 0 ? "var(--accent)" : "var(--border)"}` }}>
                   <div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                    style={{ background: convo.unread > 0 ? "rgba(230,51,41,0.1)" : "rgba(0,0,0,0.06)", color: convo.unread > 0 ? "var(--accent)" : "var(--text-muted)" }}>
-                    {clientName(convo.client).charAt(0).toUpperCase()}
+                    style={{ background: convo.hasAdmin ? "rgba(59,130,246,0.12)" : convo.unread > 0 ? "rgba(230,51,41,0.1)" : "rgba(0,0,0,0.06)", color: convo.hasAdmin ? "#3B82F6" : convo.unread > 0 ? "var(--accent)" : "var(--text-muted)" }}>
+                    {convo.hasAdmin ? "🔷" : clientName(convo.client).charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0 text-left">
                     <div className="flex items-center gap-2">
+                      {convo.hasAdmin && <span className="text-[8px] font-bold px-1 py-0.5 rounded" style={{ background: "rgba(59,130,246,0.12)", color: "#3B82F6" }}>ADMIN</span>}
                       <span className="text-xs font-bold" style={{ color: "var(--text)" }}>@{clientName(convo.client)}</span>
                       {convo.unread > 0 && (
-                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold" style={{ background: "var(--accent)", color: "#fff" }}>
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold" style={{ background: convo.hasAdmin ? "#3B82F6" : "var(--accent)", color: "#fff" }}>
                           {convo.unread}
                         </span>
                       )}
                     </div>
                     <p className="text-[10px] truncate mt-0.5" style={{ color: convo.unread > 0 ? "var(--text)" : "var(--text-muted)" }}>
-                      {convo.lastMessage.sender_type === "model" ? "Toi: " : ""}{convo.lastMessage.content}
+                      {convo.lastMessage.sender_type === "admin" ? "🔷 Admin: " : convo.lastMessage.sender_type === "model" ? "Toi: " : ""}{convo.lastMessage.content}
                     </p>
                   </div>
                   <span className="text-[9px] shrink-0" style={{ color: "var(--text-muted)" }}>
