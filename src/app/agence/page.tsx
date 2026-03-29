@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Plus, KeyRound, Eye, Pencil, Wifi, WifiOff, Instagram, Globe, ExternalLink, Send, Image, Heart, MessageCircle, Trash2, ChevronDown } from "lucide-react";
+import { Plus, KeyRound, Eye, Pencil, Wifi, WifiOff, Instagram, Globe, ExternalLink, Send, Image, Heart, MessageCircle, Trash2, ChevronDown, X } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
@@ -52,6 +52,7 @@ export default function AgenceDashboard() {
   // Feed composer
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostTier, setNewPostTier] = useState("public");
+  const [newPostImage, setNewPostImage] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
 
   // FAB
@@ -193,23 +194,43 @@ export default function AgenceDashboard() {
 
   // ── Feed handlers ──
   const handleCreatePost = useCallback(async () => {
-    if (!newPostContent.trim() || posting) return;
+    if ((!newPostContent.trim() && !newPostImage) || posting) return;
     setPosting(true);
     try {
+      let mediaUrl: string | null = null;
+      // Upload image first if selected
+      if (newPostImage) {
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ file: newPostImage, folder: `heaven/${modelSlug}/posts` }),
+        });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          mediaUrl = uploadData.url || null;
+        }
+      }
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: authHeaders(),
-        body: JSON.stringify({ model: modelSlug, content: newPostContent, tier_required: newPostTier }),
+        body: JSON.stringify({
+          model: modelSlug,
+          content: newPostContent || null,
+          tier_required: newPostTier,
+          media_url: mediaUrl,
+          media_type: mediaUrl ? "image" : null,
+        }),
       });
       if (res.ok) {
         const data = await res.json();
         if (data.post) setFeedPosts(prev => [data.post, ...prev]);
         setNewPostContent("");
         setNewPostTier("public");
+        setNewPostImage(null);
       }
     } catch (err) { console.error("[Feed] create:", err); }
     finally { setPosting(false); }
-  }, [newPostContent, newPostTier, posting, modelSlug, authHeaders]);
+  }, [newPostContent, newPostTier, newPostImage, posting, modelSlug, authHeaders]);
 
   const handleDeletePost = useCallback(async (postId: string) => {
     try {
@@ -312,18 +333,43 @@ export default function AgenceDashboard() {
                     onChange={e => setNewPostContent(e.target.value)}
                     placeholder="Quoi de neuf ?"
                     rows={2}
-                    className="w-full bg-transparent text-sm text-[var(--text)] outline-none resize-none placeholder:text-[var(--text-muted)]"
+                    className="w-full bg-transparent text-sm outline-none resize-none"
+                    style={{ color: "var(--text)" }}
                   />
-                  <div className="flex items-center justify-between">
+                  {/* Image preview */}
+                  {newPostImage && (
+                    <div className="relative rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+                      <img src={newPostImage} alt="" className="w-full max-h-[200px] object-cover" />
+                      <button onClick={() => setNewPostImage(null)}
+                        className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
+                        style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}>
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
+                      {/* Image upload */}
+                      <label className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all hover:opacity-70"
+                        style={{ background: "rgba(0,0,0,0.04)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+                        <Image className="w-3.5 h-3.5" /> Photo
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = () => setNewPostImage(reader.result as string);
+                          reader.readAsDataURL(file);
+                          e.target.value = "";
+                        }} />
+                      </label>
                       {/* Tier selector */}
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-0.5">
                         {TIER_OPTIONS.map(t => (
                           <button key={t.id} onClick={() => setNewPostTier(t.id)}
                             className="px-2 py-0.5 rounded-full text-[9px] font-bold cursor-pointer transition-all"
                             style={{
                               background: newPostTier === t.id ? `${t.color}20` : "transparent",
-                              color: newPostTier === t.id ? t.color : "#555",
+                              color: newPostTier === t.id ? t.color : "var(--text-muted)",
                               border: `1px solid ${newPostTier === t.id ? `${t.color}40` : "transparent"}`,
                             }}>
                             {t.label}
@@ -331,9 +377,9 @@ export default function AgenceDashboard() {
                         ))}
                       </div>
                     </div>
-                    <button onClick={handleCreatePost} disabled={!newPostContent.trim() || posting}
+                    <button onClick={handleCreatePost} disabled={(!newPostContent.trim() && !newPostImage) || posting}
                       className="px-4 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-105 disabled:opacity-30"
-                      style={{ background: "#E63329", color: "var(--text)" }}>
+                      style={{ background: "var(--accent)", color: "#fff" }}>
                       {posting ? "..." : "Publier"}
                     </button>
                   </div>
