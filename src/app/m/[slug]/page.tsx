@@ -888,7 +888,9 @@ export default function ModelPage() {
             </div>
             <div className="min-w-0">
               <span className="text-xs font-bold block truncate" style={{ color: "var(--text)" }}>{model.display_name}</span>
-              <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{posts.length} posts · {wallPosts.length} fans · {activePacks.length} packs</span>
+              <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>
+                {posts.length} posts · {wallPosts.length} fans{displayModel?.status ? ` · ${displayModel.status}` : ""}
+              </span>
             </div>
             {/* Platform icons */}
             {(() => {
@@ -934,19 +936,7 @@ export default function ModelPage() {
           </div>
         </div>
 
-        {/* ═══ STATUS TICKER — scrolling under header ═══ */}
-        {displayModel?.status && (
-          <div className="overflow-hidden py-1" style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
-            <div className="whitespace-nowrap" style={{ animation: "tickerScroll 15s linear infinite" }}>
-              <span className="text-[10px] font-medium inline-block px-8" style={{ color: "var(--text-muted)" }}>
-                {displayModel.online ? "🟢" : "⚫"} {displayModel.status} &nbsp;&nbsp;&nbsp; {displayModel.online ? "🟢" : "⚫"} {displayModel.status} &nbsp;&nbsp;&nbsp; {displayModel.online ? "🟢" : "⚫"} {displayModel.status}
-              </span>
-            </div>
-          </div>
-        )}
-        <style>{`
-          @keyframes tickerScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-33.33%); } }
-        `}</style>
+        {/* Ticker removed — status is in header bar */}
 
         {/* ═══ BANNER — short, edge to edge ═══ */}
         <div className="relative profile-stagger-1">
