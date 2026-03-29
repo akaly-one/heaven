@@ -842,6 +842,15 @@ export default function ModelPage() {
   const tierCounts = allGalleryItems.reduce((acc, u) => { acc[u.tier] = (acc[u.tier] || 0) + 1; return acc; }, {} as Record<string, number>);
 
   // ── Loading / 404 ──
+  // ── Global image protection ──
+  useEffect(() => {
+    const blockCtx = (e: MouseEvent) => { if ((e.target as HTMLElement)?.tagName === "IMG") e.preventDefault(); };
+    const blockDrag = (e: DragEvent) => { if ((e.target as HTMLElement)?.tagName === "IMG") e.preventDefault(); };
+    document.addEventListener("contextmenu", blockCtx);
+    document.addEventListener("dragstart", blockDrag);
+    return () => { document.removeEventListener("contextmenu", blockCtx); document.removeEventListener("dragstart", blockDrag); };
+  }, []);
+
   if (notFound) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{ background: "var(--bg)" }}>
@@ -875,15 +884,6 @@ export default function ModelPage() {
       </div>
     );
   }
-
-  // ── Global image protection: block right-click + drag on ALL images ──
-  useEffect(() => {
-    const blockCtx = (e: MouseEvent) => { if ((e.target as HTMLElement)?.tagName === "IMG") e.preventDefault(); };
-    const blockDrag = (e: DragEvent) => { if ((e.target as HTMLElement)?.tagName === "IMG") e.preventDefault(); };
-    document.addEventListener("contextmenu", blockCtx);
-    document.addEventListener("dragstart", blockDrag);
-    return () => { document.removeEventListener("contextmenu", blockCtx); document.removeEventListener("dragstart", blockDrag); };
-  }, []);
 
   return (
     <div className="min-h-screen pb-20" style={{ background: "var(--bg)", userSelect: "none", WebkitUserSelect: "none" }}>
