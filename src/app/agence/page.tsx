@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { KeyRound, Eye, Pencil, Instagram, Globe, ExternalLink, Image, Heart, MessageCircle, Trash2, X } from "lucide-react";
+import { KeyRound, Eye, Pencil, Instagram, Globe, ExternalLink, Image, Heart, MessageCircle, Trash2, X, Settings } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
@@ -345,6 +345,11 @@ export default function AgenceDashboard() {
               style={{ background: "rgba(230,51,41,0.12)", border: "1px solid rgba(230,51,41,0.25)" }}>
               <Pencil className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
               <span className="text-[11px] font-semibold hidden md:inline" style={{ color: "var(--accent)" }}>Edit</span>
+            </a>
+            <a href="/agence/settings"
+              className="flex items-center justify-center w-9 h-9 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-transform no-underline"
+              style={{ background: "rgba(0,0,0,0.04)", border: "1px solid var(--border)" }}>
+              <Settings className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
             </a>
           </div>
 

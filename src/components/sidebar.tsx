@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, MessageCircle, Users, Settings, ChevronLeft, ChevronRight, Crown, KeyRound } from "lucide-react";
+import { LayoutDashboard, MessageCircle, Users, Image, ChevronLeft, ChevronRight, Crown, KeyRound, Settings } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { HeavenAuth } from "./auth-guard";
 
@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/agence", color: "#E63329" },
   { id: "messages", label: "Messages", icon: MessageCircle, href: "/agence/messages", color: "#F43F5E" },
   { id: "clients", label: "Clients", icon: Users, href: "/agence/clients", color: "#F59E0B" },
-  { id: "settings", label: "Reglages", icon: Settings, href: "/agence/settings", color: "#64748B" },
+  { id: "media", label: "Media", icon: Image, href: "/agence/media", color: "#8B5CF6" },
 ] as const;
 
 function useAuth(): HeavenAuth | null {
@@ -120,11 +120,11 @@ export function Sidebar() {
             <KeyRound className="w-5 h-5" />
             <span className="text-[8px] font-medium">Code</span>
           </button>
-          {/* Reglages */}
-          <a href="/agence/settings" className="flex flex-col items-center gap-0.5 px-2 py-1 no-underline"
-            style={{ color: pathname.startsWith("/agence/settings") ? "var(--accent)" : "var(--text-muted)" }}>
-            <Settings className="w-5 h-5" />
-            <span className="text-[8px] font-medium">Reglages</span>
+          {/* Media */}
+          <a href="/agence/media" className="flex flex-col items-center gap-0.5 px-2 py-1 no-underline"
+            style={{ color: pathname.startsWith("/agence/media") ? "var(--accent)" : "var(--text-muted)" }}>
+            <Image className="w-5 h-5" />
+            <span className="text-[8px] font-medium">Media</span>
           </a>
         </div>
       </nav>
