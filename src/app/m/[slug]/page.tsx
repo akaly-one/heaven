@@ -836,14 +836,8 @@ export default function ModelPage() {
           ) : (
             <div />
           )}
-          {/* Message button for visitors */}
-          {visitorRegistered && !isModelLoggedIn && (
-            <button onClick={() => setChatOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold cursor-pointer"
-              style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(8px)", color: "#fff" }}>
-              <MessageCircle className="w-3.5 h-3.5" /> Message
-            </button>
-          )}
+          {/* Message via FAB bubble at bottom — no duplicate here */}
+          <div />
         </div>
 
         {/* ═══ HERO — auto banner from latest post image ═══ */}
@@ -1555,12 +1549,15 @@ export default function ModelPage() {
                   boxShadow: "0 4px 20px rgba(230,51,41,0.4)",
                 }}>
                 <MessageCircle className="w-6 h-6 text-white" />
-                {chatMessages.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center"
-                    style={{ background: "var(--success)", color: "#fff" }}>
-                    {chatMessages.length}
-                  </span>
-                )}
+                {(() => {
+                  const unread = chatMessages.filter(m => m.sender_type === "model").length;
+                  return unread > 0 ? (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center"
+                      style={{ background: "var(--success)", color: "#fff" }}>
+                      {unread}
+                    </span>
+                  ) : null;
+                })()}
               </button>
             )}
 
