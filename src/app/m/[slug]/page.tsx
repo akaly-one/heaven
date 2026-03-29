@@ -1343,15 +1343,16 @@ export default function ModelPage() {
                                 onClick={() => setLightboxUrl(post.media_url)} loading="lazy" />
                             ) : (
                               <div onClick={() => setShowUnlock(true)}>
-                                <img src={post.media_url!} alt="" className="w-full h-full object-cover" style={{ filter: "blur(16px) brightness(0.5)" }} />
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <Lock className="w-4 h-4" style={{ color: "#fff" }} />
+                                <img src={post.media_url!} alt="" className="w-full h-full object-cover" style={{ filter: "blur(8px) brightness(0.7)" }} />
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                  <span className="text-lg mb-0.5">{tier === "vip" ? "♥" : tier === "gold" ? "★" : tier === "diamond" ? "♦" : tier === "platinum" ? "♛" : ""}</span>
+                                  <span className="text-[9px] font-bold" style={{ color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>{tier.toUpperCase()}</span>
                                 </div>
                               </div>
                             )}
                             {tier !== "public" && unlocked && (
                               <span className="absolute top-1 right-1 text-[8px] font-bold px-1 py-0.5 rounded"
-                                style={{ background: "rgba(0,0,0,0.5)", color: "#fff" }}>{tier.toUpperCase()}</span>
+                                style={{ background: "rgba(0,0,0,0.4)", color: "#fff" }}>{tier === "vip" ? "♥" : tier === "gold" ? "★" : tier === "diamond" ? "♦" : "♛"}</span>
                             )}
                             {/* Edit mode: delete + change tier */}
                             {isEditMode && (
@@ -1372,22 +1373,7 @@ export default function ModelPage() {
                   </div>
                 )}
 
-                {/* Also show uploaded gallery items */}
-                {galleryItems.length > 0 && (
-                  <GalleryTab
-                    isEditMode={isEditMode} isModelLoggedIn={isModelLoggedIn}
-                    uploads={uploads} galleryItems={galleryItems} galleryTier={galleryTier}
-                    setGalleryTier={setGalleryTier} tierCounts={tierCounts} unlockedTier={unlockedTier}
-                    purchasedItems={purchasedItems} handleCreditPurchase={handleCreditPurchase}
-                    setShowUnlock={setShowUnlock} subscriberUsername={subscriberUsername}
-                    hasSubscriberIdentity={hasSubscriberIdentity} editingUploadId={editingUploadId}
-                    setEditingUploadId={setEditingUploadId} editUploadData={editUploadData}
-                    setEditUploadData={setEditUploadData} handleDeleteMedia={handleDeleteMedia}
-                    handleUpdateMedia={handleUpdateMedia} handleAddMedia={handleAddMedia}
-                    mediaInputRef={mediaInputRef} uploading={uploading} tierIncludes={tierIncludes}
-                    onImageClick={(url: string) => setLightboxUrl(url)}
-                  />
-                )}
+                {/* GalleryTab removed — images shown once above */}
               </div>
             );
           })()}
