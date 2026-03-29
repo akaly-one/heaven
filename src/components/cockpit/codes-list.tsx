@@ -164,17 +164,17 @@ export function CodesList({
 
   return (
     <div className="space-y-3">
-      {/* Search + filters */}
-      <div className="flex gap-2 items-center">
-        <div className="relative flex-1 flex gap-1.5">
+      {/* Search */}
+      <div className="space-y-2">
+        <div className="flex gap-1.5">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Rechercher..."
-              className="w-full pl-9 pr-3 py-2 rounded-xl text-xs outline-none glass"
-              style={{ color: "var(--text)" }}
+              placeholder="Rechercher un client ou code..."
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl text-xs outline-none"
+              style={{ color: "var(--text)", background: "var(--bg)", border: "1px solid var(--border)" }}
             />
           </div>
           {search.trim() && onGenerateForClient && (
@@ -183,19 +183,19 @@ export function CodesList({
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-semibold cursor-pointer hover:scale-105 active:scale-95 transition-transform whitespace-nowrap shrink-0"
               style={{ background: "var(--accent)", color: "#fff" }}
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Generer</span>
+              <Plus className="w-3.5 h-3.5" /> Generer
             </button>
           )}
         </div>
-        <div className="flex gap-1">
+        {/* Filters — separate row */}
+        <div className="flex gap-1 overflow-x-auto">
           {STATUS_FILTERS.map(f => (
             <button
               key={f.id}
               onClick={() => setStatusFilter(f.id)}
-              className="px-2.5 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer transition-all"
+              className="px-2.5 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all shrink-0"
               style={{
-                background: statusFilter === f.id ? "var(--accent)" : "rgba(255,255,255,0.03)",
+                background: statusFilter === f.id ? "var(--accent)" : "rgba(0,0,0,0.03)",
                 color: statusFilter === f.id ? "#fff" : "var(--text-muted)",
               }}
             >
