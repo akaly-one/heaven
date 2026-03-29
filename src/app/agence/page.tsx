@@ -488,6 +488,24 @@ export default function AgenceDashboard() {
                 ))}
               </div>
             )}
+            {/* Wall posts from visitors */}
+            {wallPosts.length > 0 && (
+              <div className="space-y-2 mt-2">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Messages des visiteurs</h3>
+                {wallPosts.filter(w => !w.content?.includes("#post-")).slice(0, 5).map(w => (
+                  <div key={w.id} className="flex items-start gap-2 px-3 py-2 rounded-xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                      style={{ background: "rgba(0,0,0,0.06)", color: "var(--text-muted)" }}>
+                      {w.pseudo?.charAt(0)?.toUpperCase() || "?"}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>@{w.pseudo}</span>
+                      <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>{w.content}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             </div>{/* end left column */}
 
             {/* ── RIGHT: Codes/Clients + Notifs (2/5) ── */}
