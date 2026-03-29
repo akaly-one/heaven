@@ -1614,7 +1614,7 @@ export default function ModelPage() {
                 {activePacks.map(pack => {
                   const hex = TIER_HEX[pack.id] || pack.color;
                   const bonus = TIER_CREDIT_BONUS[pack.id];
-                  const paypalUrl = `https://paypal.me/sqwensy/${pack.price}EUR`;
+                  const paypalUrl = `https://paypal.me/aaclaraa/${pack.price}EUR`;
                   const payUrl = pack.stripe_link || pack.wise_url || paypalUrl;
                   return (
                     <div key={pack.id} className="w-full p-4 rounded-xl"
