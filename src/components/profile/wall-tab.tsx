@@ -60,11 +60,11 @@ export function WallTab({
         <div className="flex items-start gap-3">
           <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
             style={{
-              background: visitorPlatform === "snap" ? "rgba(255,252,0,0.15)"
+              background: visitorPlatform === "snap" ? "rgba(153,122,0,0.15)"
                 : visitorPlatform === "insta" ? "rgba(225,48,108,0.15)"
                 : visitorPlatform === "phone" ? "rgba(22,163,74,0.12)"
                 : "rgba(99,102,241,0.12)",
-              color: visitorPlatform === "snap" ? "#FFFC00"
+              color: visitorPlatform === "snap" ? "#997A00"
                 : visitorPlatform === "insta" ? "#E1306C"
                 : visitorPlatform === "phone" ? "#16A34A"
                 : "#6366F1",
@@ -77,7 +77,7 @@ export function WallTab({
           </div>
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex items-center gap-2">
-              {visitorPlatform === "snap" ? <Ghost className="w-3.5 h-3.5 shrink-0" style={{ color: "#FFFC00" }} />
+              {visitorPlatform === "snap" ? <Ghost className="w-3.5 h-3.5 shrink-0" style={{ color: "#997A00" }} />
                 : visitorPlatform === "insta" ? <Instagram className="w-3.5 h-3.5 shrink-0" style={{ color: "#E1306C" }} />
                 : null
               }
@@ -260,7 +260,7 @@ export function WallTab({
                     </button>
                     {(wp.pseudo_snap || wp.pseudo_insta) && (
                       <div className="flex items-center gap-1">
-                        {wp.pseudo_snap && <Ghost className="w-3 h-3" style={{ color: "#FFFC00" }} />}
+                        {wp.pseudo_snap && <Ghost className="w-3 h-3" style={{ color: "#997A00" }} />}
                         {wp.pseudo_insta && <Instagram className="w-3 h-3" style={{ color: "#E1306C" }} />}
                       </div>
                     )}
@@ -293,7 +293,7 @@ export function WallTab({
             <p className="text-[11px] font-bold" style={{ color: "var(--text)" }}>@{socialPopup.pseudo}</p>
             {socialPopup.snap && (
               <div className="flex items-center gap-2">
-                <Ghost className="w-3.5 h-3.5" style={{ color: "#FFFC00" }} />
+                <Ghost className="w-3.5 h-3.5" style={{ color: "#997A00" }} />
                 <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>{socialPopup.snap}</span>
               </div>
             )}

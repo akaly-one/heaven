@@ -107,7 +107,7 @@ export default function ModelPage() {
   const [wallPosts, setWallPosts] = useState<WallPost[]>([]);
   const [wallContent, setWallContent] = useState("");
   const [wallPosting, setWallPosting] = useState(false);
-  const [socialPopup, setSocialPopup] = useState<{ pseudo: string; snap?: string | null; insta?: string | null; x: number; y: number } | null>(null);
+  // socialPopup removed — wall tab was merged into feed
 
   // Unified visitor identity: snap/insta/phone/pseudo = client identity
   const [clientId, setClientId] = useState<string | null>(null);

@@ -295,10 +295,10 @@ export default function AgenceDashboard() {
           </div>
 
           {/* ── 2-column layout: Feed LEFT + Codes/Notifs RIGHT ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 fade-up-2">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 fade-up-2">
 
             {/* ── LEFT: Feed (3/5) ── */}
-            <div className="lg:col-span-3 space-y-3">
+            <div className="md:col-span-3 space-y-3">
             {/* Composer */}
             <div className="rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
               <div className="flex items-start gap-3">
@@ -384,7 +384,7 @@ export default function AgenceDashboard() {
             </div>{/* end left column */}
 
             {/* ── RIGHT: Codes/Clients + Notifs (2/5) ── */}
-            <div className="lg:col-span-2 space-y-3">
+            <div className="md:col-span-2 space-y-3">
 
             {/* Messages notification */}
             <div className="rounded-2xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>

@@ -15,7 +15,7 @@ interface IdentityGateProps {
 const PLATFORMS: { id: Platform; label: string; icon: typeof Ghost; color: string; bg: string; border: string; placeholder: string; maxLength: number }[] = [
   {
     id: "snap", label: "Snapchat", icon: Ghost,
-    color: "#FFFC00", bg: "rgba(255,252,0,0.12)", border: "rgba(255,252,0,0.35)",
+    color: "#997A00", bg: "rgba(153,122,0,0.12)", border: "rgba(153,122,0,0.35)",
     placeholder: "Ton pseudo Snapchat", maxLength: 30,
   },
   {
