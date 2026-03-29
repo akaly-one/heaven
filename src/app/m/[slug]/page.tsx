@@ -1247,10 +1247,28 @@ export default function ModelPage() {
                           </div>
                         ) : (
                           <div className="relative cursor-pointer my-2 rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}
-                            onClick={() => setShowUnlock(true)}>
-                            <img src={post.media_url} alt="" className="w-full max-h-[200px] object-cover" style={{ filter: "blur(20px) brightness(0.5)" }} />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <Lock className="w-5 h-5" style={{ color: tierHex }} />
+                            onClick={async () => {
+                              const creditPrice = postTier === "vip" ? 10 : postTier === "gold" ? 20 : postTier === "diamond" ? 30 : 40;
+                              if (purchasedItems.has(post.id)) { setLightboxUrl(post.media_url); return; }
+                              if (clientBalance >= creditPrice && clientId) {
+                                try {
+                                  await fetch("/api/credits/purchase", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ client_id: clientId, upload_id: post.id, price: creditPrice }),
+                                  });
+                                  setPurchasedItems(prev => new Set([...prev, post.id]));
+                                } catch {}
+                              } else {
+                                setShowUnlock(true);
+                              }
+                            }}>
+                            <img src={post.media_url!} alt="" className="w-full max-h-[200px] object-cover" style={{ filter: "blur(8px) brightness(0.7)" }} />
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                              <span className="text-lg">{postTier === "vip" ? "♥" : postTier === "gold" ? "★" : postTier === "diamond" ? "♦" : "♛"}</span>
+                              <span className="text-xs font-bold mt-0.5" style={{ color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>
+                                {postTier === "vip" ? "10" : postTier === "gold" ? "20" : postTier === "diamond" ? "30" : "40"}€
+                              </span>
                             </div>
                           </div>
                         )
@@ -1392,11 +1410,19 @@ export default function ModelPage() {
                               <img src={post.media_url!} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-105"
                                 onClick={() => setLightboxUrl(post.media_url)} loading="lazy" />
                             ) : (
-                              <div onClick={() => setShowUnlock(true)}>
+                              <div onClick={async () => {
+                                const creditPrice = tier === "vip" ? 10 : tier === "gold" ? 20 : tier === "diamond" ? 30 : 40;
+                                if (purchasedItems.has(post.id)) { setLightboxUrl(post.media_url); return; }
+                                if (clientBalance >= creditPrice && clientId) {
+                                  try { await fetch("/api/credits/purchase", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client_id: clientId, upload_id: post.id, price: creditPrice }) }); setPurchasedItems(prev => new Set([...prev, post.id])); } catch {}
+                                } else { setShowUnlock(true); }
+                              }}>
                                 <img src={post.media_url!} alt="" className="w-full h-full object-cover" style={{ filter: "blur(8px) brightness(0.7)" }} />
                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                  <span className="text-lg mb-0.5">{tier === "vip" ? "♥" : tier === "gold" ? "★" : tier === "diamond" ? "♦" : tier === "platinum" ? "♛" : ""}</span>
-                                  <span className="text-[9px] font-bold" style={{ color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>{tier.toUpperCase()}</span>
+                                  <span className="text-base">{tier === "vip" ? "♥" : tier === "gold" ? "★" : tier === "diamond" ? "♦" : "♛"}</span>
+                                  <span className="text-[10px] font-bold" style={{ color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>
+                                    {tier === "vip" ? "10" : tier === "gold" ? "20" : tier === "diamond" ? "30" : "40"}€
+                                  </span>
                                 </div>
                               </div>
                             )}
