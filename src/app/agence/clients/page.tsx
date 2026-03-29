@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useModel } from "@/lib/model-context";
 import { OsLayout } from "@/components/os-layout";
-import { Search, ArrowLeft, Trash2, Check, X, ChevronRight, Edit3, MessageCircle, Key, Copy, Link2, Clock, Send, Plus } from "lucide-react";
+import { Search, ArrowLeft, Trash2, Check, X, ChevronRight, Edit3, MessageCircle, Key, Copy, Link2, Clock, Send, Plus, GitMerge, UserPlus } from "lucide-react";
 import type { AccessCode, Message } from "@/types/heaven";
 
 interface Client {
@@ -26,6 +26,9 @@ export default function ClientsPage() {
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [extending, setExtending] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addPseudo, setAddPseudo] = useState("");
+  const [addPlatform, setAddPlatform] = useState<"snap" | "insta">("snap");
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   const handleCopy = (text: string, id: string) => { navigator.clipboard.writeText(text); setCopied(id); setTimeout(() => setCopied(null), 2000); };
@@ -61,6 +64,44 @@ export default function ClientsPage() {
     fetchAll();
   };
 
+  const addClient = async () => {
+    if (!addPseudo.trim()) return;
+    const payload: Record<string, unknown> = { model };
+    if (addPlatform === "snap") payload.pseudo_snap = addPseudo.trim().toLowerCase();
+    else payload.pseudo_insta = addPseudo.trim().toLowerCase();
+    await fetch("/api/clients", { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) });
+    setAddPseudo(""); setShowAdd(false); fetchAll();
+  };
+
+  const mergeSelected = async () => {
+    if (selected.size < 2) return;
+    const ids = [...selected];
+    const keep = clients.find(c => c.id === ids[0]);
+    if (!keep) return;
+    const others = ids.slice(1);
+    const otherClients = others.map(id => clients.find(c => c.id === id)).filter(Boolean) as Client[];
+    const names = [keep, ...otherClients].map(c => `@${c.pseudo_snap || c.pseudo_insta || c.id.slice(0, 6)}`).join(", ");
+    if (!confirm(`Fusionner ${names} → garder @${keep.pseudo_snap || keep.pseudo_insta || keep.id.slice(0, 6)} ?`)) return;
+
+    // Move codes + messages from others to keep
+    for (const other of otherClients) {
+      const pseudo = other.pseudo_snap || other.pseudo_insta || "";
+      // Update codes: change client field to keep's pseudo
+      for (const code of codes.filter(c => c.client === (other.pseudo_snap || other.pseudo_insta))) {
+        await fetch("/api/codes", { method: "PATCH", headers: authHeaders(),
+          body: JSON.stringify({ code: code.code, model, updates: { client: keep.pseudo_snap || keep.pseudo_insta || "" } }) });
+      }
+      // Update messages: change client_id to keep's id
+      for (const msg of messages.filter(m => m.client_id === other.id)) {
+        await fetch("/api/messages", { method: "PATCH", headers: authHeaders(),
+          body: JSON.stringify({ id: msg.id, client_id: keep.id }) });
+      }
+      // Delete the other client
+      await fetch(`/api/clients?id=${other.id}`, { method: "DELETE", headers: authHeaders() });
+    }
+    selectNone(); fetchAll();
+  };
+
   const detailClient = clients.find(c => c.id === detail);
   const clientCodes = (id: string) => codes.filter(c => c.clientId === id || c.client === (clients.find(cl => cl.id === id)?.pseudo_snap || clients.find(cl => cl.id === id)?.pseudo_insta));
   const clientMessages = (id: string) => messages.filter(m => m.client_id === id).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -76,16 +117,62 @@ export default function ClientsPage() {
               <ArrowLeft className="w-4 h-4" />
             </a>
             <h1 className="text-base font-bold flex-1" style={{ color: "var(--text)" }}>Clients ({clients.length})</h1>
-            {selected.size > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>{selected.size} select.</span>
-                <button onClick={deleteSelected} className="px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer" style={{ background: "rgba(220,38,38,0.1)", color: "#DC2626", border: "none" }}>
-                  <Trash2 className="w-3 h-3 inline mr-1" />Supprimer
+            {selected.size > 0 ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>{selected.size}</span>
+                {selected.size >= 2 && (
+                  <button onClick={mergeSelected} className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                    style={{ background: "rgba(139,92,246,0.1)", color: "#8B5CF6", border: "none" }}>
+                    <GitMerge className="w-3 h-3 inline mr-0.5" />Fusionner
+                  </button>
+                )}
+                <button onClick={deleteSelected} className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                  style={{ background: "rgba(220,38,38,0.1)", color: "#DC2626", border: "none" }}>
+                  <Trash2 className="w-3 h-3" />
                 </button>
-                <button onClick={selectNone} className="text-[10px] cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>Annuler</button>
+                <button onClick={selectNone} className="text-[10px] cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>✕</button>
               </div>
+            ) : (
+              <button onClick={() => setShowAdd(true)} className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                style={{ background: "var(--accent)", color: "#fff", border: "none" }}>
+                <UserPlus className="w-3 h-3 inline mr-0.5" />Ajouter
+              </button>
             )}
           </div>
+
+          {/* Add client modal */}
+          {showAdd && (
+            <div className="rounded-xl p-4 mb-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+              <div className="flex items-center gap-2 mb-3">
+                <h3 className="text-xs font-bold flex-1" style={{ color: "var(--text)" }}>Nouveau client</h3>
+                <button onClick={() => setShowAdd(false)} className="cursor-pointer" style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setAddPlatform("snap")}
+                  className="w-8 h-8 rounded-full cursor-pointer shrink-0 flex items-center justify-center"
+                  style={{ background: addPlatform === "snap" ? "#997A00" : "rgba(153,122,0,0.15)", border: `2px solid ${addPlatform === "snap" ? "#997A00" : "transparent"}` }}>
+                  {addPlatform === "snap" && <span className="w-2 h-2 rounded-full bg-white" />}
+                </button>
+                <button onClick={() => setAddPlatform("insta")}
+                  className="w-8 h-8 rounded-full cursor-pointer shrink-0 flex items-center justify-center"
+                  style={{ background: addPlatform === "insta" ? "#C13584" : "rgba(193,53,132,0.15)", border: `2px solid ${addPlatform === "insta" ? "#C13584" : "transparent"}` }}>
+                  {addPlatform === "insta" && <span className="w-2 h-2 rounded-full bg-white" />}
+                </button>
+                <input value={addPseudo} onChange={e => setAddPseudo(e.target.value)}
+                  placeholder={addPlatform === "snap" ? "pseudo snap" : "pseudo insta"}
+                  className="flex-1 px-3 py-2 rounded-xl text-xs outline-none"
+                  style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
+                  onKeyDown={e => { if (e.key === "Enter") addClient(); }} />
+                <button onClick={addClient} disabled={!addPseudo.trim()}
+                  className="px-3 py-2 rounded-xl text-xs font-bold cursor-pointer disabled:opacity-30"
+                  style={{ background: "var(--accent)", color: "#fff", border: "none" }}>
+                  Creer
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Search + select all */}
           <div className="flex gap-2 mb-4">
