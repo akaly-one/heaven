@@ -175,7 +175,7 @@ export function ShopTab({
                           color: hex,
                           fontSize: isSelected ? "24px" : "18px",
                           transition: "font-size 0.3s ease",
-                        }}>{pack.price} tokens</p>
+                        }}>{pack.price}€</p>
                         {isCurrentTier && (
                           <span className="text-[10px] font-bold uppercase mt-0.5" style={{ color: "var(--success)" }}>Actif</span>
                         )}
@@ -220,7 +220,7 @@ export function ShopTab({
                           <h3 className="text-base font-bold" style={{ color: hex }}>{pack.name}</h3>
                           {pack.badge && <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>{pack.badge}</span>}
                         </div>
-                        <span className="text-2xl font-black tabular-nums" style={{ color: hex }}>{pack.price} tokens</span>
+                        <span className="text-2xl font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
                       </div>
 
                       {/* Features — staggered */}
@@ -254,7 +254,7 @@ export function ShopTab({
                       ) : (
                         <div className="space-y-2">
                           <p className="text-[10px] font-bold text-center mb-2" style={{ color: "var(--text-muted)" }}>
-                            {pack.price} tokens = {pack.price}€
+                            {pack.price}€ — choisir paiement :
                           </p>
                           <div className="grid grid-cols-2 gap-2">
                             {pack.wise_url && (
@@ -514,14 +514,14 @@ export function ShopTab({
                 <div key={t.tier} className="grid grid-cols-4 text-center text-[10px] py-2 px-1"
                   style={{ borderTop: "1px solid var(--border)" }}>
                   <span className="font-bold" style={{ color: t.color }}>{t.symbol} {t.tier}</span>
-                  <span style={{ color: "var(--text)" }}>{t.photo} tokens</span>
-                  <span style={{ color: "var(--text)" }}>{t.videoPerMin} tokens</span>
+                  <span style={{ color: "var(--text)" }}>{t.photo}€</span>
+                  <span style={{ color: "var(--text)" }}>{t.videoPerMin}€</span>
                   <span style={{ color: "var(--text-muted)" }}>{t.photo}€ / {t.videoPerMin}€</span>
                 </div>
               ))}
             </div>
             <p className="text-[9px] text-center mt-2" style={{ color: "var(--text-muted)" }}>
-              1 token = 1€ · Les videos sont facturees a la minute
+              1 credit = 1€ · Les videos sont facturees a la minute
             </p>
           </div>
         </div>

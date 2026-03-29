@@ -875,20 +875,20 @@ export default function ModelPage() {
       <div className="relative z-10">
 
         {/* ═══ HEADER BAR — sticky ═══ */}
-        <div className="sticky top-0 left-0 right-0 z-40 px-3 py-1.5 flex items-center gap-2"
+        <div className="sticky top-0 left-0 right-0 z-40 px-3 md:px-6 py-1.5 md:py-2.5 flex items-center gap-2 md:gap-4 md:justify-center"
           style={{ background: "color-mix(in srgb, var(--bg) 92%, transparent)", backdropFilter: "blur(12px)", borderBottom: "1px solid var(--border)" }}>
           {/* Left: avatar + name + stats + platform icons */}
-          <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex items-center gap-2 md:gap-3 flex-1 md:flex-initial min-w-0">
             {isModelLoggedIn && (
               <a href="/agence" className="text-[10px] font-bold no-underline shrink-0" style={{ color: "var(--accent)" }}>←</a>
             )}
-            <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border-2" style={{ borderColor: displayModel?.online ? "var(--success)" : "var(--border)", background: "linear-gradient(135deg, var(--rose), var(--accent))" }}>
+            <div className="w-9 h-9 md:w-14 md:h-14 rounded-full overflow-hidden shrink-0 border-2 md:border-3" style={{ borderColor: displayModel?.online ? "var(--success)" : "var(--border)", background: "linear-gradient(135deg, var(--rose), var(--accent))" }}>
               {model.avatar ? <img src={model.avatar} alt="" className="w-full h-full object-cover" /> :
-                <span className="flex items-center justify-center w-full h-full text-xs font-bold text-white">{model.display_name.charAt(0)}</span>}
+                <span className="flex items-center justify-center w-full h-full text-xs md:text-lg font-bold text-white">{model.display_name.charAt(0)}</span>}
             </div>
             <div className="min-w-0">
-              <span className="text-xs font-bold block truncate" style={{ color: "var(--text)" }}>{model.display_name}</span>
-              <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>
+              <span className="text-xs md:text-sm font-bold block truncate" style={{ color: "var(--text)" }}>{model.display_name}</span>
+              <span className="text-[9px] md:text-[11px]" style={{ color: "var(--text-muted)" }}>
                 {posts.length} posts · {wallPosts.length} fans{displayModel?.status ? ` · ${displayModel.status}` : ""}
               </span>
             </div>
@@ -1259,10 +1259,10 @@ export default function ModelPage() {
                             <div className="absolute inset-0 flex flex-col items-center justify-center">
                               <span className="text-lg">{postTier === "vip" ? "♥" : postTier === "gold" ? "★" : postTier === "diamond" ? "♦" : "♛"}</span>
                               <span className="text-xs font-bold mt-0.5" style={{ color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>
-                                {(() => { const bp = postTier === "vip" ? 10 : postTier === "gold" ? 20 : postTier === "diamond" ? 30 : 40; const iv = post.media_type === "video" || post.media_url?.includes("/video/"); return `${iv ? bp * 2 : bp} tokens`; })()}
+                                {(() => { const bp = postTier === "vip" ? 10 : postTier === "gold" ? 20 : postTier === "diamond" ? 30 : 40; const iv = post.media_type === "video" || post.media_url?.includes("/video/"); return `${iv ? bp * 2 : bp}€`; })()}
                               </span>
                               {(post.media_type === "video" || post.media_url?.includes("/video/")) && (
-                                <span className="text-[8px] mt-0.5" style={{ color: "rgba(255,255,255,0.6)" }}>video x2 tokens/min</span>
+                                <span className="text-[8px] mt-0.5" style={{ color: "rgba(255,255,255,0.6)" }}>video x2 €/min</span>
                               )}
                             </div>
                           </div>
@@ -1402,8 +1402,10 @@ export default function ModelPage() {
                         return (
                           <div key={post.id} className="relative aspect-square overflow-hidden cursor-pointer group">
                             {unlocked ? (
-                              <img src={post.media_url!} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                onClick={() => setLightboxUrl(post.media_url)} loading="lazy" />
+                              <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
+                                <img src={post.media_url!} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                  onClick={() => setLightboxUrl(post.media_url)} loading="lazy" />
+                              </ContentProtection>
                             ) : (
                               <div onClick={async () => {
                                 const basePrice = tier === "vip" ? 10 : tier === "gold" ? 20 : tier === "diamond" ? 30 : 40;
@@ -1418,7 +1420,7 @@ export default function ModelPage() {
                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                                   <span className="text-base">{tier === "vip" ? "♥" : tier === "gold" ? "★" : tier === "diamond" ? "♦" : "♛"}</span>
                                   <span className="text-[10px] font-bold" style={{ color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>
-                                    {(() => { const bp = tier === "vip" ? 10 : tier === "gold" ? 20 : tier === "diamond" ? 30 : 40; const iv = post.media_type === "video" || post.media_url?.includes("/video/"); return `${iv ? bp * 2 : bp} tokens`; })()}
+                                    {(() => { const bp = tier === "vip" ? 10 : tier === "gold" ? 20 : tier === "diamond" ? 30 : 40; const iv = post.media_type === "video" || post.media_url?.includes("/video/"); return `${iv ? bp * 2 : bp}€`; })()}
                                   </span>
                                 </div>
                               </div>
