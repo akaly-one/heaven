@@ -3,36 +3,21 @@
 import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
-  Coins, ShoppingBag, Check, Crown, ChevronRight,
+  ShoppingBag, Check, ChevronRight,
   Plus, X, Trash2, ToggleLeft, ToggleRight,
   Camera, Play,
 } from "lucide-react";
 import type { PackConfig, UploadedContent } from "@/types/heaven";
 import { TIER_META, TIER_HEX } from "@/constants/tiers";
 
-// ── Token pricing by tier ──
-const TOKEN_PRICING = [
+// ── Custom content pricing by tier (euros) ──
+const CONTENT_PRICING = [
   { tier: "VIP", symbol: "♥", color: "#E63329", photo: 10, videoPerMin: 20 },
   { tier: "Gold", symbol: "★", color: "#9E7C1F", photo: 20, videoPerMin: 40 },
   { tier: "Diamond", symbol: "♦", color: "#4F46E5", photo: 30, videoPerMin: 60 },
   { tier: "Platinum", symbol: "♛", color: "#7C3AED", photo: 40, videoPerMin: 80 },
 ];
 
-// ── Credit recharge packs ──
-const CREDIT_PACKS = [
-  { credits: 10, price: 10 },
-  { credits: 25, price: 25 },
-  { credits: 50, price: 45 },
-  { credits: 100, price: 80 },
-];
-
-// ── Tier bonus config ──
-const TIER_CREDIT_BONUS: Record<string, { multiplier: number; label: string; bonus?: string }> = {
-  platinum: { multiplier: 3, label: "x3", bonus: "Triple crédits sur chaque recharge" },
-  diamond: { multiplier: 2, label: "x2", bonus: "Double crédits sur chaque recharge" },
-  gold: { multiplier: 1, label: "", bonus: "1 Nude dédicacé offert à réclamer" },
-  vip: { multiplier: 1, label: "", bonus: undefined },
-};
 
 interface ShopTabProps {
   clientId: string | null;
@@ -45,25 +30,36 @@ interface ShopTabProps {
   setExpandedPack: (v: string | null) => void;
   shopSection: "packs" | "credits";
   setShopSection: (v: "packs" | "credits") => void;
-  clientBalance: number;
-  topupLoading: boolean;
-  handleTopup: (credits: number, price: number) => void;
   setChatOpen: (v: boolean) => void;
   handleUpdatePack: (packId: string, updates: Partial<PackConfig>) => void;
   handleDeletePack: (packId: string) => void;
   handleAddPack: () => void;
   visitorHandle?: string;
+  model?: string;
+  authHeaders?: () => Record<string, string>;
 }
 
 function paypalUrl(amount: number): string {
   return `https://www.paypal.com/paypalme/aaclaraa/${amount}`;
 }
 
+// Create pending purchase before redirecting to PayPal
+async function createPendingPurchase(model: string, pseudo: string, item: string, amount: number, authHeaders: () => Record<string, string>) {
+  try {
+    await fetch("/api/wall", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model, pseudo: "SYSTEM", content: `⏳ @${pseudo} souhaite acheter: ${item} (${amount}€) — en attente de validation` }),
+    });
+  } catch {}
+  window.open(paypalUrl(amount), "_blank");
+}
+
 export function ShopTab({
   clientId, unlockedTier, isEditMode, activePacks, displayPacks,
   expandedPack, setExpandedPack, shopSection, setShopSection,
-  clientBalance, topupLoading, handleTopup, setChatOpen,
-  handleUpdatePack, handleDeletePack, handleAddPack, visitorHandle,
+  setChatOpen,
+  handleUpdatePack, handleDeletePack, handleAddPack, visitorHandle, model: modelSlug, authHeaders: getAuthHeaders,
 }: ShopTabProps) {
   const pseudo = visitorHandle || "anonyme";
   const [selTier, setSelTier] = useState("vip");
@@ -72,12 +68,9 @@ export function ShopTab({
   return (
     <div className="space-y-4 fade-up">
 
-      {/* Balance — compact cart badge */}
-      {clientId && clientBalance > 0 && (
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full self-end" style={{ background: "rgba(0,0,0,0.05)", border: "1px solid var(--border)" }}>
-          <Coins className="w-3.5 h-3.5" style={{ color: "var(--gold)" }} />
-          <span className="text-xs font-bold" style={{ color: "var(--text)" }}>{clientBalance}€</span>
-        </div>
+      {/* Balance badge removed — direct euro pricing */}
+      {false && (
+        <div />
       )}
 
       {/* Sub-tabs: Packs | Crédits */}
@@ -197,7 +190,6 @@ export function ShopTab({
                 const pack = activePacks.find(p => p.id === expandedPack);
                 if (!pack) return null;
                 const hex = TIER_HEX[pack.id] || pack.color;
-                const tierBonus = TIER_CREDIT_BONUS[pack.id];
                 const isCurrentTier = unlockedTier === pack.id;
                 return (
                   <div className="mt-3 rounded-2xl overflow-hidden relative" style={{
@@ -232,17 +224,6 @@ export function ShopTab({
                         ))}
                       </ul>
 
-                      {/* Bonus */}
-                      {tierBonus && (tierBonus.multiplier > 1 || tierBonus.bonus) && (
-                        <div className="flex items-center gap-2.5 p-3 rounded-xl mb-4"
-                          style={{ background: `${hex}08`, border: `1px dashed ${hex}20` }}>
-                          <Crown className="w-4 h-4 shrink-0" style={{ color: hex }} />
-                          <p className="text-[11px] font-semibold" style={{ color: hex }}>
-                            {tierBonus.multiplier > 1 ? `Bonus ${tierBonus.label} — ${tierBonus.bonus}` : `🎁 ${tierBonus.bonus}`}
-                          </p>
-                        </div>
-                      )}
-
                       {/* CTA */}
                       {isCurrentTier ? (
                         <div className="w-full py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2"
@@ -262,11 +243,11 @@ export function ShopTab({
                                 Revolut · {pack.price}€
                               </a>
                             )}
-                            <a href={pack.stripe_link || paypalUrl(pack.price)} target="_blank" rel="noopener noreferrer"
-                              className={`py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 no-underline transition-all hover:scale-[1.02] active:scale-[0.98] ${!pack.wise_url ? "col-span-2" : ""}`}
-                              style={{ background: "#003087", color: "#fff" }}>
+                            <button onClick={() => createPendingPurchase(modelSlug || "", pseudo, `Pack ${pack.name}`, pack.price, getAuthHeaders || (() => ({ "Content-Type": "application/json" })))}
+                              className={`py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98] ${!pack.wise_url ? "col-span-2" : ""}`}
+                              style={{ background: "#003087", color: "#fff", border: "none" }}>
                               PayPal · {pack.price}€
-                            </a>
+                            </button>
                           </div>
                           <p className="text-[9px] text-center mt-1" style={{ color: "var(--accent)" }}>
                             Ajoute <b>@{pseudo}</b> en note PayPal
@@ -283,7 +264,6 @@ export function ShopTab({
                 <div className="space-y-3 mt-3">
                   {displayPacks.map((pack) => {
                     const hex = TIER_HEX[pack.id] || pack.color;
-                    const tierBonus = TIER_CREDIT_BONUS[pack.id];
                     return (
                       <div key={pack.id} className="card-premium relative overflow-hidden">
                         <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${hex}, transparent)`, opacity: 0.5 }} />
@@ -344,17 +324,6 @@ export function ShopTab({
                             </button>
                           </div>
 
-                          {/* Bonus */}
-                          {tierBonus && (tierBonus.multiplier > 1 || tierBonus.bonus) && (
-                            <div className="flex items-center gap-2 p-2.5 rounded-lg mb-3"
-                              style={{ background: `${hex}08`, border: `1px dashed ${hex}20` }}>
-                              <Crown className="w-3.5 h-3.5 shrink-0" style={{ color: hex }} />
-                              <p className="text-[10px] font-semibold" style={{ color: hex }}>
-                                {tierBonus.multiplier > 1 ? `Bonus ${tierBonus.label} — ${tierBonus.bonus}` : `🎁 ${tierBonus.bonus}`}
-                              </p>
-                            </div>
-                          )}
-
                           {/* Payment links + Toggle */}
                           <div className="space-y-2">
                             <div>
@@ -411,7 +380,7 @@ export function ShopTab({
 
       {/* ──── CONTENU PERSONNALISE ──── */}
       {shopSection === "credits" && (() => {
-        const tier = TOKEN_PRICING.find(t => t.tier.toLowerCase() === selTier) || TOKEN_PRICING[0];
+        const tier = CONTENT_PRICING.find(t => t.tier.toLowerCase() === selTier) || CONTENT_PRICING[0];
         const price = selType === "photo" ? tier.photo : tier.videoPerMin * videoMin;
 
         return (
@@ -420,7 +389,7 @@ export function ShopTab({
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>Niveau</p>
               <div className="flex gap-2">
-                {TOKEN_PRICING.map(t => (
+                {CONTENT_PRICING.map(t => (
                   <button key={t.tier} onClick={() => setSelTier(t.tier.toLowerCase())}
                     className="flex-1 py-2.5 rounded-xl text-center cursor-pointer transition-all"
                     style={{
@@ -484,11 +453,14 @@ export function ShopTab({
               <p className="text-[10px] mb-3" style={{ color: "var(--text-muted)" }}>
                 {selType === "photo" ? "1 photo" : `${videoMin} min de video`} {tier.tier}
               </p>
-              <a href={paypalUrl(price)} target="_blank" rel="noopener noreferrer"
-                className="block w-full py-3 rounded-xl text-sm font-bold no-underline cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                style={{ background: "#003087", color: "#fff" }}>
+              <button onClick={() => {
+                const desc = selType === "photo" ? `Photo ${tier.tier}` : `Video ${tier.tier} ${videoMin}min`;
+                createPendingPurchase(modelSlug || "", pseudo, desc, price, getAuthHeaders || (() => ({ "Content-Type": "application/json" })));
+              }}
+                className="block w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                style={{ background: "#003087", color: "#fff", border: "none" }}>
                 Payer {price}€ via PayPal
-              </a>
+              </button>
               <p className="text-[9px] mt-2" style={{ color: "var(--accent)" }}>
                 Ajoute <b>@{pseudo}</b> en note PayPal
               </p>

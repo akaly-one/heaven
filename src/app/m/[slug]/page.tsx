@@ -33,13 +33,6 @@ const TABS = [
 ] as const;
 type TabId = typeof TABS[number]["id"];
 
-// ── Tier bonus config (used by unlock sheet + checkout modal + handleTopup) ──
-const TIER_CREDIT_BONUS: Record<string, { multiplier: number; label: string; bonus?: string }> = {
-  platinum: { multiplier: 3, label: "x3", bonus: "Triple crédits sur chaque recharge" },
-  diamond: { multiplier: 2, label: "x2", bonus: "Double crédits sur chaque recharge" },
-  gold: { multiplier: 1, label: "", bonus: "1 Nude dédicacé offert à réclamer" },
-  vip: { multiplier: 1, label: "", bonus: undefined },
-};
 
 // ── Platform icons for header ──
 const PLATFORMS_MAP: Record<string, { color: string; prefix: string }> = {
@@ -170,16 +163,13 @@ export default function ModelPage() {
   // Gallery filter
   const [galleryTier, setGalleryTier] = useState("all");
 
-  // Credit purchases & balance
+  // Purchases & shop
   const [purchasedItems, setPurchasedItems] = useState<Set<string>>(new Set());
-  const [creditPurchaseModal, setCreditPurchaseModal] = useState<UploadedContent | null>(null);
-  const [clientBalance, setClientBalance] = useState(0);
   const [shopSection, setShopSection] = useState<"packs" | "credits">("packs");
   const [expandedPack, setExpandedPack] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [selectedPack, setSelectedPack] = useState<PackConfig | null>(null);
-  const [topupLoading, setTopupLoading] = useState(false);
   const [shopToast, setShopToast] = useState<string | null>(null);
 
   // ── Edit Mode ──
@@ -212,21 +202,6 @@ export default function ModelPage() {
     } catch {}
   }, [slug]);
 
-  // Fetch client balance
-  const fetchBalance = useCallback(async (cid: string) => {
-    try {
-      const res = await fetch(`/api/credits/balance?client_id=${cid}`);
-      if (res.ok) {
-        const data = await res.json();
-        setClientBalance(data.balance || 0);
-      }
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    if (clientId) fetchBalance(clientId);
-  }, [clientId, fetchBalance]);
-
   // Fetch active code for subscription status bar
   useEffect(() => {
     if (!clientId || !slug) return;
@@ -242,64 +217,6 @@ export default function ModelPage() {
       .catch(() => {});
   }, [clientId, slug]);
 
-  const handleCreditPurchase = useCallback((item: UploadedContent) => {
-    if (!clientId) {
-      setCreditPurchaseModal(item);
-      return;
-    }
-    setCreditPurchaseModal(item);
-  }, [clientId]);
-
-  const confirmCreditPurchase = useCallback(async () => {
-    const item = creditPurchaseModal;
-    if (!item || !clientId) return;
-    try {
-      const res = await fetch("/api/credits/purchase", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ client_id: clientId, upload_id: item.id, model: slug, price: item.tokenPrice }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setClientBalance(data.remaining ?? clientBalance - (item.tokenPrice || 0));
-        const newSet = new Set(purchasedItems);
-        newSet.add(item.id);
-        setPurchasedItems(newSet);
-        sessionStorage.setItem(`heaven_purchases_${slug}`, JSON.stringify([...newSet]));
-        setShopToast("Contenu débloqué !");
-        setTimeout(() => setShopToast(null), 3000);
-      } else {
-        const data = await res.json();
-        if (res.status === 402) {
-          setShopToast(`Crédits insuffisants (${data.balance || 0} restants)`);
-          setTimeout(() => setShopToast(null), 3000);
-        }
-      }
-    } catch {}
-    setCreditPurchaseModal(null);
-  }, [creditPurchaseModal, clientId, slug, purchasedItems, clientBalance]);
-
-  const handleTopup = useCallback(async (credits: number, price: number) => {
-    if (!clientId) return;
-    setTopupLoading(true);
-    // Apply tier multiplier
-    const tierBonus = TIER_CREDIT_BONUS[unlockedTier || ""] || { multiplier: 1 };
-    const finalCredits = credits * tierBonus.multiplier;
-    try {
-      const res = await fetch("/api/credits/topup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ client_id: clientId, credits: finalCredits, model: slug, price }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setClientBalance(data.balance ?? clientBalance + finalCredits);
-        setShopToast(`+${finalCredits} crédits ajoutés !${tierBonus.multiplier > 1 ? ` (${tierBonus.label} bonus)` : ""}`);
-        setTimeout(() => setShopToast(null), 3000);
-      }
-    } catch {}
-    setTopupLoading(false);
-  }, [clientId, slug, unlockedTier, clientBalance]);
 
   // ── Edit mode: upload to Cloudinary ──
   const uploadToCloudinary = useCallback(async (file: File, folder: string): Promise<string | null> => {
@@ -1275,23 +1192,9 @@ export default function ModelPage() {
                           </div>
                         ) : (
                           <div className="relative cursor-pointer my-2 rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}
-                            onClick={async () => {
-                              const basePrice = postTier === "vip" ? 10 : postTier === "gold" ? 20 : postTier === "diamond" ? 30 : 40;
-                              const isVideo = post.media_type === "video" || post.media_url?.includes("/video/");
-                              const creditPrice = isVideo ? basePrice * 2 : basePrice;
+                            onClick={() => {
                               if (purchasedItems.has(post.id)) { setLightboxUrl(post.media_url); return; }
-                              if (clientBalance >= creditPrice && clientId) {
-                                try {
-                                  await fetch("/api/credits/purchase", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ client_id: clientId, upload_id: post.id, price: creditPrice }),
-                                  });
-                                  setPurchasedItems(prev => new Set([...prev, post.id]));
-                                } catch {}
-                              } else {
-                                setShowUnlock(true);
-                              }
+                              setShowUnlock(true);
                             }}>
                             <img src={post.media_url!} alt="" className="w-full max-h-[200px] object-cover" style={{ filter: "blur(8px) brightness(0.7)" }} />
                             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -1445,14 +1348,9 @@ export default function ModelPage() {
                                   onClick={() => setLightboxUrl(post.media_url)} loading="lazy" />
                               </ContentProtection>
                             ) : (
-                              <div onClick={async () => {
-                                const basePrice = tier === "vip" ? 10 : tier === "gold" ? 20 : tier === "diamond" ? 30 : 40;
-                                const isVid = post.media_type === "video" || post.media_url?.includes("/video/");
-                                const creditPrice = isVid ? basePrice * 2 : basePrice;
+                              <div onClick={() => {
                                 if (purchasedItems.has(post.id)) { setLightboxUrl(post.media_url); return; }
-                                if (clientBalance >= creditPrice && clientId) {
-                                  try { await fetch("/api/credits/purchase", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client_id: clientId, upload_id: post.id, price: creditPrice }) }); setPurchasedItems(prev => new Set([...prev, post.id])); } catch {}
-                                } else { setShowUnlock(true); }
+                                setShowUnlock(true);
                               }}>
                                 <img src={post.media_url!} alt="" className="w-full h-full object-cover" style={{ filter: "blur(8px) brightness(0.7)" }} />
                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -1504,67 +1402,21 @@ export default function ModelPage() {
               setExpandedPack={setExpandedPack}
               shopSection={shopSection}
               setShopSection={setShopSection}
-              clientBalance={clientBalance}
-              topupLoading={topupLoading}
-              handleTopup={handleTopup}
               setChatOpen={setChatOpen}
               handleUpdatePack={handleUpdatePack}
               handleDeletePack={handleDeletePack}
               handleAddPack={handleAddPack}
               visitorHandle={visitorHandle}
+              model={slug as string}
+              authHeaders={() => {
+                const h: Record<string, string> = { "Content-Type": "application/json" };
+                if (modelAuth?.token) h["Authorization"] = `Bearer ${modelAuth.token}`;
+                return h;
+              }}
             />
           )}
 
         </div>
-
-        {/* ═══ CREDIT PURCHASE MODAL ═══ */}
-        {creditPurchaseModal && (
-          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center sheet-backdrop" onClick={() => setCreditPurchaseModal(null)}>
-            <div className="w-full max-w-sm rounded-t-2xl md:rounded-2xl overflow-hidden animate-slide-up"
-              style={{ background: "var(--surface)", border: "1px solid var(--border2)" }}
-              onClick={e => e.stopPropagation()}>
-              <div className="flex justify-center pt-3 md:hidden">
-                <div className="w-10 h-1 rounded-full" style={{ background: "var(--border3)" }} />
-              </div>
-              <div className="p-6 text-center">
-                <div className="w-16 h-16 rounded-2xl overflow-hidden mx-auto mb-4" style={{ border: "2px solid var(--gold)" }}>
-                  <img src={creditPurchaseModal.dataUrl} alt="" className="w-full h-full object-cover content-locked" style={{ filter: "blur(8px) brightness(0.8)" }} />
-                </div>
-                <h3 className="text-sm font-bold mb-1" style={{ color: "var(--text)" }}>Débloquer ce contenu</h3>
-                <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-                  {creditPurchaseModal.label || "Contenu exclusif"}
-                </p>
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl mb-5" style={{ background: "rgba(230,51,41,0.1)", border: "1px solid rgba(230,51,41,0.2)" }}>
-                  <Coins className="w-4 h-4" style={{ color: "var(--gold)" }} />
-                  <span className="text-lg font-bold" style={{ color: "var(--gold)" }}>{creditPurchaseModal.tokenPrice}</span>
-                  <span className="text-xs" style={{ color: "var(--gold2)" }}>crédits</span>
-                </div>
-                {!clientId ? (
-                  <div className="space-y-3">
-                    <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>Identifie-toi d&apos;abord pour acheter</p>
-                    <button onClick={() => { setCreditPurchaseModal(null); setChatOpen(true); }}
-                      className="w-full py-3 rounded-xl text-sm font-semibold cursor-pointer btn-gradient">
-                      S&apos;identifier
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <button onClick={confirmCreditPurchase}
-                      className="w-full py-3 rounded-xl text-sm font-semibold cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-transform"
-                      style={{ background: "var(--gold)", color: "#000" }}>
-                      Acheter pour {creditPurchaseModal.tokenPrice} crédits
-                    </button>
-                    <button onClick={() => setCreditPurchaseModal(null)}
-                      className="w-full py-2.5 rounded-xl text-xs font-medium cursor-pointer"
-                      style={{ background: "rgba(255,255,255,0.04)", color: "var(--text-muted)" }}>
-                      Annuler
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ═══ SUBSCRIPTION PANEL (self-service) ═══ */}
         {showSubscriptionPanel && clientId && (
@@ -1654,9 +1506,7 @@ export default function ModelPage() {
 
                 {activePacks.map(pack => {
                   const hex = TIER_HEX[pack.id] || pack.color;
-                  const bonus = TIER_CREDIT_BONUS[pack.id];
                   const paypalUrl = `https://www.paypal.com/paypalme/aaclaraa/${pack.price}`;
-                  const payUrl = pack.stripe_link || pack.wise_url || paypalUrl;
                   return (
                     <div key={pack.id} className="w-full p-4 rounded-xl"
                       style={{ background: `${hex}08`, border: `1px solid ${hex}20` }}>
@@ -1684,14 +1534,6 @@ export default function ModelPage() {
                           className={`py-2 rounded-lg text-[10px] font-bold text-center no-underline ${!pack.wise_url ? "col-span-2" : ""}`}
                           style={{ background: "#003087", color: "#fff" }}>PayPal</a>
                       </div>
-                      {bonus && (bonus.multiplier > 1 || bonus.bonus) && (
-                        <div className="flex items-center gap-1.5 mt-1.5">
-                          <Crown className="w-3 h-3" style={{ color: hex }} />
-                          <span className="text-[10px] font-semibold" style={{ color: hex }}>
-                            {bonus.multiplier > 1 ? `${bonus.label} crédits` : `🎁 ${bonus.bonus}`}
-                          </span>
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -1703,7 +1545,6 @@ export default function ModelPage() {
         {/* ═══ PACK CHECKOUT MODAL ═══ */}
         {selectedPack && (() => {
           const hex = TIER_HEX[selectedPack.id] || selectedPack.color;
-          const bonus = TIER_CREDIT_BONUS[selectedPack.id];
           return (
             <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center sheet-backdrop" onClick={() => setSelectedPack(null)}>
               <div className="w-full max-w-md rounded-t-2xl md:rounded-2xl overflow-hidden animate-slide-up"
@@ -1734,24 +1575,7 @@ export default function ModelPage() {
                     ))}
                   </ul>
 
-                  {/* Bonus */}
-                  {bonus && (bonus.multiplier > 1 || bonus.bonus) && (
-                    <div className="p-3.5 rounded-xl mb-4 flex items-center gap-3"
-                      style={{ background: `${hex}08`, border: `1px dashed ${hex}20` }}>
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black shrink-0"
-                        style={{ background: `${hex}15`, color: hex }}>
-                        {bonus.multiplier > 1 ? bonus.label : "🎁"}
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold" style={{ color: hex }}>
-                          {bonus.multiplier > 1 ? `Bonus ${bonus.label} sur les crédits` : "Bonus exclusif"}
-                        </p>
-                        <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{bonus.bonus}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* CTA — Payment link (Stripe preferred, Wise fallback) */}
+                  {/* CTA — Payment link */}
                   {(selectedPack.stripe_link || selectedPack.wise_url) ? (
                     <>
                       <a href={selectedPack.stripe_link || selectedPack.wise_url} target="_blank" rel="noopener noreferrer"
