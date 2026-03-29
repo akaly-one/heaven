@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Coins, ShoppingBag, Check, Crown, ChevronRight,
   Plus, X, Trash2, ToggleLeft, ToggleRight,
-  Camera, Palette, MessageCircle,
+  Camera, Play,
 } from "lucide-react";
 import type { PackConfig, UploadedContent } from "@/types/heaven";
 import { TIER_META, TIER_HEX } from "@/constants/tiers";
@@ -88,7 +88,7 @@ export function ShopTab({
             color: shopSection === "credits" ? "var(--gold)" : "var(--text-muted)",
             border: `1px solid ${shopSection === "credits" ? "rgba(230,51,41,0.25)" : "var(--border2)"}`,
           }}>
-          <Coins className="w-3.5 h-3.5" /> Crédits
+          <Camera className="w-3.5 h-3.5" /> Contenu
         </button>
       </div>
 
@@ -401,117 +401,45 @@ export function ShopTab({
 
       {/* ──── CREDITS SECTION ──── */}
       {shopSection === "credits" && (
-        <div className="space-y-3">
-          {/* Multiplier info */}
-          {unlockedTier && TIER_CREDIT_BONUS[unlockedTier] && (
-            <div className="card-premium p-4 relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, var(--gold), transparent)`, opacity: 0.4 }} />
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black"
-                  style={{ background: `${TIER_HEX[unlockedTier]}15`, color: TIER_HEX[unlockedTier] }}>
-                  {TIER_CREDIT_BONUS[unlockedTier].multiplier > 1 ? TIER_CREDIT_BONUS[unlockedTier].label : TIER_META[unlockedTier]?.symbol}
+        <div className="space-y-4">
+          <h3 className="text-sm font-bold" style={{ color: "var(--text)" }}>Contenu personnalise</h3>
+          <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+            Achete des photos ou videos exclusives. Le prix depend du niveau de contenu.
+          </p>
+
+          {/* Content cards — click to pay via PayPal */}
+          <div className="space-y-2">
+            {TOKEN_PRICING.map(t => (
+              <div key={t.tier} className="rounded-xl p-4" style={{ background: `${t.color}08`, border: `1px solid ${t.color}20` }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">{t.symbol}</span>
+                  <span className="text-sm font-bold" style={{ color: t.color }}>{t.tier}</span>
                 </div>
-                <div className="flex-1">
-                  <p className="text-xs font-semibold" style={{ color: "var(--text)" }}>
-                    {TIER_CREDIT_BONUS[unlockedTier].multiplier > 1
-                      ? `Ton pack ${TIER_META[unlockedTier]?.label} te donne ${TIER_CREDIT_BONUS[unlockedTier].label} sur chaque recharge`
-                      : TIER_CREDIT_BONUS[unlockedTier].bonus
-                        ? `Ton pack ${TIER_META[unlockedTier]?.label} inclut un bonus spécial`
-                        : `Pack ${TIER_META[unlockedTier]?.label} actif`
-                    }
-                  </p>
-                  {TIER_CREDIT_BONUS[unlockedTier].bonus && (
-                    <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{TIER_CREDIT_BONUS[unlockedTier].bonus}</p>
-                  )}
+                <div className="grid grid-cols-2 gap-2">
+                  <a href={`https://www.paypal.com/paypalme/aaclaraa/${t.photo}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="py-3 rounded-xl text-center no-underline cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    style={{ background: "#003087", color: "#fff" }}>
+                    <Camera className="w-4 h-4 mx-auto mb-1" />
+                    <span className="text-xs font-bold block">Photo</span>
+                    <span className="text-[10px] opacity-80">{t.photo}€</span>
+                  </a>
+                  <a href={`https://www.paypal.com/paypalme/aaclaraa/${t.videoPerMin}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="py-3 rounded-xl text-center no-underline cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    style={{ background: "#003087", color: "#fff" }}>
+                    <Play className="w-4 h-4 mx-auto mb-1" />
+                    <span className="text-xs font-bold block">Video /min</span>
+                    <span className="text-[10px] opacity-80">{t.videoPerMin}€</span>
+                  </a>
                 </div>
               </div>
-            </div>
-          )}
-
-          {!unlockedTier && (
-            <div className="card-premium p-4 text-center">
-              <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
-                Prends un pack pour débloquer des bonus crédits
-              </p>
-              <div className="flex items-center justify-center gap-3 text-[10px]" style={{ color: "var(--text-muted)" }}>
-                <span style={{ color: TIER_HEX.platinum }}>♛ Platinum = x3</span>
-                <span style={{ color: TIER_HEX.diamond }}>♦ Diamond = x2</span>
-                <span style={{ color: TIER_HEX.gold }}>★ Gold = 🎁 Nude</span>
-              </div>
-              <button onClick={() => setShopSection("packs")}
-                className="mt-3 px-4 py-2 rounded-xl text-[11px] font-semibold cursor-pointer btn-gradient">
-                Voir les packs
-              </button>
-            </div>
-          )}
-
-          {/* Credit packs */}
-          {!clientId ? (
-            <div className="card-premium p-5 text-center">
-              <Coins className="w-8 h-8 mx-auto mb-3" style={{ color: "var(--gold)", opacity: 0.5 }} />
-              <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>Identifie-toi pour acheter des crédits</p>
-              <button onClick={() => setChatOpen(true)}
-                className="px-6 py-2.5 rounded-xl text-xs font-semibold cursor-pointer btn-gradient">
-                S&apos;identifier
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2.5">
-              {CREDIT_PACKS.map((cp, i) => {
-                const mult = TIER_CREDIT_BONUS[unlockedTier || ""]?.multiplier || 1;
-                const finalCredits = cp.credits * mult;
-                const hasBonus = mult > 1;
-                return (
-                  <button key={i} onClick={() => handleTopup(cp.credits, cp.price)} disabled={topupLoading}
-                    className="card-premium p-4 text-center cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 relative overflow-hidden"
-                    style={{ animationDelay: `${i * 40}ms` }}>
-                    {hasBonus && (
-                      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, var(--gold), transparent)` }} />
-                    )}
-                    <div className="flex items-center justify-center gap-1 mb-1">
-                      <Coins className="w-4 h-4" style={{ color: "var(--gold)" }} />
-                      <span className="text-xl font-black tabular-nums" style={{ color: "var(--gold)" }}>{finalCredits}</span>
-                    </div>
-                    {hasBonus && (
-                      <p className="text-[10px] font-bold mb-1" style={{ color: TIER_HEX[unlockedTier || ""] }}>
-                        {cp.credits} × {mult} = {finalCredits}
-                      </p>
-                    )}
-                    <p className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>crédits</p>
-                    <div className="mt-2 py-1.5 rounded-lg text-[11px] font-bold"
-                      style={{ background: "rgba(230,51,41,0.08)", color: "var(--gold)", border: "1px solid rgba(230,51,41,0.15)" }}>
-                      {cp.price}€
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Token pricing table */}
-          <div className="pt-2">
-            <p className="text-[10px] font-medium uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>
-              Prix par contenu
-            </p>
-            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-              {/* Header */}
-              <div className="grid grid-cols-4 text-center text-[9px] font-bold py-2 px-1" style={{ background: "var(--bg2)", color: "var(--text-muted)" }}>
-                <span>Pack</span><span>Photo</span><span>Video/min</span><span>= EUR</span>
-              </div>
-              {TOKEN_PRICING.map(t => (
-                <div key={t.tier} className="grid grid-cols-4 text-center text-[10px] py-2 px-1"
-                  style={{ borderTop: "1px solid var(--border)" }}>
-                  <span className="font-bold" style={{ color: t.color }}>{t.symbol} {t.tier}</span>
-                  <span style={{ color: "var(--text)" }}>{t.photo}€</span>
-                  <span style={{ color: "var(--text)" }}>{t.videoPerMin}€</span>
-                  <span style={{ color: "var(--text-muted)" }}>{t.photo}€ / {t.videoPerMin}€</span>
-                </div>
-              ))}
-            </div>
-            <p className="text-[9px] text-center mt-2" style={{ color: "var(--text-muted)" }}>
-              1 credit = 1€ · Les videos sont facturees a la minute
-            </p>
+            ))}
           </div>
+
+          <p className="text-[9px] text-center" style={{ color: "var(--text-muted)" }}>
+            Apres paiement envoie le recu + ton pseudo pour recevoir le contenu
+          </p>
         </div>
       )}
     </div>
