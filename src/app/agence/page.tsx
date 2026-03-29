@@ -357,42 +357,38 @@ export default function AgenceDashboard() {
                       </div>
                     </div>
                   )}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      {/* Image upload */}
-                      <label className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all hover:opacity-70"
-                        style={{ background: "rgba(0,0,0,0.04)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-                        <Image className="w-3.5 h-3.5" /> Photo
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = () => setNewPostImage(reader.result as string);
-                          reader.readAsDataURL(file);
-                          e.target.value = "";
-                        }} />
-                      </label>
-                      {/* Tier selector */}
-                      <div className="flex items-center gap-0.5">
-                        {TIER_OPTIONS.map(t => (
-                          <button key={t.id} onClick={() => setNewPostTier(t.id)}
-                            className="px-2 py-0.5 rounded-full text-[9px] font-bold cursor-pointer transition-all"
-                            style={{
-                              background: newPostTier === t.id ? `${t.color}20` : "transparent",
-                              color: newPostTier === t.id ? t.color : "var(--text-muted)",
-                              border: `1px solid ${newPostTier === t.id ? `${t.color}40` : "transparent"}`,
-                            }}>
-                            {t.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <button onClick={handleCreatePost} disabled={(!newPostContent.trim() && !newPostImage) || posting}
-                      className="px-4 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-105 disabled:opacity-30"
-                      style={{ background: "var(--accent)", color: "#fff" }}>
-                      {posting ? "..." : "Publier"}
-                    </button>
+                  {/* Row 1: Photo + Tier selector (scrollable) */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                    <label className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer shrink-0"
+                      style={{ background: "rgba(0,0,0,0.04)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+                      <Image className="w-3.5 h-3.5" /> Photo
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => setNewPostImage(reader.result as string);
+                        reader.readAsDataURL(file);
+                        e.target.value = "";
+                      }} />
+                    </label>
+                    {TIER_OPTIONS.map(t => (
+                      <button key={t.id} onClick={() => setNewPostTier(t.id)}
+                        className="px-2 py-1 rounded-full text-[9px] font-bold cursor-pointer shrink-0"
+                        style={{
+                          background: newPostTier === t.id ? `${t.color}20` : "transparent",
+                          color: newPostTier === t.id ? t.color : "var(--text-muted)",
+                          border: `1px solid ${newPostTier === t.id ? `${t.color}40` : "transparent"}`,
+                        }}>
+                        {t.label}
+                      </button>
+                    ))}
                   </div>
+                  {/* Row 2: Publier button full width */}
+                  <button onClick={handleCreatePost} disabled={(!newPostContent.trim() && !newPostImage) || posting}
+                    className="w-full py-2 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-[1.01] disabled:opacity-30"
+                    style={{ background: "var(--accent)", color: "#fff" }}>
+                    {posting ? "Envoi en cours..." : "Publier"}
+                  </button>
                 </div>
               </div>
             </div>
@@ -401,36 +397,53 @@ export default function AgenceDashboard() {
             {feedPosts.length > 0 && (
               <div className="space-y-3 mt-3">
                 {feedPosts.slice(0, 10).map(post => (
-                  <div key={post.id} className="rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                        style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "#fff" }}>
-                        {modelSlug.charAt(0).toUpperCase()}
+                  <div key={post.id} className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                    {/* Image first, full width */}
+                    {post.media_url && (
+                      <div className="relative">
+                        <img src={post.media_url} alt="" className="w-full aspect-square object-cover" loading="lazy" />
+                        {/* Name overlay on image */}
+                        <div className="absolute bottom-0 left-0 right-0 p-3" style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.6))" }}>
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                              style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(4px)", color: "#fff" }}>
+                              {modelSlug.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-xs font-bold text-white">{modelInfo?.display_name || modelSlug}</span>
+                            {post.tier_required !== "public" && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                                style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}>
+                                {post.tier_required.toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-bold text-[var(--text)]">{modelInfo?.display_name || modelSlug}</span>
-                          <span className="text-[10px] text-[var(--text-muted)]">@{modelSlug}</span>
+                    )}
+                    {/* Text content + actions */}
+                    <div className="p-3">
+                      {!post.media_url && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                            style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "#fff" }}>
+                            {modelSlug.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-xs font-bold" style={{ color: "var(--text)" }}>{modelInfo?.display_name || modelSlug}</span>
                           {post.tier_required !== "public" && (
                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{
-                              background: TIER_OPTIONS.find(t => t.id === post.tier_required)?.color + "20" || "#64748B20",
+                              background: (TIER_OPTIONS.find(t => t.id === post.tier_required)?.color || "#64748B") + "20",
                               color: TIER_OPTIONS.find(t => t.id === post.tier_required)?.color || "#64748B",
                             }}>{post.tier_required.toUpperCase()}</span>
                           )}
                         </div>
-                        {post.content && <p className="text-sm text-[var(--text)] whitespace-pre-wrap mb-2">{post.content}</p>}
-                        {post.media_url && (
-                          <div className="rounded-xl overflow-hidden mb-2" style={{ border: "1px solid var(--border)" }}>
-                            <img src={post.media_url} alt="" className="w-full max-h-[400px] object-cover" loading="lazy" />
-                          </div>
-                        )}
-                        <div className="flex items-center gap-4 text-[var(--text-muted)]">
-                          <span className="flex items-center gap-1 text-xs"><Heart className="w-3.5 h-3.5" /> {post.likes_count || 0}</span>
-                          <span className="flex items-center gap-1 text-xs"><MessageCircle className="w-3.5 h-3.5" /> {post.comments_count || 0}</span>
-                          <button onClick={() => handleDeletePost(post.id)} className="ml-auto text-xs cursor-pointer hover:text-red-400 transition-colors">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                      )}
+                      {post.content && <p className="text-sm whitespace-pre-wrap mb-2" style={{ color: "var(--text)" }}>{post.content}</p>}
+                      <div className="flex items-center gap-4" style={{ color: "var(--text-muted)" }}>
+                        <span className="flex items-center gap-1 text-xs"><Heart className="w-3.5 h-3.5" /> {post.likes_count || 0}</span>
+                        <span className="flex items-center gap-1 text-xs"><MessageCircle className="w-3.5 h-3.5" /> {post.comments_count || 0}</span>
+                        <button onClick={() => handleDeletePost(post.id)} className="ml-auto text-xs cursor-pointer hover:text-red-400 transition-colors" style={{ background: "none", border: "none" }}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   </div>
