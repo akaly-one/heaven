@@ -98,10 +98,32 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug
       return NextResponse.json({ success: true }, { headers: cors });
     }
 
-    // Upsert into agence_models
-    const { error: upsertError } = await supabase
+    // Upsert into agence_models — include display default for NOT NULL constraint
+    const { data: existing } = await supabase
       .from("agence_models")
-      .upsert({ slug, ...allowed }, { onConflict: "slug" });
+      .select("id")
+      .eq("slug", slug)
+      .maybeSingle();
+
+    let upsertError;
+    if (existing) {
+      // Update only — no NOT NULL issue
+      const { error } = await supabase
+        .from("agence_models")
+        .update(allowed)
+        .eq("slug", slug);
+      upsertError = error;
+    } else {
+      // Insert — fill all NOT NULL columns with defaults
+      const { error } = await supabase
+        .from("agence_models")
+        .insert({
+          slug,
+          display: slug.charAt(0).toUpperCase() + slug.slice(1),
+          ...allowed,
+        });
+      upsertError = error;
+    }
 
     if (upsertError) {
       console.error("[API/models] PUT upsert error:", upsertError);
