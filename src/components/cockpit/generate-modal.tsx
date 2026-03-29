@@ -24,17 +24,13 @@ const TIERS = [
   { id: "platinum", label: "Platinum", symbol: "♛", color: "var(--tier-platinum)" },
 ];
 
-const DURATIONS = [
-  { label: "7 jours", value: 168 },
-  { label: "30 jours", value: 720 },
-  { label: "90 jours", value: 2160 },
-];
+// Duration is now a slider 1-30 days
 
 export function GenerateModal({ open, onClose, onGenerate, modelSlug, prefillClient = "" }: GenerateModalProps) {
   const [client, setClient] = useState("");
   const [platform, setPlatform] = useState("snapchat");
   const [tier, setTier] = useState("vip");
-  const [duration, setDuration] = useState(168);
+  const [durationDays, setDurationDays] = useState(7);
   const [type, setType] = useState<"paid" | "promo" | "gift">("paid");
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -50,7 +46,7 @@ export function GenerateModal({ open, onClose, onGenerate, modelSlug, prefillCli
     : "";
 
   const handleGenerate = () => {
-    const code = onGenerate({ client, platform, tier, duration, type });
+    const code = onGenerate({ client, platform, tier, duration: durationDays * 24, type });
     if (code) setGeneratedCode(code);
   };
 
@@ -96,7 +92,7 @@ export function GenerateModal({ open, onClose, onGenerate, modelSlug, prefillCli
                 <Check className="w-6 h-6" style={{ color: "var(--success)" }} />
               </div>
               <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
-                {TIERS.find(t => t.id === tier)?.label} · {DURATIONS.find(d => d.value === duration)?.label || `${duration}h`} · {client}
+                {TIERS.find(t => t.id === tier)?.label} · {durationDays}j · {client}
               </p>
               {/* Link preview */}
               <div className="mt-3 p-3 rounded-xl text-left" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
@@ -185,21 +181,17 @@ export function GenerateModal({ open, onClose, onGenerate, modelSlug, prefillCli
               </div>
             </div>
 
-            {/* Duration */}
+            {/* Duration — slider */}
             <div>
-              <label className="text-[11px] font-medium uppercase tracking-wider mb-2 block" style={{ color: "var(--text-muted)" }}>Durée</label>
-              <div className="flex gap-2">
-                {DURATIONS.map(d => (
-                  <button key={d.value} onClick={() => setDuration(d.value)}
-                    className="flex-1 py-2 rounded-lg text-xs font-medium cursor-pointer transition-all"
-                    style={{
-                      background: duration === d.value ? "var(--accent)" : "rgba(255,255,255,0.03)",
-                      color: duration === d.value ? "#fff" : "var(--text-muted)",
-                      border: `1px solid ${duration === d.value ? "var(--accent)" : "var(--border2)"}`,
-                    }}>
-                    {d.label}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Duree</label>
+                <span className="text-sm font-bold" style={{ color: "var(--accent)" }}>{durationDays}j</span>
+              </div>
+              <input type="range" min={1} max={30} value={durationDays} onChange={e => setDurationDays(Number(e.target.value))}
+                className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                style={{ background: `linear-gradient(to right, var(--accent) ${(durationDays / 30) * 100}%, var(--border) ${(durationDays / 30) * 100}%)` }} />
+              <div className="flex justify-between text-[9px] mt-1" style={{ color: "var(--text-muted)" }}>
+                <span>1j</span><span>7j</span><span>15j</span><span>30j</span>
               </div>
             </div>
 
@@ -212,24 +204,23 @@ export function GenerateModal({ open, onClose, onGenerate, modelSlug, prefillCli
                 style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
             </div>
 
-            {/* Platform — icon only */}
+            {/* Platform — icons only */}
             <div>
               <label className="text-[11px] font-medium uppercase tracking-wider mb-2 block" style={{ color: "var(--text-muted)" }}>Plateforme</label>
-              <div className="flex gap-2">
+              <div className="flex gap-3 justify-center">
                 {[
-                  { id: "snapchat", color: "#997A00", label: "Snap" },
-                  { id: "instagram", color: "#C13584", label: "Insta" },
-                  { id: "other", color: "#64748B", label: "Autre" },
+                  { id: "snapchat", color: "#997A00", icon: "👻" },
+                  { id: "instagram", color: "#C13584", icon: "📷" },
+                  { id: "other", color: "#64748B", icon: "🔗" },
                 ].map(p => (
                   <button key={p.id} onClick={() => setPlatform(p.id)}
-                    className="flex-1 py-2.5 rounded-lg text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                    className="w-12 h-12 rounded-xl text-lg cursor-pointer transition-all hover:scale-110 active:scale-95 flex items-center justify-center"
                     style={{
-                      background: platform === p.id ? `${p.color}15` : "rgba(0,0,0,0.03)",
-                      color: platform === p.id ? p.color : "var(--text-muted)",
-                      border: `2px solid ${platform === p.id ? p.color : "transparent"}`,
+                      background: platform === p.id ? `${p.color}20` : "rgba(0,0,0,0.03)",
+                      border: `3px solid ${platform === p.id ? p.color : "transparent"}`,
+                      boxShadow: platform === p.id ? `0 0 12px ${p.color}30` : "none",
                     }}>
-                    <div className="w-4 h-4 rounded-full" style={{ background: p.color }} />
-                    {p.label}
+                    {p.icon}
                   </button>
                 ))}
               </div>
