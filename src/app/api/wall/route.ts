@@ -114,11 +114,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Insert with only columns that exist in the table
+    // DB schema: id, model, pseudo, content, photo_url, created_at, cloudinary_id
     const insertData: Record<string, unknown> = {
-      model, pseudo, content: content || null, photo_url, pseudo_snap, pseudo_insta,
+      model,
+      pseudo,
+      content: content || null,
+      photo_url,
     };
-    // Only include client_id if the column exists (graceful)
-    if (resolvedClientId) insertData.client_id = resolvedClientId;
 
     const { data, error } = await supabase
       .from("agence_wall_posts")
@@ -127,22 +130,14 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) {
-      // If client_id column doesn't exist yet, retry without it
-      if (error.message?.includes("client_id")) {
-        const { data: d2, error: e2 } = await supabase
-          .from("agence_wall_posts")
-          .insert({ model, pseudo, content: content || null, photo_url, pseudo_snap, pseudo_insta })
-          .select()
-          .single();
-        if (e2) throw e2;
-        return NextResponse.json({ post: d2 }, { status: 201, headers: cors });
-      }
-      throw error;
+      console.error("[API/wall] POST insert error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500, headers: cors });
     }
     return NextResponse.json({ post: data }, { status: 201, headers: cors });
   } catch (err) {
     console.error("[API/wall] POST:", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500, headers: cors });
+    const msg = err instanceof Error ? err.message : "Server error";
+    return NextResponse.json({ error: msg }, { status: 500, headers: cors });
   }
 }
 
