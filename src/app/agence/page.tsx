@@ -336,15 +336,25 @@ export default function AgenceDashboard() {
                     className="w-full bg-transparent text-sm outline-none resize-none"
                     style={{ color: "var(--text)" }}
                   />
-                  {/* Image preview */}
-                  {newPostImage && (
-                    <div className="relative rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-                      <img src={newPostImage} alt="" className="w-full max-h-[200px] object-cover" />
+                  {/* Upload progress bar */}
+                  {posting && newPostImage && (
+                    <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
+                      <div className="h-full rounded-full transition-all duration-1000" style={{ background: "var(--accent)", width: "70%", animation: "uploadProgress 2s ease-in-out infinite" }} />
+                    </div>
+                  )}
+                  {/* Image preview — square crop */}
+                  {newPostImage && !posting && (
+                    <div className="relative w-full aspect-square rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)", maxHeight: 280 }}>
+                      <img src={newPostImage} alt="" className="w-full h-full object-cover" draggable={false} />
                       <button onClick={() => setNewPostImage(null)}
-                        className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
-                        style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}>
-                        <X className="w-3 h-3" />
+                        className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
+                        style={{ background: "rgba(0,0,0,0.7)", color: "#fff" }}>
+                        <X className="w-3.5 h-3.5" />
                       </button>
+                      <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg text-[9px] font-bold"
+                        style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}>
+                        1:1
+                      </div>
                     </div>
                   )}
                   <div className="flex items-center justify-between gap-2">
@@ -465,7 +475,7 @@ export default function AgenceDashboard() {
                 </button>
               </div>
             </div>
-            <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <div className="rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
               <CodesList
                 codes={modelCodes}
                 clients={clients}
@@ -528,6 +538,7 @@ export default function AgenceDashboard() {
           )}
           <style>{`
             @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes uploadProgress { 0% { width: 10%; } 50% { width: 80%; } 100% { width: 10%; } }
             @keyframes fabItemIn { from { opacity: 0; transform: scale(0.5) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
           `}</style>
           <div className="fixed bottom-20 md:bottom-8 right-4 md:right-8 z-50 flex flex-col items-end gap-3">

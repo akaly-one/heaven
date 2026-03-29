@@ -530,8 +530,37 @@ export function CodesList({
                                   {menuOpen === c.code && (
                                     <>
                                       <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(null)} />
-                                      <div className="absolute right-0 top-8 z-20 w-36 rounded-xl py-1 shadow-xl"
-                                        style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
+                                      <div className="fixed z-50 w-40 rounded-xl py-1 shadow-xl"
+                                        style={{ background: "var(--surface)", border: "1px solid var(--border)", right: 16, marginTop: 4 }}>
+                                        {/* Change tier */}
+                                        {!c.revoked && (
+                                          <div className="px-3 py-1.5">
+                                            <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Pack</span>
+                                            <div className="flex gap-1 mt-1">
+                                              {["vip", "gold", "diamond", "platinum"].map(tier => (
+                                                <button key={tier} onClick={async () => {
+                                                  try {
+                                                    await fetch(`/api/codes`, {
+                                                      method: "PATCH",
+                                                      headers: { "Content-Type": "application/json" },
+                                                      body: JSON.stringify({ code: c.code, model: modelSlug, updates: { tier, pack: tier } }),
+                                                    });
+                                                    setMenuOpen(null);
+                                                    window.location.reload();
+                                                  } catch {}
+                                                }}
+                                                  className="px-1.5 py-0.5 rounded text-[9px] font-bold cursor-pointer"
+                                                  style={{
+                                                    background: c.tier === tier ? "var(--accent)" : "rgba(0,0,0,0.04)",
+                                                    color: c.tier === tier ? "#fff" : "var(--text-muted)",
+                                                  }}>
+                                                  {tier.charAt(0).toUpperCase() + tier.slice(1)}
+                                                </button>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                        <div style={{ borderTop: "1px solid var(--border)", margin: "2px 0" }} />
                                         {c.active && !c.revoked && (
                                           <button onClick={() => { onPause(c.code); setMenuOpen(null); }}
                                             className="w-full px-3 py-1.5 text-left text-[11px] flex items-center gap-2 cursor-pointer hover:opacity-80"
