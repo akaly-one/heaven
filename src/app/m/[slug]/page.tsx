@@ -1142,7 +1142,16 @@ export default function ModelPage() {
                       )}
                       {/* Like + comment count */}
                       <div className="flex items-center gap-5 px-4 py-2" style={{ borderTop: "1px solid var(--border)" }}>
-                        <button className="flex items-center gap-1.5 text-xs cursor-pointer transition-colors hover:text-[#F43F5E]" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
+                        <button onClick={async () => {
+                          try {
+                            await fetch(`/api/posts`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ id: post.id, model: slug, action: "like" }),
+                            });
+                            setPosts(prev => prev.map(p => p.id === post.id ? { ...p, likes_count: (p.likes_count || 0) + 1 } : p));
+                          } catch {}
+                        }} className="flex items-center gap-1.5 text-xs cursor-pointer transition-colors hover:text-[#F43F5E] active:scale-110" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
                           <Heart className="w-4 h-4" /> {post.likes_count || 0}
                         </button>
                         <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
@@ -1156,25 +1165,28 @@ export default function ModelPage() {
                           <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>{w.content?.replace(`#post-${post.id}`, "").trim()}</span>
                         </div>
                       ))}
-                      {/* Comment input */}
-                      {visitorRegistered && (
-                        <div className="px-4 py-2 flex items-center gap-2" style={{ borderTop: "1px solid var(--border)" }}>
-                          <input
-                            placeholder="Ajouter un commentaire..."
-                            className="flex-1 text-xs bg-transparent outline-none"
-                            style={{ color: "var(--text)" }}
-                            onKeyDown={async (e) => {
-                              if (e.key === "Enter") {
-                                const input = e.target as HTMLInputElement;
-                                const text = input.value.trim();
-                                if (!text) return;
-                                input.value = "";
-                                try {
-                                  await fetch("/api/wall", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({
-                                      model: slug,
+                      {/* Comment input — always visible, prompts identity if needed */}
+                      <div className="px-4 py-2 flex items-center gap-2" style={{ borderTop: "1px solid var(--border)" }}>
+                        <input
+                          data-comment-post={post.id}
+                          placeholder={visitorRegistered ? "Ajouter un commentaire..." : "Identifie-toi pour commenter"}
+                          className="flex-1 text-xs bg-transparent outline-none"
+                          style={{ color: "var(--text)" }}
+                          readOnly={!visitorRegistered}
+                          onClick={() => { if (!visitorRegistered) { /* identity gate will handle */ } }}
+                          onKeyDown={async (e) => {
+                            if (!visitorRegistered) return;
+                            if (e.key === "Enter") {
+                              const input = e.target as HTMLInputElement;
+                              const text = input.value.trim();
+                              if (!text) return;
+                              input.value = "";
+                              try {
+                                await fetch("/api/wall", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    model: slug,
                                       pseudo: visitorHandle,
                                       content: `${text} #post-${post.id}`,
                                       pseudo_snap: visitorPlatform === "snap" ? visitorHandle : null,
@@ -1190,9 +1202,32 @@ export default function ModelPage() {
                               }
                             }}
                           />
-                          <Send className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                          <button onClick={async () => {
+                            if (!visitorRegistered) return;
+                            const input = (document.querySelector(`[data-comment-post="${post.id}"]`) as HTMLInputElement);
+                            const text = input?.value?.trim();
+                            if (!text) return;
+                            input.value = "";
+                            try {
+                              await fetch("/api/wall", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  model: slug, pseudo: visitorHandle,
+                                  content: `${text} #post-${post.id}`,
+                                  pseudo_snap: visitorPlatform === "snap" ? visitorHandle : null,
+                                  pseudo_insta: visitorPlatform === "insta" ? visitorHandle : null,
+                                  client_id: clientId,
+                                }),
+                              });
+                              const res = await fetch(`/api/wall?model=${slug}`);
+                              const data = await res.json();
+                              setWallPosts(data.posts || []);
+                            } catch {}
+                          }} className="cursor-pointer hover:opacity-70" style={{ background: "none", border: "none" }}>
+                            <Send className="w-3.5 h-3.5" style={{ color: visitorRegistered ? "var(--accent)" : "var(--text-muted)" }} />
+                          </button>
                         </div>
-                      )}
                     </div>
                   );
                 })
