@@ -203,3 +203,50 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });
   }
 }
+
+// DELETE /api/clients?id=xxx — Delete a client
+export async function DELETE(req: NextRequest) {
+  const cors = getCorsHeaders(req);
+  const id = req.nextUrl.searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
+
+  try {
+    const supabase = getServerSupabase();
+    if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
+
+    const { error } = await supabase.from("agence_clients").delete().eq("id", id);
+    if (error) {
+      console.error("[API/clients] DELETE error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500, headers: cors });
+    }
+
+    return NextResponse.json({ success: true }, { headers: cors });
+  } catch (err) {
+    console.error("[API/clients] DELETE:", err);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });
+  }
+}
+
+// PATCH /api/clients — Update client fields (notes, tier, etc.)
+export async function PATCH(req: NextRequest) {
+  const cors = getCorsHeaders(req);
+  try {
+    const body = await req.json();
+    const { id, ...updates } = body;
+    if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
+
+    const supabase = getServerSupabase();
+    if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
+
+    const { data, error } = await supabase.from("agence_clients").update(updates).eq("id", id).select().single();
+    if (error) {
+      console.error("[API/clients] PATCH error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500, headers: cors });
+    }
+
+    return NextResponse.json({ success: true, client: data }, { headers: cors });
+  } catch (err) {
+    console.error("[API/clients] PATCH:", err);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });
+  }
+}
