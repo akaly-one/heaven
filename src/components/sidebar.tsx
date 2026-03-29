@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, MessageCircle, Settings, ChevronLeft, ChevronRight, Crown } from "lucide-react";
+import { LayoutDashboard, MessageCircle, Users, Settings, ChevronLeft, ChevronRight, Crown } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { HeavenAuth } from "./auth-guard";
 
@@ -9,6 +9,7 @@ import type { HeavenAuth } from "./auth-guard";
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/agence", color: "#E63329" },
   { id: "messages", label: "Messages", icon: MessageCircle, href: "/agence/messages", color: "#F43F5E" },
+  { id: "clients", label: "Clients", icon: Users, href: "/agence/clients", color: "#F59E0B" },
   { id: "settings", label: "Reglages", icon: Settings, href: "/agence/settings", color: "#64748B" },
 ] as const;
 

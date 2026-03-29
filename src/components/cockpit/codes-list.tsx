@@ -224,65 +224,30 @@ export function CodesList({
 
             return (
               <div key={group.name} className="rounded-xl overflow-hidden" style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}>
-                {/* Client row — compact */}
+                {/* Client row — simplified */}
                 <button
                   onClick={() => setExpanded(isExpanded ? null : group.name)}
-                  className="w-full px-3 py-2.5 flex items-center gap-2.5 cursor-pointer transition-colors hover:brightness-110"
+                  className="w-full px-3 py-2 flex items-center gap-2 cursor-pointer transition-colors hover:brightness-105"
                 >
-                  {/* Avatar */}
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                    style={{ background: ci?.is_blocked ? "rgba(244,63,94,0.12)" : `${TIER_COLORS[highestTier]}15` }}>
-                    <User className="w-3.5 h-3.5" style={{ color: ci?.is_blocked ? "var(--danger)" : TIER_COLORS[highestTier] }} />
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 text-left min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-semibold truncate" style={{ color: "var(--text)" }}>
-                        {ci?.firstname || (group.name === "—" ? "Sans client" : group.name)}
-                      </span>
-                      {ci?.is_verified && <Shield className="w-3 h-3 shrink-0" style={{ color: "var(--success)" }} />}
-                      {ci?.is_blocked && <ShieldOff className="w-3 h-3 shrink-0" style={{ color: "var(--danger)" }} />}
-                      {ci?.tag && (
-                        <span className="text-[10px] px-1 py-0.5 rounded-full shrink-0" style={{ background: "rgba(167,139,250,0.1)", color: "#A78BFA" }}>
-                          {ci.tag}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      {ci?.pseudo_snap && (
-                        <span className="text-[10px]" style={{ color: "#997A00" }}>@{ci.pseudo_snap}</span>
-                      )}
-                      {ci?.pseudo_insta && (
-                        <span className="text-[10px]" style={{ color: "#E1306C" }}>@{ci.pseudo_insta}</span>
-                      )}
-                      {!ci?.pseudo_snap && !ci?.pseudo_insta && group.name !== "—" && (
-                        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>@{group.name}</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right side badges */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {/* Tier dots */}
-                    {group.tiers.map(t => (
-                      <span key={t} className="w-2 h-2 rounded-full" style={{ background: TIER_COLORS[t] || "var(--text-muted)" }} />
-                    ))}
-                    {/* Active/expired count */}
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium tabular-nums"
-                      style={{ background: group.activeCodes > 0 ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.04)", color: group.activeCodes > 0 ? "var(--success)" : "var(--text-muted)" }}>
-                      {group.activeCodes}A{group.expiredCodes > 0 ? `/${group.expiredCodes}E` : ""}
+                  {/* Platform icon + pseudo */}
+                  <div className="w-5 h-5 rounded-full shrink-0" style={{
+                    background: ci?.pseudo_snap ? "#997A00" : ci?.pseudo_insta ? "#C13584" : "var(--text-muted)",
+                  }} />
+                  <span className="text-xs font-bold truncate flex-1 text-left" style={{ color: "var(--text)" }}>
+                    @{ci?.pseudo_snap || ci?.pseudo_insta || group.name}
+                  </span>
+                  {/* Latest active code */}
+                  {group.activeCodes > 0 && (
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0" style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)" }}>
+                      {group.codes.find(c => c.active && !c.revoked)?.code?.slice(-6) || "actif"}
                     </span>
-                    {/* Spent */}
-                    {ci?.total_spent ? (
-                      <span className="text-[10px] font-semibold tabular-nums" style={{ color: "var(--success)" }}>{ci.total_spent}€</span>
-                    ) : null}
-                    {isExpanded ? (
-                      <ChevronDown className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
-                    ) : (
-                      <ChevronRight className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
-                    )}
-                  </div>
+                  )}
+                  {group.activeCodes === 0 && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded shrink-0" style={{ background: "rgba(0,0,0,0.04)", color: "var(--text-muted)" }}>
+                      expire
+                    </span>
+                  )}
+                  <ChevronRight className="w-3 h-3 shrink-0" style={{ color: "var(--text-muted)", transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform 0.2s" }} />
                 </button>
 
                 {/* Expanded content */}
