@@ -1018,33 +1018,9 @@ export default function ModelPage() {
               </div>
             </div>
 
-            {/* Stats row — centered with dividers */}
-            {!isEditMode && (
-              <div className="flex items-center justify-center gap-5 sm:gap-6 mt-2 mb-2 profile-stagger-3">
-                {[
-                  { label: "Posts", value: posts.length },
-                  { label: "Media", value: uploads.length },
-                  { label: "Packs", value: activePacks.length },
-                  { label: "Fans", value: wallPosts.length },
-                ].map((s, i) => (
-                  <div key={s.label} className="text-center stat-pop" style={{ animationDelay: `${0.5 + i * 0.1}s` }}>
-                    <span className="text-base sm:text-lg font-bold block" style={{ color: "var(--text)" }}>{s.value}</span>
-                    <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{s.label}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Access: code input + subscribe — ONE section */}
-            {!isEditMode && (
+            {/* Stats + access moved to header bar — just CTA buttons here */}
+            {!isEditMode && !unlockedTier && (
               <div className="flex items-center justify-center gap-2 mb-2 profile-stagger-3">
-                {unlockedTier ? (
-                  <span className="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase"
-                    style={{ background: "rgba(16,185,129,0.1)", color: "#10B981", border: "1px solid rgba(16,185,129,0.2)" }}>
-                    {unlockedTier} active
-                  </span>
-                ) : (
-                  <>
                     <button onClick={() => setShowUnlock(true)}
                       className="px-5 py-2 rounded-xl text-xs font-bold cursor-pointer hover:scale-105 transition-transform"
                       style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff", boxShadow: "0 4px 16px rgba(244,63,94,0.25)" }}>
@@ -1055,8 +1031,6 @@ export default function ModelPage() {
                       style={{ background: "rgba(255,255,255,0.06)", color: "var(--text-secondary)", border: "1px solid var(--border2)" }}>
                       Acheter
                     </button>
-                  </>
-                )}
               </div>
             )}
 
