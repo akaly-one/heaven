@@ -256,7 +256,7 @@ export function ShopTab({
                                 Revolut · {pack.price}€
                               </a>
                             )}
-                            <a href={pack.stripe_link || `https://paypal.me/aaclaraa/${pack.price}EUR`} target="_blank" rel="noopener noreferrer"
+                            <a href={pack.stripe_link || `https://paypal.me/aaclaraa/${pack.price}`} target="_blank" rel="noopener noreferrer"
                               className={`py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 no-underline transition-all hover:scale-[1.02] active:scale-[0.98] ${!pack.wise_url ? "col-span-2" : ""}`}
                               style={{ background: "#003087", color: "#fff" }}>
                               PayPal · {pack.price}€
