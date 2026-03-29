@@ -874,20 +874,22 @@ export default function ModelPage() {
 
       <div className="relative z-10">
 
-        {/* ═══ HEADER BAR — sticky, model info left + visitor right ═══ */}
-        <div className="sticky top-0 left-0 right-0 z-40 px-3 py-2 flex items-center gap-2"
-          style={{ background: "color-mix(in srgb, var(--bg) 90%, transparent)", backdropFilter: "blur(12px)", borderBottom: "1px solid var(--border)" }}>
-          {/* Left: model info */}
+        {/* ═══ HEADER BAR — sticky ═══ */}
+        <div className="sticky top-0 left-0 right-0 z-40 px-3 py-1.5 flex items-center gap-2"
+          style={{ background: "color-mix(in srgb, var(--bg) 92%, transparent)", backdropFilter: "blur(12px)", borderBottom: "1px solid var(--border)" }}>
+          {/* Left: avatar + name + stats + platform icons */}
           <div className="flex items-center gap-2 flex-1 min-w-0">
             {isModelLoggedIn && (
               <a href="/agence" className="text-[10px] font-bold no-underline shrink-0" style={{ color: "var(--accent)" }}>←</a>
             )}
-            <div className="w-6 h-6 rounded-full overflow-hidden shrink-0" style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))" }}>
+            <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border-2" style={{ borderColor: displayModel?.online ? "var(--success)" : "var(--border)", background: "linear-gradient(135deg, var(--rose), var(--accent))" }}>
               {model.avatar ? <img src={model.avatar} alt="" className="w-full h-full object-cover" /> :
-                <span className="flex items-center justify-center w-full h-full text-[9px] font-bold text-white">{model.display_name.charAt(0)}</span>}
+                <span className="flex items-center justify-center w-full h-full text-xs font-bold text-white">{model.display_name.charAt(0)}</span>}
             </div>
-            <span className="text-[11px] font-bold truncate" style={{ color: "var(--text)" }}>{model.display_name}</span>
-            <span className="text-[9px] shrink-0" style={{ color: "var(--text-muted)" }}>{posts.length}p · {uploads.length}m</span>
+            <div className="min-w-0">
+              <span className="text-xs font-bold block truncate" style={{ color: "var(--text)" }}>{model.display_name}</span>
+              <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{posts.length} posts · {wallPosts.length} fans · {activePacks.length} packs</span>
+            </div>
             {/* Platform icons */}
             {(() => {
               const platforms = (model as unknown as Record<string, unknown>).platforms as Record<string, string> | undefined;
@@ -932,13 +934,27 @@ export default function ModelPage() {
           </div>
         </div>
 
-        {/* ═══ HERO — auto banner from latest post image ═══ */}
+        {/* ═══ STATUS TICKER — scrolling under header ═══ */}
+        {displayModel?.status && (
+          <div className="overflow-hidden py-1" style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+            <div className="whitespace-nowrap" style={{ animation: "tickerScroll 15s linear infinite" }}>
+              <span className="text-[10px] font-medium inline-block px-8" style={{ color: "var(--text-muted)" }}>
+                {displayModel.online ? "🟢" : "⚫"} {displayModel.status} &nbsp;&nbsp;&nbsp; {displayModel.online ? "🟢" : "⚫"} {displayModel.status} &nbsp;&nbsp;&nbsp; {displayModel.online ? "🟢" : "⚫"} {displayModel.status}
+              </span>
+            </div>
+          </div>
+        )}
+        <style>{`
+          @keyframes tickerScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-33.33%); } }
+        `}</style>
+
+        {/* ═══ BANNER — short, edge to edge ═══ */}
         <div className="relative profile-stagger-1">
           {(() => {
             const latestImagePost = posts.find(p => p.media_url);
             const bannerUrl = displayModel?.banner || latestImagePost?.media_url || null;
             return (
-              <div className="h-32 sm:h-36 md:h-44 relative overflow-hidden" style={{
+              <div className="h-28 sm:h-32 md:h-40 relative overflow-hidden" style={{
                 background: bannerUrl
                   ? `url(${bannerUrl}) center/cover`
                   : "linear-gradient(135deg, #1a1a2e, #16213e, #0f3460)",
@@ -948,18 +964,24 @@ export default function ModelPage() {
             );
           })()}
           {isEditMode && (
-            <div className="absolute top-3 right-3 z-20">
+            <div className="absolute top-2 right-2 z-20 flex gap-1.5">
               <button onClick={() => bannerInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer hover:scale-105 transition-transform"
-                style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", color: "#fff" }}>
-                <Camera className="w-3.5 h-3.5" />
-                <span className="text-[10px] font-medium">Banniere</span>
+                className="flex items-center gap-1 px-2 py-1 rounded-lg cursor-pointer text-[9px] font-medium"
+                style={{ background: "rgba(0,0,0,0.5)", color: "#fff" }}>
+                <Camera className="w-3 h-3" /> Banniere
+              </button>
+              <button onClick={() => avatarInputRef.current?.click()}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg cursor-pointer text-[9px] font-medium"
+                style={{ background: "rgba(0,0,0,0.5)", color: "#fff" }}>
+                <Camera className="w-3 h-3" /> Avatar
               </button>
               <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} />
+              <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
             </div>
           )}
 
-          <div className="max-w-2xl mx-auto px-4 -mt-12 sm:-mt-14 relative z-10">
+          {/* Profile body removed — all info is in the header bar now */}
+          <div className="hidden">
             {/* ── Instagram-style centered profile ── */}
             <div className="text-center profile-stagger-2">
               {/* Avatar — round, centered */}
@@ -1085,8 +1107,8 @@ export default function ModelPage() {
           </div>
         )}
 
-        {/* ═══ TABS ═══ */}
-        <div className="max-w-2xl mx-auto px-4 mb-5 profile-stagger-4">
+        {/* ═══ TABS — right after banner ═══ */}
+        <div className="max-w-2xl mx-auto px-4 py-2">
           <div className="segmented-control" role="tablist">
             {TABS.map(t => (
               <button key={t.id} role="tab" aria-selected={tab === t.id} aria-label={t.label}
