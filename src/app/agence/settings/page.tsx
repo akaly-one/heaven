@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useModel } from "@/lib/model-context";
 import { OsLayout } from "@/components/os-layout";
 import { SecurityAlerts } from "@/components/cockpit/security-alerts";
-import { Settings, UserPlus, Trash2, Shield, ShieldCheck, Power, Lock, Users, Edit3, GitMerge } from "lucide-react";
+import { Settings, UserPlus, Trash2, Shield, ShieldCheck, Power, Lock, Users, Edit3, GitMerge, Zap } from "lucide-react";
 
 // ── Types ──
 interface Account {
@@ -14,13 +14,15 @@ interface Account {
 const SECTIONS = [
   { id: "security" as const, label: "Sécurité", icon: Lock },
   { id: "accounts" as const, label: "Comptes", icon: Users },
+  { id: "mode" as const, label: "Mode", icon: Zap },
 ];
 
 export default function SettingsPage() {
   const { authHeaders, isRoot, auth, currentModel } = useModel();
   const modelSlug = currentModel || auth?.model_slug || "yumi";
 
-  const [section, setSection] = useState<"security" | "accounts">("security");
+  const [section, setSection] = useState<"security" | "accounts" | "mode">("security");
+  const [purging, setPurging] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -276,6 +278,62 @@ export default function SettingsPage() {
                   </>)}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ═══ MODE SECTION ═══ */}
+          {section === "mode" && (
+            <div className="space-y-4 fade-up-2">
+              <div className="card-premium p-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(16,185,129,0.12)" }}>
+                    <Zap className="w-5 h-5" style={{ color: "#10B981" }} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold" style={{ color: "var(--text)" }}>Mode Pro</h3>
+                    <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Supprimer toutes les donnees demo et passer en production</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 mb-4">
+                  <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Cette action va supprimer :</p>
+                  <ul className="space-y-1">
+                    {["Tous les codes de test", "Tous les clients demo", "Tous les posts du feed", "Tous les messages", "Tous les wall posts"].map(item => (
+                      <li key={item} className="flex items-center gap-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
+                        <Trash2 className="w-3 h-3 shrink-0" style={{ color: "#DC2626" }} /> {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-[10px] font-bold" style={{ color: "#DC2626" }}>
+                    Cette action est irreversible. Les donnees ne peuvent pas etre recuperees.
+                  </p>
+                </div>
+
+                <button onClick={async () => {
+                  if (!confirm("ATTENTION: Supprimer TOUTES les donnees demo ? Cette action est IRREVERSIBLE.")) return;
+                  if (!confirm("Derniere chance. Confirmer la purge de TOUTES les donnees ?")) return;
+                  setPurging(true);
+                  try {
+                    const tables = ["agence_codes", "agence_clients", "agence_messages", "agence_posts", "agence_wall_posts", "agence_uploads"];
+                    for (const table of tables) {
+                      try {
+                        await fetch(`/api/purge`, {
+                          method: "POST",
+                          headers: authHeaders(),
+                          body: JSON.stringify({ table, model: modelSlug }),
+                        });
+                      } catch {}
+                    }
+                    alert("Donnees demo supprimees. Mode Pro active !");
+                    window.location.reload();
+                  } catch { alert("Erreur"); }
+                  setPurging(false);
+                }} disabled={purging}
+                  className="w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
+                  style={{ background: "#DC2626", color: "#fff" }}>
+                  {purging ? "Purge en cours..." : "Activer Mode Pro — Supprimer les donnees demo"}
+                </button>
+              </div>
             </div>
           )}
 
