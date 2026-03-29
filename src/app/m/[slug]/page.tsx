@@ -291,29 +291,34 @@ export default function ModelPage() {
     try {
       const url = await uploadToCloudinary(file, `heaven/${slug}/avatar`);
       if (url) {
-        // Save immediately — don't wait for save button
-        const res = await fetch(`/api/models/${slug}`, {
+        // Update display immediately
+        setModel(prev => prev ? { ...prev, avatar: url } : prev);
+        updateEditField("avatar", url);
+        // Try to save to DB (non-blocking)
+        fetch(`/api/models/${slug}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ avatar: url }),
+        }).then(res => {
+          if (res.ok) {
+            setEditDirty(false);
+            setEditToast("Avatar sauvegarde !");
+          } else {
+            setEditToast("Photo mise a jour (sync DB en attente)");
+          }
+          setTimeout(() => setEditToast(null), 3000);
+        }).catch(() => {
+          setEditToast("Photo mise a jour localement");
+          setTimeout(() => setEditToast(null), 3000);
         });
-        if (res.ok) {
-          setModel(prev => prev ? { ...prev, avatar: url } : prev);
-          updateEditField("avatar", url);
-          setEditDirty(false);
-          setEditToast("Avatar sauvegarde !");
-        } else {
-          const errData = await res.json().catch(() => ({ error: "?" }));
-          console.error("[Avatar] save error:", errData);
-          setEditToast(`Erreur: ${errData.error || res.status}`);
-        }
       } else {
-        setEditToast("Erreur upload");
+        setEditToast("Erreur upload photo");
+        setTimeout(() => setEditToast(null), 3000);
       }
     } catch {
-      setEditToast("Erreur serveur");
+      setEditToast("Erreur");
+      setTimeout(() => setEditToast(null), 3000);
     }
-    setTimeout(() => setEditToast(null), 2000);
     setUploading(false);
   }, [slug, uploadToCloudinary, updateEditField]);
 
@@ -325,25 +330,25 @@ export default function ModelPage() {
     try {
       const url = await uploadToCloudinary(file, `heaven/${slug}/banner`);
       if (url) {
-        const res = await fetch(`/api/models/${slug}`, {
+        setModel(prev => prev ? { ...prev, banner: url } : prev);
+        updateEditField("banner", url);
+        fetch(`/api/models/${slug}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ banner: url }),
-        });
-        if (res.ok) {
-          setModel(prev => prev ? { ...prev, banner: url } : prev);
-          updateEditField("banner", url);
-          setEditToast("Banniere sauvegardee !");
-        } else {
-          setEditToast("Erreur sauvegarde");
-        }
+        }).then(res => {
+          if (res.ok) { setEditDirty(false); setEditToast("Banniere sauvegardee !"); }
+          else setEditToast("Banniere mise a jour (sync DB en attente)");
+          setTimeout(() => setEditToast(null), 3000);
+        }).catch(() => { setEditToast("Banniere mise a jour localement"); setTimeout(() => setEditToast(null), 3000); });
       } else {
         setEditToast("Erreur upload");
+        setTimeout(() => setEditToast(null), 3000);
       }
     } catch {
-      setEditToast("Erreur serveur");
+      setEditToast("Erreur");
+      setTimeout(() => setEditToast(null), 3000);
     }
-    setTimeout(() => setEditToast(null), 2000);
     setUploading(false);
   }, [slug, uploadToCloudinary, updateEditField]);
 
