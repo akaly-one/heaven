@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Coins, ShoppingBag, Check, Crown, ChevronRight,
@@ -65,6 +66,9 @@ export function ShopTab({
   handleUpdatePack, handleDeletePack, handleAddPack, visitorHandle,
 }: ShopTabProps) {
   const pseudo = visitorHandle || "anonyme";
+  const [selTier, setSelTier] = useState("vip");
+  const [selType, setSelType] = useState<"photo" | "video">("photo");
+  const [videoMin, setVideoMin] = useState(1);
   return (
     <div className="space-y-4 fade-up">
 
@@ -405,54 +409,93 @@ export function ShopTab({
         </div>
       )}
 
-      {/* ──── CREDITS SECTION ──── */}
-      {shopSection === "credits" && (
-        <div className="space-y-4">
-          <h3 className="text-sm font-bold" style={{ color: "var(--text)" }}>Contenu personnalise</h3>
-          <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-            Achete des photos ou videos exclusives. Le prix depend du niveau de contenu.
-          </p>
+      {/* ──── CONTENU PERSONNALISE ──── */}
+      {shopSection === "credits" && (() => {
+        const tier = TOKEN_PRICING.find(t => t.tier.toLowerCase() === selTier) || TOKEN_PRICING[0];
+        const price = selType === "photo" ? tier.photo : tier.videoPerMin * videoMin;
 
-          {/* Content cards — click to pay via PayPal */}
-          <div className="space-y-2">
-            {TOKEN_PRICING.map(t => (
-              <div key={t.tier} className="rounded-xl p-4" style={{ background: `${t.color}08`, border: `1px solid ${t.color}20` }}>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xl">{t.symbol}</span>
-                  <span className="text-sm font-bold" style={{ color: t.color }}>{t.tier}</span>
+        return (
+          <div className="space-y-4">
+            {/* Step 1: Tier */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>Niveau</p>
+              <div className="flex gap-2">
+                {TOKEN_PRICING.map(t => (
+                  <button key={t.tier} onClick={() => setSelTier(t.tier.toLowerCase())}
+                    className="flex-1 py-2.5 rounded-xl text-center cursor-pointer transition-all"
+                    style={{
+                      background: selTier === t.tier.toLowerCase() ? `${t.color}15` : "rgba(0,0,0,0.03)",
+                      border: `2px solid ${selTier === t.tier.toLowerCase() ? t.color : "transparent"}`,
+                      color: selTier === t.tier.toLowerCase() ? t.color : "var(--text-muted)",
+                    }}>
+                    <span className="text-lg block">{t.symbol}</span>
+                    <span className="text-[9px] font-bold">{t.tier}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Step 2: Photo or Video */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>Type</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => setSelType("photo")}
+                  className="py-3 rounded-xl text-center cursor-pointer transition-all"
+                  style={{
+                    background: selType === "photo" ? `${tier.color}15` : "rgba(0,0,0,0.03)",
+                    border: `2px solid ${selType === "photo" ? tier.color : "transparent"}`,
+                    color: selType === "photo" ? tier.color : "var(--text-muted)",
+                  }}>
+                  <Camera className="w-5 h-5 mx-auto mb-1" />
+                  <span className="text-xs font-bold">Photo</span>
+                </button>
+                <button onClick={() => setSelType("video")}
+                  className="py-3 rounded-xl text-center cursor-pointer transition-all"
+                  style={{
+                    background: selType === "video" ? `${tier.color}15` : "rgba(0,0,0,0.03)",
+                    border: `2px solid ${selType === "video" ? tier.color : "transparent"}`,
+                    color: selType === "video" ? tier.color : "var(--text-muted)",
+                  }}>
+                  <Play className="w-5 h-5 mx-auto mb-1" />
+                  <span className="text-xs font-bold">Video</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Step 3: Duration (video only) */}
+            {selType === "video" && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Duree</p>
+                  <span className="text-sm font-bold" style={{ color: tier.color }}>{videoMin} min</span>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <a href={paypalUrl(t.photo)}
-                    target="_blank" rel="noopener noreferrer"
-                    className="py-3 rounded-xl text-center no-underline cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    style={{ background: "#003087", color: "#fff" }}>
-                    <Camera className="w-4 h-4 mx-auto mb-1" />
-                    <span className="text-xs font-bold block">Photo</span>
-                    <span className="text-[10px] opacity-80">{t.photo}€</span>
-                  </a>
-                  <a href={paypalUrl(t.videoPerMin)}
-                    target="_blank" rel="noopener noreferrer"
-                    className="py-3 rounded-xl text-center no-underline cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    style={{ background: "#003087", color: "#fff" }}>
-                    <Play className="w-4 h-4 mx-auto mb-1" />
-                    <span className="text-xs font-bold block">Video /min</span>
-                    <span className="text-[10px] opacity-80">{t.videoPerMin}€</span>
-                  </a>
+                <input type="range" min={1} max={10} value={videoMin} onChange={e => setVideoMin(Number(e.target.value))}
+                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                  style={{ background: `linear-gradient(to right, ${tier.color} ${(videoMin / 10) * 100}%, var(--border) ${(videoMin / 10) * 100}%)` }} />
+                <div className="flex justify-between text-[9px] mt-1" style={{ color: "var(--text-muted)" }}>
+                  <span>1 min</span><span>5 min</span><span>10 min</span>
                 </div>
               </div>
-            ))}
-          </div>
+            )}
 
-          <div className="rounded-xl p-3 text-center" style={{ background: "rgba(230,51,41,0.06)", border: "1px solid rgba(230,51,41,0.15)" }}>
-            <p className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>
-              Ajoute ton pseudo <b>@{pseudo}</b> en note PayPal
-            </p>
-            <p className="text-[9px] mt-0.5" style={{ color: "var(--text-muted)" }}>
-              Pour qu&apos;on sache qui a paye et t&apos;envoyer le contenu
-            </p>
+            {/* Price + Pay */}
+            <div className="rounded-xl p-4 text-center" style={{ background: `${tier.color}08`, border: `1px solid ${tier.color}20` }}>
+              <p className="text-3xl font-black mb-1" style={{ color: tier.color }}>{price}€</p>
+              <p className="text-[10px] mb-3" style={{ color: "var(--text-muted)" }}>
+                {selType === "photo" ? "1 photo" : `${videoMin} min de video`} {tier.tier}
+              </p>
+              <a href={paypalUrl(price)} target="_blank" rel="noopener noreferrer"
+                className="block w-full py-3 rounded-xl text-sm font-bold no-underline cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                style={{ background: "#003087", color: "#fff" }}>
+                Payer {price}€ via PayPal
+              </a>
+              <p className="text-[9px] mt-2" style={{ color: "var(--accent)" }}>
+                Ajoute <b>@{pseudo}</b> en note PayPal
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
