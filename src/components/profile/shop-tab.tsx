@@ -9,7 +9,15 @@ import {
 import type { PackConfig, UploadedContent } from "@/types/heaven";
 import { TIER_META, TIER_HEX } from "@/constants/tiers";
 
-// ── Credit packs for top-up ──
+// ── Token pricing by tier ──
+const TOKEN_PRICING = [
+  { tier: "VIP", symbol: "♥", color: "#E63329", photo: 10, videoPerMin: 20 },
+  { tier: "Gold", symbol: "★", color: "#9E7C1F", photo: 20, videoPerMin: 40 },
+  { tier: "Diamond", symbol: "♦", color: "#4F46E5", photo: 30, videoPerMin: 60 },
+  { tier: "Platinum", symbol: "♛", color: "#7C3AED", photo: 40, videoPerMin: 80 },
+];
+
+// ── Credit recharge packs ──
 const CREDIT_PACKS = [
   { credits: 10, price: 10 },
   { credits: 25, price: 25 },
@@ -492,23 +500,29 @@ export function ShopTab({
             </div>
           )}
 
-          {/* What can you buy with credits */}
+          {/* Token pricing table */}
           <div className="pt-2">
             <p className="text-[10px] font-medium uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>
-              Avec tes crédits tu peux
+              Prix par contenu
             </p>
-            <div className="space-y-1.5">
-              {([
-                { icon: Camera, text: "Débloquer des photos & vidéos exclusives" },
-                { icon: Palette, text: "Commander du contenu personnalisé" },
-                { icon: MessageCircle, text: "Envoyer des messages prioritaires" },
-              ] as { icon: LucideIcon; text: string }[]).map((item, i) => (
-                <div key={i} className="flex items-center gap-2 py-1.5 px-3 rounded-lg" style={{ background: "rgba(255,255,255,0.02)" }}>
-                  <item.icon size={14} style={{ color: "var(--text-muted)" }} />
-                  <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>{item.text}</span>
+            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+              {/* Header */}
+              <div className="grid grid-cols-4 text-center text-[9px] font-bold py-2 px-1" style={{ background: "var(--bg2)", color: "var(--text-muted)" }}>
+                <span>Pack</span><span>Photo</span><span>Video/min</span><span>= EUR</span>
+              </div>
+              {TOKEN_PRICING.map(t => (
+                <div key={t.tier} className="grid grid-cols-4 text-center text-[10px] py-2 px-1"
+                  style={{ borderTop: "1px solid var(--border)" }}>
+                  <span className="font-bold" style={{ color: t.color }}>{t.symbol} {t.tier}</span>
+                  <span style={{ color: "var(--text)" }}>{t.photo} tokens</span>
+                  <span style={{ color: "var(--text)" }}>{t.videoPerMin} tokens</span>
+                  <span style={{ color: "var(--text-muted)" }}>{t.photo}€ / {t.videoPerMin}€</span>
                 </div>
               ))}
             </div>
+            <p className="text-[9px] text-center mt-2" style={{ color: "var(--text-muted)" }}>
+              1 token = 1€ · Les videos sont facturees a la minute
+            </p>
           </div>
         </div>
       )}

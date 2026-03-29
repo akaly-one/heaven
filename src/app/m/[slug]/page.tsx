@@ -1626,9 +1626,13 @@ export default function ModelPage() {
                         </div>
                         <span className="text-sm font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
                       </div>
-                      <p className="text-[10px] leading-relaxed mb-2" style={{ color: "var(--text-muted)" }}>
-                        {pack.features.slice(0, 2).join(" · ")}
-                      </p>
+                      <div className="mb-2 space-y-0.5">
+                        {pack.features.map((f: string, j: number) => (
+                          <p key={j} className="text-[10px] flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
+                            <span style={{ color: hex }}>✓</span> {f}
+                          </p>
+                        ))}
+                      </div>
                       <div className="grid grid-cols-2 gap-1.5">
                         {pack.wise_url && (
                           <a href={pack.wise_url} target="_blank" rel="noopener noreferrer"
