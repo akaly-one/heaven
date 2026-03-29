@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useModel } from "@/lib/model-context";
 import { OsLayout } from "@/components/os-layout";
-import { ArrowLeft, Trash2, Search, Image, Check } from "lucide-react";
+import { ArrowLeft, Trash2, Image, Check, ZoomIn, ZoomOut, X, Move } from "lucide-react";
 import type { FeedPost as Post } from "@/types/heaven";
 
 export default function MediaPage() {
@@ -13,6 +13,11 @@ export default function MediaPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<"all" | "public" | "vip" | "gold" | "diamond" | "platinum">("all");
+  const [cropPost, setCropPost] = useState<Post | null>(null);
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropPos, setCropPos] = useState({ x: 50, y: 50 });
+  const cropDragging = useRef(false);
+  const cropStart = useRef({ x: 0, y: 0, px: 50, py: 50 });
 
   const fetchPosts = useCallback(() => {
     fetch(`/api/posts?model=${model}`, { headers: authHeaders() })
@@ -132,8 +137,14 @@ export default function MediaPage() {
                       {tier === "vip" ? "♥" : tier === "gold" ? "★" : tier === "diamond" ? "♦" : "♛"}
                     </span>
                   )}
-                  {/* Hover overlay */}
-                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  {/* Hover: crop button */}
+                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-1">
+                    <button onClick={(e) => { e.stopPropagation(); setCropPost(post); setCropZoom(1); setCropPos({ x: 50, y: 50 }); }}
+                      className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
+                      style={{ background: "rgba(255,255,255,0.9)" }}>
+                      <Move className="w-3 h-3" style={{ color: "#333" }} />
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -162,6 +173,73 @@ export default function MediaPage() {
           )}
         </div>
       </div>
+
+      {/* Crop/reposition modal */}
+      {cropPost && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)" }}>
+          <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: "var(--surface)" }}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
+              <span className="text-xs font-bold" style={{ color: "var(--text)" }}>Recadrer</span>
+              <button onClick={() => setCropPost(null)} className="cursor-pointer" style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Preview — drag to reposition, scroll to zoom */}
+            <div className="relative aspect-square overflow-hidden cursor-move"
+              onMouseDown={(e) => { cropDragging.current = true; cropStart.current = { x: e.clientX, y: e.clientY, px: cropPos.x, py: cropPos.y }; }}
+              onMouseMove={(e) => {
+                if (!cropDragging.current) return;
+                const dx = (e.clientX - cropStart.current.x) * 0.3;
+                const dy = (e.clientY - cropStart.current.y) * 0.3;
+                setCropPos({ x: Math.max(0, Math.min(100, cropStart.current.px - dx)), y: Math.max(0, Math.min(100, cropStart.current.py - dy)) });
+              }}
+              onMouseUp={() => { cropDragging.current = false; }}
+              onMouseLeave={() => { cropDragging.current = false; }}
+              onTouchStart={(e) => { const t = e.touches[0]; cropDragging.current = true; cropStart.current = { x: t.clientX, y: t.clientY, px: cropPos.x, py: cropPos.y }; }}
+              onTouchMove={(e) => {
+                if (!cropDragging.current) return;
+                const t = e.touches[0];
+                const dx = (t.clientX - cropStart.current.x) * 0.3;
+                const dy = (t.clientY - cropStart.current.y) * 0.3;
+                setCropPos({ x: Math.max(0, Math.min(100, cropStart.current.px - dx)), y: Math.max(0, Math.min(100, cropStart.current.py - dy)) });
+              }}
+              onTouchEnd={() => { cropDragging.current = false; }}>
+              <img src={cropPost.media_url!} alt="" className="w-full h-full"
+                style={{ objectFit: "cover", objectPosition: `${cropPos.x}% ${cropPos.y}%`, transform: `scale(${cropZoom})`, transition: cropDragging.current ? "none" : "transform 0.2s" }} />
+              {/* Grid overlay */}
+              <div className="absolute inset-0 pointer-events-none" style={{
+                background: "linear-gradient(transparent 33%, rgba(255,255,255,0.15) 33%, rgba(255,255,255,0.15) 34%, transparent 34%, transparent 66%, rgba(255,255,255,0.15) 66%, rgba(255,255,255,0.15) 67%, transparent 67%), linear-gradient(90deg, transparent 33%, rgba(255,255,255,0.15) 33%, rgba(255,255,255,0.15) 34%, transparent 34%, transparent 66%, rgba(255,255,255,0.15) 66%, rgba(255,255,255,0.15) 67%, transparent 67%)",
+              }} />
+            </div>
+
+            {/* Zoom controls */}
+            <div className="flex items-center gap-3 px-4 py-3">
+              <button onClick={() => setCropZoom(z => Math.max(1, z - 0.25))} className="p-2 rounded-lg cursor-pointer" style={{ background: "var(--bg)", border: "1px solid var(--border)" }}>
+                <ZoomOut className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+              </button>
+              <input type="range" min={100} max={300} value={cropZoom * 100} onChange={e => setCropZoom(Number(e.target.value) / 100)}
+                className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer"
+                style={{ background: `linear-gradient(to right, var(--accent) ${((cropZoom - 1) / 2) * 100}%, var(--border) ${((cropZoom - 1) / 2) * 100}%)` }} />
+              <button onClick={() => setCropZoom(z => Math.min(3, z + 0.25))} className="p-2 rounded-lg cursor-pointer" style={{ background: "var(--bg)", border: "1px solid var(--border)" }}>
+                <ZoomIn className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+              </button>
+              <span className="text-[10px] font-mono w-8 text-center" style={{ color: "var(--text-muted)" }}>{Math.round(cropZoom * 100)}%</span>
+            </div>
+
+            {/* Save */}
+            <div className="px-4 pb-4">
+              <button onClick={() => {
+                // TODO: save crop position to post metadata via API
+                setCropPost(null);
+              }} className="w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer btn-gradient">
+                Appliquer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </OsLayout>
   );
 }

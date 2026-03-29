@@ -165,17 +165,17 @@ export function GenerateModal({ open, onClose, onGenerate, modelSlug, prefillCli
             {/* Tier */}
             <div>
               <label className="text-[11px] font-medium uppercase tracking-wider mb-2 block" style={{ color: "var(--text-muted)" }}>Pack</label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="flex gap-3 justify-center">
                 {TIERS.map(t => (
                   <button key={t.id} onClick={() => setTier(t.id)}
-                    className="py-2.5 rounded-xl text-center text-xs font-medium cursor-pointer transition-all hover:scale-105 active:scale-95"
+                    className="w-14 h-14 rounded-xl text-2xl cursor-pointer transition-all hover:scale-110 active:scale-95 flex items-center justify-center"
                     style={{
-                      background: tier === t.id ? `${t.color}20` : "rgba(255,255,255,0.03)",
-                      color: tier === t.id ? t.color : "var(--text-muted)",
-                      border: `1px solid ${tier === t.id ? `${t.color}40` : "var(--border2)"}`,
+                      background: `${t.color}15`,
+                      color: t.color,
+                      border: tier === t.id ? `3px solid ${t.color}` : "3px solid transparent",
+                      boxShadow: tier === t.id ? `0 0 16px ${t.color}30` : "none",
                     }}>
-                    <span className="text-lg block mb-0.5">{t.symbol}</span>
-                    {t.label}
+                    {t.symbol}
                   </button>
                 ))}
               </div>
