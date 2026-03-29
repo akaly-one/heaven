@@ -54,8 +54,8 @@ interface ShopTabProps {
   visitorHandle?: string;
 }
 
-function paypalUrl(amount: number, description: string): string {
-  return `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=aaclaraa%40gmail.com&amount=${amount}&currency_code=EUR&item_name=${encodeURIComponent(description)}&no_shipping=1`;
+function paypalUrl(amount: number): string {
+  return `https://www.paypal.com/paypalme/aaclaraa/${amount}`;
 }
 
 export function ShopTab({
@@ -258,14 +258,14 @@ export function ShopTab({
                                 Revolut · {pack.price}€
                               </a>
                             )}
-                            <a href={pack.stripe_link || paypalUrl(pack.price, `Pack ${pack.name} - @${pseudo}`)} target="_blank" rel="noopener noreferrer"
+                            <a href={pack.stripe_link || paypalUrl(pack.price)} target="_blank" rel="noopener noreferrer"
                               className={`py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 no-underline transition-all hover:scale-[1.02] active:scale-[0.98] ${!pack.wise_url ? "col-span-2" : ""}`}
                               style={{ background: "#003087", color: "#fff" }}>
                               PayPal · {pack.price}€
                             </a>
                           </div>
-                          <p className="text-[9px] text-center mt-1" style={{ color: "var(--text-muted)" }}>
-                            Apres paiement envoie le recu + ton pseudo pour recevoir ton code
+                          <p className="text-[9px] text-center mt-1" style={{ color: "var(--accent)" }}>
+                            Ajoute <b>@{pseudo}</b> en note PayPal
                           </p>
                         </div>
                       )}
@@ -422,7 +422,7 @@ export function ShopTab({
                   <span className="text-sm font-bold" style={{ color: t.color }}>{t.tier}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <a href={paypalUrl(t.photo, `Photo ${t.tier} - @${pseudo}`)}
+                  <a href={paypalUrl(t.photo)}
                     target="_blank" rel="noopener noreferrer"
                     className="py-3 rounded-xl text-center no-underline cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
                     style={{ background: "#003087", color: "#fff" }}>
@@ -430,7 +430,7 @@ export function ShopTab({
                     <span className="text-xs font-bold block">Photo</span>
                     <span className="text-[10px] opacity-80">{t.photo}€</span>
                   </a>
-                  <a href={paypalUrl(t.videoPerMin, `Video ${t.tier} 1min - @${pseudo}`)}
+                  <a href={paypalUrl(t.videoPerMin)}
                     target="_blank" rel="noopener noreferrer"
                     className="py-3 rounded-xl text-center no-underline cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
                     style={{ background: "#003087", color: "#fff" }}>
@@ -443,9 +443,14 @@ export function ShopTab({
             ))}
           </div>
 
-          <p className="text-[9px] text-center" style={{ color: "var(--text-muted)" }}>
-            Apres paiement envoie le recu + ton pseudo pour recevoir le contenu
-          </p>
+          <div className="rounded-xl p-3 text-center" style={{ background: "rgba(230,51,41,0.06)", border: "1px solid rgba(230,51,41,0.15)" }}>
+            <p className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>
+              Ajoute ton pseudo <b>@{pseudo}</b> en note PayPal
+            </p>
+            <p className="text-[9px] mt-0.5" style={{ color: "var(--text-muted)" }}>
+              Pour qu&apos;on sache qui a paye et t&apos;envoyer le contenu
+            </p>
+          </div>
         </div>
       )}
     </div>
