@@ -76,6 +76,15 @@ export async function PUT(req: NextRequest) {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
+    // Handle merge action
+    if (updates.action === "merge" && updates.from_slug && updates.to_slug) {
+      const tables = ["agence_codes", "agence_clients", "agence_messages", "agence_posts", "agence_uploads", "agence_wall_posts"];
+      for (const table of tables) {
+        try { await supabase.from(table).update({ model: updates.to_slug }).eq("model", updates.from_slug); } catch {}
+      }
+      return NextResponse.json({ success: true }, { headers: cors });
+    }
+
     // Sanitize allowed fields
     const allowed: Record<string, unknown> = {};
     if (updates.display_name !== undefined) allowed.display_name = updates.display_name;
@@ -117,16 +126,11 @@ export async function DELETE(req: NextRequest) {
 
     if (account?.model_slug) {
       const model = account.model_slug;
-      // Cascade delete related records
-      await Promise.all([
-        supabase.from("agence_codes").delete().eq("model", model),
-        supabase.from("agence_clients").delete().eq("model", model),
-        supabase.from("agence_messages").delete().eq("model", model),
-        supabase.from("agence_posts").delete().eq("model", model),
-        supabase.from("agence_uploads").delete().eq("model", model),
-        supabase.from("agence_wall_posts").delete().eq("model", model),
-        supabase.from("agence_security_alerts").delete().eq("model", model),
-      ]);
+      // Cascade delete — ignore errors for missing tables
+      const tables = ["agence_codes", "agence_clients", "agence_messages", "agence_posts", "agence_uploads", "agence_wall_posts", "agence_security_alerts", "agence_models"];
+      for (const table of tables) {
+        try { await supabase.from(table).delete().eq("model", model); } catch {}
+      }
     }
 
     const { error } = await supabase.from("agence_accounts").delete().eq("id", id);
