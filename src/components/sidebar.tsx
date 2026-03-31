@@ -1,16 +1,17 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, MessageCircle, Users, Image, ChevronLeft, ChevronRight, Crown, KeyRound, Settings } from "lucide-react";
+import { LayoutDashboard, MessageCircle, Users, Image, ChevronLeft, ChevronRight, Crown, KeyRound, Settings, Target } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { HeavenAuth } from "./auth-guard";
 
-// ── Only essential pages ──
+// ── Navigation ──
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/agence", color: "#E63329" },
   { id: "messages", label: "Messages", icon: MessageCircle, href: "/agence/messages", color: "#F43F5E" },
   { id: "clients", label: "Clients", icon: Users, href: "/agence/clients", color: "#F59E0B" },
   { id: "media", label: "Media", icon: Image, href: "/agence/media", color: "#8B5CF6" },
+  { id: "strategie", label: "Strategie", icon: Target, href: "/agence/strategie", color: "#10B981" },
 ] as const;
 
 function useAuth(): HeavenAuth | null {
