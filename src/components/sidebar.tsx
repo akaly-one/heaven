@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, MessageCircle, Users, Image, ChevronLeft, ChevronRight, Crown, KeyRound, Settings, Target } from "lucide-react";
+import { LayoutDashboard, MessageCircle, Users, Image, ChevronLeft, ChevronRight, Crown, KeyRound, Settings, Target, LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import type { HeavenAuth } from "./auth-guard";
 
@@ -27,10 +28,16 @@ function useAuth(): HeavenAuth | null {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const auth = useAuth();
   const isRoot = auth?.role === "root";
   const isAdmin = (auth?.scope || ["*"]).includes("*");
   const [collapsed, setCollapsed] = useState(true);
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("heaven_auth");
+    router.push("/login");
+  };
 
   const visibleItems = NAV_ITEMS.filter(item => {
     if ("rootOnly" in item && item.rootOnly && !isRoot) return false;
@@ -81,6 +88,14 @@ export function Sidebar() {
           })}
         </nav>
 
+        {/* Logout */}
+        <button onClick={handleLogout}
+          className="flex items-center gap-3 mx-2 px-2.5 py-2.5 rounded-lg transition-all cursor-pointer hover:bg-white/8 mb-2"
+          style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
+          <LogOut className="w-4 h-4 flex-shrink-0" />
+          {!collapsed && <span className="text-xs font-medium">Deconnexion</span>}
+        </button>
+
         <button onClick={() => setCollapsed(!collapsed)}
           className="mx-auto w-6 h-6 rounded-full flex items-center justify-center cursor-pointer hover:bg-white/10"
           style={{ color: "var(--text-muted)" }}>
@@ -129,6 +144,13 @@ export function Sidebar() {
           </a>
         </div>
       </nav>
+
+      {/* Mobile logout — top-right floating */}
+      <button onClick={handleLogout}
+        className="fixed top-3 right-3 z-50 md:hidden w-8 h-8 rounded-full flex items-center justify-center cursor-pointer"
+        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+        <LogOut className="w-3.5 h-3.5" />
+      </button>
     </>
   );
 }
