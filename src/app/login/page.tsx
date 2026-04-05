@@ -4,12 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, ArrowRight, Crown } from "lucide-react";
 
-// Access codes — Phase 0 (hardcoded). Phase prod: Supabase dynamic codes.
-const ACCESS_CODES: Record<string, { role: string; redirect: string; scope: string[]; model_slug: string | null; display_name: string }> = {
-  gret1: { role: "root", redirect: "/agence", scope: ["*"], model_slug: null, display_name: "NB" },
-  yumi: { role: "model", redirect: "/agence", scope: ["/agence"], model_slug: "yumi", display_name: "Yumi" },
-  ruby: { role: "model", redirect: "/agence", scope: ["/agence"], model_slug: "ruby", display_name: "Ruby" },
-};
+// SQWENSY OS API for code validation (source of truth)
+const SQWENSY_API = process.env.NEXT_PUBLIC_SQWENSY_URL || "https://sqwensy.com";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,23 +19,35 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
 
-    await new Promise((r) => setTimeout(r, 400));
+    try {
+      const res = await fetch(`${SQWENSY_API}/api/agence/verify-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: code.trim() }),
+      });
 
-    const access = ACCESS_CODES[code.trim().toLowerCase()];
-    if (access) {
-      sessionStorage.setItem(
-        "heaven_auth",
-        JSON.stringify({
-          role: access.role,
-          scope: access.scope,
-          model_slug: access.model_slug,
-          display_name: access.display_name,
-          loggedAt: new Date().toISOString(),
-        })
-      );
-      router.push(access.redirect);
-    } else {
-      setError("Code invalide");
+      const data = await res.json();
+
+      if (data.valid) {
+        sessionStorage.setItem(
+          "heaven_auth",
+          JSON.stringify({
+            role: data.role,
+            scope: data.scope,
+            model_slug: data.model_slug,
+            display_name: data.display_name,
+            loggedAt: new Date().toISOString(),
+          })
+        );
+        router.push(data.redirect || "/agence");
+      } else {
+        setError("Code invalide");
+        setShake(true);
+        setTimeout(() => setShake(false), 600);
+        setIsLoading(false);
+      }
+    } catch {
+      setError("Erreur de connexion");
       setShake(true);
       setTimeout(() => setShake(false), 600);
       setIsLoading(false);
