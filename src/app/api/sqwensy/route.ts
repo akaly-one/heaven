@@ -263,7 +263,10 @@ export async function POST(request: NextRequest) {
 
       case "sync_to_sqwensy": {
         // Push Heaven aggregate data to SQWENSY OS /api/sync/heaven
-        const syncSecret = process.env.HEAVEN_SYNC_SECRET || "heaven-sync-2026";
+        const syncSecret = process.env.HEAVEN_SYNC_SECRET;
+        if (!syncSecret) {
+          return NextResponse.json({ error: "HEAVEN_SYNC_SECRET not configured" }, { status: 500, headers: cors });
+        }
         const sqwensyUrl = `${SQWENSY_OS_URL}/api/sync/heaven`;
 
         // Gather data
