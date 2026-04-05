@@ -119,12 +119,33 @@ export async function POST(request: Request) {
         .eq("slug", cleanSlug);
     }
 
+    // 5. Ensure media config exists (provision_model_media is called by activate_model RPC,
+    //    but also ensure it via direct insert as fallback)
+    await supabase
+      .from("agence_media_config")
+      .upsert({
+        model_slug: cleanSlug,
+        folder_root: `heaven/${cleanSlug}`,
+        folder_content: `heaven/${cleanSlug}/content`,
+        folder_avatar: `heaven/${cleanSlug}/avatar`,
+        folder_banner: `heaven/${cleanSlug}/banner`,
+      }, { onConflict: "model_slug" });
+
+    // 6. Create Cloudinary folders by uploading a placeholder (Cloudinary creates folders on first upload)
+    // The actual folder creation happens naturally when the model uploads their first content.
+
     return NextResponse.json({
       success: true,
       model_id: result?.model_id,
       model_number: result?.model_number,
       slug: cleanSlug,
       display_name: display_name || cleanSlug.toUpperCase(),
+      media: {
+        folder_root: `heaven/${cleanSlug}`,
+        folder_content: `heaven/${cleanSlug}/content`,
+        folder_avatar: `heaven/${cleanSlug}/avatar`,
+        folder_banner: `heaven/${cleanSlug}/banner`,
+      },
     });
   } catch (err) {
     console.error("[Model activate]", err);
