@@ -102,7 +102,7 @@ SELECT
   m.slug,
   m.model_id,
   m.model_number,
-  m.display_name,
+  COALESCE(m.display, m.slug) AS display_name,
   m.avatar,
   m.is_active,
   m.activated_at,
