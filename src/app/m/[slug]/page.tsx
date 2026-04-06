@@ -525,6 +525,7 @@ export default function ModelPage() {
       fetch(`/api/wall?model=${slug}`).then(r => r.json()).catch(e => { console.error("[Profile] wall fetch failed:", e); return { posts: [] }; }),
     ]).then(([modelData, postsData, packsData, uploadsData, wallData]) => {
       setModel(modelData);
+      if (modelData?.display_name) document.title = `${modelData.display_name} — Heaven`;
       setPosts(postsData.posts || []);
       setPacks(packsData.packs || []);
       setUploads(uploadsData.uploads || []);
