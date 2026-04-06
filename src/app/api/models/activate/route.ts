@@ -68,11 +68,13 @@ export async function POST(request: Request) {
 
     if (!existing) {
       // Create model record
+      const displayName = display_name || cleanSlug.toUpperCase();
       const { error: createErr } = await supabase
         .from("agence_models")
         .insert({
           slug: cleanSlug,
-          display_name: display_name || cleanSlug.toUpperCase(),
+          display: displayName,
+          display_name: displayName,
           avatar: avatar || null,
           status: "Creatrice exclusive",
         });
