@@ -10,9 +10,13 @@ export const runtime = "nodejs";
 
 import type { CodeRow } from "@/types/heaven";
 
+class DbConnectionError extends Error {
+  constructor() { super("Supabase not configured"); this.name = "DbConnectionError"; }
+}
+
 function requireSupabase() {
   const supabase = getServerSupabase();
-  if (!supabase) throw new Error("Supabase not configured");
+  if (!supabase) throw new DbConnectionError();
   return supabase;
 }
 
@@ -49,7 +53,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ codes: mapped }, { headers: cors });
   } catch (err) {
     console.error("[API/codes] GET:", err);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });
+    const status = err instanceof DbConnectionError ? 502 : 500;
+    return NextResponse.json({ error: status === 502 ? "DB non configuree" : "Erreur serveur" }, { status, headers: cors });
   }
 }
 
@@ -173,7 +178,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, code: mapped }, { status: 201, headers: cors });
   } catch (err) {
     console.error("[API/codes] POST:", err);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });
+    const status = err instanceof DbConnectionError ? 502 : 500;
+    return NextResponse.json({ error: status === 502 ? "DB non configuree" : "Erreur serveur" }, { status, headers: cors });
   }
 }
 
@@ -217,7 +223,8 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ success: true, code: mapped }, { headers: cors });
   } catch (err) {
     console.error("[API/codes] PUT:", err);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });
+    const status = err instanceof DbConnectionError ? 502 : 500;
+    return NextResponse.json({ error: status === 502 ? "DB non configuree" : "Erreur serveur" }, { status, headers: cors });
   }
 }
 
@@ -241,7 +248,8 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ success: true }, { headers: cors });
   } catch (err) {
     console.error("[API/codes] DELETE:", err);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });
+    const status = err instanceof DbConnectionError ? 502 : 500;
+    return NextResponse.json({ error: status === 502 ? "DB non configuree" : "Erreur serveur" }, { status, headers: cors });
   }
 }
 
@@ -265,7 +273,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true }, { headers: cors });
   } catch (err) {
     console.error("[API/codes] PATCH:", err);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });
+    const status = err instanceof DbConnectionError ? 502 : 500;
+    return NextResponse.json({ error: status === 502 ? "DB non configuree" : "Erreur serveur" }, { status, headers: cors });
   }
 }
 

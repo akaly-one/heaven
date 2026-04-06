@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
+import { getCorsHeaders } from "@/lib/auth";
 
 /**
  * POST /api/models/activate — Activate a model in Heaven
@@ -24,6 +25,8 @@ const DEFAULT_PACKS = [
 ];
 
 export async function POST(request: Request) {
+  const cors = getCorsHeaders(request as any);
+
   // Auth: either HEAVEN_SYNC_SECRET header or session-based root
   const secret = request.headers.get("x-sync-secret");
   if (SYNC_SECRET && secret !== SYNC_SECRET) {
@@ -146,7 +149,7 @@ export async function POST(request: Request) {
         folder_avatar: `heaven/${cleanSlug}/avatar`,
         folder_banner: `heaven/${cleanSlug}/banner`,
       },
-    });
+    }, { headers: cors });
   } catch (err) {
     console.error("[Model activate]", err);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });

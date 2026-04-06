@@ -407,7 +407,7 @@ export default function AgenceDashboard() {
           {/* ── Pending Purchases ── */}
           {pendingPurchases.length > 0 && (
             <div className="space-y-2 fade-up-1">
-              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#B45309" }}>
+              <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#B45309" }}>
                 ⏳ {pendingPurchases.length} achat(s) en attente de validation
               </p>
               {pendingPurchases.map(p => {
@@ -425,7 +425,7 @@ export default function AgenceDashboard() {
                       <p className="text-xs font-semibold truncate" style={{ color: "var(--text)" }}>
                         @{pseudo} — {item}
                       </p>
-                      <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                      <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                         {amount}€ · {new Date(p.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                       </p>
                     </div>
@@ -435,7 +435,7 @@ export default function AgenceDashboard() {
                         setWallPosts(prev => prev.filter(w => w.id !== p.id));
                       } catch {}
                     }}
-                      className="px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all hover:scale-105"
+                      className="px-3 py-2.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:scale-105"
                       style={{ background: "#16A34A", color: "#fff", border: "none" }}>
                       ✓ Validé
                     </button>
@@ -481,7 +481,7 @@ export default function AgenceDashboard() {
                         style={{ background: "rgba(0,0,0,0.7)", color: "#fff" }}>
                         <X className="w-3.5 h-3.5" />
                       </button>
-                      <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg text-[9px] font-bold"
+                      <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg text-[11px] font-bold"
                         style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}>
                         1:1
                       </div>
@@ -489,7 +489,7 @@ export default function AgenceDashboard() {
                   )}
                   {/* Row 1: Photo + Tier selector (scrollable) */}
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                    <label className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer shrink-0"
+                    <label className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium cursor-pointer shrink-0"
                       style={{ background: "rgba(0,0,0,0.04)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
                       <Image className="w-3.5 h-3.5" /> Photo
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => {
@@ -503,7 +503,7 @@ export default function AgenceDashboard() {
                     </label>
                     {TIER_OPTIONS.map(t => (
                       <button key={t.id} onClick={() => setNewPostTier(t.id)}
-                        className="px-2 py-1 rounded-full text-[9px] font-bold cursor-pointer shrink-0"
+                        className="px-2.5 py-2 rounded-full text-[11px] font-bold cursor-pointer shrink-0"
                         style={{
                           background: newPostTier === t.id ? `${t.color}20` : "transparent",
                           color: newPostTier === t.id ? t.color : "var(--text-muted)",
@@ -515,7 +515,7 @@ export default function AgenceDashboard() {
                   </div>
                   {/* Row 2: Publier button full width */}
                   <button onClick={handleCreatePost} disabled={(!newPostContent.trim() && !newPostImage) || posting}
-                    className="w-full py-2 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-[1.01] disabled:opacity-30"
+                    className="w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-[1.01] disabled:opacity-30"
                     style={{ background: "var(--accent)", color: "#fff" }}>
                     {posting ? "Envoi en cours..." : "Publier"}
                   </button>
@@ -546,13 +546,13 @@ export default function AgenceDashboard() {
                       return (
                         <div key={`w-${w.id}`} className="rounded-2xl p-4 group" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                           <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
                               style={{ background: "rgba(0,0,0,0.06)", color: "var(--text-muted)" }}>
                               {w.pseudo?.charAt(0)?.toUpperCase() || "?"}
                             </div>
                             <div className="flex-1 min-w-0">
                               <button onClick={() => setClientModal({ pseudo: w.pseudo })}
-                                className="text-[10px] font-bold cursor-pointer hover:underline" style={{ color: "var(--text)", background: "none", border: "none", padding: 0 }}>
+                                className="text-[11px] font-bold cursor-pointer hover:underline" style={{ color: "var(--text)", background: "none", border: "none", padding: 0 }}>
                                 @{w.pseudo}
                               </button>
                               <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{w.content}</p>
@@ -580,13 +580,13 @@ export default function AgenceDashboard() {
                         {/* Name overlay on image */}
                         <div className="absolute bottom-0 left-0 right-0 p-3" style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.6))" }}>
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
                               style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(4px)", color: "#fff" }}>
                               {modelSlug.charAt(0).toUpperCase()}
                             </div>
                             <span className="text-xs font-bold text-white" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>{modelInfo?.display_name || modelSlug}</span>
                             {post.tier_required !== "public" && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                              <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full"
                                 style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}>
                                 {post.tier_required.toUpperCase()}
                               </span>
@@ -599,13 +599,13 @@ export default function AgenceDashboard() {
                     <div className="p-3">
                       {!post.media_url && (
                         <div className="flex items-center gap-2 mb-2">
-                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
                             style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "#fff" }}>
                             {modelSlug.charAt(0).toUpperCase()}
                           </div>
                           <span className="text-xs font-bold" style={{ color: "var(--text)" }}>{modelInfo?.display_name || modelSlug}</span>
                           {post.tier_required !== "public" && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{
+                            <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full" style={{
                               background: (TIER_OPTIONS.find(t => t.id === post.tier_required)?.color || "#64748B") + "20",
                               color: TIER_OPTIONS.find(t => t.id === post.tier_required)?.color || "#64748B",
                             }}>{post.tier_required.toUpperCase()}</span>
@@ -639,7 +639,7 @@ export default function AgenceDashboard() {
                 <MessageCircle className="w-4 h-4" style={{ color: "var(--accent)" }} />
                 <span className="text-xs font-bold flex-1 text-left" style={{ color: "var(--text)" }}>Messages</span>
                 {pendingMessagesCount > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: "rgba(244,63,94,0.12)", color: "#F43F5E" }}>
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold" style={{ background: "rgba(244,63,94,0.12)", color: "#F43F5E" }}>
                     {pendingMessagesCount}
                   </span>
                 )}
@@ -668,29 +668,29 @@ export default function AgenceDashboard() {
                 return (
                   <div className="px-3 pb-3 space-y-1" style={{ borderTop: "1px solid var(--border)" }}>
                     {convos.length === 0 ? (
-                      <p className="text-[10px] py-2 text-center" style={{ color: "var(--text-muted)" }}>Pas de messages</p>
+                      <p className="text-[11px] py-2 text-center" style={{ color: "var(--text-muted)" }}>Pas de messages</p>
                     ) : (
                       convos.slice(0, 6).map(convo => (
                         <div key={convo.cid} className="rounded-xl p-2" style={{ background: convo.hasAdmin ? "rgba(59,130,246,0.08)" : convo.unread > 0 ? "rgba(244,63,94,0.04)" : "transparent", border: convo.hasAdmin ? "1px solid rgba(59,130,246,0.2)" : "none" }}>
                           {/* Client header + last message */}
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
                               style={{ background: convo.hasAdmin ? "rgba(59,130,246,0.15)" : convo.unread > 0 ? "rgba(230,51,41,0.12)" : "rgba(0,0,0,0.06)", color: convo.hasAdmin ? "#3B82F6" : convo.unread > 0 ? "var(--accent)" : "var(--text-muted)" }}>
                               {convo.hasAdmin ? "🔷" : convo.name.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>
-                                  {convo.hasAdmin && <span className="text-[8px] font-bold px-1 py-0.5 rounded mr-1" style={{ background: "rgba(59,130,246,0.12)", color: "#3B82F6" }}>ADMIN</span>}
+                                <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>
+                                  {convo.hasAdmin && <span className="text-[11px] font-bold px-1 py-0.5 rounded mr-1" style={{ background: "rgba(59,130,246,0.12)", color: "#3B82F6" }}>ADMIN</span>}
                                   @{convo.name}
                                 </span>
                                 {convo.unread > 0 && (
-                                  <span className="w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center" style={{ background: convo.hasAdmin ? "#3B82F6" : "var(--accent)", color: "#fff" }}>
+                                  <span className="w-4 h-4 rounded-full text-[11px] font-bold flex items-center justify-center" style={{ background: convo.hasAdmin ? "#3B82F6" : "var(--accent)", color: "#fff" }}>
                                     {convo.unread}
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[10px] truncate" style={{ color: convo.unread > 0 ? "var(--text)" : "var(--text-muted)" }}>
+                              <p className="text-[11px] truncate" style={{ color: convo.unread > 0 ? "var(--text)" : "var(--text-muted)" }}>
                                 {convo.last.sender_type === "model" ? "Toi: " : convo.last.sender_type === "admin" ? "🔷 Admin: " : ""}{convo.last.content}
                               </p>
                             </div>
@@ -701,7 +701,7 @@ export default function AgenceDashboard() {
                             <div className="flex gap-1.5 mt-1.5 ml-9">
                               <input value={replyText} onChange={e => setReplyText(e.target.value)}
                                 placeholder="Repondre..."
-                                className="flex-1 px-2 py-1.5 rounded-lg text-[10px] outline-none"
+                                className="flex-1 px-2 py-1.5 rounded-lg text-[11px] outline-none"
                                 style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
                                 onKeyDown={async e => {
                                   if (e.key === "Enter" && replyText.trim()) {
@@ -717,18 +717,18 @@ export default function AgenceDashboard() {
                                       body: JSON.stringify({ model: modelSlug, client_id: convo.cid, action: "mark_read" }) });
                                   }
                                 }} autoFocus />
-                              <button onClick={() => setReplyTo(null)} className="text-[10px] cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>✕</button>
+                              <button onClick={() => setReplyTo(null)} className="text-[11px] cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>✕</button>
                             </div>
                           ) : (
                             <button onClick={() => { setReplyTo(convo.cid); setReplyText(""); }}
-                              className="text-[9px] cursor-pointer hover:underline ml-9 mt-0.5" style={{ color: "var(--accent)", background: "none", border: "none", padding: 0 }}>
+                              className="text-[11px] cursor-pointer hover:underline ml-9 mt-0.5" style={{ color: "var(--accent)", background: "none", border: "none", padding: 0 }}>
                               Repondre
                             </button>
                           )}
                         </div>
                       ))
                     )}
-                    <a href="/agence/clients" className="block text-center text-[10px] font-medium py-1 no-underline hover:underline" style={{ color: "var(--accent)" }}>
+                    <a href="/agence/clients" className="block text-center text-[11px] font-medium py-1 no-underline hover:underline" style={{ color: "var(--accent)" }}>
                       Voir tous les messages →
                     </a>
                   </div>
@@ -741,7 +741,7 @@ export default function AgenceDashboard() {
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-bold text-[var(--text)]">Codes &amp; Clients</h2>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-medium text-[var(--text-muted)]">
+                <span className="text-[11px] font-medium text-[var(--text-muted)]">
                   {activeCodes.length} actif{activeCodes.length > 1 ? "s" : ""} / {clients.length} client{clients.length > 1 ? "s" : ""}
                 </span>
                 <button
@@ -774,7 +774,7 @@ export default function AgenceDashboard() {
 
           {/* Platforms — editable handles */}
           <div className="rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <h3 className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: "var(--text-muted)" }}>Réseaux sociaux</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider mb-3" style={{ color: "var(--text-muted)" }}>Réseaux sociaux</h3>
             <div className="space-y-1.5">
               {PLATFORMS.map(p => {
                 const handle = modelInfo?.platforms?.[p.id] || "";
@@ -786,7 +786,7 @@ export default function AgenceDashboard() {
                     <input
                       defaultValue={handle}
                       placeholder="pseudo..."
-                      className="flex-1 text-[10px] bg-transparent outline-none min-w-0"
+                      className="flex-1 text-[11px] bg-transparent outline-none min-w-0"
                       style={{ color: "var(--text)" }}
                       onBlur={async (e) => {
                         const val = e.target.value.trim();
@@ -804,7 +804,7 @@ export default function AgenceDashboard() {
                     {handle && (
                       <a href={handle.startsWith("http") ? handle : `${p.urlPrefix}${handle}`}
                         target="_blank" rel="noopener noreferrer"
-                        className="text-[9px] no-underline shrink-0" style={{ color: p.color }}>↗</a>
+                        className="text-[11px] no-underline shrink-0" style={{ color: p.color }}>↗</a>
                     )}
                   </div>
                 );
@@ -861,13 +861,13 @@ export default function AgenceDashboard() {
                     } catch {}
                   }} className="space-y-3">
                     <div>
-                      <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-muted)" }}>Pseudo</label>
+                      <label className="text-[11px] font-medium block mb-1" style={{ color: "var(--text-muted)" }}>Pseudo</label>
                       <input name="pseudo" defaultValue={clientModal.pseudo} className="w-full px-3 py-2 rounded-xl text-xs outline-none"
                         style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }} />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-muted)" }}>Plateforme</label>
+                        <label className="text-[11px] font-medium block mb-1" style={{ color: "var(--text-muted)" }}>Plateforme</label>
                         <select name="platform" defaultValue="snapchat" className="w-full px-3 py-2 rounded-xl text-xs outline-none cursor-pointer"
                           style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}>
                           <option value="snapchat">Snapchat</option>
@@ -875,7 +875,7 @@ export default function AgenceDashboard() {
                         </select>
                       </div>
                       <div>
-                        <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-muted)" }}>Pack</label>
+                        <label className="text-[11px] font-medium block mb-1" style={{ color: "var(--text-muted)" }}>Pack</label>
                         <select name="tier" defaultValue="vip" className="w-full px-3 py-2 rounded-xl text-xs outline-none cursor-pointer"
                           style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}>
                           <option value="vip">VIP</option>

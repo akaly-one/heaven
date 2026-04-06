@@ -9,6 +9,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import type { HeavenAuth } from "./auth-guard";
+import { ThemeToggle } from "./theme-toggle";
 
 // ── Navigation — 4 model pages + root tools ──
 const NAV_MAIN = [
@@ -121,7 +122,7 @@ export function Sidebar() {
           {visibleRoot.length > 0 && (
             <div className="flex flex-col gap-0.5 mt-4">
               {!collapsed && (
-                <span className="text-[9px] font-semibold uppercase tracking-wider px-2.5 mb-1" style={{ color: "var(--text-muted)", opacity: 0.5 }}>
+                <span className="text-[11px] font-semibold uppercase tracking-wider px-2.5 mb-1" style={{ color: "var(--text-muted)", opacity: 0.5 }}>
                   Admin
                 </span>
               )}
@@ -140,6 +141,11 @@ export function Sidebar() {
           <LogOut className="w-4 h-4 flex-shrink-0" />
           {!collapsed && <span className="text-xs font-medium">Déconnexion</span>}
         </button>
+
+        {/* Theme toggle */}
+        <div className="flex items-center justify-center mb-1">
+          <ThemeToggle size="sm" />
+        </div>
 
         <button onClick={() => setCollapsed(!collapsed)}
           className="mx-auto w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
@@ -170,7 +176,7 @@ export function Sidebar() {
                 className="flex flex-col items-center gap-1 px-3 py-1 no-underline transition-colors"
                 style={{ color: active ? "var(--accent)" : "var(--text-muted)" }}>
                 <item.icon className="w-5 h-5" />
-                <span className="text-[9px] font-semibold">{item.label}</span>
+                <span className="text-[11px] font-semibold">{item.label}</span>
               </a>
             );
           })}

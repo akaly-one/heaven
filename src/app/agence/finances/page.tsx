@@ -52,7 +52,7 @@ export default function FinancesPage() {
 
   return (
     <OsLayout cpId="agence">
-    <div className="min-h-screen p-4 md:p-8" style={{ background: "var(--bg)" }}>
+    <div className="min-h-screen p-4 md:p-8 pb-24 md:pb-8" style={{ background: "var(--bg)" }}>
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
@@ -79,7 +79,7 @@ export default function FinancesPage() {
                 <div key={s.label} className="rounded-xl p-4" style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}>
                   <div className="flex items-center gap-2 mb-2">
                     <s.icon className="w-4 h-4" style={{ color: s.color }} />
-                    <span className="text-[10px] uppercase font-medium" style={{ color: "var(--text-muted)" }}>{s.label}</span>
+                    <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-muted)" }}>{s.label}</span>
                   </div>
                   <p className="text-xl font-bold" style={{ color: s.color }}>{s.value}</p>
                 </div>
@@ -116,7 +116,7 @@ export default function FinancesPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {Object.entries(byTier).sort((a, b) => b[1] - a[1]).map(([tier, rev]) => (
                     <div key={tier} className="rounded-lg p-3 text-center" style={{ background: "var(--bg3)" }}>
-                      <p className="text-[10px] uppercase font-bold mb-1" style={{ color: "var(--text-muted)" }}>{tier}</p>
+                      <p className="text-[11px] uppercase font-bold mb-1" style={{ color: "var(--text-muted)" }}>{tier}</p>
                       <p className="text-sm font-bold" style={{ color: "#00D68F" }}>{rev.toFixed(0)}€</p>
                     </div>
                   ))}

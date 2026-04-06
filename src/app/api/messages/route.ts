@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const cors = getCorsHeaders(req);
   try {
     const supabase = getServerSupabase();
-    if (!supabase) return NextResponse.json({ messages: [] }, { headers: cors });
+    if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 502, headers: cors });
 
     const modelFilter = req.nextUrl.searchParams.get("model");
     const clientIdFilter = req.nextUrl.searchParams.get("client_id");

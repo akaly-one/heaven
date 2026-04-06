@@ -137,7 +137,7 @@ export default function ContenuPage() {
               </div>
               <div>
                 <h1 className="text-base font-bold" style={{ color: "var(--text)" }}>Contenu</h1>
-                <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                   {imagePosts.length} media{imagePosts.length !== 1 ? "s" : ""}
                 </p>
               </div>
@@ -162,7 +162,7 @@ export default function ContenuPage() {
                     if (e.target.value) changeTier(e.target.value);
                     e.target.value = "";
                   }}
-                  className="text-[10px] px-2 py-1 rounded-lg cursor-pointer outline-none"
+                  className="text-[11px] px-2 py-1 rounded-lg cursor-pointer outline-none"
                   style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border2)" }}
                 >
                   <option value="">Changer tier...</option>
@@ -172,10 +172,10 @@ export default function ContenuPage() {
                 </select>
                 <button
                   onClick={deleteSelected}
-                  className="px-2 py-1 rounded-lg cursor-pointer"
+                  className="w-9 h-9 flex items-center justify-center rounded-lg cursor-pointer"
                   style={{ background: "rgba(220,38,38,0.1)", color: "#DC2626", border: "none" }}
                 >
-                  <Trash2 className="w-3 h-3" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
                 <button onClick={selectNone} className="cursor-pointer p-1" style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
                   <X className="w-3.5 h-3.5" />
@@ -189,7 +189,7 @@ export default function ContenuPage() {
                 <button
                   key={t}
                   onClick={() => { setFilter(t); selectNone(); }}
-                  className="px-3 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer shrink-0 transition-all"
+                  className="px-3 py-2 rounded-lg text-[11px] font-medium cursor-pointer shrink-0 transition-all"
                   style={{
                     background: filter === t ? "var(--accent)" : "var(--bg3)",
                     color: filter === t ? "#fff" : "var(--text-muted)",
@@ -202,7 +202,7 @@ export default function ContenuPage() {
               <div className="flex-1" />
               <button
                 onClick={selected.size === filtered.length && filtered.length > 0 ? selectNone : selectAll}
-                className="px-2.5 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer shrink-0"
+                className="px-2.5 py-2 rounded-lg text-[11px] font-medium cursor-pointer shrink-0"
                 style={{ background: "var(--bg3)", color: "var(--text-muted)", border: "1px solid var(--border2)" }}
               >
                 {selected.size === filtered.length && filtered.length > 0 ? "Aucun" : "Tout"}
@@ -214,7 +214,7 @@ export default function ContenuPage() {
               <div className="rounded-xl p-12 text-center" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
                 <Image className="w-10 h-10 mx-auto mb-3" style={{ color: "var(--text-muted)" }} />
                 <p className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>Aucun media</p>
-                <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)", opacity: 0.6 }}>
+                <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)", opacity: 0.6 }}>
                   Les contenus apparaitront ici une fois publies
                 </p>
               </div>
@@ -244,7 +244,7 @@ export default function ContenuPage() {
                       )}
                       {tier !== "public" && (
                         <span
-                          className="absolute bottom-1.5 right-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-md uppercase"
+                          className="absolute bottom-1.5 right-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded-md uppercase"
                           style={{ background: "rgba(0,0,0,0.6)", color: "#fff", backdropFilter: "blur(4px)" }}
                         >
                           {tier}
@@ -258,7 +258,7 @@ export default function ContenuPage() {
                             setCropZoom(1);
                             setCropPos({ x: 50, y: 50 });
                           }}
-                          className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer"
+                          className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
                           style={{ background: "rgba(255,255,255,0.9)" }}
                         >
                           <Move className="w-3.5 h-3.5" style={{ color: "#333" }} />
@@ -273,7 +273,7 @@ export default function ContenuPage() {
             {/* ── Text-only posts ── */}
             {posts.filter((p) => !p.media_url && p.content).length > 0 && (
               <div className="mt-6">
-                <h3 className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>
+                <h3 className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>
                   Posts texte ({posts.filter((p) => !p.media_url && p.content).length})
                 </h3>
                 <div className="space-y-1">
@@ -286,7 +286,7 @@ export default function ContenuPage() {
                         style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}
                       >
                         <p className="text-xs flex-1 truncate" style={{ color: "var(--text)" }}>{p.content}</p>
-                        <span className="text-[9px] uppercase" style={{ color: "var(--text-muted)" }}>{p.tier_required || "public"}</span>
+                        <span className="text-[11px] uppercase" style={{ color: "var(--text-muted)" }}>{p.tier_required || "public"}</span>
                         <button
                           onClick={async () => {
                             await fetch(`/api/posts?id=${p.id}&model=${modelSlug}`, { method: "DELETE", headers: authHeaders() });
@@ -353,7 +353,7 @@ export default function ContenuPage() {
               />
               <ZoomIn className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--text-muted)" }} />
             </div>
-            <p className="text-[10px] text-center mt-2" style={{ color: "var(--text-muted)" }}>
+            <p className="text-[11px] text-center mt-2" style={{ color: "var(--text-muted)" }}>
               Glisser pour repositionner, slider pour zoomer
             </p>
           </div>

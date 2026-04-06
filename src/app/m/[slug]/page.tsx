@@ -18,6 +18,7 @@ import { SubscriptionPanel } from "@/components/subscription-panel";
 import { WallTab } from "@/components/profile/wall-tab";
 import { GalleryTab } from "@/components/profile/gallery-tab";
 import { ShopTab } from "@/components/profile/shop-tab";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 // ── Types & Constants (centralized) ──
 import type { ModelInfo, Post, PackConfig, UploadedContent, WallPost, AccessCode, VisitorPlatform } from "@/types/heaven";
@@ -882,7 +883,7 @@ export default function ModelPage() {
               });
             })()}
           </div>
-          {/* Right: visitor info */}
+          {/* Right: visitor info + theme toggle */}
           <div className="flex items-center gap-2 shrink-0">
             {visitorRegistered && (
               <>
@@ -897,6 +898,7 @@ export default function ModelPage() {
                 )}
               </>
             )}
+            <ThemeToggle size="sm" />
           </div>
         </div>
 

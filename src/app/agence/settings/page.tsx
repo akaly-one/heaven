@@ -104,7 +104,7 @@ export default function SettingsPage() {
             </div>
             <div className="flex-1">
               <h1 className="text-lg font-bold" style={{ color: "var(--text)" }}>Paramètres</h1>
-              <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Sécurité, comptes</p>
+              <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>Sécurité, comptes</p>
             </div>
           </div>
 
@@ -139,7 +139,7 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{auth.display_name}</p>
-                      <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                      <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                         {auth.role} {auth.model_slug && `· ${auth.model_slug}`}
                       </p>
                     </div>
@@ -162,16 +162,16 @@ export default function SettingsPage() {
                   <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--text)" }}>Nouveau compte</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <input value={newAccount.display_name} onChange={e => setNewAccount({ ...newAccount, display_name: e.target.value })}
-                      placeholder="Nom affiché (ex: RUBY)" className="px-3 py-2 rounded-lg text-xs outline-none"
+                      placeholder="Nom affiché (ex: RUBY)" className="px-3 py-2.5 rounded-lg text-xs outline-none"
                       style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
                     <input value={newAccount.code} onChange={e => setNewAccount({ ...newAccount, code: e.target.value })}
-                      placeholder="Code d'accès (ex: ruby)" className="px-3 py-2 rounded-lg text-xs outline-none"
+                      placeholder="Code d'accès (ex: ruby)" className="px-3 py-2.5 rounded-lg text-xs outline-none"
                       style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
                     <input value={newAccount.model_slug} onChange={e => setNewAccount({ ...newAccount, model_slug: e.target.value })}
-                      placeholder="Slug modèle (ex: ruby)" className="px-3 py-2 rounded-lg text-xs outline-none"
+                      placeholder="Slug modèle (ex: ruby)" className="px-3 py-2.5 rounded-lg text-xs outline-none"
                       style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }} />
                     <select value={newAccount.role} onChange={e => setNewAccount({ ...newAccount, role: e.target.value })}
-                      className="px-3 py-2 rounded-lg text-xs outline-none cursor-pointer"
+                      className="px-3 py-2.5 rounded-lg text-xs outline-none cursor-pointer"
                       style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }}>
                       <option value="model">Model</option>
                       <option value="root">Root Admin</option>
@@ -212,19 +212,19 @@ export default function SettingsPage() {
                                       style={{ color: "var(--text)", background: "var(--bg)", border: "1px solid var(--border)" }}
                                       onKeyDown={e => { if (e.key === "Enter") handleRename(account.id); }}
                                       autoFocus />
-                                    <button onClick={() => handleRename(account.id)} className="text-[10px] font-bold cursor-pointer" style={{ color: "var(--success)", background: "none", border: "none" }}>OK</button>
-                                    <button onClick={() => setEditing(null)} className="text-[10px] cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>✕</button>
+                                    <button onClick={() => handleRename(account.id)} className="text-[11px] font-bold cursor-pointer" style={{ color: "var(--success)", background: "none", border: "none" }}>OK</button>
+                                    <button onClick={() => setEditing(null)} className="text-[11px] cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>✕</button>
                                   </div>
                                 ) : (
                                   <p className="text-sm font-medium truncate" style={{ color: "var(--text)" }}>{account.display_name}</p>
                                 )}
-                                <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                                <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                                   {account.role} · {account.code} {account.model_slug && `· ${account.model_slug}`}
                                 </p>
                               </div>
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold"
+                              <span className="px-1.5 py-0.5 rounded text-[11px] font-bold"
                                 style={{ background: account.active ? "rgba(0,214,143,0.1)" : "rgba(239,68,68,0.1)", color: account.active ? "#00D68F" : "#EF4444" }}>
                                 {account.active ? "ON" : "OFF"}
                               </span>
@@ -251,24 +251,24 @@ export default function SettingsPage() {
                       <div className="px-4 py-3" style={{ borderTop: "1px solid var(--border2)" }}>
                         <div className="flex items-center gap-2 mb-2">
                           <GitMerge className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
-                          <span className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>Fusionner des comptes</span>
+                          <span className="text-[11px] font-bold" style={{ color: "var(--text-muted)" }}>Fusionner des comptes</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <select value={merging?.from || ""} onChange={e => setMerging(prev => ({ from: e.target.value, to: prev?.to || "" }))}
-                            className="flex-1 px-2 py-1.5 rounded text-[10px] outline-none cursor-pointer"
+                            className="flex-1 px-2 py-1.5 rounded text-[11px] outline-none cursor-pointer"
                             style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}>
                             <option value="">Source...</option>
                             {accounts.filter(a => a.model_slug).map(a => <option key={a.id} value={a.id}>{a.display_name}</option>)}
                           </select>
-                          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>→</span>
+                          <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>→</span>
                           <select value={merging?.to || ""} onChange={e => setMerging(prev => ({ from: prev?.from || "", to: e.target.value }))}
-                            className="flex-1 px-2 py-1.5 rounded text-[10px] outline-none cursor-pointer"
+                            className="flex-1 px-2 py-1.5 rounded text-[11px] outline-none cursor-pointer"
                             style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}>
                             <option value="">Destination...</option>
                             {accounts.filter(a => a.model_slug && a.id !== merging?.from).map(a => <option key={a.id} value={a.id}>{a.display_name}</option>)}
                           </select>
                           <button onClick={handleMerge} disabled={!merging?.from || !merging?.to}
-                            className="px-3 py-1.5 rounded text-[10px] font-bold cursor-pointer disabled:opacity-30"
+                            className="px-3 py-1.5 rounded text-[11px] font-bold cursor-pointer disabled:opacity-30"
                             style={{ background: "var(--accent)", color: "#fff", border: "none" }}>
                             Fusionner
                           </button>
@@ -291,7 +291,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold" style={{ color: "var(--text)" }}>Mode Pro</h3>
-                    <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Supprimer toutes les donnees demo et passer en production</p>
+                    <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>Supprimer toutes les donnees demo et passer en production</p>
                   </div>
                 </div>
 
@@ -304,7 +304,7 @@ export default function SettingsPage() {
                       </li>
                     ))}
                   </ul>
-                  <p className="text-[10px] font-bold" style={{ color: "#DC2626" }}>
+                  <p className="text-[11px] font-bold" style={{ color: "#DC2626" }}>
                     Cette action est irreversible. Les donnees ne peuvent pas etre recuperees.
                   </p>
                 </div>

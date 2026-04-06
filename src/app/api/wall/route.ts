@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     if (!model) return NextResponse.json({ posts: [] }, { headers: cors });
 
     const supabase = getServerSupabase();
-    if (!supabase) return NextResponse.json({ posts: [] }, { headers: cors });
+    if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 502, headers: cors });
 
     let q = supabase
       .from("agence_wall_posts")

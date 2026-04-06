@@ -591,7 +591,7 @@ export default function StrategiePage() {
             </div>
             <div className="flex-1">
               <h1 className="text-base font-bold" style={{ color: "var(--text)" }}>Strategie & Simulateur</h1>
-              <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+              <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                 Plateformes, simulateur de revenus, onboarding et planification.
               </p>
             </div>
@@ -646,7 +646,7 @@ export default function StrategiePage() {
                   </p>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-[10px]" style={{ minWidth: 500 }}>
+                  <table className="w-full text-[11px]" style={{ minWidth: 500 }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid var(--border)" }}>
                         {["Plateforme", "Sub", "PPV", "Tips", "Live", "Cadeaux", "Custom", "IA"].map(h => (
@@ -679,7 +679,7 @@ export default function StrategiePage() {
                   <div key={p.id} className="rounded-xl overflow-hidden" style={{ background: "var(--surface)", border: `1px solid ${p.color}20` }}>
                     <button onClick={() => setExpandedPlatform(isExpanded ? null : p.id)}
                       className="w-full flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.02]">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0"
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0"
                         style={{ background: `${p.color}20`, color: p.color }}>
                         {p.logo}
                       </div>
@@ -687,15 +687,15 @@ export default function StrategiePage() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold" style={{ color: "var(--text)" }}>{p.name}</span>
                           {p.aiChat && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium"
+                            <span className="text-[11px] px-1.5 py-0.5 rounded-full font-medium"
                               style={{ background: "#10B98115", color: "#10B981" }}>IA</span>
                           )}
                           {p.sfw && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium"
+                            <span className="text-[11px] px-1.5 py-0.5 rounded-full font-medium"
                               style={{ background: "var(--bg2, #1a1a1a)", color: "var(--text-muted)" }}>SFW</span>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>
+                        <div className="flex items-center gap-3 text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>
                           <span>Commission: {p.commission}</span>
                           <span>{p.automationLevel}</span>
                           <span style={{ color: "#10B981" }}>{p.monthlyPotential}/mois</span>
@@ -709,19 +709,19 @@ export default function StrategiePage() {
                         <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-3">
                             <div>
-                              <p className="text-[9px] font-bold uppercase tracking-wider mb-1" style={{ color: p.color }}>Fonctionnalites</p>
+                              <p className="text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: p.color }}>Fonctionnalites</p>
                               <div className="flex flex-wrap gap-1">
                                 {p.features.map(f => (
-                                  <span key={f} className="text-[9px] px-1.5 py-0.5 rounded"
+                                  <span key={f} className="text-[11px] px-1.5 py-0.5 rounded"
                                     style={{ background: `${p.color}12`, color: p.color }}>{f}</span>
                                 ))}
                               </div>
                             </div>
                             <div>
-                              <p className="text-[9px] font-bold uppercase tracking-wider mb-1" style={{ color: "#10B981" }}>Avantages</p>
+                              <p className="text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: "#10B981" }}>Avantages</p>
                               <ul className="space-y-0.5">
                                 {p.pros.map(pro => (
-                                  <li key={pro} className="flex items-start gap-1.5 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                                  <li key={pro} className="flex items-start gap-1.5 text-[11px]" style={{ color: "var(--text-muted)" }}>
                                     <CheckCircle className="w-2.5 h-2.5 shrink-0 mt-0.5" style={{ color: "#10B981" }} />
                                     {pro}
                                   </li>
@@ -729,10 +729,10 @@ export default function StrategiePage() {
                               </ul>
                             </div>
                             <div>
-                              <p className="text-[9px] font-bold uppercase tracking-wider mb-1" style={{ color: "#F59E0B" }}>Inconvenients</p>
+                              <p className="text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: "#F59E0B" }}>Inconvenients</p>
                               <ul className="space-y-0.5">
                                 {p.cons.map(con => (
-                                  <li key={con} className="flex items-start gap-1.5 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                                  <li key={con} className="flex items-start gap-1.5 text-[11px]" style={{ color: "var(--text-muted)" }}>
                                     <AlertTriangle className="w-2.5 h-2.5 shrink-0 mt-0.5" style={{ color: "#F59E0B" }} />
                                     {con}
                                   </li>
@@ -743,19 +743,19 @@ export default function StrategiePage() {
                           <div className="space-y-3">
                             <div className="grid grid-cols-2 gap-2">
                               <div className="p-2 rounded-lg" style={{ background: "var(--bg2, #1a1a1a)" }}>
-                                <p className="text-[9px] font-bold uppercase mb-0.5" style={{ color: "var(--text-muted)" }}>Audience</p>
-                                <p className="text-[10px] font-medium" style={{ color: "var(--text)" }}>{p.audience}</p>
+                                <p className="text-[11px] font-bold uppercase mb-0.5" style={{ color: "var(--text-muted)" }}>Audience</p>
+                                <p className="text-[11px] font-medium" style={{ color: "var(--text)" }}>{p.audience}</p>
                               </div>
                               <div className="p-2 rounded-lg" style={{ background: "var(--bg2, #1a1a1a)" }}>
-                                <p className="text-[9px] font-bold uppercase mb-0.5" style={{ color: "var(--text-muted)" }}>Paiement min.</p>
-                                <p className="text-[10px] font-medium" style={{ color: "var(--text)" }}>{p.minPayout}</p>
+                                <p className="text-[11px] font-bold uppercase mb-0.5" style={{ color: "var(--text-muted)" }}>Paiement min.</p>
+                                <p className="text-[11px] font-medium" style={{ color: "var(--text)" }}>{p.minPayout}</p>
                               </div>
                             </div>
                             <div>
-                              <p className="text-[9px] font-bold uppercase tracking-wider mb-1" style={{ color: "var(--text-muted)" }}>Prerequis</p>
+                              <p className="text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: "var(--text-muted)" }}>Prerequis</p>
                               <ul className="space-y-0.5">
                                 {p.requirements.map(r => (
-                                  <li key={r} className="flex items-start gap-1.5 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                                  <li key={r} className="flex items-start gap-1.5 text-[11px]" style={{ color: "var(--text-muted)" }}>
                                     <Shield className="w-2.5 h-2.5 shrink-0 mt-0.5" style={{ color: "#E84393" }} />
                                     {r}
                                   </li>
@@ -763,10 +763,10 @@ export default function StrategiePage() {
                               </ul>
                             </div>
                             <div>
-                              <p className="text-[9px] font-bold uppercase tracking-wider mb-1" style={{ color: p.color }}>Etapes d'activation</p>
+                              <p className="text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: p.color }}>Etapes d'activation</p>
                               <ol className="space-y-0.5">
                                 {p.onboarding.map((step, i) => (
-                                  <li key={step} className="flex items-start gap-1.5 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                                  <li key={step} className="flex items-start gap-1.5 text-[11px]" style={{ color: "var(--text-muted)" }}>
                                     <span className="font-bold shrink-0" style={{ color: p.color }}>{i + 1}.</span>
                                     {step}
                                   </li>
@@ -800,7 +800,7 @@ export default function StrategiePage() {
                   <div key={card.label} className="rounded-xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                     <div className="flex items-center gap-1.5 mb-1">
                       <card.icon className="w-3 h-3" style={{ color: card.color }} />
-                      <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{card.label}</span>
+                      <span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{card.label}</span>
                     </div>
                     <span className="text-sm font-bold" style={{ color: card.color }}>{card.value}</span>
                   </div>
@@ -810,8 +810,8 @@ export default function StrategiePage() {
               {/* Goal progress bar */}
               <div className="rounded-xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-semibold" style={{ color: "var(--text-muted)" }}>Progression vers l'objectif</span>
-                  <span className="text-[10px] font-bold" style={{ color: goalReached ? "#10B981" : "#F59E0B" }}>
+                  <span className="text-[11px] font-semibold" style={{ color: "var(--text-muted)" }}>Progression vers l'objectif</span>
+                  <span className="text-[11px] font-bold" style={{ color: goalReached ? "#10B981" : "#F59E0B" }}>
                     {Math.round(goalProgress)}%
                   </span>
                 </div>
@@ -822,7 +822,7 @@ export default function StrategiePage() {
                   }} />
                 </div>
                 {!goalReached && totalProjectedRevenue > 0 && (
-                  <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>
+                  <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>
                     Il manque {(simState.monthlyGoal - totalProjectedRevenue).toLocaleString()}€ — augmente le volume ou active un niveau superieur
                   </p>
                 )}
@@ -867,8 +867,8 @@ export default function StrategiePage() {
                             }}>
                             <exp.icon className="w-4 h-4 mb-1" style={{ color: isActive ? exp.color : "var(--text-muted)" }} />
                             <p className="text-[11px] font-bold" style={{ color: isActive ? exp.color : "var(--text)" }}>{exp.label}</p>
-                            <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{exp.subsRange} abonnes</p>
-                            <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{exp.desc}</p>
+                            <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>{exp.subsRange} abonnes</p>
+                            <p className="text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>{exp.desc}</p>
                           </button>
                         );
                       })}
@@ -891,7 +891,7 @@ export default function StrategiePage() {
                         <span className="text-sm font-black" style={{ color: "#F59E0B" }}>{simState.monthlyGoal.toLocaleString()}€</span>
                       </div>
                     </div>
-                    <div className="flex justify-between text-[10px]" style={{ color: "var(--text-muted)" }}>
+                    <div className="flex justify-between text-[11px]" style={{ color: "var(--text-muted)" }}>
                       <span>200€</span><span>5 000€</span><span>10 000€</span><span>20 000€</span>
                     </div>
                   </div>
@@ -915,7 +915,7 @@ export default function StrategiePage() {
                             </div>
                             <div className="text-left flex-1">
                               <p className="text-[11px] font-bold" style={{ color: isActive ? "var(--text)" : "var(--text-muted)" }}>{ch.label}</p>
-                              <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{ch.desc}</p>
+                              <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>{ch.desc}</p>
                             </div>
                             {isActive && <Check className="w-4 h-4 shrink-0" style={{ color: ch.color }} />}
                           </button>
@@ -931,7 +931,7 @@ export default function StrategiePage() {
                 <div className="space-y-4">
                   <div className="rounded-xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                     <h3 className="text-xs font-bold mb-3" style={{ color: "var(--text)" }}>Niveaux de contenu</h3>
-                    <p className="text-[10px] mb-3" style={{ color: "var(--text-muted)" }}>
+                    <p className="text-[11px] mb-3" style={{ color: "var(--text-muted)" }}>
                       Active les niveaux que tu veux produire. Chaque niveau inferieur est inclus automatiquement.
                     </p>
                     <div className="space-y-2">
@@ -955,15 +955,15 @@ export default function StrategiePage() {
                               </button>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: `${level.color}20`, color: level.color }}>
+                                  <span className="text-[11px] font-black px-1.5 py-0.5 rounded" style={{ background: `${level.color}20`, color: level.color }}>
                                     N{level.id}
                                   </span>
                                   <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{level.label}</span>
-                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md" style={{ background: `${level.color}15`, color: level.color }}>
+                                  <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-md" style={{ background: `${level.color}15`, color: level.color }}>
                                     {level.tierLabel}
                                   </span>
                                 </div>
-                                <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{level.desc}</p>
+                                <p className="text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>{level.desc}</p>
                               </div>
                               {isActive && level.id > 0 && (
                                 <level.icon className="w-4 h-4 shrink-0" style={{ color: level.color }} />
@@ -973,20 +973,20 @@ export default function StrategiePage() {
                             {isActive && level.id > 0 && (
                               <div className="px-4 pb-3 space-y-2" style={{ borderTop: `1px solid ${level.color}15` }}>
                                 <div className="pt-2">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: level.color }}>
+                                  <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: level.color }}>
                                     Prix moyens du marche ({expMeta.label})
                                   </span>
                                   <div className="grid grid-cols-4 gap-2 mt-1.5">
                                     {CHANNELS.filter(ch => simState.activeChannels.includes(ch.id)).map(ch => (
                                       <div key={ch.id} className="text-center p-2 rounded-lg" style={{ background: `${ch.color}08` }}>
-                                        <span className="text-[10px] font-medium block" style={{ color: "var(--text-muted)" }}>{ch.label.split(" ")[0]}</span>
+                                        <span className="text-[11px] font-medium block" style={{ color: "var(--text-muted)" }}>{ch.label.split(" ")[0]}</span>
                                         <span className="text-xs font-black" style={{ color: ch.color }}>{prices[ch.id]}€</span>
                                       </div>
                                     ))}
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                  <span className="text-[10px] font-medium shrink-0" style={{ color: "var(--text-muted)" }}>Volume/mois:</span>
+                                  <span className="text-[11px] font-medium shrink-0" style={{ color: "var(--text-muted)" }}>Volume/mois:</span>
                                   <input type="range" min={0} max={60} step={1} value={volume}
                                     onChange={e => setVolume(level.id, Number(e.target.value))}
                                     className="flex-1" style={{ accentColor: level.color }} />
@@ -994,7 +994,7 @@ export default function StrategiePage() {
                                 </div>
                                 {volume > 0 && (
                                   <div className="flex items-center justify-between px-2 py-1.5 rounded-lg" style={{ background: `${level.color}08` }}>
-                                    <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Revenu estime ce niveau:</span>
+                                    <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>Revenu estime ce niveau:</span>
                                     <span className="text-[11px] font-bold" style={{ color: "#10B981" }}>
                                       {(simState.activeChannels.reduce((sum, ch) => sum + prices[ch] * volume, 0)).toLocaleString()}€/mois
                                     </span>
@@ -1018,14 +1018,14 @@ export default function StrategiePage() {
                       <div className="space-y-2">
                         {recommendedPrices.map(({ level, bestChannel }) => (
                           <div key={level.id} className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ background: "var(--surface)" }}>
-                            <span className="text-[10px] font-black px-1.5 py-0.5 rounded shrink-0" style={{ background: `${level.color}20`, color: level.color }}>
+                            <span className="text-[11px] font-black px-1.5 py-0.5 rounded shrink-0" style={{ background: `${level.color}20`, color: level.color }}>
                               N{level.id}
                             </span>
-                            <span className="text-[10px] font-medium flex-1" style={{ color: "var(--text)" }}>{level.label}</span>
+                            <span className="text-[11px] font-medium flex-1" style={{ color: "var(--text)" }}>{level.label}</span>
                             {bestChannel && (
                               <div className="text-right">
                                 <span className="text-[11px] font-bold" style={{ color: "#10B981" }}>{bestChannel.price}€</span>
-                                <span className="text-[10px] ml-1" style={{ color: "var(--text-muted)" }}>
+                                <span className="text-[11px] ml-1" style={{ color: "var(--text-muted)" }}>
                                   via {CHANNELS.find(c => c.id === bestChannel.ch)?.label.split(" ")[0]}
                                 </span>
                               </div>
@@ -1043,9 +1043,9 @@ export default function StrategiePage() {
                 <div className="space-y-4">
                   <div className="rounded-xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-semibold" style={{ color: "var(--text-muted)" }}>Progression globale</span>
+                      <span className="text-[11px] font-semibold" style={{ color: "var(--text-muted)" }}>Progression globale</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                        <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                           {simState.completedSteps.filter(s => visibleSteps.some(vs => vs.id === s)).length}/{visibleSteps.length}
                         </span>
                         <span className="text-xs font-black" style={{ color: pipelineProgress === 100 ? "#10B981" : "#60A5FA" }}>
@@ -1082,7 +1082,7 @@ export default function StrategiePage() {
                               <catMeta.icon className="w-3 h-3" style={{ color: catMeta.color }} />
                             </div>
                             <span className="text-[11px] font-bold flex-1" style={{ color: catMeta.color }}>{catMeta.label}</span>
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                            <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md"
                               style={{
                                 background: catDone ? "rgba(16,185,129,0.1)" : `${catMeta.color}10`,
                                 color: catDone ? "#10B981" : catMeta.color,
@@ -1107,13 +1107,13 @@ export default function StrategiePage() {
                                     ? <CheckCircle className="w-3.5 h-3.5 shrink-0" style={{ color: "#10B981" }} />
                                     : <Circle className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--border3)" }} />}
                                   <div className="flex-1 min-w-0">
-                                    <span className="text-[10px] font-medium block truncate" style={{
+                                    <span className="text-[11px] font-medium block truncate" style={{
                                       color: done ? "#10B981" : "var(--text)",
                                       textDecoration: done ? "line-through" : "none",
                                     }}>{step.label}</span>
                                   </div>
                                   {step.requiresLevel !== undefined && (
-                                    <span className="text-[10px] font-bold px-1 py-0.5 rounded shrink-0"
+                                    <span className="text-[11px] font-bold px-1 py-0.5 rounded shrink-0"
                                       style={{ background: `${CONTENT_LEVELS[step.requiresLevel].color}15`, color: CONTENT_LEVELS[step.requiresLevel].color }}>
                                       N{step.requiresLevel}
                                     </span>
@@ -1149,11 +1149,11 @@ export default function StrategiePage() {
                           <div key={r.level}>
                             <div className="flex items-center justify-between mb-1">
                               <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: `${r.color}20`, color: r.color }}>
+                                <span className="text-[11px] font-black px-1.5 py-0.5 rounded" style={{ background: `${r.color}20`, color: r.color }}>
                                   N{r.level}
                                 </span>
-                                <span className="text-[10px] font-medium" style={{ color: "var(--text)" }}>{r.label}</span>
-                                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{r.volume} posts</span>
+                                <span className="text-[11px] font-medium" style={{ color: "var(--text)" }}>{r.label}</span>
+                                <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{r.volume} posts</span>
                               </div>
                               <span className="text-[11px] font-bold" style={{ color: "#10B981" }}>{r.channelRevenue.toLocaleString()}€</span>
                             </div>
@@ -1191,7 +1191,7 @@ export default function StrategiePage() {
                             <div key={chId} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
                               style={{ background: `${ch.color}06`, border: `1px solid ${ch.color}15` }}>
                               <ch.icon className="w-4 h-4 shrink-0" style={{ color: ch.color }} />
-                              <span className="text-[10px] font-semibold flex-1" style={{ color: "var(--text)" }}>{ch.label}</span>
+                              <span className="text-[11px] font-semibold flex-1" style={{ color: "var(--text)" }}>{ch.label}</span>
                               <span className="text-[11px] font-bold" style={{ color: ch.color }}>{chRevenue.toLocaleString()}€</span>
                             </div>
                           );
@@ -1213,28 +1213,28 @@ export default function StrategiePage() {
                     </h3>
                     {goalReached ? (
                       <div className="space-y-1.5">
-                        <p className="text-[10px]" style={{ color: "var(--text-secondary)" }}>
+                        <p className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
                           Avec ta config actuelle, tu depasses ton objectif de <strong>{(totalProjectedRevenue - simState.monthlyGoal).toLocaleString()}€</strong>.
                         </p>
-                        <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                        <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                           Pense a augmenter ton objectif ou a diversifier tes canaux.
                         </p>
                       </div>
                     ) : (
                       <div className="space-y-1.5">
                         {maxActiveLevel < 4 && (
-                          <div className="flex items-start gap-2 text-[10px]" style={{ color: "var(--text-secondary)" }}>
+                          <div className="flex items-start gap-2 text-[11px]" style={{ color: "var(--text-secondary)" }}>
                             <Unlock className="w-3 h-3 shrink-0 mt-0.5" style={{ color: "#7C3AED" }} />
                             <span>Active le niveau <strong>N{maxActiveLevel + 1}</strong> ({CONTENT_LEVELS[maxActiveLevel + 1]?.label}) pour augmenter les prix</span>
                           </div>
                         )}
                         {simState.activeChannels.length < CHANNELS.length && (
-                          <div className="flex items-start gap-2 text-[10px]" style={{ color: "var(--text-secondary)" }}>
+                          <div className="flex items-start gap-2 text-[11px]" style={{ color: "var(--text-secondary)" }}>
                             <Zap className="w-3 h-3 shrink-0 mt-0.5" style={{ color: "#F59E0B" }} />
                             <span>Ajoute un canal de vente supplementaire pour multiplier les revenus</span>
                           </div>
                         )}
-                        <div className="flex items-start gap-2 text-[10px]" style={{ color: "var(--text-secondary)" }}>
+                        <div className="flex items-start gap-2 text-[11px]" style={{ color: "var(--text-secondary)" }}>
                           <TrendingUp className="w-3 h-3 shrink-0 mt-0.5" style={{ color: "#10B981" }} />
                           <span>Augmente le volume de posts sur tes niveaux les plus rentables</span>
                         </div>
@@ -1242,7 +1242,7 @@ export default function StrategiePage() {
                     )}
                   </div>
 
-                  <p className="text-[10px] text-center" style={{ color: "var(--text-muted)", opacity: 0.5 }}>
+                  <p className="text-[11px] text-center" style={{ color: "var(--text-muted)", opacity: 0.5 }}>
                     Les projections sont basees sur les moyennes du marche pour ton niveau d'experience.
                     Les revenus reels dependent de ta niche, ton engagement, et ta regularite.
                   </p>
@@ -1277,7 +1277,7 @@ export default function StrategiePage() {
                   <div key={cat} className="rounded-xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                     <div className="flex items-center gap-2 mb-3">
                       <cfg.icon className="w-3.5 h-3.5" style={{ color: cfg.color }} />
-                      <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: cfg.color }}>{cfg.label}</p>
+                      <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: cfg.color }}>{cfg.label}</p>
                     </div>
                     <div className="space-y-1.5">
                       {items.map(item => {
@@ -1314,7 +1314,7 @@ export default function StrategiePage() {
                   <span className="text-xs font-bold" style={{ color: "var(--text)" }}>{doneTasks}/{totalTasks} taches</span>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold" style={{ color: progress === 100 ? "var(--success, #10B981)" : "var(--accent)" }}>{progress}%</span>
-                    <button onClick={() => setChecklist({})} className="text-[10px] px-2 py-0.5 rounded cursor-pointer hover:opacity-70" style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}>Reset</button>
+                    <button onClick={() => setChecklist({})} className="text-[11px] px-2 py-0.5 rounded cursor-pointer hover:opacity-70" style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}>Reset</button>
                   </div>
                 </div>
                 <div className="h-2 rounded-full" style={{ background: "var(--bg2, #1a1a1a)" }}>
@@ -1339,7 +1339,7 @@ export default function StrategiePage() {
                           opacity: isActive ? 1 : 0.5,
                         }}>
                         <Power className="w-3 h-3" /> {p.name}
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: b.bg, color: b.color }}>{b.label}</span>
+                        <span className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: b.bg, color: b.color }}>{b.label}</span>
                       </button>
                     );
                   })}
@@ -1365,8 +1365,8 @@ export default function StrategiePage() {
                           className="w-full flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.02]">
                           <div className="w-3 h-3 rounded-full shrink-0" style={{ background: platform.color }} />
                           <span className="text-sm font-bold flex-1 text-left" style={{ color: "var(--text)" }}>{platform.name}</span>
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: b.bg, color: b.color }}>{b.label}</span>
-                          <span className="text-[10px] font-mono" style={{ color: platform.color }}>{done}/{platform.tasks.length}</span>
+                          <span className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: b.bg, color: b.color }}>{b.label}</span>
+                          <span className="text-[11px] font-mono" style={{ color: platform.color }}>{done}/{platform.tasks.length}</span>
                           <div className="w-16 h-1.5 rounded-full" style={{ background: "var(--bg2, #1a1a1a)" }}>
                             <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: platform.color }} />
                           </div>
@@ -1374,7 +1374,7 @@ export default function StrategiePage() {
                         </button>
                         {isOpen && (
                           <div className="px-4 pb-3 space-y-1" style={{ borderTop: `1px solid ${platform.color}10` }}>
-                            <p className="text-[10px] py-1" style={{ color: "var(--text-muted)" }}>Commission: {platform.commission}</p>
+                            <p className="text-[11px] py-1" style={{ color: "var(--text-muted)" }}>Commission: {platform.commission}</p>
                             {platform.tasks.map((task, i) => {
                               const key = `${platform.id}-${i}`;
                               const isDone = !!checklist[key];
@@ -1397,18 +1397,18 @@ export default function StrategiePage() {
 
               {/* Summary */}
               {active.length > 0 && (
-                <div className="rounded-xl p-4 grid grid-cols-3 gap-3 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                <div className="rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                   <div>
                     <p className="text-lg font-bold" style={{ color: "var(--text)" }}>{active.length}</p>
-                    <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Plateformes</p>
+                    <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>Plateformes</p>
                   </div>
                   <div>
                     <p className="text-lg font-bold" style={{ color: "var(--accent)" }}>{totalTasks}</p>
-                    <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Taches/semaine</p>
+                    <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>Taches/semaine</p>
                   </div>
                   <div>
                     <p className="text-lg font-bold" style={{ color: "var(--success, #10B981)" }}>{active.filter(p => p.automation !== "manual").length}</p>
-                    <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Automatisees</p>
+                    <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>Automatisees</p>
                   </div>
                 </div>
               )}
@@ -1427,7 +1427,7 @@ export default function StrategiePage() {
                 </p>
                 <button
                   onClick={() => setShowAddGoal(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
                   style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff" }}
                 >
                   <Plus className="w-3 h-3" />
@@ -1444,7 +1444,7 @@ export default function StrategiePage() {
                 <div className="rounded-xl p-8 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                   <Target className="w-8 h-8 mx-auto mb-2" style={{ color: "var(--text-muted)" }} />
                   <p className="text-xs" style={{ color: "var(--text-muted)" }}>Aucun objectif defini</p>
-                  <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>Ajoute un objectif pour suivre ta progression</p>
+                  <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>Ajoute un objectif pour suivre ta progression</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -1463,7 +1463,7 @@ export default function StrategiePage() {
                               <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{goal.title}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>
+                              <span className="text-[11px] font-medium" style={{ color: "var(--text-muted)" }}>
                                 {goal.current_value} / {goal.target_value} {goal.unit}
                               </span>
                               <button
@@ -1485,13 +1485,13 @@ export default function StrategiePage() {
                           </div>
                           <div className="flex items-center justify-between mt-1.5">
                             <div className="flex items-center gap-2">
-                              <span className="text-[10px] capitalize px-1.5 py-0.5 rounded-md" style={{ background: "var(--bg2, #1a1a1a)", color: "var(--text-muted)" }}>{goal.category}</span>
-                              <span className="text-[10px] font-bold" style={{ color: progress >= 100 ? "#10B981" : progress >= 50 ? "var(--accent)" : "var(--rose)" }}>
+                              <span className="text-[11px] capitalize px-1.5 py-0.5 rounded-md" style={{ background: "var(--bg2, #1a1a1a)", color: "var(--text-muted)" }}>{goal.category}</span>
+                              <span className="text-[11px] font-bold" style={{ color: progress >= 100 ? "#10B981" : progress >= 50 ? "var(--accent)" : "var(--rose)" }}>
                                 {Math.round(progress)}%
                               </span>
                             </div>
                             {goal.deadline && (
-                              <span className="text-[10px] flex items-center gap-0.5" style={{ color: "var(--text-muted)" }}>
+                              <span className="text-[11px] flex items-center gap-0.5" style={{ color: "var(--text-muted)" }}>
                                 <Calendar className="w-2.5 h-2.5" />
                                 {goal.deadline}
                               </span>
@@ -1524,7 +1524,7 @@ export default function StrategiePage() {
             </div>
             <div className="space-y-3">
               <div>
-                <label className="text-[10px] font-semibold block mb-1" style={{ color: "var(--text-muted)" }}>Titre</label>
+                <label className="text-[11px] font-semibold block mb-1" style={{ color: "var(--text-muted)" }}>Titre</label>
                 <input
                   type="text"
                   value={newGoal.title}
@@ -1536,7 +1536,7 @@ export default function StrategiePage() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-semibold block mb-1" style={{ color: "var(--text-muted)" }}>Categorie</label>
+                  <label className="text-[11px] font-semibold block mb-1" style={{ color: "var(--text-muted)" }}>Categorie</label>
                   <div className="relative">
                     <select
                       value={newGoal.category}
@@ -1553,7 +1553,7 @@ export default function StrategiePage() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold block mb-1" style={{ color: "var(--text-muted)" }}>Unite</label>
+                  <label className="text-[11px] font-semibold block mb-1" style={{ color: "var(--text-muted)" }}>Unite</label>
                   <div className="relative">
                     <select
                       value={newGoal.unit}
@@ -1571,7 +1571,7 @@ export default function StrategiePage() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-semibold block mb-1" style={{ color: "var(--text-muted)" }}>Objectif</label>
+                  <label className="text-[11px] font-semibold block mb-1" style={{ color: "var(--text-muted)" }}>Objectif</label>
                   <input
                     type="number"
                     value={newGoal.target_value}
@@ -1582,7 +1582,7 @@ export default function StrategiePage() {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold block mb-1" style={{ color: "var(--text-muted)" }}>Deadline</label>
+                  <label className="text-[11px] font-semibold block mb-1" style={{ color: "var(--text-muted)" }}>Deadline</label>
                   <input
                     type="date"
                     value={newGoal.deadline}

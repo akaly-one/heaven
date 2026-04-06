@@ -9,8 +9,17 @@ export async function OPTIONS(req: NextRequest) {
 }
 
 // POST /api/purge — Delete all data for a model (demo → pro transition)
+// PROTECTED: requires x-admin-key header matching ADMIN_SECRET
 export async function POST(req: NextRequest) {
   const cors = getCorsHeaders(req);
+
+  // Auth check — root admin only
+  const adminKey = req.headers.get("x-admin-key");
+  const expectedKey = process.env.ADMIN_SECRET;
+  if (!expectedKey || adminKey !== expectedKey) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: cors });
+  }
+
   try {
     const body = await req.json();
     const { table, model } = body;
@@ -25,7 +34,7 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = getServerSupabase();
-    if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
+    if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 502, headers: cors });
 
     const { error, count } = await supabase.from(table).delete().eq("model", model);
 
