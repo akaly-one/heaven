@@ -25,7 +25,6 @@ interface ClientEnriched extends Client {
   hasAdmin: boolean;
 }
 
-type Tab = "conversation" | "profil" | "codes";
 
 /* ── Helpers ── */
 
@@ -67,7 +66,6 @@ export default function ClientsCRMPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [activeClient, setActiveClient] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>("conversation");
   const [copied, setCopied] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [showAdd, setShowAdd] = useState(false);
@@ -109,7 +107,7 @@ export default function ClientsCRMPage() {
   // Scroll to bottom when messages change
   useEffect(() => {
     msgEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, activeClient, activeTab]);
+  }, [messages, activeClient]);
 
   /* ── Enriched client list ── */
   const enriched: ClientEnriched[] = useMemo(() => {
@@ -168,7 +166,6 @@ export default function ClientsCRMPage() {
   /* ── Select client ── */
   const openClient = useCallback(async (clientId: string) => {
     setActiveClient(clientId);
-    setActiveTab("conversation");
     setReply("");
     // Mark messages as read
     try {
@@ -554,214 +551,177 @@ export default function ClientsCRMPage() {
                   </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
-                  {([
-                    { key: "conversation" as Tab, label: "Messages", icon: MessageCircle },
-                    { key: "profil" as Tab, label: "Profil", icon: User },
-                    { key: "codes" as Tab, label: "Codes", icon: Key },
-                  ]).map(tab => (
-                    <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-[11px] font-bold cursor-pointer transition-colors"
-                      style={{
-                        background: "none", border: "none",
-                        color: activeTab === tab.key ? "var(--accent)" : "var(--text-muted)",
-                        borderBottom: activeTab === tab.key ? "2px solid var(--accent)" : "2px solid transparent",
-                      }}>
-                      <tab.icon className="w-3 h-3" />
-                      {tab.label}
-                      {tab.key === "conversation" && detailClient.unreadCount > 0 && (
-                        <span className="px-1 py-0.5 rounded-full text-[11px] font-bold" style={{ background: "var(--accent)", color: "#fff" }}>
-                          {detailClient.unreadCount}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
+                {/* ═══ 3 panels displayed simultaneously ═══ */}
+                <div className="flex-1 overflow-y-auto">
+                  <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-0 xl:gap-0 h-full">
 
-                {/* ── Tab: Conversation ── */}
-                {activeTab === "conversation" && (
-                  <div className="flex flex-col flex-1 overflow-hidden">
-                    {/* Messages */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                      {detailMessages.length === 0 && (
-                        <p className="text-[11px] text-center py-8" style={{ color: "var(--text-muted)" }}>Aucun message</p>
-                      )}
-                      {detailMessages.map(m => (
-                        <div key={m.id} className={`flex ${m.sender_type === "model" || m.sender_type === "admin" ? "justify-end" : "justify-start"}`}>
-                          <div className="max-w-[80%] px-3 py-2 rounded-2xl text-xs group relative"
-                            style={{
-                              background: m.sender_type === "admin" ? "#3B82F6" : m.sender_type === "model" ? "var(--accent)" : "var(--surface)",
-                              color: m.sender_type === "model" || m.sender_type === "admin" ? "#fff" : "var(--text)",
-                              border: m.sender_type === "client" ? "1px solid var(--border)" : "none",
+                    {/* LEFT: Messages (conversation) */}
+                    <div className="flex flex-col min-h-[300px] xl:min-h-0 xl:h-full" style={{ borderRight: "1px solid var(--border)" }}>
+                      <div className="flex items-center gap-1.5 px-4 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
+                        <MessageCircle className="w-3 h-3" style={{ color: "var(--accent)" }} />
+                        <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Messages</span>
+                        {detailClient.unreadCount > 0 && (
+                          <span className="px-1 py-0.5 rounded-full text-[10px] font-bold" style={{ background: "var(--accent)", color: "#fff" }}>
+                            {detailClient.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                        {detailMessages.length === 0 && (
+                          <p className="text-[11px] text-center py-6" style={{ color: "var(--text-muted)" }}>Aucun message</p>
+                        )}
+                        {detailMessages.map(m => (
+                          <div key={m.id} className={`flex ${m.sender_type === "model" || m.sender_type === "admin" ? "justify-end" : "justify-start"}`}>
+                            <div className="max-w-[80%] px-3 py-2 rounded-2xl text-xs group relative"
+                              style={{
+                                background: m.sender_type === "admin" ? "#3B82F6" : m.sender_type === "model" ? "var(--accent)" : "var(--surface)",
+                                color: m.sender_type === "model" || m.sender_type === "admin" ? "#fff" : "var(--text)",
+                                border: m.sender_type === "client" ? "1px solid var(--border)" : "none",
+                              }}>
+                              {m.sender_type === "admin" && <span className="text-[11px] font-bold opacity-70 block mb-0.5">SQWENSY Admin</span>}
+                              {m.content}
+                              <span className="block text-[10px] mt-1 opacity-50">
+                                {new Date(m.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                              <button onClick={() => deleteMessage(m.id)}
+                                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity hidden group-hover:flex"
+                                style={{ background: "var(--danger, #DC2626)", border: "none" }}>
+                                <Trash2 className="w-2.5 h-2.5 text-white" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        <div ref={msgEndRef} />
+                      </div>
+                      {/* Reply */}
+                      <div className="flex gap-2 px-3 py-2.5 shrink-0" style={{ borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
+                        <input value={reply} onChange={e => setReply(e.target.value)} placeholder="Repondre..."
+                          className="flex-1 px-3 py-2 rounded-xl text-xs outline-none"
+                          style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
+                          onKeyDown={e => { if (e.key === "Enter") sendReply(); }} />
+                        <button onClick={sendReply} disabled={!reply.trim()}
+                          className="px-3 py-2.5 rounded-xl cursor-pointer disabled:opacity-30" style={{ background: "var(--accent)", border: "none" }}>
+                          <Send className="w-3.5 h-3.5 text-white" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* RIGHT: Profil + Codes stacked */}
+                    <div className="overflow-y-auto">
+                      {/* ── Profil ── */}
+                      <div className="p-3 space-y-3" style={{ borderBottom: "1px solid var(--border)" }}>
+                        <div className="flex items-center gap-1.5">
+                          <User className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
+                          <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Profil</span>
+                        </div>
+                        {/* Identity */}
+                        <div className="space-y-1.5">
+                          {detailClient.pseudo_snap && (
+                            <div className="flex items-center gap-2">
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#997A00" }} />
+                              <span className="text-[11px]" style={{ color: "var(--text)" }}>@{detailClient.pseudo_snap}</span>
+                            </div>
+                          )}
+                          {detailClient.pseudo_insta && (
+                            <div className="flex items-center gap-2">
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#C13584" }} />
+                              <span className="text-[11px]" style={{ color: "var(--text)" }}>@{detailClient.pseudo_insta}</span>
+                            </div>
+                          )}
+                          {detailClient.firstname && (
+                            <span className="text-[11px] block" style={{ color: "var(--text)" }}>{detailClient.firstname}</span>
+                          )}
+                          {detailClient.phone && (
+                            <span className="text-[11px] block" style={{ color: "var(--text-muted)" }}>Tel: {detailClient.phone}</span>
+                          )}
+                        </div>
+                        {/* Stats compact */}
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <div className="rounded-lg p-2" style={{ background: "var(--bg)" }}>
+                            <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Tier</p>
+                            <p className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{detailClient.tier || "-"}</p>
+                          </div>
+                          <div className="rounded-lg p-2" style={{ background: "var(--bg)" }}>
+                            <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Achats</p>
+                            <p className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{detailClient.total_tokens_bought || 0}</p>
+                          </div>
+                          <div className="rounded-lg p-2" style={{ background: "var(--bg)" }}>
+                            <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Depenses</p>
+                            <p className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{detailClient.total_tokens_spent || 0}</p>
+                          </div>
+                          <div className="rounded-lg p-2" style={{ background: "var(--bg)" }}>
+                            <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Activite</p>
+                            <p className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{detailClient.last_active ? relativeTime(detailClient.last_active) : "-"}</p>
+                          </div>
+                        </div>
+                        {/* Notes */}
+                        <textarea defaultValue={detailClient.notes || ""} placeholder="Notes..."
+                          className="w-full text-[11px] bg-transparent outline-none resize-none rounded-lg p-2" rows={2}
+                          style={{ color: "var(--text)", background: "var(--bg)", border: "1px solid var(--border)" }}
+                          onBlur={async (e) => {
+                            await fetch("/api/clients", { method: "PATCH", headers: authHeaders(), body: JSON.stringify({ id: detailClient.id, notes: e.target.value.trim() }) });
+                          }} />
+                        {/* Delete */}
+                        <button onClick={async () => {
+                          if (confirm(`Supprimer @${pseudoOf(detailClient)} ?`)) {
+                            await fetch(`/api/clients?id=${detailClient.id}`, { method: "DELETE", headers: authHeaders() });
+                            setActiveClient(null); fetchAll();
+                          }
+                        }} className="w-full py-1.5 rounded-lg text-[10px] font-bold cursor-pointer"
+                          style={{ background: "rgba(220,38,38,0.06)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.15)" }}>
+                          <Trash2 className="w-2.5 h-2.5 inline mr-1" />Supprimer
+                        </button>
+                      </div>
+
+                      {/* ── Codes ── */}
+                      <div className="p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Key className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
+                            <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Codes</span>
+                          </div>
+                          <button onClick={() => generateCode(detailClient.id)}
+                            className="px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer"
+                            style={{ background: "var(--accent)", color: "#fff", border: "none" }}>
+                            + Generer
+                          </button>
+                        </div>
+                        {detailCodes.length === 0 && (
+                          <p className="text-[10px] text-center py-3" style={{ color: "var(--text-muted)" }}>Aucun code</p>
+                        )}
+                        {detailCodes.map(code => {
+                          const isActiveCode = code.active && !code.revoked;
+                          const tl = codeTimeLeft(code.expiresAt, code.revoked, code.active);
+                          return (
+                            <div key={code.code} className="rounded-lg p-2" style={{
+                              background: "var(--bg)",
+                              border: `1px solid ${isActiveCode ? "rgba(16,185,129,0.3)" : "var(--border)"}`,
                             }}>
-                            {m.sender_type === "admin" && <span className="text-[11px] font-bold opacity-70 block mb-0.5">SQWENSY Admin</span>}
-                            {m.content}
-                            <span className="block text-[11px] mt-1 opacity-50">
-                              {new Date(m.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                            <button onClick={() => deleteMessage(m.id)}
-                              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity hidden group-hover:flex"
-                              style={{ background: "var(--danger, #DC2626)", border: "none" }}>
-                              <Trash2 className="w-2.5 h-2.5 text-white" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                      <div ref={msgEndRef} />
-                    </div>
-                    {/* Reply */}
-                    <div className="flex gap-2 px-3 py-3 shrink-0" style={{ borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
-                      <input value={reply} onChange={e => setReply(e.target.value)} placeholder="Repondre..."
-                        className="flex-1 px-3 py-2 rounded-xl text-xs outline-none"
-                        style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
-                        onKeyDown={e => { if (e.key === "Enter") sendReply(); }} />
-                      <button onClick={sendReply} disabled={!reply.trim()}
-                        className="px-3 py-2.5 rounded-xl cursor-pointer disabled:opacity-30" style={{ background: "var(--accent)", border: "none" }}>
-                        <Send className="w-3.5 h-3.5 text-white" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* ── Tab: Profil ── */}
-                {activeTab === "profil" && (
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {/* Identity */}
-                    <div className="rounded-xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                      <p className="text-[11px] font-bold mb-2" style={{ color: "var(--text-muted)" }}>Identite</p>
-                      <div className="space-y-2">
-                        {detailClient.pseudo_snap && (
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ background: "#997A00" }} />
-                            <span className="text-xs" style={{ color: "var(--text)" }}>@{detailClient.pseudo_snap}</span>
-                          </div>
-                        )}
-                        {detailClient.pseudo_insta && (
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ background: "#C13584" }} />
-                            <span className="text-xs" style={{ color: "var(--text)" }}>@{detailClient.pseudo_insta}</span>
-                          </div>
-                        )}
-                        {detailClient.firstname && (
-                          <div className="flex items-center gap-2">
-                            <User className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
-                            <span className="text-xs" style={{ color: "var(--text)" }}>{detailClient.firstname}</span>
-                          </div>
-                        )}
-                        {detailClient.phone && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>Tel</span>
-                            <span className="text-xs" style={{ color: "var(--text)" }}>{detailClient.phone}</span>
-                          </div>
-                        )}
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <span className="text-[11px] font-mono font-bold" style={{ color: isActiveCode ? "var(--success)" : "var(--text-muted)" }}>
+                                  {code.code}
+                                </span>
+                                <button onClick={() => handleCopy(code.code, `code-${code.code}`)} className="p-0.5 cursor-pointer" style={{ background: "none", border: "none" }}>
+                                  {copied === `code-${code.code}` ? <Check className="w-2.5 h-2.5" style={{ color: "var(--success)" }} /> : <Copy className="w-2.5 h-2.5" style={{ color: "var(--text-muted)" }} />}
+                                </button>
+                                <button onClick={() => handleCopy(`${origin}/m/${model}?access=${code.code}`, `link-${code.code}`)} className="p-0.5 cursor-pointer" style={{ background: "none", border: "none" }}>
+                                  {copied === `link-${code.code}` ? <Check className="w-2.5 h-2.5" style={{ color: "var(--success)" }} /> : <Link2 className="w-2.5 h-2.5" style={{ color: "var(--text-muted)" }} />}
+                                </button>
+                              </div>
+                              <div className="flex items-center gap-2 text-[10px]">
+                                <span className="uppercase font-bold" style={{ color: "var(--text-muted)" }}>{code.tier}</span>
+                                <span style={{ color: "var(--text-muted)" }}>{code.type}</span>
+                                <span className="flex items-center gap-0.5" style={{ color: isActiveCode ? "var(--success)" : "var(--text-muted)" }}>
+                                  <Clock className="w-2.5 h-2.5" />{tl}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-
-                    {/* Stats */}
-                    <div className="rounded-xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                      <p className="text-[11px] font-bold mb-2" style={{ color: "var(--text-muted)" }}>Stats</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>Tier</p>
-                          <p className="text-xs font-bold" style={{ color: "var(--text)" }}>{detailClient.tier || "-"}</p>
-                        </div>
-                        <div>
-                          <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>Tokens achetes</p>
-                          <p className="text-xs font-bold" style={{ color: "var(--text)" }}>{detailClient.total_tokens_bought || 0}</p>
-                        </div>
-                        <div>
-                          <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>Tokens depenses</p>
-                          <p className="text-xs font-bold" style={{ color: "var(--text)" }}>{detailClient.total_tokens_spent || 0}</p>
-                        </div>
-                        <div>
-                          <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>Derniere activite</p>
-                          <p className="text-xs font-bold" style={{ color: "var(--text)" }}>
-                            {detailClient.last_active ? relativeTime(detailClient.last_active) : "-"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Notes (editable) */}
-                    <div className="rounded-xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                      <p className="text-[11px] font-bold mb-2" style={{ color: "var(--text-muted)" }}>Notes</p>
-                      <textarea
-                        defaultValue={detailClient.notes || ""}
-                        placeholder="Ajouter des notes..."
-                        className="w-full text-xs bg-transparent outline-none resize-none"
-                        rows={3}
-                        style={{ color: "var(--text)" }}
-                        onBlur={async (e) => {
-                          await fetch("/api/clients", { method: "PATCH", headers: authHeaders(), body: JSON.stringify({ id: detailClient.id, notes: e.target.value.trim() }) });
-                        }}
-                      />
-                    </div>
-
-                    {/* Danger zone */}
-                    <button
-                      onClick={async () => {
-                        if (confirm(`Supprimer @${pseudoOf(detailClient)} ?`)) {
-                          await fetch(`/api/clients?id=${detailClient.id}`, { method: "DELETE", headers: authHeaders() });
-                          setActiveClient(null); fetchAll();
-                        }
-                      }}
-                      className="w-full py-2 rounded-xl text-[11px] font-bold cursor-pointer"
-                      style={{ background: "rgba(220,38,38,0.06)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.15)" }}
-                    >
-                      <Trash2 className="w-3 h-3 inline mr-1" />Supprimer ce client
-                    </button>
                   </div>
-                )}
-
-                {/* ── Tab: Codes ── */}
-                {activeTab === "codes" && (
-                  <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                    {/* Generate button */}
-                    <button
-                      onClick={() => generateCode(detailClient.id)}
-                      className="w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5"
-                      style={{ background: "var(--accent)", color: "#fff", border: "none" }}
-                    >
-                      <Key className="w-3.5 h-3.5" />Generer un code
-                    </button>
-
-                    {detailCodes.length === 0 && (
-                      <p className="text-[11px] text-center py-4" style={{ color: "var(--text-muted)" }}>Aucun code</p>
-                    )}
-
-                    {detailCodes.map(code => {
-                      const isActiveCode = code.active && !code.revoked;
-                      const tl = codeTimeLeft(code.expiresAt, code.revoked, code.active);
-                      return (
-                        <div key={code.code} className="rounded-xl p-3" style={{
-                          background: "var(--surface)",
-                          border: `1px solid ${isActiveCode ? "rgba(16,185,129,0.3)" : "var(--border)"}`,
-                        }}>
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <span className="text-xs font-mono font-bold" style={{ color: isActiveCode ? "var(--success)" : "var(--text-muted)" }}>
-                              {code.code}
-                            </span>
-                            <button onClick={() => handleCopy(code.code, `code-${code.code}`)} className="p-0.5 cursor-pointer" style={{ background: "none", border: "none" }}>
-                              {copied === `code-${code.code}` ? <Check className="w-3 h-3" style={{ color: "var(--success)" }} /> : <Copy className="w-3 h-3" style={{ color: "var(--text-muted)" }} />}
-                            </button>
-                            <button onClick={() => handleCopy(`${origin}/m/${model}?access=${code.code}`, `link-${code.code}`)} className="p-0.5 cursor-pointer" style={{ background: "none", border: "none" }}>
-                              {copied === `link-${code.code}` ? <Check className="w-3 h-3" style={{ color: "var(--success)" }} /> : <Link2 className="w-3 h-3" style={{ color: "var(--text-muted)" }} />}
-                            </button>
-                          </div>
-                          <div className="flex items-center gap-3 text-[11px]">
-                            <span className="uppercase font-bold" style={{ color: "var(--text-muted)" }}>{code.tier}</span>
-                            <span style={{ color: "var(--text-muted)" }}>{code.type}</span>
-                            <span className="flex items-center gap-0.5" style={{ color: isActiveCode ? "var(--success)" : "var(--text-muted)" }}>
-                              <Clock className="w-2.5 h-2.5" />{tl}
-                            </span>
-                            {code.platform && <span style={{ color: "var(--text-muted)" }}>{code.platform}</span>}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                </div>
               </>
             ) : null}
           </div>

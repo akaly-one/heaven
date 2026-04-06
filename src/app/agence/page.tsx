@@ -50,7 +50,7 @@ export default function AgenceDashboard() {
 
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [clientModal, setClientModal] = useState<{ pseudo: string } | null>(null);
-  const [feedTab, setFeedTab] = useState<"galerie" | "messages">("galerie");
+  const [feedTab, setFeedTab] = useState<"feed" | "wall">("feed");
 
   // Messages state (for handler compatibility)
   const [chatMessages, setChatMessages] = useState<{ id: string; client_id: string; content: string; created_at: string; sender_type: string; read?: boolean; model?: string }[]>([]);
@@ -301,12 +301,12 @@ export default function AgenceDashboard() {
             />
           </div>
 
-          {/* ── Feed Tabs: Galerie / Messages ── */}
+          {/* ── Feed Tabs: Feed (posts+media) / Wall (visitor messages) ── */}
           <div className="fade-up-2">
             <div className="flex items-center gap-1 mb-4">
               {[
-                { id: "galerie" as const, label: "Galerie", icon: ImageIcon },
-                { id: "messages" as const, label: "Messages", icon: Newspaper },
+                { id: "feed" as const, label: "Feed", icon: ImageIcon },
+                { id: "wall" as const, label: "Wall", icon: Newspaper },
               ].map(tab => (
                 <button key={tab.id} onClick={() => setFeedTab(tab.id)}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all"
@@ -322,8 +322,8 @@ export default function AgenceDashboard() {
               ))}
             </div>
 
-            {/* ── TAB: Galerie — composer + posts full width ── */}
-            {feedTab === "galerie" && (
+            {/* ── TAB: Feed — composer + posts/media chronologically (synced with public profile) ── */}
+            {feedTab === "feed" && (
               <div className="max-w-3xl space-y-4 min-w-0">
                 {/* Composer */}
                 <div className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
@@ -440,8 +440,8 @@ export default function AgenceDashboard() {
               </div>
             )}
 
-            {/* ── TAB: Messages — pending validations + wall messages ── */}
-            {feedTab === "messages" && (
+            {/* ── TAB: Wall — visitor messages from public profile (synced with /m/[slug] wall) ── */}
+            {feedTab === "wall" && (
               <div className="max-w-3xl space-y-4">
                 {/* Pending purchases at top */}
                 {pendingPurchases.length > 0 && (

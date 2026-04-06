@@ -76,7 +76,7 @@ export default function FinancesPage() {
             {/* Stat cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
               {statCards.map(s => (
-                <div key={s.label} className="rounded-xl p-4" style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}>
+                <div key={s.label} className="rounded-xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                   <div className="flex items-center gap-2 mb-2">
                     <s.icon className="w-4 h-4" style={{ color: s.color }} />
                     <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-muted)" }}>{s.label}</span>
@@ -88,14 +88,14 @@ export default function FinancesPage() {
 
             {/* Revenue by model */}
             {Object.keys(byModel).length > 0 && (
-              <div className="rounded-xl p-5 mb-6" style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}>
+              <div className="rounded-xl p-5 mb-6" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                 <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--text)" }}>Revenue par modèle</h2>
                 <div className="space-y-3">
                   {Object.entries(byModel).sort((a, b) => b[1] - a[1]).map(([model, rev]) => (
                     <div key={model} className="flex items-center justify-between">
                       <span className="text-xs font-medium uppercase" style={{ color: "var(--text)" }}>{model}</span>
                       <div className="flex items-center gap-3">
-                        <div className="w-32 h-2 rounded-full overflow-hidden" style={{ background: "var(--bg3)" }}>
+                        <div className="w-32 h-2 rounded-full overflow-hidden" style={{ background: "var(--bg)" }}>
                           <div className="h-full rounded-full" style={{
                             width: `${totalRevenue > 0 ? (rev / totalRevenue) * 100 : 0}%`,
                             background: "linear-gradient(135deg, #E84393, #D63384)",
@@ -111,11 +111,11 @@ export default function FinancesPage() {
 
             {/* Revenue by tier */}
             {Object.keys(byTier).length > 0 && (
-              <div className="rounded-xl p-5" style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}>
+              <div className="rounded-xl p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                 <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--text)" }}>Revenue par tier</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {Object.entries(byTier).sort((a, b) => b[1] - a[1]).map(([tier, rev]) => (
-                    <div key={tier} className="rounded-lg p-3 text-center" style={{ background: "var(--bg3)" }}>
+                    <div key={tier} className="rounded-lg p-3 text-center" style={{ background: "var(--bg)" }}>
                       <p className="text-[11px] uppercase font-bold mb-1" style={{ color: "var(--text-muted)" }}>{tier}</p>
                       <p className="text-sm font-bold" style={{ color: "#00D68F" }}>{rev.toFixed(0)}€</p>
                     </div>
