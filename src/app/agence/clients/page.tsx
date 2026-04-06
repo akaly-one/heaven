@@ -255,28 +255,39 @@ export default function ClientsCRMPage() {
           if (chosenClient) updates[f] = chosenClient[f as keyof Client];
         }
       }
+      // 1. Update kept client with chosen fields
       if (Object.keys(updates).length > 0) {
-        await fetch("/api/clients", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders() },
+        const res = await fetch("/api/clients", { method: "PATCH", headers: authHeaders(),
           body: JSON.stringify({ id: keepId, ...updates }) });
+        if (!res.ok) throw new Error(`PATCH client failed: ${res.status}`);
       }
+      // 2. Reassign messages in parallel batches (not N+1)
       const otherIds = mergeModal.slice(1).map(c => c.id);
-      for (const otherId of otherIds) {
-        for (const msg of messages.filter(m => m.client_id === otherId)) {
-          await fetch("/api/messages", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders() },
-            body: JSON.stringify({ id: msg.id, client_id: keepId }) });
-        }
+      const msgPromises = otherIds.flatMap(otherId =>
+        messages.filter(m => m.client_id === otherId).map(msg =>
+          fetch("/api/messages", { method: "PATCH", headers: authHeaders(),
+            body: JSON.stringify({ id: msg.id, client_id: keepId }) })
+        )
+      );
+      if (msgPromises.length > 0) {
+        const results = await Promise.allSettled(msgPromises);
+        const failed = results.filter(r => r.status === "rejected");
+        if (failed.length > 0) console.warn(`[Merge] ${failed.length}/${msgPromises.length} message reassignments failed`);
       }
+      // 3. Reassign codes in parallel
       const keptPseudo = (updates.pseudo_snap || mergeModal[0].pseudo_snap || updates.pseudo_insta || mergeModal[0].pseudo_insta || "") as string;
-      for (const other of mergeModal.slice(1)) {
+      const codePromises = mergeModal.slice(1).flatMap(other => {
         const otherPseudo = other.pseudo_snap || other.pseudo_insta || "";
-        for (const code of codes.filter(c => c.client === otherPseudo)) {
-          await fetch("/api/codes", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders() },
-            body: JSON.stringify({ code: code.code, model, updates: { client: keptPseudo } }) });
-        }
-      }
-      for (const otherId of otherIds) {
-        await fetch(`/api/clients?id=${otherId}`, { method: "DELETE", headers: authHeaders() });
-      }
+        return codes.filter(c => c.client === otherPseudo).map(code =>
+          fetch("/api/codes", { method: "PATCH", headers: authHeaders(),
+            body: JSON.stringify({ code: code.code, model, updates: { client: keptPseudo } }) })
+        );
+      });
+      if (codePromises.length > 0) await Promise.allSettled(codePromises);
+      // 4. Delete merged clients
+      await Promise.allSettled(otherIds.map(id =>
+        fetch(`/api/clients?id=${id}`, { method: "DELETE", headers: authHeaders() })
+      ));
       setMergeModal(null); selectNone(); fetchAll();
     } catch (err) { console.error("[Merge] error:", err); }
     setMerging(false);

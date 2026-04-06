@@ -5,7 +5,7 @@ import { Eye, Pencil, Image as ImageIcon, Heart, MessageCircle, Trash2, X, Newsp
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
-import { CodesList } from "@/components/cockpit/codes-list";
+
 import { GenerateModal } from "@/components/cockpit/generate-modal";
 
 import type { PackConfig, AccessCode, ClientInfo, FeedPost, WallPost } from "@/types/heaven";
@@ -125,53 +125,7 @@ export default function AgenceDashboard() {
     return code;
   }, [packs, modelSlug, authHeaders]);
 
-  const handleCopy = useCallback((code: string) => { navigator.clipboard.writeText(code); }, []);
-  const handleRevoke = useCallback((code: string) => {
-    setCodes(prev => prev.map(c => c.code === code ? { ...c, revoked: true, active: false } : c));
-    fetch("/api/codes", { method: "PUT", headers: authHeaders(), body: JSON.stringify({ code, action: "revoke" }) });
-  }, [authHeaders]);
-  const handlePause = useCallback((code: string) => {
-    setCodes(prev => prev.map(c => c.code === code ? { ...c, active: false } : c));
-    fetch("/api/codes", { method: "PUT", headers: authHeaders(), body: JSON.stringify({ code, action: "pause" }) });
-  }, [authHeaders]);
-  const handleReactivate = useCallback((code: string) => {
-    setCodes(prev => prev.map(c => c.code === code ? { ...c, active: true, revoked: false } : c));
-    fetch("/api/codes", { method: "PUT", headers: authHeaders(), body: JSON.stringify({ code, action: "reactivate" }) });
-  }, [authHeaders]);
-  const handleDelete = useCallback((code: string) => {
-    setCodes(prev => prev.filter(c => c.code !== code));
-    fetch(`/api/codes?code=${encodeURIComponent(code)}`, { method: "DELETE", headers: authHeaders() });
-  }, [authHeaders]);
-
-  const handleGenerateForClient = useCallback((clientName: string) => {
-    setPrefillClient(clientName);
-    setShowGenerator(true);
-  }, []);
-
-  const handleExtendCode = useCallback((code: string, extraHours: number) => {
-    setCodes(prev => prev.map(c => {
-      if (c.code !== code) return c;
-      const currentExpiry = new Date(c.expiresAt).getTime();
-      const base = currentExpiry > Date.now() ? currentExpiry : Date.now();
-      return { ...c, expiresAt: new Date(base + extraHours * 3600000).toISOString(), active: true };
-    }));
-    fetch("/api/codes", { method: "PUT", headers: authHeaders(), body: JSON.stringify({ code, action: "extend", extra_hours: extraHours }) });
-  }, [authHeaders]);
-
-  const handleUpdateClient = useCallback((id: string, updates: Record<string, unknown>) => {
-    const headers = authHeaders();
-    setClients(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
-    fetch("/api/clients", { method: "PUT", headers, body: JSON.stringify({ id, ...updates }) });
-  }, [authHeaders]);
-
-  const handleSendMessage = useCallback((clientId: string, content: string) => {
-    const headers = authHeaders();
-    fetch("/api/messages", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ model: modelSlug, client_id: clientId, sender_type: "model", content }),
-    });
-  }, [authHeaders, modelSlug]);
+  // Code/client management is in /agence/clients — dashboard only needs generate modal
 
   const handleToggleStatus = useCallback(async () => {
     setStatusUpdating(true);
@@ -368,158 +322,168 @@ export default function AgenceDashboard() {
               ))}
             </div>
 
-            {/* ── TAB: Galerie — posts with media + composer ── */}
+            {/* ── TAB: Galerie — composer + posts full width ── */}
             {feedTab === "galerie" && (
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 lg:gap-6">
-                {/* LEFT: Composer + Posts */}
-                <div className="space-y-4 min-w-0">
-                  {/* Composer */}
-                  <div className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
-                        style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "#fff" }}>
-                        {modelSlug.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <textarea value={newPostContent} onChange={e => setNewPostContent(e.target.value)}
-                          placeholder="Quoi de neuf ?" rows={2}
-                          className="w-full bg-transparent text-sm outline-none resize-none"
-                          style={{ color: "var(--text)" }} />
-                        {posting && newPostImage && (
-                          <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
-                            <div className="h-full rounded-full transition-all duration-1000" style={{ background: "var(--accent)", width: "70%", animation: "uploadProgress 2s ease-in-out infinite" }} />
-                          </div>
-                        )}
-                        {newPostImage && !posting && (
-                          <div className="relative w-full aspect-square rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)", maxHeight: 280 }}>
-                            <img src={newPostImage} alt="" className="w-full h-full object-cover" draggable={false} />
-                            <button onClick={() => setNewPostImage(null)}
-                              className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
-                              style={{ background: "rgba(0,0,0,0.7)", color: "#fff" }}>
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                          <label className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium cursor-pointer shrink-0"
-                            style={{ background: "rgba(0,0,0,0.04)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-                            <ImageIcon className="w-3.5 h-3.5" /> Photo
-                            <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                              const file = e.target.files?.[0]; if (!file) return;
-                              const reader = new FileReader();
-                              reader.onload = () => setNewPostImage(reader.result as string);
-                              reader.readAsDataURL(file); e.target.value = "";
-                            }} />
-                          </label>
-                          {TIER_OPTIONS.map(t => (
-                            <button key={t.id} onClick={() => setNewPostTier(t.id)}
-                              className="px-2.5 py-2 rounded-full text-[11px] font-bold cursor-pointer shrink-0"
-                              style={{
-                                background: newPostTier === t.id ? `${t.color}20` : "transparent",
-                                color: newPostTier === t.id ? t.color : "var(--text-muted)",
-                                border: `1px solid ${newPostTier === t.id ? `${t.color}40` : "transparent"}`,
-                              }}>
-                              {t.label}
-                            </button>
-                          ))}
+              <div className="max-w-3xl space-y-4 min-w-0">
+                {/* Composer */}
+                <div className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                      style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "#fff" }}>
+                      {modelSlug.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <textarea value={newPostContent} onChange={e => setNewPostContent(e.target.value)}
+                        placeholder="Quoi de neuf ?" rows={2}
+                        className="w-full bg-transparent text-sm outline-none resize-none"
+                        style={{ color: "var(--text)" }} />
+                      {posting && newPostImage && (
+                        <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
+                          <div className="h-full rounded-full transition-all duration-1000" style={{ background: "var(--accent)", width: "70%", animation: "uploadProgress 2s ease-in-out infinite" }} />
                         </div>
-                        <button onClick={handleCreatePost} disabled={(!newPostContent.trim() && !newPostImage) || posting}
-                          className="w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-[1.01] disabled:opacity-30"
-                          style={{ background: "var(--accent)", color: "#fff" }}>
-                          {posting ? "Envoi en cours..." : "Publier"}
+                      )}
+                      {newPostImage && !posting && (
+                        <div className="relative w-full aspect-square rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)", maxHeight: 280 }}>
+                          <img src={newPostImage} alt="" className="w-full h-full object-cover" draggable={false} />
+                          <button onClick={() => setNewPostImage(null)}
+                            className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
+                            style={{ background: "rgba(0,0,0,0.7)", color: "#fff" }}>
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                        <label className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium cursor-pointer shrink-0"
+                          style={{ background: "rgba(0,0,0,0.04)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+                          <ImageIcon className="w-3.5 h-3.5" /> Photo
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                            const file = e.target.files?.[0]; if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = () => setNewPostImage(reader.result as string);
+                            reader.readAsDataURL(file); e.target.value = "";
+                          }} />
+                        </label>
+                        {TIER_OPTIONS.map(t => (
+                          <button key={t.id} onClick={() => setNewPostTier(t.id)}
+                            className="px-2.5 py-2 rounded-full text-[11px] font-bold cursor-pointer shrink-0"
+                            style={{
+                              background: newPostTier === t.id ? `${t.color}20` : "transparent",
+                              color: newPostTier === t.id ? t.color : "var(--text-muted)",
+                              border: `1px solid ${newPostTier === t.id ? `${t.color}40` : "transparent"}`,
+                            }}>
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+                      <button onClick={handleCreatePost} disabled={(!newPostContent.trim() && !newPostImage) || posting}
+                        className="w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-[1.01] disabled:opacity-30"
+                        style={{ background: "var(--accent)", color: "#fff" }}>
+                        {posting ? "Envoi en cours..." : "Publier"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Posts feed */}
+                {feedPosts.length === 0 ? (
+                  <div className="rounded-2xl p-8 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>Publie ton premier post</p>
+                  </div>
+                ) : feedPosts.slice(0, 15).map(post => (
+                  <div key={post.id} className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                    {post.media_url && (
+                      <div className="relative">
+                        <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover" loading="lazy" />
+                        <div className="absolute bottom-0 left-0 right-0 p-3" style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.6))" }}>
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+                              style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(4px)", color: "#fff" }}>
+                              {modelSlug.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-xs font-bold text-white" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>{modelInfo?.display_name || modelSlug}</span>
+                            {post.tier_required !== "public" && (
+                              <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}>
+                                {post.tier_required.toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div className="p-3">
+                      {!post.media_url && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+                            style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "#fff" }}>
+                            {modelSlug.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-xs font-bold" style={{ color: "var(--text)" }}>{modelInfo?.display_name || modelSlug}</span>
+                          {post.tier_required !== "public" && (
+                            <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full" style={{
+                              background: (TIER_OPTIONS.find(t => t.id === post.tier_required)?.color || "#64748B") + "20",
+                              color: TIER_OPTIONS.find(t => t.id === post.tier_required)?.color || "#64748B",
+                            }}>{post.tier_required.toUpperCase()}</span>
+                          )}
+                        </div>
+                      )}
+                      {post.content && <p className="text-sm whitespace-pre-wrap mb-2" style={{ color: "var(--text)" }}>{post.content}</p>}
+                      <div className="flex items-center gap-4" style={{ color: "var(--text-muted)" }}>
+                        <span className="flex items-center gap-1 text-xs"><Heart className="w-3.5 h-3.5" /> {post.likes_count || 0}</span>
+                        <span className="flex items-center gap-1 text-xs"><MessageCircle className="w-3.5 h-3.5" /> {post.comments_count || 0}</span>
+                        <button onClick={() => handleDeletePost(post.id)} className="ml-auto text-xs cursor-pointer hover:text-red-400 transition-colors" style={{ background: "none", border: "none" }}>
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
                   </div>
-
-                  {/* Posts feed */}
-                  {feedPosts.length === 0 ? (
-                    <div className="rounded-2xl p-8 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>Publie ton premier post</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {feedPosts.slice(0, 15).map(post => (
-                        <div key={post.id} className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                          {post.media_url && (
-                            <div className="relative">
-                              <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover" loading="lazy" />
-                              <div className="absolute bottom-0 left-0 right-0 p-3" style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.6))" }}>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                                    style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(4px)", color: "#fff" }}>
-                                    {modelSlug.charAt(0).toUpperCase()}
-                                  </div>
-                                  <span className="text-xs font-bold text-white" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>{modelInfo?.display_name || modelSlug}</span>
-                                  {post.tier_required !== "public" && (
-                                    <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full"
-                                      style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}>
-                                      {post.tier_required.toUpperCase()}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          <div className="p-3">
-                            {!post.media_url && (
-                              <div className="flex items-center gap-2 mb-2">
-                                <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                                  style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "#fff" }}>
-                                  {modelSlug.charAt(0).toUpperCase()}
-                                </div>
-                                <span className="text-xs font-bold" style={{ color: "var(--text)" }}>{modelInfo?.display_name || modelSlug}</span>
-                                {post.tier_required !== "public" && (
-                                  <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full" style={{
-                                    background: (TIER_OPTIONS.find(t => t.id === post.tier_required)?.color || "#64748B") + "20",
-                                    color: TIER_OPTIONS.find(t => t.id === post.tier_required)?.color || "#64748B",
-                                  }}>{post.tier_required.toUpperCase()}</span>
-                                )}
-                              </div>
-                            )}
-                            {post.content && <p className="text-sm whitespace-pre-wrap mb-2" style={{ color: "var(--text)" }}>{post.content}</p>}
-                            <div className="flex items-center gap-4" style={{ color: "var(--text-muted)" }}>
-                              <span className="flex items-center gap-1 text-xs"><Heart className="w-3.5 h-3.5" /> {post.likes_count || 0}</span>
-                              <span className="flex items-center gap-1 text-xs"><MessageCircle className="w-3.5 h-3.5" /> {post.comments_count || 0}</span>
-                              <button onClick={() => handleDeletePost(post.id)} className="ml-auto text-xs cursor-pointer hover:text-red-400 transition-colors" style={{ background: "none", border: "none" }}>
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* RIGHT: Codes & Clients */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-sm font-bold" style={{ color: "var(--text)" }}>Codes &amp; Clients</h2>
-                    <span className="text-[11px] font-medium" style={{ color: "var(--text-muted)" }}>
-                      {activeCodes.length} actif{activeCodes.length > 1 ? "s" : ""} / {clients.length} client{clients.length > 1 ? "s" : ""}
-                    </span>
-                  </div>
-                  <div className="rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                    <CodesList
-                      codes={modelCodes} clients={clients} modelSlug={modelSlug}
-                      onCopy={handleCopy} onRevoke={handleRevoke} onPause={handlePause}
-                      onReactivate={handleReactivate} onDelete={handleDelete}
-                      onUpdateClient={handleUpdateClient} onSendMessage={handleSendMessage}
-                      onGenerateForClient={handleGenerateForClient} onExtendCode={handleExtendCode}
-                      wiseLinks={packs.filter(p => p.wise_url).map(p => ({ tier: p.id, url: p.wise_url! }))}
-                    />
-                  </div>
-                </div>
+                ))}
               </div>
             )}
 
-            {/* ── TAB: Messages — wall messages from clients ── */}
+            {/* ── TAB: Messages — pending validations + wall messages ── */}
             {feedTab === "messages" && (
-              <div className="max-w-3xl space-y-3">
+              <div className="max-w-3xl space-y-4">
+                {/* Pending purchases at top */}
+                {pendingPurchases.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#B45309" }}>
+                      ⏳ {pendingPurchases.length} achat(s) en attente de validation
+                    </p>
+                    {pendingPurchases.map(p => {
+                      const match = p.content?.match(/@(\S+)\s+souhaite acheter:\s+(.+?)\s+\((\d+)€\)/);
+                      const pseudo = match?.[1] || "?";
+                      const item = match?.[2] || "Achat";
+                      const amount = match?.[3] || "?";
+                      return (
+                        <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl"
+                          style={{ background: "rgba(180,83,9,0.08)", border: "1px solid rgba(180,83,9,0.2)" }}>
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
+                            style={{ background: "rgba(180,83,9,0.15)", color: "#B45309" }}>⏳</div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold truncate" style={{ color: "var(--text)" }}>@{pseudo} — {item}</p>
+                            <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                              {amount}€ · {new Date(p.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                          </div>
+                          <button onClick={async () => {
+                            try {
+                              await fetch(`/api/wall?id=${p.id}`, { method: "DELETE", headers: authHeaders() });
+                              setWallPosts(prev => prev.filter(w => w.id !== p.id));
+                            } catch {}
+                          }} className="px-3 py-2.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:scale-105"
+                            style={{ background: "#16A34A", color: "#fff", border: "none" }}>
+                            ✓ Valider
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Client wall messages */}
                 {(() => {
                   const clientMessages = wallPosts.filter(w => !w.content?.includes("#post-") && w.pseudo !== "SYSTEM");
-                  if (clientMessages.length === 0) return (
+                  if (clientMessages.length === 0 && pendingPurchases.length === 0) return (
                     <div className="rounded-2xl p-8 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                       <p className="text-xs" style={{ color: "var(--text-muted)" }}>Aucun message pour le moment</p>
                     </div>
@@ -556,6 +520,13 @@ export default function AgenceDashboard() {
                     </div>
                   ));
                 })()}
+
+                {/* Voir plus → Clients CRM */}
+                <a href="/agence/clients"
+                  className="block text-center py-3 rounded-xl text-xs font-bold no-underline transition-all hover:scale-[1.01]"
+                  style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--accent)" }}>
+                  Voir tout dans Clients →
+                </a>
               </div>
             )}
           </div>
