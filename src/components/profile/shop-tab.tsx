@@ -73,25 +73,25 @@ export function ShopTab({
         <div />
       )}
 
-      {/* Sub-tabs: Packs | Crédits */}
-      <div className="flex gap-2">
+      {/* Sub-tabs: Packs | Contenu — underline style */}
+      <div className="flex gap-0" style={{ borderBottom: "1px solid var(--border)" }}>
         <button onClick={() => setShopSection("packs")}
-          className="flex-1 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all flex items-center justify-center gap-1.5"
+          className="relative flex-1 py-3 text-xs font-medium cursor-pointer transition-all flex items-center justify-center gap-1.5 uppercase"
           style={{
-            background: shopSection === "packs" ? "rgba(230,51,41,0.1)" : "rgba(255,255,255,0.03)",
             color: shopSection === "packs" ? "var(--accent)" : "var(--text-muted)",
-            border: `1px solid ${shopSection === "packs" ? "rgba(230,51,41,0.25)" : "var(--border2)"}`,
+            letterSpacing: "0.06em",
           }}>
-          <ShoppingBag className="w-3.5 h-3.5" /> Packs
+          Packs
+          {shopSection === "packs" && <div className="absolute bottom-0 left-1/4 right-1/4 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />}
         </button>
         <button onClick={() => setShopSection("credits")}
-          className="flex-1 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all flex items-center justify-center gap-1.5"
+          className="relative flex-1 py-3 text-xs font-medium cursor-pointer transition-all flex items-center justify-center gap-1.5 uppercase"
           style={{
-            background: shopSection === "credits" ? "rgba(230,51,41,0.1)" : "rgba(255,255,255,0.03)",
             color: shopSection === "credits" ? "var(--gold)" : "var(--text-muted)",
-            border: `1px solid ${shopSection === "credits" ? "rgba(230,51,41,0.25)" : "var(--border2)"}`,
+            letterSpacing: "0.06em",
           }}>
-          <Camera className="w-3.5 h-3.5" /> Contenu
+          Contenu
+          {shopSection === "credits" && <div className="absolute bottom-0 left-1/4 right-1/4 h-[2px] rounded-full" style={{ background: "var(--gold)" }} />}
         </button>
       </div>
 
@@ -102,9 +102,8 @@ export function ShopTab({
             <EmptyState icon={ShoppingBag} text="No packs available" />
           ) : (
             <>
-              {/* Horizontal scrollable tiles */}
-              <div className="flex gap-3 overflow-x-auto pb-3 -mx-4 px-4 snap-x snap-mandatory scrollbar-hide"
-                style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+              {/* Pack cards — tall vertical orientation */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
                 {(isEditMode ? displayPacks : activePacks).map((pack, i) => {
                   const hex = TIER_HEX[pack.id] || pack.color;
                   const isSelected = expandedPack === pack.id;
@@ -113,73 +112,41 @@ export function ShopTab({
                     <button
                       key={pack.id}
                       onClick={() => setExpandedPack(isSelected ? null : pack.id)}
-                      className="snap-center shrink-0 relative overflow-hidden rounded-2xl cursor-pointer group"
+                      className="relative overflow-hidden rounded-2xl cursor-pointer group text-left"
                       style={{
-                        width: isSelected ? "180px" : "140px",
-                        height: isSelected ? "200px" : "170px",
-                        background: isSelected ? `linear-gradient(160deg, ${hex}25, ${hex}08)` : "var(--bg2)",
+                        aspectRatio: "3/4",
+                        background: `linear-gradient(160deg, ${hex}12, ${hex}04)`,
                         border: `${isSelected ? "2px" : "1px"} solid ${isSelected ? `${hex}50` : "var(--border2)"}`,
-                        transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                        transform: isSelected ? "scale(1.05)" : "scale(1)",
-                        boxShadow: isSelected ? `0 8px 32px ${hex}30, 0 0 0 1px ${hex}20` : "none",
-                        animation: `slideUp 0.4s ease-out ${i * 0.08}s both`,
+                        transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+                        transform: isSelected ? "scale(1.02)" : "scale(1)",
+                        boxShadow: isSelected ? `0 8px 32px ${hex}20` : "var(--shadow-sm)",
+                        animation: `slideUp 0.4s ease-out ${i * 0.06}s both`,
                       }}>
-                      {/* Top glow line */}
+                      {/* Top accent line */}
                       <div className="absolute top-0 left-0 right-0 h-[2px]" style={{
                         background: `linear-gradient(90deg, transparent, ${hex}, transparent)`,
-                        opacity: isSelected ? 1 : 0.3,
-                        transition: "opacity 0.3s",
+                        opacity: isSelected ? 1 : 0.4,
                       }} />
-
-                      {/* Badge */}
-                      {pack.badge && (
-                        <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
-                          style={{ background: `${hex}20`, color: hex }}>
-                          {pack.badge}
-                        </div>
-                      )}
 
                       {/* Active indicator */}
                       {isCurrentTier && (
-                        <div className="absolute top-2 left-2 w-2 h-2 rounded-full" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.6)" }} />
+                        <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[8px] font-bold uppercase" style={{ background: "var(--success)", color: "#fff" }}>Actif</div>
                       )}
 
                       {/* Content */}
-                      <div className="flex flex-col items-center justify-center h-full px-3 py-4 text-center">
-                        <div className="rounded-xl flex items-center justify-center mb-2"
-                          style={{
-                            width: isSelected ? "48px" : "40px",
-                            height: isSelected ? "48px" : "40px",
-                            fontSize: isSelected ? "24px" : "20px",
-                            background: `${hex}15`,
-                            border: `1px solid ${hex}30`,
-                            transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                          }}>
-                          {TIER_META[pack.id]?.symbol}
-                        </div>
-                        <h3 className="font-bold truncate w-full" style={{
-                          color: hex,
-                          fontSize: isSelected ? "14px" : "12px",
-                          transition: "font-size 0.3s",
-                        }}>{pack.name}</h3>
-                        <p className="font-black tabular-nums mt-1" style={{
-                          color: hex,
-                          fontSize: isSelected ? "24px" : "18px",
-                          transition: "font-size 0.3s ease",
-                        }}>{pack.price}€</p>
-                        {isCurrentTier && (
-                          <span className="text-[10px] font-bold uppercase mt-0.5" style={{ color: "var(--success)" }}>Actif</span>
+                      <div className="flex flex-col items-center justify-center h-full px-4 py-5 text-center">
+                        <span className="text-3xl sm:text-4xl mb-3">{TIER_META[pack.id]?.symbol}</span>
+                        <h3 className="text-base sm:text-lg font-bold uppercase tracking-wide mb-1" style={{ color: hex }}>{pack.name}</h3>
+                        {pack.badge && (
+                          <span className="text-[9px] font-medium mb-2" style={{ color: "var(--text-muted)" }}>{pack.badge}</span>
                         )}
-                        {!isCurrentTier && isSelected && (
-                          <span className="text-[10px] font-medium mt-1" style={{ color: "var(--text-muted)" }}>Voir details ↓</span>
+                        <p className="text-2xl sm:text-3xl font-black tabular-nums" style={{ color: hex }}>{pack.price}€</p>
+                        {!isCurrentTier && (
+                          <span className="text-[10px] font-medium mt-2 uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+                            {isSelected ? "Details ci-dessous" : "Voir les details"}
+                          </span>
                         )}
                       </div>
-
-                      {/* Bottom pulse on hover */}
-                      <div className="absolute bottom-0 left-0 right-0 h-1 opacity-0 group-hover:opacity-100" style={{
-                        background: `linear-gradient(90deg, transparent, ${hex}, transparent)`,
-                        transition: "opacity 0.3s",
-                      }} />
                     </button>
                   );
                 })}
@@ -224,34 +191,35 @@ export function ShopTab({
                         ))}
                       </ul>
 
-                      {/* CTA */}
+                      {/* CTA — premium full-width */}
                       {isCurrentTier ? (
-                        <div className="w-full py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2"
+                        <div className="w-full py-3.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2"
                           style={{ background: `${hex}10`, color: hex, border: `1px solid ${hex}20` }}>
                           <Check className="w-4 h-4" /> Pack actif
                         </div>
                       ) : (
-                        <div className="space-y-2">
-                          <p className="text-[10px] font-bold text-center mb-2" style={{ color: "var(--text-muted)" }}>
-                            {pack.price}€ — choisir paiement :
-                          </p>
-                          <div className="grid grid-cols-2 gap-2">
-                            {pack.wise_url && (
-                              <a href={pack.wise_url} target="_blank" rel="noopener noreferrer"
-                                className="py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 no-underline transition-all hover:scale-[1.02] active:scale-[0.98]"
-                                style={{ background: "#00B4D8", color: "#fff" }}>
-                                Revolut · {pack.price}€
-                              </a>
-                            )}
+                        <div className="space-y-2.5">
+                          {pack.wise_url && (
+                            <a href={pack.wise_url} target="_blank" rel="noopener noreferrer"
+                              className="w-full py-3.5 rounded-xl text-sm font-semibold cursor-pointer flex items-center justify-center no-underline transition-all hover:scale-[1.01] active:scale-[0.98]"
+                              style={{ background: hex, color: "#fff", boxShadow: `0 4px 20px ${hex}30` }}>
+                              Acheter {pack.price}€
+                            </a>
+                          )}
+                          {!pack.wise_url && (
                             <button onClick={() => createPendingPurchase(modelSlug || "", pseudo, `Pack ${pack.name}`, pack.price, getAuthHeaders || (() => ({ "Content-Type": "application/json" })))}
-                              className={`py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98] ${!pack.wise_url ? "col-span-2" : ""}`}
-                              style={{ background: "#003087", color: "#fff", border: "none" }}>
-                              PayPal · {pack.price}€
+                              className="w-full py-3.5 rounded-xl text-sm font-semibold cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] active:scale-[0.98]"
+                              style={{ background: hex, color: "#fff", border: "none", boxShadow: `0 4px 20px ${hex}30` }}>
+                              Acheter {pack.price}€
                             </button>
-                          </div>
-                          <p className="text-[9px] text-center mt-1" style={{ color: "var(--accent)" }}>
-                            Ajoute <b>@{pseudo}</b> en note PayPal
-                          </p>
+                          )}
+                          {pack.wise_url && (
+                            <button onClick={() => createPendingPurchase(modelSlug || "", pseudo, `Pack ${pack.name}`, pack.price, getAuthHeaders || (() => ({ "Content-Type": "application/json" })))}
+                              className="w-full py-2.5 rounded-xl text-xs font-medium cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] active:scale-[0.98]"
+                              style={{ background: "transparent", color: "var(--text-muted)", border: "1px solid var(--border2)" }}>
+                              Autre moyen de paiement
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -448,22 +416,19 @@ export function ShopTab({
             )}
 
             {/* Price + Pay */}
-            <div className="rounded-xl p-4 text-center" style={{ background: `${tier.color}08`, border: `1px solid ${tier.color}20` }}>
-              <p className="text-3xl font-black mb-1" style={{ color: tier.color }}>{price}€</p>
-              <p className="text-[10px] mb-3" style={{ color: "var(--text-muted)" }}>
+            <div className="rounded-2xl p-5 sm:p-6 text-center" style={{ background: `${tier.color}06`, border: `1px solid ${tier.color}15` }}>
+              <p className="text-4xl font-black mb-1 tabular-nums" style={{ color: tier.color }}>{price}€</p>
+              <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
                 {selType === "photo" ? "1 photo" : `${videoMin} min de video`} {tier.tier}
               </p>
               <button onClick={() => {
                 const desc = selType === "photo" ? `Photo ${tier.tier}` : `Video ${tier.tier} ${videoMin}min`;
                 createPendingPurchase(modelSlug || "", pseudo, desc, price, getAuthHeaders || (() => ({ "Content-Type": "application/json" })));
               }}
-                className="block w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                style={{ background: "#003087", color: "#fff", border: "none" }}>
-                Payer {price}€ via PayPal
+                className="block w-full py-3.5 rounded-xl text-sm font-semibold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.98]"
+                style={{ background: tier.color, color: "#fff", border: "none", boxShadow: `0 4px 20px ${tier.color}30` }}>
+                Acheter {price}€
               </button>
-              <p className="text-[9px] mt-2" style={{ color: "var(--accent)" }}>
-                Ajoute <b>@{pseudo}</b> en note PayPal
-              </p>
             </div>
           </div>
         );

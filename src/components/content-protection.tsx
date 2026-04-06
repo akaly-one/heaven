@@ -85,6 +85,25 @@ export function ContentProtection({
           overflow: "hidden",
         }}
       >
+        {/* Corner watermark — subtle, non-intrusive */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: "8px",
+            right: "10px",
+            opacity: 0.06,
+            fontSize: "10px",
+            fontFamily: "monospace",
+            fontWeight: 700,
+            color: "#ffffff",
+            whiteSpace: "nowrap",
+            letterSpacing: "0.5px",
+            textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+          }}
+        >
+          {watermarkText}
+        </div>
+        {/* Sparse diagonal repeat for screenshot detection */}
         <div
           style={{
             position: "absolute",
@@ -95,18 +114,18 @@ export function ContentProtection({
             flexWrap: "wrap",
             alignContent: "flex-start",
             transform: "rotate(-30deg)",
-            opacity: 0.15,
+            opacity: 0.04,
           }}
         >
-          {Array.from({ length: 80 }).map((_, i) => (
+          {Array.from({ length: 30 }).map((_, i) => (
             <span
               key={i}
               style={{
                 display: "inline-block",
-                padding: "20px 40px",
-                fontSize: "11px",
+                padding: "40px 80px",
+                fontSize: "9px",
                 fontFamily: "monospace",
-                fontWeight: 700,
+                fontWeight: 600,
                 color: "#ffffff",
                 whiteSpace: "nowrap",
                 letterSpacing: "0.5px",

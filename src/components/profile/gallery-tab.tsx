@@ -45,26 +45,26 @@ export function GalleryTab({
 }: GalleryTabProps) {
   return (
     <div className="fade-up">
-      {/* Pack folders — Instagram-style tab bar */}
+      {/* Tier filter — underline style */}
       {!isEditMode && (
-        <div className="flex mb-4 -mx-4 px-4" style={{ borderBottom: "1px solid var(--border2)" }}>
+        <div className="flex mb-6" style={{ borderBottom: "1px solid var(--border)" }}>
           <button onClick={() => setGalleryTier("all")}
-            className="flex-1 py-2.5 text-center text-[11px] font-semibold cursor-pointer transition-all relative"
-            style={{ color: galleryTier === "all" ? "var(--text)" : "var(--text-muted)" }}>
-            All
+            className="relative px-4 sm:px-5 py-3 text-[11px] font-medium cursor-pointer transition-all uppercase"
+            style={{ color: galleryTier === "all" ? "var(--text)" : "var(--text-muted)", letterSpacing: "0.06em" }}>
+            Tout
             {galleryTier === "all" && (
-              <div className="absolute bottom-0 left-1/4 right-1/4 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />
+              <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />
             )}
           </button>
           {(["vip", "gold", "diamond", "platinum"] as const).filter(k => tierCounts[k]).map(tier => {
             const hex = TIER_HEX[tier];
             return (
               <button key={tier} onClick={() => setGalleryTier(tier)}
-                className="flex-1 py-2.5 text-center text-[11px] font-semibold cursor-pointer transition-all relative"
-                style={{ color: galleryTier === tier ? hex : "var(--text-muted)" }}>
-                {TIER_META[tier]?.symbol} {TIER_META[tier]?.label}
+                className="relative px-4 sm:px-5 py-3 text-[11px] font-medium cursor-pointer transition-all uppercase"
+                style={{ color: galleryTier === tier ? hex : "var(--text-muted)", letterSpacing: "0.06em" }}>
+                {TIER_META[tier]?.label}
                 {galleryTier === tier && (
-                  <div className="absolute bottom-0 left-1/4 right-1/4 h-[2px] rounded-full" style={{ background: hex }} />
+                  <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full" style={{ background: hex }} />
                 )}
               </button>
             );
@@ -92,102 +92,109 @@ export function GalleryTab({
       )}
 
       {(isEditMode ? uploads : galleryItems).length === 0 ? (
-        <div className="text-center py-6">
-          <p className="text-xs" style={{ color: "var(--text-muted)" }}>{isEditMode ? "Clique sur + Ajouter" : "Pas de contenu"}</p>
+        <div className="text-center py-16">
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>{isEditMode ? "Clique sur + Ajouter" : "Pas de contenu"}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-1.5 rounded-xl overflow-hidden">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
           {(isEditMode ? uploads : galleryItems).map((item, i) => {
             const hex = TIER_HEX[item.tier] || "#64748B";
             const isCreditItem = (item.tokenPrice || 0) > 0;
             const isCreditUnlocked = purchasedItems.has(item.id);
             const isUnlocked = item.visibility === "promo" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, item.tier)) || isCreditUnlocked;
             return (
-              <div key={item.id} className="relative aspect-square group cursor-pointer overflow-hidden rounded-lg"
-                style={{ animationDelay: `${i * 20}ms` }}>
+              <div key={item.id} className="relative aspect-[3/4] group cursor-pointer overflow-hidden rounded-xl"
+                style={{ animation: `slideUp 0.4s ease-out ${i * 30}ms both`, transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1.02)"; (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-xl)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}>
                 {isEditMode || isUnlocked ? (
                   <div onClick={() => onImageClick?.(item.dataUrl)} className="w-full h-full">
                     <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">
-                      <img src={item.dataUrl} alt={item.label} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                      <img src={item.dataUrl} alt={item.label} className="w-full h-full object-cover" />
                     </ContentProtection>
                   </div>
                 ) : isCreditItem ? (
                   <div className="w-full h-full flex items-center justify-center relative cursor-pointer"
-                    onClick={() => handleCreditPurchase(item)}
-                    style={{ background: `${hex}08` }}>
-                    <img src={item.dataUrl} alt="" className="absolute inset-0 w-full h-full object-cover content-locked" />
+                    onClick={() => handleCreditPurchase(item)}>
+                    {/* Dark gradient instead of blur */}
+                    <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${hex}20, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.85) 100%)` }} />
                     <div className="relative text-center z-10">
-                      <Coins className="w-5 h-5 mx-auto mb-1" style={{ color: "var(--gold)" }} />
-                      <span className="text-[10px] font-bold block" style={{ color: "var(--gold)" }}>
+                      <Coins className="w-5 h-5 mx-auto mb-1.5" style={{ color: "var(--gold)", opacity: 0.8 }} />
+                      <span className="text-sm font-bold block tabular-nums" style={{ color: "var(--gold)" }}>
                         {item.tokenPrice}
                       </span>
-                      <span className="text-[10px] font-medium uppercase tracking-wide" style={{ color: "var(--gold2)" }}>
-                        crédits
+                      <span className="text-[9px] font-medium uppercase tracking-widest" style={{ color: "var(--gold2)" }}>
+                        credits
                       </span>
                     </div>
                   </div>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center relative cursor-pointer" onClick={() => setShowUnlock(true)} style={{ background: `${hex}08` }}>
-                    <div className="absolute inset-0 content-locked" style={{ background: `linear-gradient(135deg, ${hex}12, rgba(0,0,0,0.25))` }} />
+                  <div className="w-full h-full flex items-center justify-center relative cursor-pointer" onClick={() => setShowUnlock(true)}>
+                    {/* Elegant dark gradient overlay */}
+                    <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${hex}25, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.85) 100%)` }} />
                     <div className="relative text-center z-10">
-                      <Lock className="w-4 h-4 mx-auto mb-0.5" style={{ color: hex }} />
-                      <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: hex }}>
+                      <Lock className="w-5 h-5 mx-auto mb-1.5" style={{ color: hex, opacity: 0.7 }} />
+                      <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: hex }}>
+                        Exclusive
+                      </span>
+                      <span className="text-[9px] block mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
                         {TIER_META[item.tier]?.label}
                       </span>
                     </div>
                   </div>
                 )}
 
-                {/* Edit mode overlay: edit + delete */}
+                {/* Hover overlay */}
                 {isEditMode ? (
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-3">
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
                     <button onClick={() => { setEditingUploadId(item.id); setEditUploadData({ tier: item.tier, label: item.label, visibility: item.visibility, tokenPrice: item.tokenPrice }); }}
-                      className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer"
-                      style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(4px)" }}>
+                      className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
+                      style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(4px)" }}>
                       <Pencil className="w-3.5 h-3.5 text-white" />
                     </button>
                     <button onClick={() => handleDeleteMedia(item.id)}
-                      className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer"
+                      className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
                       style={{ background: "rgba(239,68,68,0.4)", backdropFilter: "blur(4px)" }}>
                       <Trash2 className="w-3.5 h-3.5 text-white" />
                     </button>
                   </div>
-                ) : (
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                    {item.type === "video" ? <Play className="w-5 h-5 text-white" /> :
-                     item.type === "reel" ? <Camera className="w-4 h-4 text-white" /> :
-                     <Eye className="w-4 h-4 text-white" />}
+                ) : isUnlocked ? (
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                    {item.type === "video" ? <Play className="w-6 h-6 text-white" /> :
+                     item.type === "reel" ? <Camera className="w-5 h-5 text-white" /> :
+                     <Eye className="w-5 h-5 text-white" />}
                   </div>
-                )}
+                ) : null}
 
-                {/* Tier badge */}
+                {/* Badges */}
                 {!isEditMode && isCreditItem && !isCreditUnlocked && !isModelLoggedIn && (
-                  <div className="absolute top-1.5 right-1.5">
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(230,51,41,0.9)", color: "#000" }}>
-                      {item.tokenPrice} 💰
+                  <div className="absolute top-2.5 right-2.5">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold" style={{ background: "rgba(0,0,0,0.5)", color: "var(--gold)", backdropFilter: "blur(4px)" }}>
+                      {item.tokenPrice} cr
                     </span>
                   </div>
                 )}
 
                 {isEditMode && (
-                  <div className="absolute top-1.5 left-1.5">
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: `${hex}CC`, color: "#fff" }}>
+                  <div className="absolute top-2.5 left-2.5">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold" style={{ background: `${hex}CC`, color: "#fff" }}>
                       {TIER_META[item.tier]?.label || item.tier}
                     </span>
                   </div>
                 )}
 
                 {!isEditMode && item.type !== "photo" && (
-                  <div className="absolute top-1.5 right-1.5">
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(0,0,0,0.7)", color: "#fff" }}>
-                      {item.type === "video" ? <Video className="w-2.5 h-2.5 inline" /> : "REEL"}
+                  <div className="absolute top-2.5 right-2.5">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1" style={{ background: "rgba(0,0,0,0.5)", color: "#fff", backdropFilter: "blur(4px)" }}>
+                      {item.type === "video" ? <Video className="w-2.5 h-2.5" /> : null}
+                      {item.type === "video" ? "VIDEO" : "REEL"}
                     </span>
                   </div>
                 )}
 
                 {!isEditMode && item.isNew && (
-                  <div className="absolute top-1.5 left-1.5">
-                    <span className="badge badge-success text-[10px]">NEW</span>
+                  <div className="absolute top-2.5 left-2.5">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold" style={{ background: "var(--success)", color: "#fff" }}>NEW</span>
                   </div>
                 )}
               </div>

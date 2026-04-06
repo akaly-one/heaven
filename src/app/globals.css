@@ -258,7 +258,7 @@ body {
 .segmented-control button.active {
   background: var(--accent);
   color: white;
-  box-shadow: 0 2px 8px rgba(230,51,41,0.2);
+  box-shadow: var(--shadow-accent);
 }
 .segmented-control button:not(.active):hover {
   color: var(--text);
@@ -409,9 +409,9 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 [data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); }
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
 
-/* ═══ Blur overlay for locked content ═══ */
+/* ═══ Locked content — dark overlay instead of blur ═══ */
 .content-locked {
-  filter: blur(12px) brightness(0.95);
+  filter: brightness(0.3);
   user-select: none;
   pointer-events: none;
 }

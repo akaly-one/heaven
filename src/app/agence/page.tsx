@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { KeyRound, Eye, Pencil, Instagram, Globe, ExternalLink, Image, Heart, MessageCircle, Trash2, X, Settings } from "lucide-react";
+import { KeyRound, Eye, Pencil, Image, Heart, MessageCircle, Trash2, X } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
@@ -23,14 +23,7 @@ function isExpired(expiresAt: string): boolean { return new Date(expiresAt).getT
 
 // ── Constants ──
 
-const PLATFORMS = [
-  { id: "instagram", label: "Instagram", icon: Instagram, color: "#C13584", urlPrefix: "https://instagram.com/" },
-  { id: "fanvue", label: "Fanvue", icon: Globe, color: "#6D28D9", urlPrefix: "https://fanvue.com/" },
-  { id: "snapchat", label: "Snapchat", icon: Globe, color: "#C4A600", urlPrefix: "https://snapchat.com/add/" },
-  { id: "onlyfans", label: "OnlyFans", icon: Globe, color: "#008CCF", urlPrefix: "https://onlyfans.com/" },
-  { id: "mym", label: "MYM", icon: Globe, color: "#CC2952", urlPrefix: "https://mym.fans/" },
-  { id: "tiktok", label: "TikTok", icon: Globe, color: "#333333", urlPrefix: "https://tiktok.com/@" },
-];
+// PLATFORMS moved to header component
 
 // ══════════ MAIN ══════════
 export default function AgenceDashboard() {
@@ -61,9 +54,6 @@ export default function AgenceDashboard() {
   // Messages (kept for handler compatibility)
   const [pendingMessagesCount, setPendingMessages] = useState(0);
   const [chatMessages, setChatMessages] = useState<{ id: string; client_id: string; content: string; created_at: string; sender_type: string; read?: boolean; model?: string }[]>([]);
-  const [messagesOpen, setMessagesOpen] = useState(false);
-  const [replyTo, setReplyTo] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState("");
 
   // ── Load data ──
   useEffect(() => {
@@ -632,109 +622,19 @@ export default function AgenceDashboard() {
             {/* ── RIGHT: Codes/Messages/Platforms ── */}
             <div className="space-y-4">
 
-            {/* Messages — grouped by client */}
-            <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-              <button onClick={() => setMessagesOpen(!messagesOpen)}
-                className="w-full flex items-center gap-2 p-3 cursor-pointer" style={{ background: "none", border: "none" }}>
-                <MessageCircle className="w-4 h-4" style={{ color: "var(--accent)" }} />
-                <span className="text-xs font-bold flex-1 text-left" style={{ color: "var(--text)" }}>Messages</span>
-                {pendingMessagesCount > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold" style={{ background: "rgba(244,63,94,0.12)", color: "#F43F5E" }}>
-                    {pendingMessagesCount}
-                  </span>
-                )}
-              </button>
-              {messagesOpen && (() => {
-                // Build conversations grouped by client
-                const clientMap = new Map(clients.map(c => [c.id, c]));
-                const grouped: Record<string, typeof chatMessages> = {};
-                chatMessages.forEach(m => { if (!grouped[m.client_id]) grouped[m.client_id] = []; grouped[m.client_id].push(m); });
-                const convos = Object.entries(grouped).map(([cid, msgs]) => {
-                  const sorted = [...msgs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-                  const client = clientMap.get(cid);
-                  const name = client?.pseudo_snap || client?.pseudo_insta || client?.firstname || cid.slice(0, 6);
-                  const unread = sorted.filter(m => m.sender_type === "client" && !m.read).length;
-                  const hasAdmin = sorted.some(m => m.sender_type === "admin" && !m.read);
-                  return { cid, name, last: sorted[0], unread, hasAdmin, msgs: sorted };
-                }).sort((a, b) => {
-                  // Admin messages = highest priority
-                  if (a.hasAdmin && !b.hasAdmin) return -1;
-                  if (b.hasAdmin && !a.hasAdmin) return 1;
-                  if (a.unread > 0 && b.unread === 0) return -1;
-                  if (b.unread > 0 && a.unread === 0) return 1;
-                  return new Date(b.last.created_at).getTime() - new Date(a.last.created_at).getTime();
-                });
-
-                return (
-                  <div className="px-3 pb-3 space-y-1" style={{ borderTop: "1px solid var(--border)" }}>
-                    {convos.length === 0 ? (
-                      <p className="text-[11px] py-2 text-center" style={{ color: "var(--text-muted)" }}>Pas de messages</p>
-                    ) : (
-                      convos.slice(0, 6).map(convo => (
-                        <div key={convo.cid} className="rounded-xl p-2" style={{ background: convo.hasAdmin ? "rgba(59,130,246,0.08)" : convo.unread > 0 ? "rgba(244,63,94,0.04)" : "transparent", border: convo.hasAdmin ? "1px solid rgba(59,130,246,0.2)" : "none" }}>
-                          {/* Client header + last message */}
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                              style={{ background: convo.hasAdmin ? "rgba(59,130,246,0.15)" : convo.unread > 0 ? "rgba(230,51,41,0.12)" : "rgba(0,0,0,0.06)", color: convo.hasAdmin ? "#3B82F6" : convo.unread > 0 ? "var(--accent)" : "var(--text-muted)" }}>
-                              {convo.hasAdmin ? "🔷" : convo.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>
-                                  {convo.hasAdmin && <span className="text-[11px] font-bold px-1 py-0.5 rounded mr-1" style={{ background: "rgba(59,130,246,0.12)", color: "#3B82F6" }}>ADMIN</span>}
-                                  @{convo.name}
-                                </span>
-                                {convo.unread > 0 && (
-                                  <span className="w-4 h-4 rounded-full text-[11px] font-bold flex items-center justify-center" style={{ background: convo.hasAdmin ? "#3B82F6" : "var(--accent)", color: "#fff" }}>
-                                    {convo.unread}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[11px] truncate" style={{ color: convo.unread > 0 ? "var(--text)" : "var(--text-muted)" }}>
-                                {convo.last.sender_type === "model" ? "Toi: " : convo.last.sender_type === "admin" ? "🔷 Admin: " : ""}{convo.last.content}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Inline reply */}
-                          {replyTo === convo.cid ? (
-                            <div className="flex gap-1.5 mt-1.5 ml-9">
-                              <input value={replyText} onChange={e => setReplyText(e.target.value)}
-                                placeholder="Repondre..."
-                                className="flex-1 px-2 py-1.5 rounded-lg text-[11px] outline-none"
-                                style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
-                                onKeyDown={async e => {
-                                  if (e.key === "Enter" && replyText.trim()) {
-                                    const content = replyText.trim();
-                                    // Optimistic: add to local state
-                                    setChatMessages(prev => [{ id: `tmp-${Date.now()}`, client_id: convo.cid, content, sender_type: "model", created_at: new Date().toISOString(), read: true, model: modelSlug }, ...prev]);
-                                    setReplyText(""); setReplyTo(null);
-                                    // Send to API (also marks client msgs as read)
-                                    await fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() },
-                                      body: JSON.stringify({ model: modelSlug, client_id: convo.cid, content, sender_type: "model" }) });
-                                    // Mark conversation as read
-                                    await fetch("/api/messages", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders() },
-                                      body: JSON.stringify({ model: modelSlug, client_id: convo.cid, action: "mark_read" }) });
-                                  }
-                                }} autoFocus />
-                              <button onClick={() => setReplyTo(null)} className="text-[11px] cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>✕</button>
-                            </div>
-                          ) : (
-                            <button onClick={() => { setReplyTo(convo.cid); setReplyText(""); }}
-                              className="text-[11px] cursor-pointer hover:underline ml-9 mt-0.5" style={{ color: "var(--accent)", background: "none", border: "none", padding: 0 }}>
-                              Repondre
-                            </button>
-                          )}
-                        </div>
-                      ))
-                    )}
-                    <a href="/agence/clients" className="block text-center text-[11px] font-medium py-1 no-underline hover:underline" style={{ color: "var(--accent)" }}>
-                      Voir tous les messages →
-                    </a>
-                  </div>
-                );
-              })()}
-            </div>
+            {/* Messages — quick link (full inbox in header + /agence/clients) */}
+            <a href="/agence/clients"
+              className="flex items-center gap-2.5 p-3 rounded-2xl no-underline transition-all hover:scale-[1.01]"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+              <MessageCircle className="w-4 h-4" style={{ color: "var(--accent)" }} />
+              <span className="text-xs font-bold flex-1" style={{ color: "var(--text)" }}>Messages</span>
+              {pendingMessagesCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold" style={{ background: "rgba(244,63,94,0.12)", color: "#F43F5E" }}>
+                  {pendingMessagesCount} non lu{pendingMessagesCount > 1 ? "s" : ""}
+                </span>
+              )}
+              <span className="text-[11px] font-medium" style={{ color: "var(--accent)" }}>Voir →</span>
+            </a>
 
             {/* Codes & Clients compact */}
             <div>
@@ -772,45 +672,7 @@ export default function AgenceDashboard() {
             </div>
           </div>
 
-          {/* Platforms — editable handles */}
-          <div className="rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <h3 className="text-[11px] font-bold uppercase tracking-wider mb-3" style={{ color: "var(--text-muted)" }}>Réseaux sociaux</h3>
-            <div className="space-y-1.5">
-              {PLATFORMS.map(p => {
-                const handle = modelInfo?.platforms?.[p.id] || "";
-                return (
-                  <div key={p.id} className="flex items-center gap-2.5 px-3 py-2 rounded-xl"
-                    style={{ background: "var(--bg)", border: "1px solid var(--border)" }}>
-                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color }} />
-                    <span className="text-[11px] font-medium shrink-0 w-16" style={{ color: "var(--text-muted)" }}>{p.label}</span>
-                    <input
-                      defaultValue={handle}
-                      placeholder="pseudo..."
-                      className="flex-1 text-[11px] bg-transparent outline-none min-w-0"
-                      style={{ color: "var(--text)" }}
-                      onBlur={async (e) => {
-                        const val = e.target.value.trim();
-                        try {
-                          const currentPlatforms = modelInfo?.platforms || {};
-                          const updated = { ...currentPlatforms, [p.id]: val || null };
-                          await fetch(`/api/models/${modelSlug}`, {
-                            method: "PUT", headers: authHeaders(),
-                            body: JSON.stringify({ config: { platforms: updated } }),
-                          });
-                          setModelInfo(prev => prev ? { ...prev, platforms: updated } : prev);
-                        } catch {}
-                      }}
-                    />
-                    {handle && (
-                      <a href={handle.startsWith("http") ? handle : `${p.urlPrefix}${handle}`}
-                        target="_blank" rel="noopener noreferrer"
-                        className="text-[11px] no-underline shrink-0" style={{ color: p.color }}>↗</a>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          {/* Platforms — now managed via header dropdown (Link2 icon) */}
           </div>
           </div>
 

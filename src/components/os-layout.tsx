@@ -1,6 +1,7 @@
 "use client";
 
 import { Sidebar } from "./sidebar";
+import { Header } from "./header";
 
 interface OsLayoutProps {
   children: React.ReactNode;
@@ -10,9 +11,10 @@ interface OsLayoutProps {
 
 export function OsLayout({ children, cpId = "group" }: OsLayoutProps) {
   return (
-    <div className="flex min-h-screen" style={{ background: "var(--bg)" }}>
+    <div className="min-h-screen" style={{ background: "var(--bg)" }}>
       <Sidebar />
-      <main className="flex-1 md:ml-[56px] relative overflow-y-auto overflow-x-hidden pb-20 md:pb-0">
+      <main className="md:ml-[56px] relative overflow-x-hidden pb-20 md:pb-0">
+        <Header />
         <div className="relative z-10">
           {children}
         </div>

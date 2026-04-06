@@ -28,9 +28,9 @@ interface ModelAuth {
   role: string; model_slug?: string; display_name?: string; token?: string;
 }
 const TABS = [
+  { id: "gallery", label: "Portfolio", icon: Image },
   { id: "feed", label: "Feed", icon: Newspaper },
-  { id: "gallery", label: "Gallery", icon: Image },
-  { id: "shop", label: "Shop", icon: ShoppingBag },
+  { id: "shop", label: "Boutique", icon: ShoppingBag },
 ] as const;
 type TabId = typeof TABS[number]["id"];
 
@@ -132,7 +132,7 @@ export default function ModelPage() {
       const hash = window.location.hash.replace("#", "");
       if (hash === "gallery" || hash === "shop" || hash === "wall" || hash === "feed") return hash as TabId;
     }
-    return "feed";
+    return "gallery";
   });
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -818,81 +818,50 @@ export default function ModelPage() {
       {!visitorRegistered && !isModelLoggedIn && model && (
         <IdentityGate slug={slug} modelName={model.display_name} onRegistered={handleGateRegistered} onNeedShop={() => setTab("shop")} />
       )}
-      {/* Ambient gradient — animated pulse */}
-      <div className="fixed inset-0 pointer-events-none z-0" style={{
-        background: `
-          radial-gradient(ellipse 600px 400px at 15% 10%, rgba(230,51,41,0.05), transparent),
-          radial-gradient(ellipse 500px 500px at 85% 80%, rgba(244,63,94,0.04), transparent),
-          radial-gradient(ellipse 300px 300px at 50% 30%, rgba(124,58,237,0.03), transparent)
-        `,
-        animation: "ambientPulse 8s ease-in-out infinite alternate",
-      }} />
       <style>{`
         img { -webkit-touch-callout: none; -webkit-user-select: none; pointer-events: none; }
         img[data-clickable] { pointer-events: auto; }
-        @keyframes ambientPulse { 0% { opacity: 0.7; } 100% { opacity: 1; } }
-        @keyframes heroGlow { 0%, 100% { box-shadow: 0 0 20px rgba(230,51,41,0.2), 0 0 60px rgba(230,51,41,0.05); } 50% { box-shadow: 0 0 30px rgba(230,51,41,0.35), 0 0 80px rgba(124,58,237,0.1); } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes heroFadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes chevronBounce { 0%, 100% { transform: translateY(0); opacity: 0.4; } 50% { transform: translateY(6px); opacity: 0.8; } }
         @keyframes countUp { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
-        .profile-stagger-1 { animation: slideUp 0.5s ease-out 0.1s both; }
-        .profile-stagger-2 { animation: slideUp 0.5s ease-out 0.2s both; }
-        .profile-stagger-3 { animation: slideUp 0.5s ease-out 0.3s both; }
-        .profile-stagger-4 { animation: slideUp 0.5s ease-out 0.4s both; }
+        .profile-stagger-1 { animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
+        .profile-stagger-2 { animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both; }
+        .profile-stagger-3 { animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both; }
+        .profile-stagger-4 { animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.55s both; }
         .stat-pop { animation: countUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s both; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         .post-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-        .post-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
+        .post-hover:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
         @media (max-width: 768px) { .post-hover:hover { transform: none; box-shadow: none; } }
+        .gallery-item { transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease; }
+        .gallery-item:hover { transform: scale(1.02); box-shadow: var(--shadow-xl); }
       `}</style>
 
       <div className="relative z-10">
 
-        {/* ═══ HEADER BAR — sticky ═══ */}
-        <div className="sticky top-0 left-0 right-0 z-40 px-3 md:px-6 py-1.5 md:py-2.5 flex items-center gap-2 md:gap-4 md:justify-center"
-          style={{ background: "color-mix(in srgb, var(--bg) 92%, transparent)", backdropFilter: "blur(12px)", borderBottom: "1px solid var(--border)" }}>
-          {/* Left: avatar + name + stats + platform icons */}
-          <div className="flex items-center gap-2 md:gap-3 flex-1 md:flex-initial min-w-0">
+        {/* ═══ HEADER BAR — minimal sticky ═══ */}
+        <div className="sticky top-0 left-0 right-0 z-40 px-4 md:px-6 py-2 md:py-2.5 flex items-center gap-3"
+          style={{ background: "color-mix(in srgb, var(--bg) 90%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderBottom: "1px solid var(--border)" }}>
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
             {isModelLoggedIn && (
-              <a href="/agence" className="text-[10px] font-bold no-underline shrink-0" style={{ color: "var(--accent)" }}>←</a>
+              <a href="/agence" className="text-xs font-bold no-underline shrink-0" style={{ color: "var(--accent)" }}>&#8592;</a>
             )}
-            <div className="w-9 h-9 md:w-14 md:h-14 rounded-full overflow-hidden shrink-0 border-2 md:border-3" style={{ borderColor: displayModel?.online ? "var(--success)" : "var(--border)", background: "linear-gradient(135deg, var(--rose), var(--accent))" }}>
-              {model.avatar ? <img src={model.avatar} alt="" className="w-full h-full object-cover" /> :
-                <span className="flex items-center justify-center w-full h-full text-xs md:text-lg font-bold text-white">{model.display_name.charAt(0)}</span>}
-            </div>
-            <div className="min-w-0">
-              <span className="text-xs md:text-sm font-bold block truncate" style={{ color: "var(--text)" }}>{model.display_name}</span>
-              <span className="text-[9px] md:text-[11px]" style={{ color: "var(--text-muted)" }}>
-                {posts.length} posts · {wallPosts.length} fans{displayModel?.status ? ` · ${displayModel.status}` : ""}
-              </span>
-            </div>
-            {/* Platform icons */}
-            {(() => {
-              const platforms = (model as unknown as Record<string, unknown>).platforms as Record<string, string> | undefined;
-              if (!platforms) return null;
-              return Object.entries(platforms).filter(([, v]) => v).map(([platform, handle]) => {
-                const p = PLATFORMS_MAP[platform];
-                if (!p || !handle) return null;
-                const url = handle.startsWith("http") ? handle : `${p.prefix}${handle}`;
-                return (
-                  <a key={platform} href={url} target="_blank" rel="noopener noreferrer"
-                    className="shrink-0 no-underline hidden sm:block" title={`${platform}: @${handle}`}>
-                    <div className="w-4 h-4 rounded-full" style={{ background: p.color }} />
-                  </a>
-                );
-              });
-            })()}
+            <span className="text-xs font-semibold tracking-wide uppercase truncate" style={{ color: "var(--text)", letterSpacing: "0.1em" }}>
+              {model.display_name}
+            </span>
+            {displayModel?.online && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }} />}
           </div>
-          {/* Right: visitor info + theme toggle */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
             {visitorRegistered && (
               <>
-                <span className="text-[10px] font-medium" style={{ color: "var(--text)" }}>@{visitorHandle}</span>
+                <span className="text-[10px] font-medium hidden sm:block" style={{ color: "var(--text-muted)" }}>@{visitorHandle}</span>
                 {unlockedTier ? (
                   <CountdownBadge tier={unlockedTier} expiresAt={activeCode?.expiresAt || ""} />
                 ) : (
-                  <button onClick={() => setShowUnlock(true)} className="text-[9px] font-bold px-1.5 py-0.5 rounded-full cursor-pointer"
-                    style={{ background: "rgba(230,51,41,0.1)", color: "var(--accent)", border: "none" }}>
+                  <button onClick={() => setShowUnlock(true)} className="text-[10px] font-semibold px-2.5 py-1 rounded-full cursor-pointer transition-all hover:scale-105"
+                    style={{ background: "rgba(230,51,41,0.1)", color: "var(--accent)", border: "1px solid rgba(230,51,41,0.15)" }}>
                     Code
                   </button>
                 )}
@@ -902,216 +871,178 @@ export default function ModelPage() {
           </div>
         </div>
 
-        {/* Ticker removed — status is in header bar */}
-
-        {/* ═══ BANNER — immersive, full-width ═══ */}
-        <div className="relative profile-stagger-1">
+        {/* ═══ HERO SECTION — Cinematic full-viewport banner ═══ */}
+        <div className="relative">
           {(() => {
             const latestImagePost = posts.find(p => p.media_url);
             const bannerUrl = displayModel?.banner || latestImagePost?.media_url || null;
             return (
-              <div className="h-44 sm:h-52 md:h-64 lg:h-72 relative overflow-hidden" style={{
+              <div className="min-h-[50vh] sm:min-h-[60vh] md:min-h-[70vh] relative overflow-hidden" style={{
                 background: bannerUrl
-                  ? `url(${bannerUrl}) center/cover`
-                  : "linear-gradient(135deg, #1a1a2e, #16213e, #0f3460)",
+                  ? `url(${bannerUrl}) center/cover no-repeat`
+                  : "linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 40%, #16213e 70%, #0f3460 100%)",
               }}>
-                <div className="absolute inset-0" style={{ background: "linear-gradient(to top, var(--bg) 0%, rgba(0,0,0,0.2) 40%, transparent 100%)" }} />
+                {/* Multi-layer gradient overlay */}
+                <div className="absolute inset-0" style={{
+                  background: `
+                    linear-gradient(to top, var(--bg) 0%, rgba(0,0,0,0.6) 30%, rgba(0,0,0,0.2) 60%, transparent 100%),
+                    radial-gradient(ellipse at 20% 80%, rgba(0,0,0,0.4), transparent 60%),
+                    radial-gradient(ellipse at 80% 20%, rgba(0,0,0,0.2), transparent 60%)
+                  `,
+                }} />
+                {/* Vignette edges */}
+                <div className="absolute inset-0" style={{
+                  background: "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.3) 100%)",
+                }} />
+
+                {/* Hero content — positioned at bottom */}
+                <div className="absolute bottom-0 left-0 right-0 px-5 sm:px-8 md:px-12 pb-10 sm:pb-14 md:pb-16 max-w-6xl mx-auto">
+                  <div className="flex items-end gap-5 sm:gap-6 md:gap-8">
+                    {/* Avatar — large, overlapping */}
+                    <div className="relative shrink-0 profile-stagger-1">
+                      <div className="w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-full overflow-hidden"
+                        style={{
+                          border: "3px solid var(--bg)",
+                          background: displayModel?.avatar ? "transparent" : "linear-gradient(135deg, var(--rose), var(--accent))",
+                          boxShadow: "0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08)",
+                        }}>
+                        {displayModel?.avatar ? (
+                          <img src={displayModel.avatar} alt={displayModel.display_name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="flex items-center justify-center w-full h-full text-3xl sm:text-4xl font-light text-white" style={{ letterSpacing: "0.05em" }}>
+                            {displayModel?.display_name.charAt(0)}
+                          </span>
+                        )}
+                      </div>
+                      {!isEditMode && displayModel?.online && (
+                        <span className="absolute bottom-2 right-2 w-4 h-4 rounded-full"
+                          style={{ background: "var(--success)", border: "2px solid var(--bg)", boxShadow: "0 0 10px rgba(16,185,129,0.6)" }} />
+                      )}
+                    </div>
+
+                    {/* Name + bio + stats */}
+                    <div className="flex-1 min-w-0 pb-1">
+                      <h1 className="profile-stagger-2 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light uppercase truncate"
+                        style={{ color: "#fff", letterSpacing: "0.12em", textShadow: "0 2px 20px rgba(0,0,0,0.5)" }}>
+                        {displayModel?.display_name}
+                      </h1>
+                      {displayModel?.bio && (
+                        <p className="profile-stagger-3 text-sm sm:text-base mt-2 sm:mt-3 line-clamp-2 leading-relaxed max-w-lg"
+                          style={{ color: "rgba(255,255,255,0.7)" }}>
+                          {displayModel.bio}
+                        </p>
+                      )}
+                      <div className="profile-stagger-4 flex items-center gap-6 sm:gap-8 mt-3 sm:mt-4">
+                        <span className="text-xs sm:text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
+                          <span className="font-semibold tabular-nums" style={{ color: "rgba(255,255,255,0.9)" }}>{posts.length}</span> posts
+                        </span>
+                        <span className="text-xs sm:text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
+                          <span className="font-semibold tabular-nums" style={{ color: "rgba(255,255,255,0.9)" }}>{wallPosts.length}</span> fans
+                        </span>
+                        <span className="text-xs sm:text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
+                          <span className="font-semibold tabular-nums" style={{ color: "rgba(255,255,255,0.9)" }}>{uploads.length + posts.filter(p => p.media_url).length}</span> media
+                        </span>
+                        {/* Platform icons */}
+                        {(() => {
+                          const platforms = (model as unknown as Record<string, unknown>).platforms as Record<string, string> | undefined;
+                          if (!platforms) return null;
+                          return (
+                            <div className="hidden sm:flex items-center gap-2 ml-2">
+                              {Object.entries(platforms).filter(([, v]) => v).map(([platform, handle]) => {
+                                const p = PLATFORMS_MAP[platform];
+                                if (!p || !handle) return null;
+                                const url = handle.startsWith("http") ? handle : `${p.prefix}${handle}`;
+                                return (
+                                  <a key={platform} href={url} target="_blank" rel="noopener noreferrer"
+                                    className="shrink-0 no-underline opacity-60 hover:opacity-100 transition-opacity" title={`${platform}: @${handle}`}>
+                                    <div className="w-3.5 h-3.5 rounded-full" style={{ background: p.color }} />
+                                  </a>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CTA buttons — visible on ALL screens */}
+                  {!isEditMode && !unlockedTier && (
+                    <div className="flex items-center gap-3 mt-5 sm:mt-6 profile-stagger-4">
+                      <button onClick={() => setShowUnlock(true)}
+                        className="px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm font-semibold cursor-pointer transition-all hover:scale-105 active:scale-[0.98]"
+                        style={{ background: "var(--accent)", color: "#fff", boxShadow: "var(--shadow-accent)", letterSpacing: "0.05em" }}>
+                        Entrer un code
+                      </button>
+                      <button onClick={() => setTab("shop")}
+                        className="px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm font-medium cursor-pointer transition-all hover:scale-105 active:scale-[0.98]"
+                        style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)", border: "1px solid rgba(255,255,255,0.15)", backdropFilter: "blur(8px)" }}>
+                        Boutique
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Scroll indicator */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2" style={{ animation: "chevronBounce 2s ease-in-out infinite" }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </div>
               </div>
             );
           })()}
           {isEditMode && (
-            <div className="absolute top-2 right-2 z-20 flex gap-1.5">
+            <div className="absolute top-14 right-4 z-20 flex gap-2">
               <button onClick={() => bannerInputRef.current?.click()}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg cursor-pointer text-[9px] font-medium"
-                style={{ background: "rgba(0,0,0,0.5)", color: "#fff" }}>
-                <Camera className="w-3 h-3" /> Banniere
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg cursor-pointer text-[10px] font-medium transition-all hover:scale-105"
+                style={{ background: "rgba(0,0,0,0.6)", color: "#fff", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <Camera className="w-3.5 h-3.5" /> Banniere
               </button>
               <button onClick={() => avatarInputRef.current?.click()}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg cursor-pointer text-[9px] font-medium"
-                style={{ background: "rgba(0,0,0,0.5)", color: "#fff" }}>
-                <Camera className="w-3 h-3" /> Avatar
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg cursor-pointer text-[10px] font-medium transition-all hover:scale-105"
+                style={{ background: "rgba(0,0,0,0.6)", color: "#fff", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <Camera className="w-3.5 h-3.5" /> Avatar
               </button>
               <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} />
               <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
             </div>
           )}
-
-          {/* ── Avatar overlap + stats bar ── */}
-          <div className="relative z-10 -mt-14 sm:-mt-16 md:-mt-20 px-4 sm:px-6 md:px-8 max-w-5xl mx-auto">
-            <div className="flex items-end gap-4 sm:gap-5">
-              {/* Avatar — overlapping the banner */}
-              <div className="relative shrink-0">
-                <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full border-4 overflow-hidden"
-                  style={{
-                    borderColor: "var(--bg)",
-                    background: displayModel?.avatar ? "transparent" : "linear-gradient(135deg, var(--rose), var(--accent))",
-                    boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
-                  }}>
-                  {displayModel?.avatar ? (
-                    <img src={displayModel.avatar} alt={displayModel.display_name} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="flex items-center justify-center w-full h-full text-2xl sm:text-3xl font-black text-white">
-                      {displayModel?.display_name.charAt(0)}
-                    </span>
-                  )}
-                </div>
-                {!isEditMode && displayModel?.online && (
-                  <span className="absolute bottom-1 right-1 w-5 h-5 sm:w-6 sm:h-6 rounded-full border-[3px]"
-                    style={{ background: "var(--success)", borderColor: "var(--bg)", boxShadow: "0 0 10px rgba(16,185,129,0.5)" }} />
-                )}
-              </div>
-              {/* Name + bio + stats */}
-              <div className="flex-1 min-w-0 pb-1">
-                <h1 className="text-lg sm:text-xl md:text-2xl font-bold truncate" style={{ color: "var(--text)" }}>
-                  {displayModel?.display_name}
-                  <Check className="w-4 h-4 sm:w-5 sm:h-5 inline ml-1.5 -mt-0.5" style={{ color: "var(--accent)" }} />
-                </h1>
-                {displayModel?.bio && (
-                  <p className="text-xs sm:text-sm mt-1 line-clamp-2 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                    {displayModel.bio}
-                  </p>
-                )}
-                <div className="flex items-center gap-3 sm:gap-5 mt-2">
-                  <span className="text-xs sm:text-sm font-semibold" style={{ color: "var(--text)" }}>
-                    {posts.length} <span className="font-normal" style={{ color: "var(--text-muted)" }}>posts</span>
-                  </span>
-                  <span className="text-xs sm:text-sm font-semibold" style={{ color: "var(--text)" }}>
-                    {wallPosts.length} <span className="font-normal" style={{ color: "var(--text-muted)" }}>fans</span>
-                  </span>
-                  <span className="text-xs sm:text-sm font-semibold" style={{ color: "var(--text)" }}>
-                    {uploads.length} <span className="font-normal" style={{ color: "var(--text-muted)" }}>media</span>
-                  </span>
-                </div>
-              </div>
-              {/* CTA on desktop */}
-              {!isEditMode && !unlockedTier && (
-                <div className="hidden sm:flex items-center gap-2 pb-1">
-                  <button onClick={() => setShowUnlock(true)}
-                    className="px-5 py-2.5 rounded-xl text-xs font-bold cursor-pointer hover:scale-105 transition-transform"
-                    style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff", boxShadow: "0 4px 16px rgba(244,63,94,0.25)" }}>
-                    Entrer un code
-                  </button>
-                  <button onClick={() => setTab("shop")}
-                    className="px-4 py-2.5 rounded-xl text-xs font-medium cursor-pointer hover:scale-105 transition-transform"
-                    style={{ background: "rgba(255,255,255,0.06)", color: "var(--text-secondary)", border: "1px solid var(--border2)" }}>
-                    Acheter
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Profile body removed — all info is in the header bar now */}
-          <div className="hidden">
-            {/* ── Instagram-style centered profile ── */}
-            <div className="text-center profile-stagger-2">
-              {/* Avatar — round, centered */}
-              <div className="relative inline-block mx-auto">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-[3px] flex items-center justify-center text-xl font-black overflow-hidden mx-auto"
-                  style={{
-                    borderColor: displayModel?.online ? "var(--accent)" : "var(--border)",
-                    background: displayModel?.avatar ? "transparent" : "linear-gradient(135deg, var(--rose), var(--accent))",
-                    color: "#fff",
-                  }}>
-                  {displayModel?.avatar ? (
-                    <img src={displayModel.avatar} alt={displayModel.display_name} className="w-full h-full object-cover" />
-                  ) : displayModel?.display_name.charAt(0)}
-                </div>
-                {isEditMode ? (
-                  <>
-                    <button onClick={() => avatarInputRef.current?.click()}
-                      className="absolute inset-0 rounded-full flex items-center justify-center cursor-pointer transition-all hover:bg-black/40"
-                      style={{ background: "rgba(0,0,0,0.25)" }}>
-                      <Camera className="w-6 h-6 text-white" />
-                    </button>
-                    <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-                  </>
-                ) : (
-                  displayModel?.online && (
-                    <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full border-2"
-                      style={{ background: "var(--success)", borderColor: "var(--bg)", boxShadow: "0 0 8px rgba(16,185,129,0.5)" }} />
-                  )
-                )}
-              </div>
-
-              {/* Name + status */}
-              <div className="mt-2">
-                {isEditMode ? (
-                  <div className="space-y-2">
-                    <input
-                      value={displayModel?.display_name || ""}
-                      onChange={e => updateEditField("display_name", e.target.value)}
-                      className="text-xl font-bold bg-transparent outline-none rounded-lg px-3 py-1 text-center w-full max-w-xs mx-auto block"
-                      style={{ color: "var(--text)", border: "1px dashed var(--border3)" }}
-                      placeholder="Display name"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <h1 className="text-xl sm:text-2xl font-bold" style={{ color: "var(--text)" }}>
-                      {displayModel?.display_name}
-                      <Check className="w-4 h-4 inline ml-1.5 -mt-0.5" style={{ color: "var(--accent)" }} />
-                    </h1>
-                    {/* Status MSN style — italic, visible */}
-                    <p className="text-xs mt-1 italic" style={{ color: "var(--text-secondary)" }}>
-                      {displayModel?.online ? "🟢" : "⚫"} {displayModel?.status || "Creatrice exclusive"}
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Stats + access moved to header bar — just CTA buttons here */}
-            {!isEditMode && !unlockedTier && (
-              <div className="flex items-center justify-center gap-2 mb-2 profile-stagger-3">
-                    <button onClick={() => setShowUnlock(true)}
-                      className="px-5 py-2 rounded-xl text-xs font-bold cursor-pointer hover:scale-105 transition-transform"
-                      style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff", boxShadow: "0 4px 16px rgba(244,63,94,0.25)" }}>
-                      Entrer un code
-                    </button>
-                    <button onClick={() => setTab("shop")}
-                      className="px-4 py-2 rounded-xl text-xs font-medium cursor-pointer hover:scale-105 transition-transform"
-                      style={{ background: "rgba(255,255,255,0.06)", color: "var(--text-secondary)", border: "1px solid var(--border2)" }}>
-                      Acheter
-                    </button>
-              </div>
-            )}
-
-            {/* Bio */}
-            {isEditMode ? (
-              <div className="space-y-2 mb-4 fade-up">
+          {/* Edit mode: profile fields */}
+          {isEditMode && (
+            <div className="max-w-6xl mx-auto px-5 sm:px-8 md:px-12 -mt-4 mb-4">
+              <div className="space-y-3 p-5 rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                <input
+                  value={displayModel?.display_name || ""}
+                  onChange={e => updateEditField("display_name", e.target.value)}
+                  className="text-lg font-bold bg-transparent outline-none rounded-lg px-3 py-2 w-full"
+                  style={{ color: "var(--text)", border: "1px dashed var(--border3)" }}
+                  placeholder="Display name"
+                />
                 <input
                   value={displayModel?.status || ""}
                   onChange={e => updateEditField("status", e.target.value)}
-                  className="w-full text-[11px] bg-transparent outline-none rounded-lg px-3 py-2"
+                  className="w-full text-xs bg-transparent outline-none rounded-lg px-3 py-2"
                   style={{ color: "var(--text-muted)", border: "1px dashed var(--border3)" }}
-                  placeholder="Status (ex: 3 media · 5 posts)"
+                  placeholder="Status"
                 />
                 <textarea
                   value={displayModel?.bio || ""}
                   onChange={e => updateEditField("bio", e.target.value)}
-                  className="w-full text-xs leading-relaxed bg-transparent outline-none rounded-lg px-3 py-2 resize-none"
+                  className="w-full text-sm leading-relaxed bg-transparent outline-none rounded-lg px-3 py-2 resize-none"
                   style={{ color: "var(--text-secondary)", border: "1px dashed var(--border3)" }}
                   placeholder="Bio..."
                   rows={3}
                 />
               </div>
-            ) : (
-              displayModel?.bio && (
-                <p className="text-xs leading-relaxed mb-3 fade-up" style={{ color: "var(--text-secondary)" }}>{displayModel.bio}</p>
-              )
-            )}
-
-            {isEditMode && <div className="mb-2" />}
-          </div>
+            </div>
+          )}
         </div>
-
-        {/* Status bar removed — info integrated in header */}
 
         {/* ═══ EXPIRED CODE BANNER ═══ */}
         {expiredCodeInfo && !unlockedTier && (
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-8 mb-4 mt-4">
-            <div className="flex items-center justify-between px-4 py-3 rounded-xl"
+          <div className="max-w-6xl mx-auto px-5 sm:px-8 md:px-12 mb-4 mt-4">
+            <div className="flex items-center justify-between px-5 py-3.5 rounded-xl"
               style={{ background: "rgba(217,119,6,0.1)", border: "1px solid rgba(217,119,6,0.2)" }}>
               <div className="flex items-center gap-2 text-[12px] font-medium" style={{ color: "var(--warning)" }}>
                 <AlertTriangle className="w-4 h-4" />
@@ -1128,22 +1059,25 @@ export default function ModelPage() {
           </div>
         )}
 
-        {/* ═══ TABS — sticky, full-width feel ═══ */}
-        <div className="sticky top-[44px] md:top-[52px] z-30 mt-4 sm:mt-6"
-          style={{ background: "color-mix(in srgb, var(--bg) 95%, transparent)", backdropFilter: "blur(12px)", borderBottom: "1px solid var(--border)" }}>
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-2 sm:py-3">
-            <div className="flex items-center gap-1 sm:gap-2" role="tablist">
+        {/* ═══ TABS — editorial underline style, sticky ═══ */}
+        <div className="sticky top-[40px] md:top-[44px] z-30"
+          style={{ background: "color-mix(in srgb, var(--bg) 92%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
+          <div className="max-w-6xl mx-auto px-5 sm:px-8 md:px-12">
+            <div className="flex items-center gap-0" role="tablist" style={{ borderBottom: "1px solid var(--border)" }}>
               {TABS.map(t => (
                 <button key={t.id} role="tab" aria-selected={tab === t.id} aria-label={t.label}
                   onClick={() => setTab(t.id)}
-                  className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-medium cursor-pointer transition-all"
+                  className="relative px-5 sm:px-6 md:px-8 py-3.5 sm:py-4 text-xs sm:text-sm font-medium cursor-pointer transition-all"
                   style={{
-                    background: tab === t.id ? "var(--accent)" : "transparent",
-                    color: tab === t.id ? "#fff" : "var(--text-muted)",
-                    border: tab === t.id ? "none" : "1px solid transparent",
+                    color: tab === t.id ? "var(--accent)" : "var(--text-muted)",
+                    background: "transparent",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
                   }}>
-                  <t.icon className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                   <span>{t.label}</span>
+                  {tab === t.id && (
+                    <div className="absolute bottom-0 left-4 right-4 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />
+                  )}
                 </button>
               ))}
             </div>
@@ -1151,21 +1085,21 @@ export default function ModelPage() {
         </div>
 
         {/* ═══ TAB CONTENT ═══ */}
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-4 sm:py-6">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 md:px-12 py-6 sm:py-8">
 
-          {/* ── FEED — model posts + visitor posts ── */}
+          {/* ── FEED — Magazine editorial ── */}
           {tab === "feed" && (
-            <div className="space-y-4 sm:space-y-5 fade-up max-w-3xl mx-auto">
-              {/* Visitor post composer — always works */}
+            <div className="space-y-5 sm:space-y-6 fade-up max-w-2xl mx-auto">
+              {/* Visitor post composer */}
               {!isModelLoggedIn && (
-                <div className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                <div className="rounded-2xl p-5 sm:p-6" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                   <div className="flex gap-3">
                     <input
                       value={wallContent}
                       onChange={e => setWallContent(e.target.value)}
                       placeholder={`Un message pour ${model.display_name}...`}
-                      className="flex-1 px-4 py-3 rounded-xl text-sm outline-none"
-                      style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
+                      className="flex-1 px-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-1"
+                      style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", "--tw-ring-color": "var(--accent)" } as React.CSSProperties}
                       onKeyDown={async e => {
                         if (e.key !== "Enter" || !wallContent.trim()) return;
                         const pseudo = visitorHandle || "Anonyme";
@@ -1201,9 +1135,9 @@ export default function ModelPage() {
                         }
                       } catch {} finally { setWallPosting(false); }
                     }}
-                      className="px-4 py-3 rounded-xl text-sm font-bold cursor-pointer disabled:opacity-30 shrink-0"
+                      className="px-5 py-3 rounded-xl text-sm font-semibold cursor-pointer disabled:opacity-30 shrink-0 transition-all hover:scale-[1.02] active:scale-[0.98]"
                       style={{ background: "var(--accent)", color: "#fff" }}>
-                      {wallPosting ? "..." : "Poster"}
+                      {wallPosting ? "..." : <Send className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
@@ -1216,25 +1150,28 @@ export default function ModelPage() {
                 const allItems = [...visitorPosts, ...modelPosts].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
                 if (allItems.length === 0) return (
-                  <div className="text-center py-16 sm:py-20">
-                    <Newspaper className="w-10 h-10 mx-auto mb-3" style={{ color: "var(--text-muted)" }} />
+                  <div className="text-center py-20 sm:py-24">
+                    <Newspaper className="w-10 h-10 mx-auto mb-4" style={{ color: "var(--text-muted)", opacity: 0.5 }} />
                     <p className="text-sm" style={{ color: "var(--text-muted)" }}>Pas encore de publications</p>
                   </div>
                 );
 
-                return (<>{allItems.map(item => {
+                return (<>{allItems.map((item, idx) => {
                   if (item.type === "wall") {
                     const w = item.data as WallPost;
                     return (
-                      <div key={`w-${w.id}`} className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                      <div key={`w-${w.id}`} className="rounded-2xl p-5 sm:p-6" style={{ background: "var(--surface)", border: "1px solid var(--border)", animation: `slideUp 0.4s ease-out ${idx * 0.04}s both` }}>
                         <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                            style={{ background: "rgba(0,0,0,0.06)", color: "var(--text-muted)" }}>
+                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+                            style={{ background: "var(--bg3)", color: "var(--text-muted)" }}>
                             {w.pseudo?.charAt(0)?.toUpperCase() || "?"}
                           </div>
-                          <div>
-                            <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>@{w.pseudo}</span>
-                            <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{w.content}</p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold" style={{ color: "var(--text)" }}>@{w.pseudo}</span>
+                              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{timeAgo(w.created_at)}</span>
+                            </div>
+                            <p className="text-sm mt-1.5 leading-relaxed" style={{ color: "var(--text-secondary)" }}>{w.content}</p>
                           </div>
                         </div>
                       </div>
@@ -1245,56 +1182,57 @@ export default function ModelPage() {
                   const mediaUnlocked = postTier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, postTier));
                   const tierHex = TIER_HEX[postTier] || "#64748B";
                   return (
-                    <div key={post.id} className="rounded-2xl overflow-hidden post-hover" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                      <div className="flex items-start gap-3 sm:gap-4 p-4 sm:p-5 pb-2 sm:pb-3">
-                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                    <div key={post.id} className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)", animation: `slideUp 0.4s ease-out ${idx * 0.04}s both` }}>
+                      <div className="flex items-start gap-3 sm:gap-4 p-5 sm:p-6 pb-3 sm:pb-4">
+                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 overflow-hidden"
                           style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff" }}>
-                          {model.display_name.charAt(0)}
+                          {model.avatar ? <img src={model.avatar} alt="" className="w-full h-full object-cover" /> : model.display_name.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold" style={{ color: "var(--text)" }}>{model.display_name}</span>
-                            <Check className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
-                            {postTier !== "public" && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${tierHex}15`, color: tierHex }}>
-                                {postTier.toUpperCase()}
-                              </span>
-                            )}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold" style={{ color: "var(--text)" }}>{model.display_name}</span>
+                              {postTier !== "public" && (
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${tierHex}12`, color: tierHex }}>
+                                  {TIER_META[postTier]?.label || postTier.toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{timeAgo(post.created_at)}</span>
                           </div>
                           {post.content && (
-                            <p className="text-sm mt-1.5 leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text)" }}>{post.content}</p>
+                            <p className="text-base mt-2 leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text)" }}>{post.content}</p>
                           )}
                         </div>
                       </div>
                       {post.media_url && (
                         mediaUnlocked ? (
-                          <div className="cursor-pointer my-2 rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}
+                          <div className="cursor-pointer mx-5 sm:mx-6 mb-4 rounded-xl overflow-hidden"
                             onClick={() => setLightboxUrl(post.media_url)}>
                             <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
-                              <img src={post.media_url} alt="" className="w-full max-h-[300px] sm:max-h-[400px] object-cover" loading="lazy" />
+                              <img src={post.media_url} alt="" className="w-full max-h-[400px] sm:max-h-[500px] object-cover" loading="lazy" />
                             </ContentProtection>
                           </div>
                         ) : (
-                          <div className="relative cursor-pointer my-2 rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}
+                          <div className="relative cursor-pointer mx-5 sm:mx-6 mb-4 rounded-xl overflow-hidden"
                             onClick={() => {
                               if (purchasedItems.has(post.id)) { setLightboxUrl(post.media_url); return; }
                               setShowUnlock(true);
                             }}>
-                            <img src={post.media_url!} alt="" className="w-full max-h-[300px] sm:max-h-[400px] object-cover" style={{ filter: "blur(8px) brightness(0.7)" }} />
-                            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                              <span className="text-lg">{postTier === "vip" ? "♥" : postTier === "gold" ? "★" : postTier === "diamond" ? "♦" : "♛"}</span>
-                              <span className="text-xs font-bold mt-0.5" style={{ color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>
-                                {(() => { const bp = postTier === "vip" ? 10 : postTier === "gold" ? 20 : postTier === "diamond" ? 30 : 40; const iv = post.media_type === "video" || post.media_url?.includes("/video/"); return `${iv ? bp * 2 : bp}€`; })()}
+                            <div className="w-full h-[300px] sm:h-[400px]" style={{
+                              background: `linear-gradient(135deg, ${tierHex}20, rgba(0,0,0,0.6))`,
+                            }} />
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                              <Lock className="w-6 h-6" style={{ color: tierHex, opacity: 0.8 }} />
+                              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: tierHex }}>
+                                {TIER_META[postTier]?.label || "Exclusive"}
                               </span>
-                              {(post.media_type === "video" || post.media_url?.includes("/video/")) && (
-                                <span className="text-[8px] mt-0.5" style={{ color: "rgba(255,255,255,0.6)" }}>video x2 €/min</span>
-                              )}
                             </div>
                           </div>
                         )
                       )}
-                      {/* Like + comment count */}
-                      <div className="flex items-center gap-5 px-4 sm:px-5 py-3" style={{ borderTop: "1px solid var(--border)" }}>
+                      {/* Like + comment — understated */}
+                      <div className="flex items-center gap-6 px-5 sm:px-6 py-3.5" style={{ borderTop: "1px solid var(--border)" }}>
                         <button onClick={async () => {
                           try {
                             await fetch(`/api/posts`, {
@@ -1304,26 +1242,28 @@ export default function ModelPage() {
                             });
                             setPosts(prev => prev.map(p => p.id === post.id ? { ...p, likes_count: (p.likes_count || 0) + 1 } : p));
                           } catch {}
-                        }} className="flex items-center gap-1.5 text-xs cursor-pointer transition-colors hover:text-[#F43F5E] active:scale-110" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
-                          <Heart className="w-4 h-4" /> {post.likes_count || 0}
+                        }} className="flex items-center gap-1.5 text-xs cursor-pointer transition-colors hover:text-[#F43F5E] group/like" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
+                          <Heart className="w-4 h-4 transition-transform group-hover/like:scale-110" fill={(post.likes_count || 0) > 0 ? "currentColor" : "none"} />
+                          <span className="tabular-nums">{post.likes_count || 0}</span>
                         </button>
                         <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
-                          <MessageCircle className="w-4 h-4" /> {wallPosts.filter(w => w.content?.includes(`#post-${post.id}`)).length + (post.comments_count || 0)}
+                          <MessageCircle className="w-4 h-4" />
+                          <span className="tabular-nums">{wallPosts.filter(w => w.content?.includes(`#post-${post.id}`)).length + (post.comments_count || 0)}</span>
                         </span>
                       </div>
-                      {/* Recent comments on this post */}
+                      {/* Comments */}
                       {wallPosts.filter(w => w.content?.includes(`#post-${post.id}`)).slice(0, 3).map(w => (
-                        <div key={w.id} className="px-4 py-1.5 flex items-start gap-2" style={{ borderTop: "1px solid var(--border)" }}>
+                        <div key={w.id} className="px-5 sm:px-6 py-2 flex items-start gap-2" style={{ borderTop: "1px solid var(--border)" }}>
                           <span className="text-[11px] font-bold shrink-0" style={{ color: "var(--text)" }}>@{w.pseudo}</span>
-                          <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>{w.content?.replace(`#post-${post.id}`, "").trim()}</span>
+                          <span className="text-[11px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>{w.content?.replace(`#post-${post.id}`, "").trim()}</span>
                         </div>
                       ))}
-                      {/* Comment input — always visible, prompts identity if needed */}
-                      <div className="px-4 sm:px-5 py-3 flex items-center gap-2" style={{ borderTop: "1px solid var(--border)" }}>
+                      {/* Comment input */}
+                      <div className="px-5 sm:px-6 py-3 flex items-center gap-2" style={{ borderTop: "1px solid var(--border)" }}>
                         <input
                           data-comment-post={post.id}
                           placeholder={visitorRegistered ? "Ajouter un commentaire..." : "Identifie-toi pour commenter"}
-                          className="flex-1 text-xs sm:text-sm bg-transparent outline-none py-1"
+                          className="flex-1 text-sm bg-transparent outline-none py-1"
                           style={{ color: "var(--text)" }}
                           readOnly={!visitorRegistered}
                           onClick={() => { if (!visitorRegistered) { /* identity gate will handle */ } }}
@@ -1347,7 +1287,6 @@ export default function ModelPage() {
                                       client_id: clientId,
                                     }),
                                   });
-                                  // Refresh wall posts
                                   const res = await fetch(`/api/wall?model=${slug}`);
                                   const data = await res.json();
                                   setWallPosts(data.posts || []);
@@ -1377,7 +1316,7 @@ export default function ModelPage() {
                               const data = await res.json();
                               setWallPosts(data.posts || []);
                             } catch {}
-                          }} className="cursor-pointer hover:opacity-70" style={{ background: "none", border: "none" }}>
+                          }} className="cursor-pointer hover:opacity-70 transition-opacity" style={{ background: "none", border: "none" }}>
                             <Send className="w-3.5 h-3.5" style={{ color: visitorRegistered ? "var(--accent)" : "var(--text-muted)" }} />
                           </button>
                         </div>
@@ -1388,78 +1327,97 @@ export default function ModelPage() {
             </div>
           )}
 
-          {/* ── GALLERY ── */}
+          {/* ── PORTFOLIO / GALLERY — editorial grid ── */}
           {tab === "gallery" && (() => {
-            // Gallery = images from feed posts
             const imagePosts = posts.filter(p => p.media_url);
             return (
               <div className="fade-up">
-                {/* Tier filter */}
-                <div className="flex gap-2 mb-4 sm:mb-5 overflow-x-auto scrollbar-hide pb-1">
+                {/* Tier filter — underline style */}
+                <div className="flex gap-1 mb-6 sm:mb-8 overflow-x-auto scrollbar-hide pb-1" style={{ borderBottom: "1px solid var(--border)" }}>
                   {["all", "public", "vip", "gold", "diamond", "platinum"].map(t => {
                     const count = t === "all" ? imagePosts.length : imagePosts.filter(p => (p.tier_required || "public") === t).length;
                     if (t !== "all" && count === 0) return null;
+                    const tierHex = t === "all" ? "var(--text)" : TIER_HEX[t] || "var(--text-muted)";
                     return (
                       <button key={t} onClick={() => setGalleryTier(t)}
-                        className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-medium cursor-pointer shrink-0 transition-all"
+                        className="relative px-4 sm:px-5 py-2.5 text-[11px] sm:text-xs font-medium cursor-pointer shrink-0 transition-all uppercase"
                         style={{
-                          background: galleryTier === t ? "var(--accent)" : "rgba(0,0,0,0.04)",
-                          color: galleryTier === t ? "#fff" : "var(--text-muted)",
+                          color: galleryTier === t ? tierHex : "var(--text-muted)",
+                          letterSpacing: "0.06em",
                         }}>
-                        {t === "all" ? "Tout" : t.charAt(0).toUpperCase() + t.slice(1)} {count > 0 && `(${count})`}
+                        {t === "all" ? "Tout" : TIER_META[t]?.label || t} {count > 0 && <span className="opacity-50">({count})</span>}
+                        {galleryTier === t && (
+                          <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full" style={{ background: tierHex }} />
+                        )}
                       </button>
                     );
                   })}
                 </div>
 
-                {/* Grid */}
+                {/* Portfolio grid — editorial aspect ratios */}
                 {imagePosts.length === 0 ? (
-                  <div className="text-center py-16 sm:py-20">
-                    <Image className="w-10 h-10 mx-auto mb-3" style={{ color: "var(--text-muted)" }} />
-                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>Pas de photos — poste dans le Feed</p>
+                  <div className="text-center py-20 sm:py-24">
+                    <Image className="w-10 h-10 mx-auto mb-4" style={{ color: "var(--text-muted)", opacity: 0.5 }} />
+                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>Pas de contenu dans le portfolio</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1 sm:gap-1.5 md:gap-2 rounded-xl overflow-hidden">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
                     {imagePosts
                       .filter(p => galleryTier === "all" || (p.tier_required || "public") === galleryTier)
-                      .map(post => {
+                      .map((post, i) => {
                         const tier = post.tier_required || "public";
                         const unlocked = tier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, tier));
+                        const tierHex = TIER_HEX[tier] || "var(--text-muted)";
                         return (
-                          <div key={post.id} className="relative aspect-square overflow-hidden cursor-pointer group">
+                          <div key={post.id} className="relative aspect-[3/4] overflow-hidden rounded-xl cursor-pointer gallery-item group"
+                            style={{ animation: `slideUp 0.4s ease-out ${i * 0.03}s both` }}>
                             {unlocked ? (
-                              <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
-                                <img src={post.media_url!} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                  onClick={() => setLightboxUrl(post.media_url)} loading="lazy" />
-                              </ContentProtection>
+                              <>
+                                <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">
+                                  <img src={post.media_url!} alt="" className="w-full h-full object-cover"
+                                    onClick={() => setLightboxUrl(post.media_url)} loading="lazy" data-clickable />
+                                </ContentProtection>
+                                {/* Hover overlay */}
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                                  <Eye className="w-5 h-5 text-white" />
+                                </div>
+                                {tier !== "public" && (
+                                  <span className="absolute top-2.5 right-2.5 text-[9px] font-bold px-2 py-0.5 rounded-full"
+                                    style={{ background: "rgba(0,0,0,0.5)", color: "#fff", backdropFilter: "blur(4px)" }}>
+                                    {TIER_META[tier]?.label || tier.toUpperCase()}
+                                  </span>
+                                )}
+                              </>
                             ) : (
-                              <div onClick={() => {
+                              <div className="w-full h-full" onClick={() => {
                                 if (purchasedItems.has(post.id)) { setLightboxUrl(post.media_url); return; }
                                 setShowUnlock(true);
                               }}>
-                                <img src={post.media_url!} alt="" className="w-full h-full object-cover" style={{ filter: "blur(8px) brightness(0.7)" }} />
-                                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                  <span className="text-base">{tier === "vip" ? "♥" : tier === "gold" ? "★" : tier === "diamond" ? "♦" : "♛"}</span>
-                                  <span className="text-[10px] font-bold" style={{ color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>
-                                    {(() => { const bp = tier === "vip" ? 10 : tier === "gold" ? 20 : tier === "diamond" ? 30 : 40; const iv = post.media_type === "video" || post.media_url?.includes("/video/"); return `${iv ? bp * 2 : bp}€`; })()}
+                                {/* Dark gradient overlay instead of blur */}
+                                <div className="absolute inset-0" style={{
+                                  background: `linear-gradient(160deg, ${tierHex}25 0%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.85) 100%)`,
+                                }} />
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                                  <Lock className="w-5 h-5" style={{ color: tierHex, opacity: 0.7 }} />
+                                  <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: tierHex }}>
+                                    Exclusive
+                                  </span>
+                                  <span className="text-[9px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+                                    {TIER_META[tier]?.label || tier}
                                   </span>
                                 </div>
                               </div>
                             )}
-                            {tier !== "public" && unlocked && (
-                              <span className="absolute top-1 right-1 text-[8px] font-bold px-1 py-0.5 rounded"
-                                style={{ background: "rgba(0,0,0,0.4)", color: "#fff" }}>{tier === "vip" ? "♥" : tier === "gold" ? "★" : tier === "diamond" ? "♦" : "♛"}</span>
-                            )}
-                            {/* Edit mode: delete + change tier */}
+                            {/* Edit mode overlay */}
                             {isEditMode && (
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                                 <button onClick={async () => {
                                   if (confirm("Supprimer ce post ?")) {
                                     await fetch(`/api/posts?id=${post.id}&model=${slug}`, { method: "DELETE" });
                                     setPosts(prev => prev.filter(p => p.id !== post.id));
                                   }
-                                }} className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer" style={{ background: "rgba(220,38,38,0.8)" }}>
-                                  <Trash2 className="w-3.5 h-3.5 text-white" />
+                                }} className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110" style={{ background: "rgba(220,38,38,0.8)" }}>
+                                  <Trash2 className="w-4 h-4 text-white" />
                                 </button>
                               </div>
                             )}
@@ -1468,13 +1426,11 @@ export default function ModelPage() {
                       })}
                   </div>
                 )}
-
-                {/* GalleryTab removed — images shown once above */}
               </div>
             );
           })()}
 
-          {/* ── SHOP ── */}
+          {/* ── BOUTIQUE / SHOP ── */}
           {tab === "shop" && (
             <ShopTab
               clientId={clientId}
@@ -1695,15 +1651,17 @@ export default function ModelPage() {
           );
         })()}
 
-        {/* ═══ LIGHTBOX ═══ */}
+        {/* ═══ LIGHTBOX — full-screen dark ═══ */}
         {lightboxUrl && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.9)" }}
+          <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.95)" }}
             onClick={() => setLightboxUrl(null)}>
-            <button className="absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
-              style={{ background: "rgba(255,255,255,0.1)" }} onClick={() => setLightboxUrl(null)}>
+            <button className="absolute top-5 right-5 w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 hover:bg-white/20"
+              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)" }} onClick={() => setLightboxUrl(null)}>
               <X className="w-5 h-5 text-white" />
             </button>
-            <img src={lightboxUrl} alt="" className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg" onClick={e => e.stopPropagation()} />
+            <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
+              <img src={lightboxUrl} alt="" className="max-w-[92vw] max-h-[88vh] object-contain" style={{ borderRadius: "var(--radius)" }} onClick={e => e.stopPropagation()} />
+            </ContentProtection>
           </div>
         )}
 
@@ -1827,7 +1785,7 @@ export default function ModelPage() {
         {isEditMode && editDirty && (
           <div className="fixed bottom-0 left-0 right-0 z-50 safe-area-bottom"
             style={{ background: "var(--surface)", borderTop: "1px solid var(--border2)", boxShadow: "0 -4px 24px rgba(0,0,0,0.3)" }}>
-            <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-3 flex items-center justify-between">
+            <div className="max-w-6xl mx-auto px-5 sm:px-8 md:px-12 py-3 flex items-center justify-between">
               <p className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
                 Modifications non sauvegardées
               </p>
@@ -1862,20 +1820,20 @@ export default function ModelPage() {
           </div>
         )}
 
-        {/* ═══ MOBILE BOTTOM NAV (hidden when save bar is showing) ═══ */}
+        {/* ═══ MOBILE BOTTOM NAV ═══ */}
         {!(isEditMode && editDirty) && (
-          <nav className="fixed bottom-0 left-0 right-0 z-30 md:hidden safe-area-bottom glass-strong"
-            style={{ borderTop: "1px solid var(--border)" }}>
-            <div className="flex items-center justify-around py-2.5">
+          <nav className="fixed bottom-0 left-0 right-0 z-30 md:hidden safe-area-bottom"
+            style={{ background: "color-mix(in srgb, var(--bg) 90%, transparent)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: "1px solid var(--border)" }}>
+            <div className="flex items-center justify-around py-2">
               {TABS.map(t => (
                 <button key={t.id} onClick={() => setTab(t.id)}
-                  className="relative flex flex-col items-center gap-1 px-5 py-1.5 cursor-pointer transition-all"
+                  className="relative flex flex-col items-center gap-0.5 px-4 py-1.5 cursor-pointer transition-all"
                   style={{ color: tab === t.id ? "var(--accent)" : "var(--text-muted)" }}>
-                  <t.icon className="w-5 h-5" />
-                  <span className="text-[10px] font-medium">{t.label}</span>
                   {tab === t.id && (
-                    <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full" style={{ background: "var(--accent)" }} />
+                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />
                   )}
+                  <t.icon className="w-5 h-5" />
+                  <span className="text-[9px] font-medium uppercase" style={{ letterSpacing: "0.06em" }}>{t.label}</span>
                 </button>
               ))}
             </div>
