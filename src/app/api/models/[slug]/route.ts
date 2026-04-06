@@ -107,16 +107,30 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug
       return NextResponse.json({ success: true }, { headers: cors });
     }
 
-    // Update existing record
+    // Upsert: try update first, if no row matched then insert
     updates.updated_at = new Date().toISOString();
-    const { error: upsertError } = await supabase
+    const { data: updated, error: updateError } = await supabase
       .from("agence_models")
       .update(updates)
-      .eq("slug", slug);
+      .eq("slug", slug)
+      .select();
 
-    if (upsertError) {
-      console.error("[API/models] PUT upsert error:", upsertError);
-      return NextResponse.json({ error: upsertError.message, detail: upsertError }, { status: 500, headers: cors });
+    if (updateError) {
+      console.error("[API/models] PUT update error:", updateError);
+      return NextResponse.json({ error: updateError.message, detail: updateError }, { status: 500, headers: cors });
+    }
+
+    // If no row was updated, insert a new record
+    if (!updated || updated.length === 0) {
+      const { error: insertError } = await supabase
+        .from("agence_models")
+        .insert({ slug, ...updates })
+        .select();
+
+      if (insertError) {
+        console.error("[API/models] PUT insert error:", insertError);
+        return NextResponse.json({ error: insertError.message, detail: insertError }, { status: 500, headers: cors });
+      }
     }
 
     return NextResponse.json({ success: true }, { headers: cors });

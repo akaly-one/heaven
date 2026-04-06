@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
+import { sanitize } from "@/lib/api-utils";
 
 export const runtime = "nodejs";
 
 export async function OPTIONS(req: NextRequest) {
   const cors = getCorsHeaders(req);
   return new NextResponse(null, { status: 204, headers: cors });
-}
-
-// Sanitize text: strip HTML tags
-function sanitize(text: string): string {
-  return text.replace(/<[^>]*>/g, "").trim();
 }
 
 // GET /api/posts?model=yumi — List posts (public)

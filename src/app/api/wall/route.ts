@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
+import { sanitize } from "@/lib/api-utils";
 
 export const runtime = "nodejs";
-
-// Sanitize text: strip HTML tags
-function sanitize(text: string): string {
-  return text.replace(/<[^>]*>/g, "").trim();
-}
 
 export async function OPTIONS(req: NextRequest) {
   const cors = getCorsHeaders(req);

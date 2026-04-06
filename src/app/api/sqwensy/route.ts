@@ -270,7 +270,7 @@ export async function POST(request: NextRequest) {
         const sqwensyUrl = `${SQWENSY_OS_URL}/api/sync/heaven`;
 
         // Gather data
-        const { data: allCodes } = await supabase.from("access_codes").select("*");
+        const { data: allCodes } = await supabase.from("agence_codes").select("*");
         const { data: allClients } = await supabase.from("agence_clients").select("*");
         const { data: allPlatforms } = await supabase.from("agence_platform_accounts").select("*").eq("status", "active");
         const { data: allContent } = await supabase.from("agence_content_pipeline").select("model_slug, stage, revenue");
