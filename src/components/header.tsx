@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { MessageCircle, Bell, Link2, ExternalLink, Globe, Instagram, X } from "lucide-react";
+import { MessageCircle, Bell, Link2, ExternalLink, Globe, Instagram, X, KeyRound } from "lucide-react";
 import { useModel } from "@/lib/model-context";
 
 // ── Page titles by pathname ──
@@ -182,6 +182,21 @@ export function Header() {
           {pageTitle}
         </span>
       </div>
+
+      {/* Center — Generate code button */}
+      <button
+        onClick={() => window.dispatchEvent(new Event("heaven:generate"))}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold cursor-pointer transition-all hover:scale-105 active:scale-95 shrink-0 mx-2"
+        style={{
+          background: "linear-gradient(135deg, var(--accent), #F43F5E)",
+          color: "#fff",
+          border: "none",
+          boxShadow: "0 2px 8px rgba(230,51,41,0.25)",
+        }}
+      >
+        <KeyRound className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline">Générer</span>
+      </button>
 
       {/* Right — Action buttons */}
       <div className="flex items-center gap-1.5" ref={dropdownRef}>

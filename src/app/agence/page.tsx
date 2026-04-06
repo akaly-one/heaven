@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { KeyRound, Eye, Pencil, Image, Heart, MessageCircle, Trash2, X } from "lucide-react";
+import { Eye, Pencil, Image as ImageIcon, Heart, MessageCircle, Trash2, X, Newspaper } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
@@ -50,6 +50,7 @@ export default function AgenceDashboard() {
 
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [clientModal, setClientModal] = useState<{ pseudo: string } | null>(null);
+  const [feedTab, setFeedTab] = useState<"galerie" | "messages">("galerie");
 
   // Messages state (for handler compatibility)
   const [chatMessages, setChatMessages] = useState<{ id: string; client_id: string; content: string; created_at: string; sender_type: string; read?: boolean; model?: string }[]>([]);
@@ -346,235 +347,217 @@ export default function AgenceDashboard() {
             />
           </div>
 
-          {/* Pending purchases managed via header notifications (Bell icon) */}
-
-          {/* ── 2-column layout: Feed LEFT + Codes/Messages RIGHT ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-5 lg:gap-6 fade-up-2">
-
-            {/* ── LEFT: Feed ── */}
-            <div className="space-y-4 min-w-0">
-            {/* Composer */}
-            <div className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
-                  style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "#fff" }}>
-                  {modelSlug.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 space-y-2">
-                  <textarea
-                    value={newPostContent}
-                    onChange={e => setNewPostContent(e.target.value)}
-                    placeholder="Quoi de neuf ?"
-                    rows={2}
-                    className="w-full bg-transparent text-sm outline-none resize-none"
-                    style={{ color: "var(--text)" }}
-                  />
-                  {/* Upload progress bar */}
-                  {posting && newPostImage && (
-                    <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
-                      <div className="h-full rounded-full transition-all duration-1000" style={{ background: "var(--accent)", width: "70%", animation: "uploadProgress 2s ease-in-out infinite" }} />
-                    </div>
-                  )}
-                  {/* Image preview — square crop */}
-                  {newPostImage && !posting && (
-                    <div className="relative w-full aspect-square rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)", maxHeight: 280 }}>
-                      <img src={newPostImage} alt="" className="w-full h-full object-cover" draggable={false} />
-                      <button onClick={() => setNewPostImage(null)}
-                        className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
-                        style={{ background: "rgba(0,0,0,0.7)", color: "#fff" }}>
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                      <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg text-[11px] font-bold"
-                        style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}>
-                        1:1
-                      </div>
-                    </div>
-                  )}
-                  {/* Row 1: Photo + Tier selector (scrollable) */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                    <label className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium cursor-pointer shrink-0"
-                      style={{ background: "rgba(0,0,0,0.04)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-                      <Image className="w-3.5 h-3.5" /> Photo
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = () => setNewPostImage(reader.result as string);
-                        reader.readAsDataURL(file);
-                        e.target.value = "";
-                      }} />
-                    </label>
-                    {TIER_OPTIONS.map(t => (
-                      <button key={t.id} onClick={() => setNewPostTier(t.id)}
-                        className="px-2.5 py-2 rounded-full text-[11px] font-bold cursor-pointer shrink-0"
-                        style={{
-                          background: newPostTier === t.id ? `${t.color}20` : "transparent",
-                          color: newPostTier === t.id ? t.color : "var(--text-muted)",
-                          border: `1px solid ${newPostTier === t.id ? `${t.color}40` : "transparent"}`,
-                        }}>
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                  {/* Row 2: Publier button full width */}
-                  <button onClick={handleCreatePost} disabled={(!newPostContent.trim() && !newPostImage) || posting}
-                    className="w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-[1.01] disabled:opacity-30"
-                    style={{ background: "var(--accent)", color: "#fff" }}>
-                    {posting ? "Envoi en cours..." : "Publier"}
-                  </button>
-                </div>
-              </div>
+          {/* ── Feed Tabs: Galerie / Messages ── */}
+          <div className="fade-up-2">
+            <div className="flex items-center gap-1 mb-4">
+              {[
+                { id: "galerie" as const, label: "Galerie", icon: ImageIcon },
+                { id: "messages" as const, label: "Messages", icon: Newspaper },
+              ].map(tab => (
+                <button key={tab.id} onClick={() => setFeedTab(tab.id)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all"
+                  style={{
+                    background: feedTab === tab.id ? "var(--surface)" : "transparent",
+                    color: feedTab === tab.id ? "var(--text)" : "var(--text-muted)",
+                    border: feedTab === tab.id ? "1px solid var(--border)" : "1px solid transparent",
+                    boxShadow: feedTab === tab.id ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
+                  }}>
+                  <tab.icon className="w-3.5 h-3.5" />
+                  {tab.label}
+                </button>
+              ))}
             </div>
 
-            {/* Feed — all posts merged, newest first */}
-            {(() => {
-              // Merge model posts + wall posts, sorted newest first
-              type FeedItem = { type: "post"; id: string; created_at: string; data: FeedPost } | { type: "wall"; id: string; created_at: string; data: WallPost };
-              const allFeed: FeedItem[] = [
-                ...feedPosts.map(p => ({ type: "post" as const, id: p.id, created_at: p.created_at, data: p })),
-                ...wallPosts.filter(w => !w.content?.includes("#post-") && w.pseudo !== "SYSTEM").map(w => ({ type: "wall" as const, id: w.id, created_at: w.created_at, data: w })),
-              ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-              if (allFeed.length === 0) return (
-                <div className="rounded-2xl p-8 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>Publie ton premier post</p>
-                </div>
-              );
-
-              return (
-                <div className="space-y-4 mt-4">
-                  {allFeed.slice(0, 15).map(item => {
-                    if (item.type === "wall") {
-                      const w = item.data as WallPost;
-                      return (
-                        <div key={`w-${w.id}`} className="rounded-2xl p-4 group" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                          <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                              style={{ background: "rgba(0,0,0,0.06)", color: "var(--text-muted)" }}>
-                              {w.pseudo?.charAt(0)?.toUpperCase() || "?"}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <button onClick={() => setClientModal({ pseudo: w.pseudo })}
-                                className="text-[11px] font-bold cursor-pointer hover:underline" style={{ color: "var(--text)", background: "none", border: "none", padding: 0 }}>
-                                @{w.pseudo}
-                              </button>
-                              <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{w.content}</p>
-                            </div>
-                            <button onClick={async () => {
-                              try {
-                                await fetch(`/api/wall?id=${w.id}&model=${modelSlug}`, { method: "DELETE", headers: authHeaders() });
-                                setWallPosts(prev => prev.filter(p => p.id !== w.id));
-                              } catch {}
-                            }} className="opacity-0 group-hover:opacity-100 text-xs cursor-pointer hover:text-red-500 transition-all shrink-0"
-                              style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
-                              <Trash2 className="w-3.5 h-3.5" />
+            {/* ── TAB: Galerie — posts with media + composer ── */}
+            {feedTab === "galerie" && (
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 lg:gap-6">
+                {/* LEFT: Composer + Posts */}
+                <div className="space-y-4 min-w-0">
+                  {/* Composer */}
+                  <div className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                        style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "#fff" }}>
+                        {modelSlug.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <textarea value={newPostContent} onChange={e => setNewPostContent(e.target.value)}
+                          placeholder="Quoi de neuf ?" rows={2}
+                          className="w-full bg-transparent text-sm outline-none resize-none"
+                          style={{ color: "var(--text)" }} />
+                        {posting && newPostImage && (
+                          <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
+                            <div className="h-full rounded-full transition-all duration-1000" style={{ background: "var(--accent)", width: "70%", animation: "uploadProgress 2s ease-in-out infinite" }} />
+                          </div>
+                        )}
+                        {newPostImage && !posting && (
+                          <div className="relative w-full aspect-square rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)", maxHeight: 280 }}>
+                            <img src={newPostImage} alt="" className="w-full h-full object-cover" draggable={false} />
+                            <button onClick={() => setNewPostImage(null)}
+                              className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
+                              style={{ background: "rgba(0,0,0,0.7)", color: "#fff" }}>
+                              <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
+                        )}
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                          <label className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium cursor-pointer shrink-0"
+                            style={{ background: "rgba(0,0,0,0.04)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+                            <ImageIcon className="w-3.5 h-3.5" /> Photo
+                            <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                              const file = e.target.files?.[0]; if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = () => setNewPostImage(reader.result as string);
+                              reader.readAsDataURL(file); e.target.value = "";
+                            }} />
+                          </label>
+                          {TIER_OPTIONS.map(t => (
+                            <button key={t.id} onClick={() => setNewPostTier(t.id)}
+                              className="px-2.5 py-2 rounded-full text-[11px] font-bold cursor-pointer shrink-0"
+                              style={{
+                                background: newPostTier === t.id ? `${t.color}20` : "transparent",
+                                color: newPostTier === t.id ? t.color : "var(--text-muted)",
+                                border: `1px solid ${newPostTier === t.id ? `${t.color}40` : "transparent"}`,
+                              }}>
+                              {t.label}
+                            </button>
+                          ))}
                         </div>
-                      );
-                    }
-                    const post = item.data as FeedPost;
-                    return (
-                  <div key={post.id} className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                    {/* Image first, full width */}
-                    {post.media_url && (
-                      <div className="relative">
-                        <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover" loading="lazy" />
-                        {/* Name overlay on image */}
-                        <div className="absolute bottom-0 left-0 right-0 p-3" style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.6))" }}>
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                              style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(4px)", color: "#fff" }}>
-                              {modelSlug.charAt(0).toUpperCase()}
-                            </div>
-                            <span className="text-xs font-bold text-white" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>{modelInfo?.display_name || modelSlug}</span>
-                            {post.tier_required !== "public" && (
-                              <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full"
-                                style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}>
-                                {post.tier_required.toUpperCase()}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {/* Text content + actions */}
-                    <div className="p-3">
-                      {!post.media_url && (
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                            style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "#fff" }}>
-                            {modelSlug.charAt(0).toUpperCase()}
-                          </div>
-                          <span className="text-xs font-bold" style={{ color: "var(--text)" }}>{modelInfo?.display_name || modelSlug}</span>
-                          {post.tier_required !== "public" && (
-                            <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full" style={{
-                              background: (TIER_OPTIONS.find(t => t.id === post.tier_required)?.color || "#64748B") + "20",
-                              color: TIER_OPTIONS.find(t => t.id === post.tier_required)?.color || "#64748B",
-                            }}>{post.tier_required.toUpperCase()}</span>
-                          )}
-                        </div>
-                      )}
-                      {post.content && <p className="text-sm whitespace-pre-wrap mb-2" style={{ color: "var(--text)" }}>{post.content}</p>}
-                      <div className="flex items-center gap-4" style={{ color: "var(--text-muted)" }}>
-                        <span className="flex items-center gap-1 text-xs"><Heart className="w-3.5 h-3.5" /> {post.likes_count || 0}</span>
-                        <span className="flex items-center gap-1 text-xs"><MessageCircle className="w-3.5 h-3.5" /> {post.comments_count || 0}</span>
-                        <button onClick={() => handleDeletePost(post.id)} className="ml-auto text-xs cursor-pointer hover:text-red-400 transition-colors" style={{ background: "none", border: "none" }}>
-                          <Trash2 className="w-3.5 h-3.5" />
+                        <button onClick={handleCreatePost} disabled={(!newPostContent.trim() && !newPostImage) || posting}
+                          className="w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-[1.01] disabled:opacity-30"
+                          style={{ background: "var(--accent)", color: "#fff" }}>
+                          {posting ? "Envoi en cours..." : "Publier"}
                         </button>
                       </div>
                     </div>
                   </div>
-                  );
-                  })}
+
+                  {/* Posts feed */}
+                  {feedPosts.length === 0 ? (
+                    <div className="rounded-2xl p-8 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>Publie ton premier post</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {feedPosts.slice(0, 15).map(post => (
+                        <div key={post.id} className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                          {post.media_url && (
+                            <div className="relative">
+                              <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover" loading="lazy" />
+                              <div className="absolute bottom-0 left-0 right-0 p-3" style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.6))" }}>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+                                    style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(4px)", color: "#fff" }}>
+                                    {modelSlug.charAt(0).toUpperCase()}
+                                  </div>
+                                  <span className="text-xs font-bold text-white" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>{modelInfo?.display_name || modelSlug}</span>
+                                  {post.tier_required !== "public" && (
+                                    <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full"
+                                      style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}>
+                                      {post.tier_required.toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          <div className="p-3">
+                            {!post.media_url && (
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+                                  style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "#fff" }}>
+                                  {modelSlug.charAt(0).toUpperCase()}
+                                </div>
+                                <span className="text-xs font-bold" style={{ color: "var(--text)" }}>{modelInfo?.display_name || modelSlug}</span>
+                                {post.tier_required !== "public" && (
+                                  <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full" style={{
+                                    background: (TIER_OPTIONS.find(t => t.id === post.tier_required)?.color || "#64748B") + "20",
+                                    color: TIER_OPTIONS.find(t => t.id === post.tier_required)?.color || "#64748B",
+                                  }}>{post.tier_required.toUpperCase()}</span>
+                                )}
+                              </div>
+                            )}
+                            {post.content && <p className="text-sm whitespace-pre-wrap mb-2" style={{ color: "var(--text)" }}>{post.content}</p>}
+                            <div className="flex items-center gap-4" style={{ color: "var(--text-muted)" }}>
+                              <span className="flex items-center gap-1 text-xs"><Heart className="w-3.5 h-3.5" /> {post.likes_count || 0}</span>
+                              <span className="flex items-center gap-1 text-xs"><MessageCircle className="w-3.5 h-3.5" /> {post.comments_count || 0}</span>
+                              <button onClick={() => handleDeletePost(post.id)} className="ml-auto text-xs cursor-pointer hover:text-red-400 transition-colors" style={{ background: "none", border: "none" }}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              );
-            })()}
-            </div>{/* end left column */}
 
-            {/* ── RIGHT: Codes/Messages/Platforms ── */}
-            <div className="space-y-4">
-
-            {/* Messages accessible via header (MessageCircle icon) */}
-
-            {/* Codes & Clients compact */}
-            <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-[var(--text)]">Codes &amp; Clients</h2>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-medium text-[var(--text-muted)]">
-                  {activeCodes.length} actif{activeCodes.length > 1 ? "s" : ""} / {clients.length} client{clients.length > 1 ? "s" : ""}
-                </span>
-                <button
-                  onClick={() => setShowGenerator(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold cursor-pointer hover:scale-105 active:scale-95 transition-transform btn-gradient"
-                  style={{ color: "var(--text)" }}>
-                  <KeyRound className="w-3.5 h-3.5" />
-                  Generer
-                </button>
+                {/* RIGHT: Codes & Clients */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-bold" style={{ color: "var(--text)" }}>Codes &amp; Clients</h2>
+                    <span className="text-[11px] font-medium" style={{ color: "var(--text-muted)" }}>
+                      {activeCodes.length} actif{activeCodes.length > 1 ? "s" : ""} / {clients.length} client{clients.length > 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                    <CodesList
+                      codes={modelCodes} clients={clients} modelSlug={modelSlug}
+                      onCopy={handleCopy} onRevoke={handleRevoke} onPause={handlePause}
+                      onReactivate={handleReactivate} onDelete={handleDelete}
+                      onUpdateClient={handleUpdateClient} onSendMessage={handleSendMessage}
+                      onGenerateForClient={handleGenerateForClient} onExtendCode={handleExtendCode}
+                      wiseLinks={packs.filter(p => p.wise_url).map(p => ({ tier: p.id, url: p.wise_url! }))}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-              <CodesList
-                codes={modelCodes}
-                clients={clients}
-                modelSlug={modelSlug}
-                onCopy={handleCopy}
-                onRevoke={handleRevoke}
-                onPause={handlePause}
-                onReactivate={handleReactivate}
-                onDelete={handleDelete}
-                onUpdateClient={handleUpdateClient}
-                onSendMessage={handleSendMessage}
-                onGenerateForClient={handleGenerateForClient}
-                onExtendCode={handleExtendCode}
-                wiseLinks={packs.filter(p => p.wise_url).map(p => ({ tier: p.id, url: p.wise_url! }))}
-              />
-            </div>
-          </div>
+            )}
 
-          {/* Platforms — now managed via header dropdown (Link2 icon) */}
-          </div>
+            {/* ── TAB: Messages — wall messages from clients ── */}
+            {feedTab === "messages" && (
+              <div className="max-w-3xl space-y-3">
+                {(() => {
+                  const clientMessages = wallPosts.filter(w => !w.content?.includes("#post-") && w.pseudo !== "SYSTEM");
+                  if (clientMessages.length === 0) return (
+                    <div className="rounded-2xl p-8 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>Aucun message pour le moment</p>
+                    </div>
+                  );
+                  return clientMessages.slice(0, 30).map(w => (
+                    <div key={w.id} className="rounded-2xl p-4 group" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+                          style={{ background: "rgba(0,0,0,0.06)", color: "var(--text-muted)" }}>
+                          {w.pseudo?.charAt(0)?.toUpperCase() || "?"}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => setClientModal({ pseudo: w.pseudo })}
+                              className="text-[11px] font-bold cursor-pointer hover:underline" style={{ color: "var(--text)", background: "none", border: "none", padding: 0 }}>
+                              @{w.pseudo}
+                            </button>
+                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                              {new Date(w.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                          <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>{w.content}</p>
+                        </div>
+                        <button onClick={async () => {
+                          try {
+                            await fetch(`/api/wall?id=${w.id}&model=${modelSlug}`, { method: "DELETE", headers: authHeaders() });
+                            setWallPosts(prev => prev.filter(p => p.id !== w.id));
+                          } catch {}
+                        }} className="opacity-0 group-hover:opacity-100 text-xs cursor-pointer hover:text-red-500 transition-all shrink-0"
+                          style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ));
+                })()}
+              </div>
+            )}
           </div>
 
           {/* ── Generate Modal ── */}
