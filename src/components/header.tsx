@@ -120,9 +120,9 @@ export function Header() {
   const dropdownStyle = { background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 12px 40px rgba(0,0,0,0.2)" };
 
   return (
-    <header className="sticky top-0 z-50 flex items-center h-12 px-3 sm:px-4"
-      style={{ background: "color-mix(in srgb, var(--surface) 85%, transparent)",
-        borderBottom: "1px solid var(--border)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
+    <header className="flex items-center h-12 px-3 sm:px-4"
+      style={{ background: "var(--surface)",
+        borderBottom: "1px solid var(--border)" }}>
 
       {/* Left — Model + page */}
       <div className="flex items-center gap-2.5 flex-1 min-w-0">
