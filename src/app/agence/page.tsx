@@ -27,8 +27,24 @@ function isExpired(expiresAt: string): boolean { return new Date(expiresAt).getT
 
 // ══════════ MAIN ══════════
 export default function AgenceDashboard() {
-  const { currentModel, auth, authHeaders } = useModel();
-  const modelSlug = currentModel || auth?.model_slug || "yumi";
+  const { currentModel, auth, authHeaders, isRoot } = useModel();
+  const modelSlug = currentModel || auth?.model_slug || null;
+
+  // No model selected yet — show loading (root must pick, model auto-resolves from auth)
+  if (!modelSlug) {
+    return (
+      <OsLayout cpId="agence">
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="text-center space-y-3">
+            <div className="w-10 h-10 rounded-full mx-auto" style={{ background: "var(--border)" }} />
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+              {isRoot ? "Selectionne un modele dans le header" : "Chargement du profil..."}
+            </p>
+          </div>
+        </div>
+      </OsLayout>
+    );
+  }
 
   // ── State ──
   const [codes, setCodes] = useState<AccessCode[]>([]);
@@ -57,6 +73,7 @@ export default function AgenceDashboard() {
 
   // ── Load data ──
   useEffect(() => {
+    if (!modelSlug) return; // No model selected — skip fetches
     const headers = authHeaders();
     const safeFetch = (url: string) => fetch(url, { headers }).then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); });
 

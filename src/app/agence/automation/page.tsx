@@ -12,7 +12,7 @@ export default function AutomationPage() {
     <OsLayout cpId="agence">
       <AutomationContent
         modelName={modelName}
-        storageKey={`heaven_automation_${currentModel || "yumi"}`}
+        storageKey={`heaven_automation_${currentModel || "default"}`}
       />
     </OsLayout>
   );

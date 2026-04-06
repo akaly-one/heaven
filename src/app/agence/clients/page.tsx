@@ -54,8 +54,20 @@ const codeTimeLeft = (expiresAt: string, revoked: boolean, active: boolean) => {
 /* ══════════════════════════════════════════════ */
 
 export default function ClientsCRMPage() {
-  const { currentModel, authHeaders } = useModel();
-  const model = currentModel || "yumi";
+  const { currentModel, authHeaders, isRoot } = useModel();
+  const model = currentModel || null;
+
+  if (!model) {
+    return (
+      <OsLayout cpId="agence">
+        <div className="flex items-center justify-center h-[60vh]">
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+            {isRoot ? "Selectionne un modele dans le header" : "Chargement..."}
+          </p>
+        </div>
+      </OsLayout>
+    );
+  }
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   /* ── State ── */
@@ -81,6 +93,7 @@ export default function ClientsCRMPage() {
 
   /* ── Fetch ── */
   const fetchAll = useCallback(() => {
+    if (!model) { setLoading(false); return; }
     Promise.all([
       fetch(`/api/clients?model=${model}`, { headers: authHeaders() }).then(r => r.json()),
       fetch(`/api/codes?model=${model}`, { headers: authHeaders() }).then(r => r.json()),
@@ -211,7 +224,7 @@ export default function ClientsCRMPage() {
 
   const generateCode = async (clientId: string) => {
     const c = clients.find(cl => cl.id === clientId);
-    if (!c) return;
+    if (!c || !model) return;
     const pseudo = pseudoOf(c);
     const codeStr = `${model.slice(0, 3).toUpperCase()}-${new Date().getFullYear()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
     await fetch("/api/codes", {

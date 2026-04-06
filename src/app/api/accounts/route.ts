@@ -9,18 +9,26 @@ export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
-// GET /api/accounts — List all accounts
+// GET /api/accounts?model=slug — List accounts (filtered by model for non-root)
 export async function GET(_req: NextRequest) {
   const cors = getCorsHeaders(_req);
   try {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    const { data, error } = await supabase
+    const model = _req.nextUrl.searchParams.get("model");
+
+    let q = supabase
       .from("agence_accounts")
       .select("id, code, role, model_slug, display_name, active, created_at, last_login")
       .order("created_at", { ascending: true });
 
+    // Filter by model if specified (models should only see their own account)
+    if (model) {
+      q = q.eq("model_slug", model);
+    }
+
+    const { data, error } = await q;
     if (error) throw error;
     return NextResponse.json({ accounts: data }, { headers: cors });
   } catch (err) {

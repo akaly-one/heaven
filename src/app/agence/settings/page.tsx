@@ -19,7 +19,7 @@ const SECTIONS = [
 
 export default function SettingsPage() {
   const { authHeaders, isRoot, auth, currentModel } = useModel();
-  const modelSlug = currentModel || auth?.model_slug || "yumi";
+  const modelSlug = currentModel || auth?.model_slug || null;
 
   const [section, setSection] = useState<"security" | "accounts" | "mode">("security");
   const [purging, setPurging] = useState(false);
@@ -33,13 +33,15 @@ export default function SettingsPage() {
 
   const fetchAccounts = () => {
     setLoading(true);
-    fetch("/api/accounts", { headers: authHeaders() })
+    // Root sees all accounts, models see only their own
+    const url = isRoot ? "/api/accounts" : `/api/accounts?model=${modelSlug || ""}`;
+    fetch(url, { headers: authHeaders() })
       .then(r => r.json())
       .then(d => { if (d.accounts) setAccounts(d.accounts); })
       .catch(() => {})
       .finally(() => setLoading(false));
   };
-  useEffect(() => { fetchAccounts(); }, [authHeaders]);
+  useEffect(() => { if (modelSlug || isRoot) fetchAccounts(); }, [authHeaders, modelSlug, isRoot]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreate = async () => {
     if (!newAccount.code || !newAccount.display_name) return;
@@ -121,7 +123,7 @@ export default function SettingsPage() {
           {/* ═══ SECURITY SECTION ═══ */}
           {section === "security" && (
             <div className="fade-up-2">
-              <SecurityAlerts modelSlug={modelSlug} authHeaders={authHeaders} />
+              <SecurityAlerts modelSlug={modelSlug || ""} authHeaders={authHeaders} />
             </div>
           )}
 

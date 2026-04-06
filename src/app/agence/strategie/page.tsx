@@ -352,8 +352,8 @@ const CATEGORY_ICONS: Record<string, typeof DollarSign> = {
 };
 
 export default function StrategiePage() {
-  const { currentModel, authHeaders } = useModel();
-  const modelSlug = currentModel || "yumi";
+  const { currentModel, authHeaders, isRoot } = useModel();
+  const modelSlug = currentModel || "";
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("plateformes");
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
@@ -577,6 +577,18 @@ export default function StrategiePage() {
     { id: "tactique", label: "Tactique", icon: Zap },
     { id: "objectifs", label: "Objectifs", icon: Target },
   ];
+
+  if (!modelSlug) {
+    return (
+      <OsLayout cpId="agence">
+        <div className="flex items-center justify-center h-[60vh]">
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+            {isRoot ? "Selectionne un modele dans le header" : "Chargement..."}
+          </p>
+        </div>
+      </OsLayout>
+    );
+  }
 
   return (
     <OsLayout cpId="agence">

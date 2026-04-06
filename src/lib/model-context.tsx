@@ -32,40 +32,39 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
       if (raw) {
         const parsed: HeavenAuth = JSON.parse(raw);
         setAuth(parsed);
+
+        // Models are locked to their own slug — NO fallback to another model
         if (parsed.role === "model" && parsed.model_slug) {
           setCurrentModel(parsed.model_slug);
         }
+        // Root starts with no model selected — must pick from switcher
       }
     } catch { /* ignore */ }
   }, []);
 
-  // Load models from API (fallback to hardcoded for Phase 0)
+  // Load active models from API (root only — models don't need the list)
   useEffect(() => {
     if (auth?.role === "root") {
       fetch("/api/models")
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           if (data?.models?.length) {
-            setModels(data.models.map((m: { model_slug: string; display_name: string }) => ({
-              slug: m.model_slug,
+            setModels(data.models.map((m: { slug?: string; model_slug?: string; display_name: string }) => ({
+              slug: m.slug || m.model_slug,
               display_name: m.display_name,
             })));
-          } else {
-            // Fallback hardcoded
-            setModels([
-              { slug: "yumi", display_name: "Yumi" },
-              { slug: "ruby", display_name: "Ruby" },
-            ]);
+            // Auto-select first model if none selected
+            if (!currentModel && data.models.length > 0) {
+              const first = data.models[0];
+              setCurrentModel(first.slug || first.model_slug);
+            }
           }
         })
         .catch(() => {
-          setModels([
-            { slug: "yumi", display_name: "Yumi" },
-            { slug: "ruby", display_name: "Ruby" },
-          ]);
+          // No fallback to hardcoded models — if API fails, empty list
         });
     }
-  }, [auth?.role]);
+  }, [auth?.role]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isRoot = auth?.role === "root";
 

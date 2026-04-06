@@ -37,7 +37,7 @@ interface PilotAssistantProps {
 export function PilotAssistant({ cpId, position = "bottom-right" }: PilotAssistantProps) {
   const router = useRouter();
   const { currentModel, authHeaders } = useModel();
-  const modelSlug = currentModel || "yumi";
+  const modelSlug = currentModel || "";
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<PilotMessage[]>([]);
   const [input, setInput] = useState("");
