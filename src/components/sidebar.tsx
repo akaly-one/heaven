@@ -22,10 +22,10 @@ const NAV_MAIN = [
 ] as const;
 
 const NAV_TOOLS = [
-  { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances", color: "#22C55E" },
   { id: "simulateur", label: "Simulateur", icon: Calculator, href: "/agence/simulateur", color: "#F97316" },
-  { id: "automation", label: "Automation", icon: Zap, href: "/agence/automation", color: "#EAB308" },
-  { id: "architecture", label: "Architecture", icon: Network, href: "/agence/architecture", color: "#64748B" },
+  { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances", color: "#22C55E", rootOnly: true },
+  { id: "automation", label: "Automation", icon: Zap, href: "/agence/automation", color: "#EAB308", rootOnly: true },
+  { id: "architecture", label: "Architecture", icon: Network, href: "/agence/architecture", color: "#64748B", rootOnly: true },
   { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings", color: "#94A3B8", rootOnly: true },
 ] as const;
 

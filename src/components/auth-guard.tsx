@@ -16,6 +16,9 @@ export function getHeavenAuth(): HeavenAuth | null {
   }
 }
 
+// Pages reserved for root admin — models cannot access these
+const ROOT_ONLY_ROUTES = ["/agence/finances", "/agence/automation", "/agence/architecture", "/agence/settings"];
+
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -33,6 +36,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
     try {
       const auth = JSON.parse(raw);
+
+      // Block models from root-only pages
+      if (auth.role === "model" && ROOT_ONLY_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"))) {
+        router.replace("/agence");
+        return;
+      }
+
       const scope: string[] = auth.scope || ["*"];
       if (!scope.includes("*")) {
         const allowed = scope.some((s: string) => pathname === s || pathname.startsWith(s + "/"));
