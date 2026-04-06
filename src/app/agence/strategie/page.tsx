@@ -9,10 +9,12 @@ import {
   Check, ChevronRight, TrendingUp,
   Eye, Lock, Unlock, BarChart3,
   Flame, Crown, Sparkles, Play, MessageSquare, Heart,
+  Calendar, X, Plus, Trash2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
+import type { Goal } from "@/types/heaven";
 
 // ═══════════════════════════════════════════
 // PLATFORM DATA (from strategie)
@@ -340,10 +342,17 @@ function saveSimState(s: SimState) {
 // MAIN PAGE
 // ═══════════════════════════════════════════
 
-type ActiveTab = "plateformes" | "simulateur" | "onboarding" | "tactique";
+type ActiveTab = "plateformes" | "simulateur" | "onboarding" | "tactique" | "objectifs";
+
+const CATEGORY_ICONS: Record<string, typeof DollarSign> = {
+  revenue: DollarSign,
+  subscribers: Users,
+  content: Camera,
+  engagement: Heart,
+};
 
 export default function StrategiePage() {
-  const { currentModel } = useModel();
+  const { currentModel, authHeaders } = useModel();
   const modelSlug = currentModel || "yumi";
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("plateformes");
@@ -381,6 +390,53 @@ export default function StrategiePage() {
   // Simulator state
   const [simState, setSimState] = useState<SimState>(loadSimState);
   const [simTab, setSimTab] = useState<"objectif" | "contenu" | "pipeline" | "projections">("objectif");
+
+  // Goals state
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [goalsLoading, setGoalsLoading] = useState(true);
+  const [showAddGoal, setShowAddGoal] = useState(false);
+  const [newGoal, setNewGoal] = useState({ title: "", category: "revenue", target_value: "", unit: "EUR", deadline: "" });
+
+  // Fetch goals
+  useEffect(() => {
+    setGoalsLoading(true);
+    const headers = authHeaders();
+    fetch(`/api/pipeline/goals?model=${modelSlug}`, { headers })
+      .then((r) => r.json())
+      .then((data) => setGoals(data.goals || []))
+      .catch((err) => console.error("[Strategie] Goals fetch error:", err))
+      .finally(() => setGoalsLoading(false));
+  }, [modelSlug, authHeaders]);
+
+  // Create goal
+  const handleCreateGoal = useCallback(() => {
+    if (!newGoal.title.trim()) return;
+    const headers = authHeaders();
+    const payload = {
+      model_slug: modelSlug,
+      title: newGoal.title.trim(),
+      category: newGoal.category,
+      target_value: newGoal.target_value ? parseFloat(newGoal.target_value) : 0,
+      unit: newGoal.unit,
+      deadline: newGoal.deadline || null,
+    };
+    fetch("/api/pipeline/goals", { method: "POST", headers, body: JSON.stringify(payload) })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.goal) setGoals((prev) => [data.goal, ...prev]);
+        setShowAddGoal(false);
+        setNewGoal({ title: "", category: "revenue", target_value: "", unit: "EUR", deadline: "" });
+      })
+      .catch((err) => console.error("[Strategie] Goal create error:", err));
+  }, [newGoal, modelSlug, authHeaders]);
+
+  // Delete goal
+  const handleDeleteGoal = useCallback((goalId: string) => {
+    const headers = authHeaders();
+    fetch(`/api/pipeline/goals?id=${goalId}`, { method: "DELETE", headers })
+      .then(() => setGoals((prev) => prev.filter((g) => g.id !== goalId)))
+      .catch((err) => console.error("[Strategie] Goal delete error:", err));
+  }, [authHeaders]);
 
   // Persist tactique
   useEffect(() => {
@@ -519,6 +575,7 @@ export default function StrategiePage() {
     { id: "simulateur", label: "Simulateur", icon: BarChart3 },
     { id: "onboarding", label: "Onboarding", icon: Shield },
     { id: "tactique", label: "Tactique", icon: Zap },
+    { id: "objectifs", label: "Objectifs", icon: Target },
   ];
 
   return (
@@ -1358,8 +1415,196 @@ export default function StrategiePage() {
             </div>
           )}
 
+          {/* ══════════════════════════════════
+              TAB: OBJECTIFS
+              ══════════════════════════════════ */}
+          {activeTab === "objectifs" && (
+            <div className="space-y-4">
+              {/* Header + Add button */}
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+                  Objectifs actifs
+                </p>
+                <button
+                  onClick={() => setShowAddGoal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff" }}
+                >
+                  <Plus className="w-3 h-3" />
+                  Objectif
+                </button>
+              </div>
+
+              {/* Goal list */}
+              {goalsLoading ? (
+                <div className="rounded-xl p-8 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>Chargement...</p>
+                </div>
+              ) : goals.length === 0 ? (
+                <div className="rounded-xl p-8 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                  <Target className="w-8 h-8 mx-auto mb-2" style={{ color: "var(--text-muted)" }} />
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>Aucun objectif defini</p>
+                  <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>Ajoute un objectif pour suivre ta progression</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {goals
+                    .filter((g) => g.status === "active")
+                    .map((goal) => {
+                      const progress = goal.target_value > 0 ? Math.min((goal.current_value / goal.target_value) * 100, 100) : 0;
+                      const CategoryIcon = CATEGORY_ICONS[goal.category] || Target;
+                      return (
+                        <div key={goal.id} className="rounded-xl p-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "var(--bg2, #1a1a1a)" }}>
+                                <CategoryIcon className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
+                              </div>
+                              <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{goal.title}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>
+                                {goal.current_value} / {goal.target_value} {goal.unit}
+                              </span>
+                              <button
+                                onClick={() => handleDeleteGoal(goal.id)}
+                                className="p-1 rounded-md cursor-pointer hover:bg-red-500/10 transition-colors"
+                              >
+                                <Trash2 className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "var(--bg2, #1a1a1a)" }}>
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${progress}%`,
+                                background: progress >= 100 ? "#10B981" : progress >= 50 ? "var(--accent)" : "var(--rose)",
+                              }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between mt-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] capitalize px-1.5 py-0.5 rounded-md" style={{ background: "var(--bg2, #1a1a1a)", color: "var(--text-muted)" }}>{goal.category}</span>
+                              <span className="text-[10px] font-bold" style={{ color: progress >= 100 ? "#10B981" : progress >= 50 ? "var(--accent)" : "var(--rose)" }}>
+                                {Math.round(progress)}%
+                              </span>
+                            </div>
+                            {goal.deadline && (
+                              <span className="text-[10px] flex items-center gap-0.5" style={{ color: "var(--text-muted)" }}>
+                                <Calendar className="w-2.5 h-2.5" />
+                                {goal.deadline}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
+
+      {/* ══════ MODAL: Add Goal ══════ */}
+      {showAddGoal && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddGoal(false)} />
+          <div
+            className="fixed inset-x-4 top-[15%] md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-[400px] z-50 rounded-2xl p-5"
+            style={{ background: "var(--bg3)", border: "1px solid var(--border2)", boxShadow: "0 25px 50px rgba(0,0,0,0.5)" }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold" style={{ color: "var(--text)" }}>Nouvel objectif</h3>
+              <button onClick={() => setShowAddGoal(false)} className="cursor-pointer" style={{ color: "var(--text-muted)" }}>
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-semibold block mb-1" style={{ color: "var(--text-muted)" }}>Titre</label>
+                <input
+                  type="text"
+                  value={newGoal.title}
+                  onChange={(e) => setNewGoal((p) => ({ ...p, title: e.target.value }))}
+                  placeholder="Ex: 1000 abonnes OnlyFans"
+                  className="w-full px-3 py-2 rounded-lg text-xs outline-none"
+                  style={{ background: "var(--bg)", border: "1px solid var(--border2)", color: "var(--text)" }}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-semibold block mb-1" style={{ color: "var(--text-muted)" }}>Categorie</label>
+                  <div className="relative">
+                    <select
+                      value={newGoal.category}
+                      onChange={(e) => setNewGoal((p) => ({ ...p, category: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg text-xs outline-none appearance-none cursor-pointer"
+                      style={{ background: "var(--bg)", border: "1px solid var(--border2)", color: "var(--text)" }}
+                    >
+                      <option value="revenue">Revenue</option>
+                      <option value="subscribers">Abonnes</option>
+                      <option value="content">Contenu</option>
+                      <option value="engagement">Engagement</option>
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: "var(--text-muted)" }} />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-semibold block mb-1" style={{ color: "var(--text-muted)" }}>Unite</label>
+                  <div className="relative">
+                    <select
+                      value={newGoal.unit}
+                      onChange={(e) => setNewGoal((p) => ({ ...p, unit: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg text-xs outline-none appearance-none cursor-pointer"
+                      style={{ background: "var(--bg)", border: "1px solid var(--border2)", color: "var(--text)" }}
+                    >
+                      <option value="EUR">EUR</option>
+                      <option value="count">Nombre</option>
+                      <option value="percent">%</option>
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: "var(--text-muted)" }} />
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-semibold block mb-1" style={{ color: "var(--text-muted)" }}>Objectif</label>
+                  <input
+                    type="number"
+                    value={newGoal.target_value}
+                    onChange={(e) => setNewGoal((p) => ({ ...p, target_value: e.target.value }))}
+                    placeholder="1000"
+                    className="w-full px-3 py-2 rounded-lg text-xs outline-none"
+                    style={{ background: "var(--bg)", border: "1px solid var(--border2)", color: "var(--text)" }}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-semibold block mb-1" style={{ color: "var(--text-muted)" }}>Deadline</label>
+                  <input
+                    type="date"
+                    value={newGoal.deadline}
+                    onChange={(e) => setNewGoal((p) => ({ ...p, deadline: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg text-xs outline-none"
+                    style={{ background: "var(--bg)", border: "1px solid var(--border2)", color: "var(--text)" }}
+                  />
+                </div>
+              </div>
+              <button
+                onClick={handleCreateGoal}
+                disabled={!newGoal.title.trim()}
+                className="w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff" }}
+              >
+                Creer objectif
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
     </OsLayout>
   );
 }

@@ -302,15 +302,15 @@ export default function AgenceDashboard() {
   // ══════════ RENDER ══════════
   return (
     <OsLayout cpId="agence">
-      <div className="min-h-screen p-4 md:p-8 pb-28 md:pb-8" style={{ background: "var(--bg)" }}>
-        <div className="max-w-4xl mx-auto space-y-5">
+      <div className="min-h-screen p-4 sm:p-5 md:p-6 lg:p-8 pb-28 md:pb-8" style={{ background: "var(--bg)" }}>
+        <div className="max-w-[1400px] mx-auto space-y-5">
 
-          {/* ── Header: Avatar + Name + Status ── */}
-          <div className="flex items-center gap-3 fade-up">
+          {/* ── Header: Avatar + Name + Status + Actions ── */}
+          <div className="flex items-center gap-3 sm:gap-4 fade-up">
             {/* Avatar — click to change photo */}
             <div className="relative">
               <label className="cursor-pointer">
-                <div className="w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center text-lg font-black"
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden flex items-center justify-center text-lg font-black"
                   style={{
                     background: modelInfo?.avatar ? "transparent" : "linear-gradient(135deg, var(--rose), var(--accent))",
                     color: "#fff",
@@ -356,14 +356,13 @@ export default function AgenceDashboard() {
               </button>
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-base font-bold truncate" style={{ color: "var(--text)" }}>
+              <h1 className="text-lg sm:text-xl font-bold truncate" style={{ color: "var(--text)" }}>
                 {modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase()}
               </h1>
-              {/* Status text — editable short mood */}
               <input
                 defaultValue={modelInfo?.status || ""}
                 placeholder="Etat d'esprit..."
-                className="text-[11px] bg-transparent outline-none w-full truncate"
+                className="text-xs bg-transparent outline-none w-full truncate"
                 style={{ color: "var(--text-muted)" }}
                 onBlur={async (e) => {
                   const newStatus = e.target.value.trim();
@@ -378,23 +377,20 @@ export default function AgenceDashboard() {
                 onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
               />
             </div>
-            <a href={`/m/${modelSlug}`} target="_blank"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-transform no-underline"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid #222" }}>
-              <Eye className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-              <span className="text-[11px] font-semibold hidden md:inline text-[var(--text-muted)]">Voir profil</span>
-            </a>
-            <a href={`/m/${modelSlug}?edit=true`}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-transform no-underline"
-              style={{ background: "rgba(230,51,41,0.12)", border: "1px solid rgba(230,51,41,0.25)" }}>
-              <Pencil className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
-              <span className="text-[11px] font-semibold hidden md:inline" style={{ color: "var(--accent)" }}>Edit</span>
-            </a>
-            <a href="/agence/settings"
-              className="flex items-center justify-center w-9 h-9 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-transform no-underline"
-              style={{ background: "rgba(0,0,0,0.04)", border: "1px solid var(--border)" }}>
-              <Settings className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
-            </a>
+            <div className="flex items-center gap-2">
+              <a href={`/m/${modelSlug}`} target="_blank"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-transform no-underline"
+                style={{ background: "rgba(0,0,0,0.04)", border: "1px solid var(--border)" }}>
+                <Eye className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                <span className="text-[11px] font-semibold hidden lg:inline" style={{ color: "var(--text-muted)" }}>Profil</span>
+              </a>
+              <a href={`/m/${modelSlug}?edit=true`}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-transform no-underline"
+                style={{ background: "rgba(230,51,41,0.12)", border: "1px solid rgba(230,51,41,0.25)" }}>
+                <Pencil className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
+                <span className="text-[11px] font-semibold hidden lg:inline" style={{ color: "var(--accent)" }}>Edit</span>
+              </a>
+            </div>
           </div>
 
           {/* ── KPI Cards ── */}
@@ -449,15 +445,15 @@ export default function AgenceDashboard() {
             </div>
           )}
 
-          {/* ── 2-column layout: Feed LEFT + Codes/Notifs RIGHT ── */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 fade-up-2">
+          {/* ── 2-column layout: Feed LEFT + Codes/Messages RIGHT ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-5 lg:gap-6 fade-up-2">
 
-            {/* ── LEFT: Feed (3/5) ── */}
-            <div className="md:col-span-3 space-y-3">
+            {/* ── LEFT: Feed ── */}
+            <div className="space-y-4 min-w-0">
             {/* Composer */}
-            <div className="rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <div className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
               <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
                   style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "#fff" }}>
                   {modelSlug.charAt(0).toUpperCase()}
                 </div>
@@ -543,14 +539,14 @@ export default function AgenceDashboard() {
               );
 
               return (
-                <div className="space-y-3 mt-3">
+                <div className="space-y-4 mt-4">
                   {allFeed.slice(0, 15).map(item => {
                     if (item.type === "wall") {
                       const w = item.data as WallPost;
                       return (
-                        <div key={`w-${w.id}`} className="rounded-2xl p-3 group" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                          <div className="flex items-start gap-2">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                        <div key={`w-${w.id}`} className="rounded-2xl p-4 group" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
                               style={{ background: "rgba(0,0,0,0.06)", color: "var(--text-muted)" }}>
                               {w.pseudo?.charAt(0)?.toUpperCase() || "?"}
                             </div>
@@ -580,7 +576,7 @@ export default function AgenceDashboard() {
                     {/* Image first, full width */}
                     {post.media_url && (
                       <div className="relative">
-                        <img src={post.media_url} alt="" className="w-full aspect-square object-cover" loading="lazy" />
+                        <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover" loading="lazy" />
                         {/* Name overlay on image */}
                         <div className="absolute bottom-0 left-0 right-0 p-3" style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.6))" }}>
                           <div className="flex items-center gap-2">
@@ -633,8 +629,8 @@ export default function AgenceDashboard() {
             })()}
             </div>{/* end left column */}
 
-            {/* ── RIGHT: Codes/Clients + Notifs (2/5) ── */}
-            <div className="md:col-span-2 space-y-3">
+            {/* ── RIGHT: Codes/Messages/Platforms ── */}
+            <div className="space-y-4">
 
             {/* Messages — grouped by client */}
             <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
@@ -777,16 +773,16 @@ export default function AgenceDashboard() {
           </div>
 
           {/* Platforms — editable handles */}
-          <div>
-            <h3 className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>Reseaux sociaux</h3>
+          <div className="rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <h3 className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: "var(--text-muted)" }}>Réseaux sociaux</h3>
             <div className="space-y-1.5">
               {PLATFORMS.map(p => {
                 const handle = modelInfo?.platforms?.[p.id] || "";
                 return (
-                  <div key={p.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
-                    style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color }} />
-                    <span className="text-[10px] font-medium shrink-0 w-16" style={{ color: "var(--text-muted)" }}>{p.label}</span>
+                  <div key={p.id} className="flex items-center gap-2.5 px-3 py-2 rounded-xl"
+                    style={{ background: "var(--bg)", border: "1px solid var(--border)" }}>
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color }} />
+                    <span className="text-[11px] font-medium shrink-0 w-16" style={{ color: "var(--text-muted)" }}>{p.label}</span>
                     <input
                       defaultValue={handle}
                       placeholder="pseudo..."
@@ -815,8 +811,8 @@ export default function AgenceDashboard() {
               })}
             </div>
           </div>
-          </div>{/* end right column */}
-          </div>{/* end 2-column grid */}
+          </div>
+          </div>
 
           {/* ── Generate Modal ── */}
           <GenerateModal
