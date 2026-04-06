@@ -732,7 +732,7 @@ export default function AgenceDashboard() {
                         </div>
                       ))
                     )}
-                    <a href="/agence/messages" className="block text-center text-[10px] font-medium py-1 no-underline hover:underline" style={{ color: "var(--accent)" }}>
+                    <a href="/agence/clients" className="block text-center text-[10px] font-medium py-1 no-underline hover:underline" style={{ color: "var(--accent)" }}>
                       Voir tous les messages →
                     </a>
                   </div>

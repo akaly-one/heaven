@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useModel } from "@/lib/model-context";
 import { OsLayout } from "@/components/os-layout";
 import {
-  Search, ArrowLeft, Trash2, Check, X, ChevronRight, MessageCircle, Key,
-  Copy, Link2, Send, UserPlus, GitMerge, User, Clock, Shield,
+  Search, ArrowLeft, Trash2, Check, X, MessageCircle, Key,
+  Copy, Link2, Send, UserPlus, GitMerge, User, Clock,
 } from "lucide-react";
 import type { AccessCode, Message } from "@/types/heaven";
 
@@ -70,7 +70,6 @@ export default function ClientsCRMPage() {
   const [activeTab, setActiveTab] = useState<Tab>("conversation");
   const [copied, setCopied] = useState<string | null>(null);
   const [reply, setReply] = useState("");
-  const [editNotes, setEditNotes] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [addPseudo, setAddPseudo] = useState("");
   const [addPlatform, setAddPlatform] = useState<"snap" | "insta">("snap");
