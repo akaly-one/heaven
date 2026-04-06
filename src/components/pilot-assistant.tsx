@@ -202,7 +202,7 @@ export function PilotAssistant({ cpId, position = "bottom-right" }: PilotAssista
     if (t === "close") { setOpen(false); return; }
 
     // Navigation
-    if (t === "go_sim" || t.includes("simulateur") || t.includes("strategie")) { router.push("/agence/simulateur"); return; }
+    if (t === "go_sim" || t.includes("simulateur") || t.includes("strategie")) { router.push("/agence/strategie"); return; }
     if (t === "go_auto" || t.includes("automation")) { router.push("/agence/automation"); return; }
     if (t.includes("dashboard") || t.includes("accueil")) { router.push("/agence"); return; }
 
