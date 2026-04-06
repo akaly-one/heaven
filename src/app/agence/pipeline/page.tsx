@@ -24,19 +24,7 @@ const TIER_LABELS: Record<string, string> = {
 
 export default function ContenuPage() {
   const { currentModel, auth, authHeaders, isRoot } = useModel();
-  const modelSlug = currentModel || auth?.model_slug || null;
-
-  if (!modelSlug) {
-    return (
-      <OsLayout cpId="agence">
-        <div className="flex items-center justify-center h-[60vh]">
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-            {isRoot ? "Selectionne un modele dans le header" : "Chargement..."}
-          </p>
-        </div>
-      </OsLayout>
-    );
-  }
+  const modelSlug = currentModel || auth?.model_slug || "";
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,6 +118,16 @@ export default function ContenuPage() {
             />
             <span className="text-xs" style={{ color: "var(--text-muted)" }}>Chargement...</span>
           </div>
+        </div>
+      </OsLayout>
+    );
+  }
+
+  if (!modelSlug) {
+    return (
+      <OsLayout cpId="agence">
+        <div className="flex items-center justify-center h-[60vh]">
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>Chargement...</p>
         </div>
       </OsLayout>
     );

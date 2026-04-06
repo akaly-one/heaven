@@ -41,7 +41,7 @@ interface CodeItem {
 export function Header() {
   const pathname = usePathname();
   const { currentModel, auth, authHeaders } = useModel();
-  const modelSlug = currentModel || auth?.model_slug || null;
+  const modelSlug = currentModel || auth?.model_slug || "";
 
   const [modelInfo, setModelInfo] = useState<{
     display_name?: string; online?: boolean;
@@ -134,7 +134,7 @@ export function Header() {
             style={{ background: modelInfo?.online ? "#10B981" : "#EF4444",
               boxShadow: modelInfo?.online ? "0 0 6px rgba(16,185,129,0.4)" : "none" }} />
           <span className="text-xs font-bold truncate" style={{ color: "var(--text)" }}>
-            {modelInfo?.display_name || auth?.display_name || modelSlug?.toUpperCase() || "HEAVEN"}
+            {modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase() || "HEAVEN"}
           </span>
         </div>
         {pageTitle && <>

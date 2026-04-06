@@ -55,19 +55,7 @@ const codeTimeLeft = (expiresAt: string, revoked: boolean, active: boolean) => {
 
 export default function ClientsCRMPage() {
   const { currentModel, authHeaders, isRoot } = useModel();
-  const model = currentModel || null;
-
-  if (!model) {
-    return (
-      <OsLayout cpId="agence">
-        <div className="flex items-center justify-center h-[60vh]">
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-            {isRoot ? "Selectionne un modele dans le header" : "Chargement..."}
-          </p>
-        </div>
-      </OsLayout>
-    );
-  }
+  const model = currentModel ?? "";
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   /* ── State ── */
@@ -312,6 +300,18 @@ export default function ClientsCRMPage() {
   /* ══════════════════════════════════════════════ */
   /*  Render                                        */
   /* ══════════════════════════════════════════════ */
+
+  if (!model) {
+    return (
+      <OsLayout cpId="agence">
+        <div className="flex items-center justify-center h-[60vh]">
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+            {isRoot ? "Selectionne un modele dans le header" : "Chargement..."}
+          </p>
+        </div>
+      </OsLayout>
+    );
+  }
 
   return (
     <OsLayout cpId="agence">

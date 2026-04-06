@@ -19,7 +19,7 @@ const SECTIONS = [
 
 export default function SettingsPage() {
   const { authHeaders, isRoot, auth, currentModel } = useModel();
-  const modelSlug = currentModel || auth?.model_slug || null;
+  const modelSlug = currentModel || auth?.model_slug || "";
 
   const [section, setSection] = useState<"security" | "accounts" | "mode">("security");
   const [purging, setPurging] = useState(false);
@@ -123,7 +123,7 @@ export default function SettingsPage() {
           {/* ═══ SECURITY SECTION ═══ */}
           {section === "security" && (
             <div className="fade-up-2">
-              <SecurityAlerts modelSlug={modelSlug || ""} authHeaders={authHeaders} />
+              <SecurityAlerts modelSlug={modelSlug} authHeaders={authHeaders} />
             </div>
           )}
 

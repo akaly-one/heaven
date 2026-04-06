@@ -28,23 +28,8 @@ function isExpired(expiresAt: string): boolean { return new Date(expiresAt).getT
 // ══════════ MAIN ══════════
 export default function AgenceDashboard() {
   const { currentModel, auth, authHeaders, isRoot } = useModel();
-  const modelSlug = currentModel || auth?.model_slug || null;
-
-  // No model selected yet — show loading (root must pick, model auto-resolves from auth)
-  if (!modelSlug) {
-    return (
-      <OsLayout cpId="agence">
-        <div className="flex items-center justify-center h-[60vh]">
-          <div className="text-center space-y-3">
-            <div className="w-10 h-10 rounded-full mx-auto" style={{ background: "var(--border)" }} />
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              {isRoot ? "Selectionne un modele dans le header" : "Chargement du profil..."}
-            </p>
-          </div>
-        </div>
-      </OsLayout>
-    );
-  }
+  const _modelSlug = currentModel || auth?.model_slug || null;
+  const modelSlug = _modelSlug ?? "";
 
   // ── State ──
   const [codes, setCodes] = useState<AccessCode[]>([]);
@@ -77,27 +62,27 @@ export default function AgenceDashboard() {
     const headers = authHeaders();
     const safeFetch = (url: string) => fetch(url, { headers }).then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); });
 
-    safeFetch(`/api/codes?model=${modelSlug}`)
+    safeFetch(`/api/codes?model=${_modelSlug}`)
       .then(d => setCodes(d.codes || []))
       .catch(err => console.error("[Cockpit] codes:", err));
 
-    safeFetch(`/api/clients?model=${modelSlug}`)
+    safeFetch(`/api/clients?model=${_modelSlug}`)
       .then(d => setClients(d.clients || []))
       .catch(err => console.error("[Cockpit] clients:", err));
 
-    safeFetch(`/api/packs?model=${modelSlug}`)
+    safeFetch(`/api/packs?model=${_modelSlug}`)
       .then(d => { if (d.packs?.length > 0) setPacks(d.packs); })
       .catch(err => console.error("[Cockpit] packs:", err));
 
-    safeFetch(`/api/models/${modelSlug}`)
+    safeFetch(`/api/models/${_modelSlug}`)
       .then(d => setModelInfo(d))
       .catch(err => console.error("[Cockpit] model info:", err));
 
-    safeFetch(`/api/posts?model=${modelSlug}`)
+    safeFetch(`/api/posts?model=${_modelSlug}`)
       .then(d => setFeedPosts((d.posts || []).slice(0, 5)))
       .catch(err => console.error("[Cockpit] posts:", err));
 
-    safeFetch(`/api/wall?model=${modelSlug}`)
+    safeFetch(`/api/wall?model=${_modelSlug}`)
       .then(d => setWallPosts((d.posts || []).slice(0, 20)))
       .catch(err => console.error("[Cockpit] wall:", err));
 
@@ -214,6 +199,18 @@ export default function AgenceDashboard() {
   ];
 
   // ══════════ RENDER ══════════
+  if (!modelSlug) {
+    return (
+      <OsLayout cpId="agence">
+        <div className="flex items-center justify-center h-[60vh]">
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+            {isRoot ? "Selectionne un modele dans le header" : "Chargement du profil..."}
+          </p>
+        </div>
+      </OsLayout>
+    );
+  }
+
   return (
     <OsLayout cpId="agence">
       <div className="min-h-screen p-4 sm:p-5 md:p-6 lg:p-8 pb-28 md:pb-8" style={{ background: "var(--bg)" }}>
