@@ -75,7 +75,6 @@ export async function POST(request: Request) {
           display_name: display_name || cleanSlug.toUpperCase(),
           avatar: avatar || null,
           status: "Creatrice exclusive",
-          online: false,
         });
 
       if (createErr) {
