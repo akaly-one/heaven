@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { KeyRound, Eye, Pencil, Image, Heart, MessageCircle, Trash2, X } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
@@ -51,8 +51,7 @@ export default function AgenceDashboard() {
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [clientModal, setClientModal] = useState<{ pseudo: string } | null>(null);
 
-  // Messages (kept for handler compatibility)
-  const [pendingMessagesCount, setPendingMessages] = useState(0);
+  // Messages state (for handler compatibility)
   const [chatMessages, setChatMessages] = useState<{ id: string; client_id: string; content: string; created_at: string; sender_type: string; read?: boolean; model?: string }[]>([]);
 
   // ── Load data ──
@@ -84,57 +83,10 @@ export default function AgenceDashboard() {
       .then(d => setWallPosts((d.posts || []).slice(0, 20)))
       .catch(err => console.error("[Cockpit] wall:", err));
 
-    safeFetch(`/api/messages?model=${modelSlug}`)
-      .then(d => {
-        const msgs = d.messages || [];
-        setChatMessages(msgs.slice(0, 100));
-        setPendingMessages(msgs.filter((m: { sender_type: string; read?: boolean }) => m.sender_type === "client" && !m.read).length);
-      })
-      .catch(err => console.error("[Cockpit] messages:", err));
+    // Messages polling handled by Header component
   }, [modelSlug, authHeaders]);
 
-  // ── Real-time polling: new messages + pending purchases (every 15s) ──
-  const prevUnreadRef = useRef(0);
-  useEffect(() => {
-    const poll = () => {
-      const headers = authHeaders();
-      fetch(`/api/messages?model=${modelSlug}`, { headers })
-        .then(r => r.ok ? r.json() : null)
-        .then(d => {
-          if (!d) return;
-          const msgs = d.messages || [];
-          setChatMessages(msgs.slice(0, 100));
-          const newUnread = msgs.filter((m: { sender_type: string; read?: boolean }) => m.sender_type === "client" && !m.read).length;
-          // Play notification sound if new unread messages appeared
-          if (newUnread > prevUnreadRef.current && prevUnreadRef.current >= 0) {
-            try {
-              const ctx = new AudioContext();
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.connect(gain);
-              gain.connect(ctx.destination);
-              osc.frequency.value = 800;
-              osc.type = "sine";
-              gain.gain.value = 0.15;
-              osc.start();
-              gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-              osc.stop(ctx.currentTime + 0.3);
-            } catch {}
-          }
-          prevUnreadRef.current = newUnread;
-          setPendingMessages(newUnread);
-        })
-        .catch(() => {});
-
-      // Also refresh wall posts for pending purchases
-      fetch(`/api/wall?model=${modelSlug}`, { headers })
-        .then(r => r.ok ? r.json() : null)
-        .then(d => { if (d) setWallPosts((d.posts || []).slice(0, 20)); })
-        .catch(() => {});
-    };
-    const iv = setInterval(poll, 15000);
-    return () => clearInterval(iv);
-  }, [modelSlug, authHeaders]);
+  // Messages & purchase notifications polling handled by Header component
 
   // Listen for generate event from mobile nav
   useEffect(() => {
@@ -394,46 +346,7 @@ export default function AgenceDashboard() {
             />
           </div>
 
-          {/* ── Pending Purchases ── */}
-          {pendingPurchases.length > 0 && (
-            <div className="space-y-2 fade-up-1">
-              <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#B45309" }}>
-                ⏳ {pendingPurchases.length} achat(s) en attente de validation
-              </p>
-              {pendingPurchases.map(p => {
-                // Parse: "⏳ @pseudo souhaite acheter: item (amount€) — en attente de validation"
-                const match = p.content?.match(/@(\S+)\s+souhaite acheter:\s+(.+?)\s+\((\d+)€\)/);
-                const pseudo = match?.[1] || "?";
-                const item = match?.[2] || "Achat";
-                const amount = match?.[3] || "?";
-                return (
-                  <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl"
-                    style={{ background: "rgba(180,83,9,0.08)", border: "1px solid rgba(180,83,9,0.2)" }}>
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
-                      style={{ background: "rgba(180,83,9,0.15)", color: "#B45309" }}>⏳</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold truncate" style={{ color: "var(--text)" }}>
-                        @{pseudo} — {item}
-                      </p>
-                      <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                        {amount}€ · {new Date(p.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                    </div>
-                    <button onClick={async () => {
-                      try {
-                        await fetch(`/api/wall?id=${p.id}`, { method: "DELETE", headers: authHeaders() });
-                        setWallPosts(prev => prev.filter(w => w.id !== p.id));
-                      } catch {}
-                    }}
-                      className="px-3 py-2.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:scale-105"
-                      style={{ background: "#16A34A", color: "#fff", border: "none" }}>
-                      ✓ Validé
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {/* Pending purchases managed via header notifications (Bell icon) */}
 
           {/* ── 2-column layout: Feed LEFT + Codes/Messages RIGHT ── */}
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-5 lg:gap-6 fade-up-2">
@@ -519,7 +432,7 @@ export default function AgenceDashboard() {
               type FeedItem = { type: "post"; id: string; created_at: string; data: FeedPost } | { type: "wall"; id: string; created_at: string; data: WallPost };
               const allFeed: FeedItem[] = [
                 ...feedPosts.map(p => ({ type: "post" as const, id: p.id, created_at: p.created_at, data: p })),
-                ...wallPosts.filter(w => !w.content?.includes("#post-")).map(w => ({ type: "wall" as const, id: w.id, created_at: w.created_at, data: w })),
+                ...wallPosts.filter(w => !w.content?.includes("#post-") && w.pseudo !== "SYSTEM").map(w => ({ type: "wall" as const, id: w.id, created_at: w.created_at, data: w })),
               ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
               if (allFeed.length === 0) return (
@@ -622,19 +535,7 @@ export default function AgenceDashboard() {
             {/* ── RIGHT: Codes/Messages/Platforms ── */}
             <div className="space-y-4">
 
-            {/* Messages — quick link (full inbox in header + /agence/clients) */}
-            <a href="/agence/clients"
-              className="flex items-center gap-2.5 p-3 rounded-2xl no-underline transition-all hover:scale-[1.01]"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-              <MessageCircle className="w-4 h-4" style={{ color: "var(--accent)" }} />
-              <span className="text-xs font-bold flex-1" style={{ color: "var(--text)" }}>Messages</span>
-              {pendingMessagesCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold" style={{ background: "rgba(244,63,94,0.12)", color: "#F43F5E" }}>
-                  {pendingMessagesCount} non lu{pendingMessagesCount > 1 ? "s" : ""}
-                </span>
-              )}
-              <span className="text-[11px] font-medium" style={{ color: "var(--accent)" }}>Voir →</span>
-            </a>
+            {/* Messages accessible via header (MessageCircle icon) */}
 
             {/* Codes & Clients compact */}
             <div>

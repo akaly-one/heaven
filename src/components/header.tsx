@@ -284,14 +284,14 @@ export function Header() {
                             className="w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0"
                             style={{ background: "rgba(180,83,9,0.12)", color: "#B45309" }}
                           >
-                            \u23F3
+                            ⏳
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-[11px] font-semibold truncate" style={{ color: "var(--text)" }}>
                               @{pseudo} — {item}
                             </p>
                             <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                              {amount}\u20AC
+                              {amount}€
                             </p>
                           </div>
                           <button
@@ -299,7 +299,7 @@ export function Header() {
                             className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all hover:scale-105 shrink-0"
                             style={{ background: "#16A34A", color: "#fff", border: "none" }}
                           >
-                            \u2713 Valider
+                            ✓ Valider
                           </button>
                         </div>
                       );
