@@ -10,7 +10,7 @@ import { ContentProtection } from "@/components/content-protection";
 import type { UploadedContent, PackConfig } from "@/types/heaven";
 import { TIER_META, TIER_HEX } from "@/constants/tiers";
 
-// ── Pack tier rules summary ──
+// ── Pack tier rules (canonical tiers from constants/tiers.ts) ──
 const PACK_RULES: Record<string, { icon: React.ReactNode; label: string; color: string; desc: string; access: string[] }> = {
   promo: {
     icon: <Eye className="w-3.5 h-3.5" />,
@@ -19,37 +19,44 @@ const PACK_RULES: Record<string, { icon: React.ReactNode; label: string; color: 
     desc: "Visible par tous les visiteurs",
     access: ["Gratuit", "Teasing / promo", "Aucun code requis"],
   },
-  vip: {
-    icon: <Heart className="w-3.5 h-3.5" />,
-    label: "VIP Glamour",
-    color: "#E63329",
-    desc: "150€ — Pieds, lingerie, teasing",
-    access: ["Pieds glamour + accessoires", "Lingerie sexy", "Dédicaces personnalisées", "Sans visage"],
+  silver: {
+    icon: <Sparkles className="w-3.5 h-3.5" />,
+    label: "Silver",
+    color: "#C0C0C0",
+    desc: "♣ Photos, shootings, promos — sans nudité",
+    access: ["Photos glamour", "Shootings pro", "Promos exclusives", "Sans nudité"],
   },
   gold: {
     icon: <Star className="w-3.5 h-3.5" />,
     label: "Gold",
-    color: "#D4A017",
-    desc: "200€ — Nudes, cosplay, sextape",
-    access: ["Tout du VIP inclus", "Nudes complets", "Cosplay sans visage", "Sextape sans visage"],
+    color: "#D4AF37",
+    desc: "♦ Tenue dentelle, sensuel, poses suggestives",
+    access: ["Tout du Silver inclus", "Lingerie dentelle", "Poses suggestives", "Contenu sensuel"],
   },
-  diamond: {
+  black: {
     icon: <Diamond className="w-3.5 h-3.5" />,
-    label: "Diamond",
-    color: "#4F46E5",
-    desc: "250€ — Avec visage, hard",
-    access: ["Tout du Gold inclus", "Nudes avec visage", "Cosplay + sextape avec visage", "Hard illimité"],
+    label: "VIP Black",
+    color: "#1C1C1C",
+    desc: "♠ Sextapes & nudes — visage caché",
+    access: ["Tout du Gold inclus", "Nudes complets", "Sextapes", "Visage caché"],
+  },
+  feet: {
+    icon: <Heart className="w-3.5 h-3.5" />,
+    label: "Feet Lovers",
+    color: "#E8A87C",
+    desc: "🦶 Photos pieds glamour, accessoires, dédicaces",
+    access: ["Photos pieds glamour", "Accessoires", "Dédicaces personnalisées", "Contenu exclusif"],
   },
   platinum: {
     icon: <Crown className="w-3.5 h-3.5" />,
-    label: "Platinum",
-    color: "#7C3AED",
-    desc: "320€ — Accès total",
-    access: ["Accès TOTAL tous packs", "Demandes personnalisées", "Video calls privés", "Contenu exclusif illimité"],
+    label: "VIP Platinum",
+    color: "#B8860B",
+    desc: "♥ Visage découvert, contenu explicite premium",
+    access: ["Accès TOTAL tous packs", "Visage découvert", "Contenu explicite premium", "Demandes personnalisées"],
   },
 };
 
-const DROP_ORDER = ["promo", "vip", "gold", "diamond", "platinum"] as const;
+const DROP_ORDER = ["promo", "silver", "gold", "black", "feet", "platinum"] as const;
 
 interface GalleryTabProps {
   isEditMode: boolean;
@@ -104,7 +111,7 @@ export function GalleryTab({
     const isPublic = targetTier === "promo";
     selectedIds.forEach(id => {
       handleUpdateMedia(id, {
-        tier: isPublic ? "vip" : targetTier,
+        tier: isPublic ? "silver" : targetTier,
         visibility: isPublic ? "promo" : "pack",
       });
     });
@@ -133,7 +140,7 @@ export function GalleryTab({
     if (id) {
       const isPublic = targetTier === "promo";
       handleUpdateMedia(id, {
-        tier: isPublic ? "vip" : targetTier,
+        tier: isPublic ? "silver" : targetTier,
         visibility: isPublic ? "promo" : "pack",
       });
     }
@@ -151,11 +158,13 @@ export function GalleryTab({
   // ══════════════════════════════════════
   if (isEditMode) {
     // Group uploads by effective tier (promo visibility → "promo" zone, otherwise by tier)
-    const grouped: Record<string, UploadedContent[]> = { promo: [], vip: [], gold: [], diamond: [], platinum: [] };
+    const grouped: Record<string, UploadedContent[]> = { promo: [], silver: [], gold: [], black: [], feet: [], platinum: [] };
     uploads.forEach(u => {
-      const key = u.visibility === "promo" ? "promo" : (u.tier || "vip");
-      if (grouped[key]) grouped[key].push(u);
-      else grouped.vip.push(u);
+      const key = u.visibility === "promo" ? "promo" : (u.tier || "silver");
+      // Handle legacy tier names
+      const canonical = key === "vip" ? "silver" : key === "diamond" ? "black" : key;
+      if (grouped[canonical]) grouped[canonical].push(u);
+      else grouped.silver.push(u);
     });
 
     return (
@@ -220,9 +229,10 @@ export function GalleryTab({
               onDrop={(e) => onDrop(e, tierKey)}
               className="rounded-2xl overflow-hidden transition-all duration-200"
               style={{
-                border: `1.5px ${isDragOver ? "dashed" : "solid"} ${isDragOver ? rule.color : "var(--border)"}`,
-                background: isDragOver ? `${rule.color}08` : "var(--surface)",
-                transform: isDragOver ? "scale(1.005)" : "scale(1)",
+                border: `2px ${isDragOver ? "dashed" : "solid"} ${isDragOver ? rule.color : "var(--border)"}`,
+                background: isDragOver ? `${rule.color}15` : "var(--surface)",
+                transform: isDragOver ? "scale(1.02)" : "scale(1)",
+                boxShadow: isDragOver ? `0 0 20px ${rule.color}25, inset 0 0 30px ${rule.color}08` : "none",
               }}>
 
               {/* Pack header */}
@@ -320,7 +330,7 @@ export function GalleryTab({
                                     e.stopPropagation(); e.preventDefault();
                                     const isPublic = t === "promo";
                                     handleUpdateMedia(item.id, {
-                                      tier: isPublic ? (item.tier || "vip") : t,
+                                      tier: isPublic ? (item.tier || "silver") : t,
                                       visibility: isPublic ? "promo" : "pack",
                                     });
                                   }}
@@ -466,7 +476,7 @@ export function GalleryTab({
   // ══════════════════════════════════════
 
   // Build pack preview data: last image per tier
-  const packPreviews = (["vip", "gold", "diamond", "platinum"] as const).map(tier => {
+  const packPreviews = (["silver", "gold", "black", "feet", "platinum"] as const).map(tier => {
     const tierItems = uploads.filter(u => u.visibility !== "promo" && u.tier === tier && u.dataUrl);
     const lastImage = tierItems[0] || null; // uploads already sorted newest first
     const count = tierItems.length;
@@ -539,7 +549,7 @@ export function GalleryTab({
             <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />
           )}
         </button>
-        {(["vip", "gold", "diamond", "platinum"] as const).filter(k => tierCounts[k]).map(tier => {
+        {(["silver", "gold", "black", "feet", "platinum"] as const).filter(k => tierCounts[k]).map(tier => {
           const hex = TIER_HEX[tier];
           return (
             <button key={tier} onClick={() => setGalleryTier(tier)}

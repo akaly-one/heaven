@@ -8,7 +8,7 @@ import { useModel } from "@/lib/model-context";
 
 // ── Page titles ──
 const PAGE_TITLES: Record<string, string> = {
-  "/agence": "Dashboard", "/agence/clients": "Clients", "/agence/pipeline": "Contenu",
+  "/agence": "Dashboard", "/agence/clients": "Clients", "/agence/contenu": "Contenu",
   "/agence/strategie": "Strategie", "/agence/finances": "Finances",
   "/agence/automation": "Automation", "/agence/architecture": "Architecture",
   "/agence/settings": "Settings", "/agence/cms": "CMS",

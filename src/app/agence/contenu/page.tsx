@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Image, Check, Trash2, Move, ZoomIn, ZoomOut, X } from "lucide-react";
+import { Image, Check, Trash2, Move, ZoomIn, ZoomOut, X, Settings2 } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
-import type { FeedPost as Post } from "@/types/heaven";
+import { PackConfigurator } from "@/components/cockpit/pack-configurator";
+import type { FeedPost as Post, PackConfig } from "@/types/heaven";
+import { DEFAULT_PACKS } from "@/constants/packs";
 
 // ── Constants ──
 
@@ -27,10 +29,12 @@ export default function ContenuPage() {
   const { currentModel, auth, authHeaders, isRoot } = useModel();
   const modelSlug = currentModel || auth?.model_slug || "";
 
+  const [activeTab, setActiveTab] = useState<"contenu" | "packs">("contenu");
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<TierFilter>("all");
+  const [settingsPacks, setSettingsPacks] = useState<PackConfig[]>([]);
   const [cropPost, setCropPost] = useState<Post | null>(null);
   const [cropZoom, setCropZoom] = useState(1);
   const [cropPos, setCropPos] = useState({ x: 50, y: 50 });
@@ -50,7 +54,14 @@ export default function ContenuPage() {
 
   useEffect(() => {
     fetchPosts();
-  }, [fetchPosts]);
+    // Fetch packs
+    if (modelSlug) {
+      fetch(`/api/packs?model=${modelSlug}`, { headers: authHeaders() })
+        .then(r => r.json())
+        .then(d => setSettingsPacks(d.packs?.length ? d.packs : DEFAULT_PACKS))
+        .catch(() => setSettingsPacks(DEFAULT_PACKS));
+    }
+  }, [fetchPosts, modelSlug, authHeaders]);
 
   // ── Derived data ──
   const imagePosts = posts.filter((p) => p.media_url);
@@ -154,11 +165,59 @@ export default function ContenuPage() {
                 </p>
               </div>
             </div>
+            {/* Tab switcher: Contenu | Packs */}
+            <div className="flex gap-1 p-1 rounded-xl" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
+              <button
+                onClick={() => setActiveTab("contenu")}
+                className="px-3 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-all"
+                style={{
+                  background: activeTab === "contenu" ? "var(--accent)" : "transparent",
+                  color: activeTab === "contenu" ? "#fff" : "var(--text-muted)",
+                  border: "none",
+                }}
+              >
+                <Image className="w-3.5 h-3.5 inline mr-1" />
+                Contenu
+              </button>
+              <button
+                onClick={() => setActiveTab("packs")}
+                className="px-3 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-all"
+                style={{
+                  background: activeTab === "packs" ? "var(--accent)" : "transparent",
+                  color: activeTab === "packs" ? "#fff" : "var(--text-muted)",
+                  border: "none",
+                }}
+              >
+                <Settings2 className="w-3.5 h-3.5 inline mr-1" />
+                Packs
+              </button>
+            </div>
           </div>
         </div>
 
         <div className="px-4 md:px-8">
           <div className="max-w-7xl mx-auto fade-up">
+
+            {/* ═══ PACKS TAB ═══ */}
+            {activeTab === "packs" && (
+              <div className="space-y-4">
+                <div className="rounded-2xl p-5" style={{ background: "var(--surface)", border: "1px solid var(--border2)" }}>
+                  <h3 className="text-sm font-bold mb-1" style={{ color: "var(--text)" }}>Configuration des Packs</h3>
+                  <p className="text-[11px] mb-4" style={{ color: "var(--text-muted)" }}>
+                    Modifie les prix, noms, contenus et options de chaque pack. Les changements sont synchronises en temps reel avec le profil public.
+                  </p>
+                  <PackConfigurator
+                    packs={settingsPacks}
+                    model={modelSlug}
+                    onSave={(updated) => setSettingsPacks(updated)}
+                    authHeaders={authHeaders}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* ═══ CONTENU TAB ═══ */}
+            {activeTab === "contenu" && (<>
             {/* ── Bulk actions bar ── */}
             {selected.size > 0 && (
               <div
@@ -314,6 +373,7 @@ export default function ContenuPage() {
                 </div>
               </div>
             )}
+            </>)}
           </div>
         </div>
       </div>
