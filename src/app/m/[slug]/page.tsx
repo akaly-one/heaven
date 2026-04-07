@@ -1393,13 +1393,13 @@ export default function ModelPage() {
           return (
             <div className="sticky top-[36px] md:top-[40px] z-30 py-2 hidden md:block"
               style={{ background: "color-mix(in srgb, var(--bg) 92%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
-              <div className="max-w-6xl mx-auto px-3 sm:px-5 md:px-8">
-                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1" role="tablist">
+              <div className="max-w-6xl mx-auto px-5 sm:px-8 md:px-12">
+                <div className="flex gap-2 justify-center pb-1" role="tablist">
                   {/* Feed tile */}
                   <button role="tab" aria-selected={galleryTier === "feed"} onClick={() => { setGalleryTier("feed"); setFocusPack(null); }}
-                    className="relative shrink-0 rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] group overflow-hidden"
+                    className="relative flex-1 rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] group overflow-hidden"
                     style={{
-                      minWidth: "80px",
+                      minWidth: "70px",
                       padding: "12px 16px",
                       background: galleryTier === "feed"
                         ? "linear-gradient(135deg, var(--accent), #F43F5E)"
@@ -1425,9 +1425,9 @@ export default function ModelPage() {
                     const previewImg = uploads.find(u => normalizeTier(u.tier) === t && u.dataUrl && u.type === "photo")?.dataUrl;
                     return (
                       <button key={t} role="tab" aria-selected={isActive} onClick={() => { setGalleryTier(t); setFocusPack(null); }}
-                        className="relative shrink-0 rounded-xl cursor-pointer poker-tile group overflow-hidden"
+                        className="relative flex-1 rounded-xl cursor-pointer poker-tile group overflow-hidden"
                         style={{
-                          minWidth: "90px",
+                          minWidth: "70px",
                           height: "72px",
                           background: isActive ? `linear-gradient(135deg, ${tierHex}, ${tierHex}CC)` : "var(--surface)",
                           border: isActive ? `2px solid ${tierHex}` : "1px solid var(--border)",
@@ -1473,9 +1473,9 @@ export default function ModelPage() {
 
                   {/* Custom tile */}
                   <button role="tab" aria-selected={galleryTier === "custom"} onClick={() => { setGalleryTier("custom"); setFocusPack(null); }}
-                    className="relative shrink-0 rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] group overflow-hidden ml-auto"
+                    className="relative flex-1 rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] group overflow-hidden"
                     style={{
-                      minWidth: "80px",
+                      minWidth: "70px",
                       padding: "12px 16px",
                       background: galleryTier === "custom"
                         ? "linear-gradient(135deg, #D4AF37, #B8860B)"
