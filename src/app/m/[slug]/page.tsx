@@ -7,7 +7,7 @@ import {
   Coins, Pin, Eye, Star, Camera, Video, Play, X, Check,
   Instagram, Ghost, Crown, Plus, Edit3, Wifi,
   ImagePlus, Trash2, Save, RotateCcw, ToggleLeft, ToggleRight,
-  Upload, Pencil, GripVertical, Flame, Zap, Palette, Diamond, AlertTriangle,
+  Upload, Pencil, GripVertical, Flame, Zap, Palette, Diamond, AlertTriangle, Key,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ContentProtection } from "@/components/content-protection";
@@ -975,18 +975,60 @@ export default function ModelPage() {
           )}
           {(isModelLoggedIn || !visitorRegistered) && <div className="flex-1" />}
 
-          {/* Right — visitor info + actions */}
-          <div className="flex items-center gap-2.5 shrink-0">
+          {/* Right — code input + actions */}
+          <div className="flex items-center gap-2 shrink-0">
             {visitorRegistered && (
               <>
                 <span className="text-[10px] font-medium hidden sm:block" style={{ color: "var(--text-muted)" }}>@{visitorHandle}</span>
                 {unlockedTier ? (
                   <CountdownBadge tier={unlockedTier} expiresAt={activeCode?.expiresAt || ""} />
                 ) : (
-                  <button onClick={() => setShowUnlock(true)} className="text-[10px] font-semibold px-2.5 py-1 rounded-full cursor-pointer transition-all hover:scale-105"
-                    style={{ background: "rgba(230,51,41,0.1)", color: "var(--accent)", border: "1px solid rgba(230,51,41,0.15)" }}>
-                    Code
-                  </button>
+                  <div className="relative group">
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      const input = (e.target as HTMLFormElement).querySelector("input") as HTMLInputElement;
+                      const code = input?.value?.trim();
+                      if (!code) return;
+                      try {
+                        const res = await fetch("/api/codes", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ action: "validate", code, model: slug }),
+                        });
+                        const data = await res.json();
+                        if (data.code?.tier) {
+                          setUnlockedTier(data.code.tier);
+                          setActiveCode(data.code);
+                          const ad2 = JSON.stringify({ tier: data.code.tier, expiresAt: data.code.expiresAt, code: data.code.code });
+                          sessionStorage.setItem(`heaven_access_${slug}`, ad2);
+                          localStorage.setItem(`heaven_access_${slug}`, ad2);
+                        } else {
+                          input.style.borderColor = "#EF4444";
+                          input.placeholder = "Code invalide";
+                          input.value = "";
+                          setTimeout(() => { input.placeholder = "CODE"; input.style.borderColor = ""; }, 2000);
+                        }
+                      } catch { input.placeholder = "Erreur"; input.value = ""; }
+                    }} className="flex items-center gap-1">
+                      <input type="text" placeholder="CODE"
+                        className="w-[72px] sm:w-[90px] px-2 py-1 rounded-lg text-[10px] font-mono uppercase tracking-wider outline-none text-center"
+                        style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
+                      />
+                      <button type="submit"
+                        className="w-6 h-6 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
+                        style={{ background: "var(--accent)", border: "none" }}>
+                        <Key className="w-3 h-3 text-white" />
+                      </button>
+                    </form>
+                    {/* Tooltip on hover */}
+                    <div className="absolute top-full right-0 mt-2 w-56 p-3 rounded-xl opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-200 z-50"
+                      style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
+                      <p className="text-[11px] font-semibold mb-1" style={{ color: "var(--text)" }}>Code d'accès</p>
+                      <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                        Entre ton code pour débloquer le contenu exclusif. Tu recois ton code après l'achat d'un pack.
+                      </p>
+                    </div>
+                  </div>
                 )}
               </>
             )}
