@@ -37,14 +37,18 @@ interface ShopTabProps {
   visitorHandle?: string;
   model?: string;
   authHeaders?: () => Record<string, string>;
+  paypalEmail?: string | null;
 }
 
-function paypalUrl(amount: number): string {
+function paypalUrl(amount: number, email?: string | null): string {
+  if (email) {
+    return `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(email)}&amount=${amount}&currency_code=EUR&item_name=Pack+Heaven`;
+  }
   return `https://www.paypal.com/paypalme/aaclaraa/${amount}`;
 }
 
 // Create pending purchase before redirecting to PayPal
-async function createPendingPurchase(model: string, pseudo: string, item: string, amount: number, authHeaders: () => Record<string, string>) {
+async function createPendingPurchase(model: string, pseudo: string, item: string, amount: number, authHeaders: () => Record<string, string>, paypalEmail?: string | null) {
   try {
     await fetch("/api/wall", {
       method: "POST",
@@ -52,7 +56,7 @@ async function createPendingPurchase(model: string, pseudo: string, item: string
       body: JSON.stringify({ model, pseudo: "SYSTEM", content: `⏳ @${pseudo} souhaite acheter: ${item} (${amount}€) — en attente de validation` }),
     });
   } catch {}
-  window.open(paypalUrl(amount), "_blank");
+  window.open(paypalUrl(amount, paypalEmail), "_blank");
 }
 
 export function ShopTab({
@@ -60,6 +64,7 @@ export function ShopTab({
   expandedPack, setExpandedPack, shopSection, setShopSection,
   setChatOpen,
   handleUpdatePack, handleDeletePack, handleAddPack, visitorHandle, model: modelSlug, authHeaders: getAuthHeaders,
+  paypalEmail,
 }: ShopTabProps) {
   const pseudo = visitorHandle || "anonyme";
   const [selTier, setSelTier] = useState("vip");
@@ -221,7 +226,7 @@ export function ShopTab({
                               Acheter {pack.price}€
                             </a>
                           ) : (
-                            <button onClick={() => createPendingPurchase(modelSlug || "", pseudo, `Pack ${pack.name}`, pack.price, getAuthHeaders || (() => ({ "Content-Type": "application/json" })))}
+                            <button onClick={() => createPendingPurchase(modelSlug || "", pseudo, `Pack ${pack.name}`, pack.price, getAuthHeaders || (() => ({ "Content-Type": "application/json" })), paypalEmail)}
                               className="w-full py-3.5 rounded-xl text-sm font-semibold cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] active:scale-[0.98]"
                               style={{ background: hex, color: "#fff", border: "none", boxShadow: `0 4px 20px ${hex}30` }}>
                               Acheter {pack.price}€
@@ -246,7 +251,7 @@ export function ShopTab({
                                   Wise
                                 </a>
                               )}
-                              <button onClick={() => createPendingPurchase(modelSlug || "", pseudo, `Pack ${pack.name}`, pack.price, getAuthHeaders || (() => ({ "Content-Type": "application/json" })))}
+                              <button onClick={() => createPendingPurchase(modelSlug || "", pseudo, `Pack ${pack.name}`, pack.price, getAuthHeaders || (() => ({ "Content-Type": "application/json" })), paypalEmail)}
                                 className="flex-1 py-2.5 rounded-xl text-[11px] font-medium cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] active:scale-[0.98]"
                                 style={{ background: "transparent", color: "var(--text-muted)", border: "1px solid var(--border2)" }}>
                                 PayPal
@@ -469,7 +474,7 @@ export function ShopTab({
               </p>
               <button onClick={() => {
                 const desc = selType === "photo" ? `Photo ${tier.tier}` : `Video ${tier.tier} ${videoMin}min`;
-                createPendingPurchase(modelSlug || "", pseudo, desc, price, getAuthHeaders || (() => ({ "Content-Type": "application/json" })));
+                createPendingPurchase(modelSlug || "", pseudo, desc, price, getAuthHeaders || (() => ({ "Content-Type": "application/json" })), paypalEmail);
               }}
                 className="block w-full py-3.5 rounded-xl text-sm font-semibold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.98]"
                 style={{ background: tier.color, color: "#fff", border: "none", boxShadow: `0 4px 20px ${tier.color}30` }}>

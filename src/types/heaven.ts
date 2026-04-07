@@ -138,6 +138,7 @@ export interface ModelInfo {
   online: boolean;
   status: string | null;
   banner: string | null;
+  paypal_email?: string | null;
 }
 
 // ── Gallery / Uploads ──

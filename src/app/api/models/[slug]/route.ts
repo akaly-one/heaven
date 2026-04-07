@@ -46,7 +46,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     // Map DB columns to API response
     const displayName = account?.display_name || modelInfo?.display || slug.charAt(0).toUpperCase() + slug.slice(1);
     const presence = modelInfo?.presence as { online?: boolean; status?: string } | null;
-    const config = modelInfo?.config as { banner?: string } | null;
+    const config = modelInfo?.config as { banner?: string; paypal_email?: string } | null;
 
     return NextResponse.json({
       slug,
@@ -57,6 +57,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       banner: config?.banner || null,
       online: presence?.online || false,
       status: modelInfo?.status || "Creatrice exclusive",
+      paypal_email: config?.paypal_email || null,
     }, { headers: cors });
   } catch (err) {
     console.error("[API/models] GET:", err);
