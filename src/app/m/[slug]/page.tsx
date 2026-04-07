@@ -153,6 +153,7 @@ export default function ModelPage() {
   const [visitorPlatform, setVisitorPlatform] = useState<VisitorPlatform | null>(null);
   const [visitorHandle, setVisitorHandle] = useState("");
   const [visitorRegistered, setVisitorRegistered] = useState(false);
+  const [visitorVerified, setVisitorVerified] = useState(false); // model-verified pseudo
   const [chatMessages, setChatMessages] = useState<{ id: string; client_id: string; sender_type: string; content: string; created_at: string }[]>([]);
   const [chatInput, setChatInput] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -538,6 +539,7 @@ export default function ModelPage() {
       if (saved) {
         const client = JSON.parse(saved);
         setClientId(client.id);
+        if (client.verified_status === "verified") setVisitorVerified(true);
         if (client.pseudo_snap) { setVisitorPlatform("snap"); setVisitorHandle(client.pseudo_snap); setVisitorRegistered(true); }
         else if (client.pseudo_insta) { setVisitorPlatform("insta"); setVisitorHandle(client.pseudo_insta); setVisitorRegistered(true); }
         else if (client.phone) { setVisitorPlatform("phone"); setVisitorHandle(client.phone); setVisitorRegistered(true); }
@@ -798,9 +800,42 @@ export default function ModelPage() {
     setVisitorPlatform(platform);
     setVisitorHandle(handle);
     setVisitorRegistered(true);
+    if (client.verified_status === "verified") setVisitorVerified(true);
     sessionStorage.setItem(`heaven_client_${slug}`, JSON.stringify(client));
     localStorage.setItem(`heaven_client_${slug}`, JSON.stringify(client));
   }, [slug]);
+
+  // Poll verified_status from DB (model may verify while visitor is browsing)
+  useEffect(() => {
+    if (!clientId || visitorVerified || isModelLoggedIn) return;
+    const check = () => {
+      fetch(`/api/clients?model=${slug}&check_id=${clientId}`)
+        .then(r => r.json())
+        .then(d => {
+          const clients = d.clients || [];
+          const me = clients.find((c: { id: string }) => c.id === clientId);
+          if (me?.verified_status === "verified") {
+            setVisitorVerified(true);
+            // Update stored session
+            const saved = sessionStorage.getItem(`heaven_client_${slug}`);
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              parsed.verified_status = "verified";
+              sessionStorage.setItem(`heaven_client_${slug}`, JSON.stringify(parsed));
+              localStorage.setItem(`heaven_client_${slug}`, JSON.stringify(parsed));
+            }
+          }
+        })
+        .catch(() => {});
+    };
+    check();
+    const iv = setInterval(check, 30000); // re-check every 30s
+    return () => clearInterval(iv);
+  }, [clientId, slug, visitorVerified, isModelLoggedIn]);
+
+  // Content access: verified visitor or model logged in
+  const contentUnlocked = visitorVerified || isModelLoggedIn;
+  const hasPurchased = purchasedItems.size > 0 || !!unlockedTier;
 
   const activePacks = displayPacks.filter(p => p.active);
   const unreadCount = chatMessages.filter(m => m.sender_type === "model").length;
@@ -1144,10 +1179,28 @@ export default function ModelPage() {
                 </div>
               )}
 
+              {/* Verification banner for unverified visitors */}
+              {!contentUnlocked && visitorRegistered && (
+                <div className="rounded-2xl p-5 sm:p-6" style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02))", border: "1px solid rgba(245,158,11,0.2)" }}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(245,158,11,0.15)" }}>
+                      <AlertTriangle className="w-4 h-4" style={{ color: "#F59E0B" }} />
+                    </div>
+                    <span className="text-sm font-bold" style={{ color: "#F59E0B" }}>Pseudo en attente de verification</span>
+                  </div>
+                  <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                    Ton pseudo est en cours de verification. Tu as acces au contenu public en attendant.
+                    Une fois verifie, tu debloques tout le contenu exclusif !
+                  </p>
+                </div>
+              )}
+
               {/* All posts merged + sorted by date (newest first) */}
               {(() => {
                 const visitorPosts = wallPosts.filter(w => !w.content?.includes("#post-")).map(w => ({ type: "wall" as const, id: w.id, created_at: w.created_at, data: w }));
-                const modelPosts = posts.map(p => ({ type: "post" as const, id: p.id, created_at: p.created_at, data: p }));
+                // Unverified visitors only see public posts
+                const filteredModelPosts = contentUnlocked ? posts : posts.filter(p => !p.tier_required || p.tier_required === "public");
+                const modelPosts = filteredModelPosts.map(p => ({ type: "post" as const, id: p.id, created_at: p.created_at, data: p }));
                 const allItems = [...visitorPosts, ...modelPosts].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
                 if (allItems.length === 0) return (
@@ -1323,16 +1376,57 @@ export default function ModelPage() {
                         </div>
                     </div>
                   );
-                })}</>);
+                })}
+                {/* ── Inline shop promo tiles (disappear once purchased) ── */}
+                {!hasPurchased && !isModelLoggedIn && activePacks.length > 0 && (
+                  <div className="rounded-2xl overflow-hidden" style={{ background: "linear-gradient(135deg, var(--surface), rgba(230,51,41,0.03))", border: "1px solid var(--border)", animation: "slideUp 0.4s ease-out 0.1s both" }}>
+                    <div className="px-5 sm:px-6 py-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <ShoppingBag className="w-4 h-4" style={{ color: "var(--accent)" }} />
+                        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--accent)" }}>Contenu exclusif</span>
+                      </div>
+                      <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
+                        Debloque du contenu premium avec un pack
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {activePacks.slice(0, 4).map(pack => (
+                          <button key={pack.id} onClick={() => { setTab("shop"); setExpandedPack(pack.id); }}
+                            className="rounded-xl p-3 text-left cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                            style={{ background: `${pack.color || "var(--accent)"}12`, border: `1px solid ${pack.color || "var(--accent)"}25` }}>
+                            <span className="text-[11px] font-bold block truncate" style={{ color: pack.color || "var(--accent)" }}>
+                              {pack.name}
+                            </span>
+                            <span className="text-[10px] font-bold mt-1 block" style={{ color: "var(--text-muted)" }}>
+                              {pack.price}€
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                </>);
               })()}
             </div>
           )}
 
           {/* ── PORTFOLIO / GALLERY — editorial grid ── */}
           {tab === "gallery" && (() => {
-            const imagePosts = posts.filter(p => p.media_url);
+            // Unverified visitors only see public gallery content
+            const imagePosts = contentUnlocked
+              ? posts.filter(p => p.media_url)
+              : posts.filter(p => p.media_url && (!p.tier_required || p.tier_required === "public"));
             return (
               <div className="fade-up">
+                {/* Verification notice */}
+                {!contentUnlocked && visitorRegistered && (
+                  <div className="rounded-xl px-4 py-3 mb-4 flex items-center gap-2" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" style={{ color: "#F59E0B" }} />
+                    <span className="text-[11px]" style={{ color: "#F59E0B" }}>
+                      Pseudo en attente — galerie limitee au contenu public
+                    </span>
+                  </div>
+                )}
                 {/* Tier filter — underline style */}
                 <div className="flex gap-1 mb-6 sm:mb-8 overflow-x-auto scrollbar-hide pb-1" style={{ borderBottom: "1px solid var(--border)" }}>
                   {["all", "public", "vip", "gold", "diamond", "platinum"].map(t => {
@@ -1425,6 +1519,24 @@ export default function ModelPage() {
                           </div>
                         );
                       })}
+                    {/* ── Inline pack tiles in gallery (disappear after purchase) ── */}
+                    {!hasPurchased && !isModelLoggedIn && activePacks.length > 0 && activePacks.slice(0, 2).map(pack => (
+                      <div key={`promo-${pack.id}`} className="relative aspect-[3/4] overflow-hidden rounded-xl cursor-pointer group"
+                        onClick={() => { setTab("shop"); setExpandedPack(pack.id); }}
+                        style={{ background: `linear-gradient(160deg, ${pack.color || "var(--accent)"}30, rgba(0,0,0,0.85))`, animation: "slideUp 0.4s ease-out both" }}>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center">
+                          <ShoppingBag className="w-6 h-6" style={{ color: pack.color || "var(--accent)", opacity: 0.8 }} />
+                          <span className="text-sm font-bold" style={{ color: "#fff" }}>{pack.name}</span>
+                          <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.6)" }}>
+                            Contenu exclusif
+                          </span>
+                          <span className="text-xs font-bold px-3 py-1.5 rounded-full mt-1" style={{ background: pack.color || "var(--accent)", color: "#fff" }}>
+                            {pack.price}€
+                          </span>
+                        </div>
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(255,255,255,0.05)" }} />
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
