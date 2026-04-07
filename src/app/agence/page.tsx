@@ -11,6 +11,17 @@ import { GenerateModal } from "@/components/cockpit/generate-modal";
 import type { PackConfig, AccessCode, ClientInfo, FeedPost, WallPost } from "@/types/heaven";
 import { DEFAULT_PACKS } from "@/constants/packs";
 
+// ── Upload config ──
+const UPLOAD_LIMITS = {
+  avatar: { maxMB: 5, label: "Photo de profil" },
+  post: { maxMB: 10, label: "Photo" },
+} as const;
+
+function validateFileSize(file: File, maxMB: number): { valid: boolean; sizeMB: string } {
+  const sizeMB = file.size / (1024 * 1024);
+  return { valid: sizeMB <= maxMB, sizeMB: sizeMB.toFixed(1) };
+}
+
 // ── Helpers ──
 function generateCodeString(model: string): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -50,6 +61,7 @@ export default function AgenceDashboard() {
   const [posting, setPosting] = useState(false);
 
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState<{ text: string; type: "error" | "success" | "loading" } | null>(null);
   const [clientModal, setClientModal] = useState<{ pseudo: string } | null>(null);
   const [feedTab, setFeedTab] = useState<"feed" | "wall">("feed");
 
@@ -151,14 +163,22 @@ export default function AgenceDashboard() {
       let mediaUrl: string | null = null;
       // Upload image first if selected
       if (newPostImage) {
+        setUploadMsg({ text: "Upload en cours...", type: "loading" });
         const uploadRes = await fetch("/api/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ file: newPostImage, folder: `heaven/${modelSlug}/posts` }),
+          body: JSON.stringify({ file: newPostImage, model: modelSlug, folder: `heaven/${modelSlug}/posts` }),
         });
         if (uploadRes.ok) {
           const uploadData = await uploadRes.json();
           mediaUrl = uploadData.url || null;
+          setUploadMsg(null);
+        } else {
+          const err = await uploadRes.json().catch(() => ({}));
+          setUploadMsg({ text: err.error || "Erreur upload image", type: "error" });
+          setTimeout(() => setUploadMsg(null), 4000);
+          setPosting(false);
+          return;
         }
       }
       const res = await fetch("/api/posts", {
@@ -213,6 +233,21 @@ export default function AgenceDashboard() {
 
   return (
     <OsLayout cpId="agence">
+      {/* Upload feedback toast */}
+      {uploadMsg && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl text-xs font-medium shadow-lg animate-in fade-in slide-in-from-top-2 flex items-center gap-2"
+          style={{
+            background: uploadMsg.type === "error" ? "#DC2626" : uploadMsg.type === "success" ? "#059669" : "var(--surface)",
+            color: uploadMsg.type === "loading" ? "var(--text)" : "#fff",
+            border: uploadMsg.type === "loading" ? "1px solid var(--border)" : "none",
+          }}>
+          {uploadMsg.type === "loading" && (
+            <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(255,255,255,0.2)", borderTopColor: "var(--accent)" }} />
+          )}
+          {uploadMsg.text}
+        </div>
+      )}
+
       <div className="min-h-screen p-4 sm:p-5 md:p-6 lg:p-8 pb-28 md:pb-8" style={{ background: "var(--bg)" }}>
         <div className="max-w-[1400px] mx-auto space-y-5">
 
@@ -235,13 +270,21 @@ export default function AgenceDashboard() {
                 <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
+                  const { valid, sizeMB } = validateFileSize(file, UPLOAD_LIMITS.avatar.maxMB);
+                  if (!valid) {
+                    setUploadMsg({ text: `${UPLOAD_LIMITS.avatar.label} trop lourde (${sizeMB}MB). Max ${UPLOAD_LIMITS.avatar.maxMB}MB.`, type: "error" });
+                    setTimeout(() => setUploadMsg(null), 4000);
+                    e.target.value = "";
+                    return;
+                  }
+                  setUploadMsg({ text: "Upload en cours...", type: "loading" });
                   const reader = new FileReader();
                   reader.onload = async () => {
                     try {
                       const upRes = await fetch("/api/upload", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ file: reader.result, folder: `heaven/${modelSlug}/avatar` }),
+                        body: JSON.stringify({ file: reader.result, model: modelSlug, folder: `heaven/${modelSlug}/avatar` }),
                       });
                       if (upRes.ok) {
                         const { url } = await upRes.json();
@@ -251,9 +294,16 @@ export default function AgenceDashboard() {
                             method: "PUT", headers: authHeaders(),
                             body: JSON.stringify({ avatar: url }),
                           });
+                          setUploadMsg({ text: "Photo de profil mise a jour", type: "success" });
                         }
+                      } else {
+                        const err = await upRes.json().catch(() => ({}));
+                        setUploadMsg({ text: err.error || "Erreur upload", type: "error" });
                       }
-                    } catch {}
+                    } catch {
+                      setUploadMsg({ text: "Erreur reseau", type: "error" });
+                    }
+                    setTimeout(() => setUploadMsg(null), 3000);
                   };
                   reader.readAsDataURL(file);
                   e.target.value = "";
@@ -372,6 +422,12 @@ export default function AgenceDashboard() {
                           <ImageIcon className="w-3.5 h-3.5" /> Photo
                           <input type="file" accept="image/*" className="hidden" onChange={(e) => {
                             const file = e.target.files?.[0]; if (!file) return;
+                            const { valid, sizeMB } = validateFileSize(file, UPLOAD_LIMITS.post.maxMB);
+                            if (!valid) {
+                              setUploadMsg({ text: `${UPLOAD_LIMITS.post.label} trop lourde (${sizeMB}MB). Max ${UPLOAD_LIMITS.post.maxMB}MB.`, type: "error" });
+                              setTimeout(() => setUploadMsg(null), 4000);
+                              e.target.value = ""; return;
+                            }
                             const reader = new FileReader();
                             reader.onload = () => setNewPostImage(reader.result as string);
                             reader.readAsDataURL(file); e.target.value = "";
