@@ -872,6 +872,14 @@ export default function ModelPage() {
         .post-hover:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
         @media (max-width: 768px) { .post-hover:hover { transform: none; box-shadow: none; } }
         .gallery-item { transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease; }
+        .heaven-grid-overlay {
+          background-image:
+            linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+          background-size: 24px 24px;
+          mask-image: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 60%, transparent 100%);
+          -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 60%, transparent 100%);
+        }
         .gallery-item:hover { transform: scale(1.02); box-shadow: var(--shadow-xl); }
       `}</style>
 
@@ -930,6 +938,14 @@ export default function ModelPage() {
                 <div className="absolute inset-0" style={{
                   background: "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.3) 100%)",
                 }} />
+
+                {/* ── Grid blur overlay for unverified visitors ── */}
+                {!contentUnlocked && visitorRegistered && (
+                  <>
+                    <div className="absolute inset-0" style={{ backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }} />
+                    <div className="absolute inset-0 heaven-grid-overlay" />
+                  </>
+                )}
 
                 {/* Hero content — positioned at bottom */}
                 <div className="absolute bottom-0 left-0 right-0 px-5 sm:px-8 md:px-12 pb-10 sm:pb-14 md:pb-16 max-w-6xl mx-auto">
