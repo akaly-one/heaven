@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       model, pack_id: p.id || `pack-${i}`, name: p.name || "", price: p.price || 0,
       color: p.color || "#C9A84C", features: p.features || [], bonuses: p.bonuses || {},
       face: p.face || false, badge: p.badge || null, active: p.active !== false, sort_order: i,
-      wise_url: p.wise_url || null, revolut_url: p.revolut_url || null,
+      revolut_url: p.revolut_url || null,
     }));
 
     // Step 1: delete all existing packs for this model
