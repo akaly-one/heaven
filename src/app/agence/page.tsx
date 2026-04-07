@@ -308,13 +308,13 @@ export default function AgenceDashboard() {
     );
   }
 
-  // Context ready but no model selected (root must pick one)
+  // Context ready but no model selected
   if (!modelSlug) {
     return (
       <OsLayout cpId="agence">
         <div className="flex items-center justify-center h-[60vh]">
           <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-            {isRoot ? "Selectionne un modele dans le header" : "Erreur: modele introuvable"}
+            {isRoot ? "Selectionne un modele dans le header" : "Chargement..."}
           </p>
         </div>
       </OsLayout>

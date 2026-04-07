@@ -1,19 +1,18 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { HeavenAuth } from "@/components/auth-guard";
 import { toModelId } from "@/lib/model-utils";
 
 interface ModelContextValue {
   currentModel: string | null;
-  /** Generic model ID (m1, m2...) derived from currentModel or auth.model_slug */
   modelId: string;
   setCurrentModel: (slug: string | null) => void;
   auth: HeavenAuth | null;
   isRoot: boolean;
   models: { slug: string; display_name: string }[];
   authHeaders: () => Record<string, string>;
-  ready: boolean; // true once auth has been read from sessionStorage
+  ready: boolean;
 }
 
 const ModelContext = createContext<ModelContextValue>({
@@ -27,48 +26,63 @@ const ModelContext = createContext<ModelContextValue>({
   ready: false,
 });
 
-export function ModelProvider({ children }: { children: React.ReactNode }) {
-  const [auth, setAuth] = useState<HeavenAuth | null>(null);
-  const [currentModel, setCurrentModel] = useState<string | null>(null);
-  const [models, setModels] = useState<{ slug: string; display_name: string }[]>([]);
-  const [ready, setReady] = useState(false);
+// Single atomic state to avoid split-render issues
+interface AuthState {
+  auth: HeavenAuth | null;
+  currentModel: string | null;
+  ready: boolean;
+}
 
-  // Read auth from sessionStorage ONCE on mount (client-only, avoids SSR mismatch)
+function readSessionAuth(): AuthState {
+  try {
+    const raw = sessionStorage.getItem("heaven_auth");
+    if (raw) {
+      const parsed: HeavenAuth = JSON.parse(raw);
+      const model = (parsed.role === "model" && parsed.model_slug) ? parsed.model_slug : null;
+      return { auth: parsed, currentModel: model, ready: true };
+    }
+  } catch { /* corrupt */ }
+  return { auth: null, currentModel: null, ready: true };
+}
+
+export function ModelProvider({ children }: { children: React.ReactNode }) {
+  // Start not-ready; single atomic update guarantees auth+model+ready sync
+  const [state, setState] = useState<AuthState>({ auth: null, currentModel: null, ready: false });
+  const [models, setModels] = useState<{ slug: string; display_name: string }[]>([]);
+  const initialized = useRef(false);
+
+  // Read sessionStorage on mount — single setState with all values
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("heaven_auth");
-      if (raw) {
-        const parsed: HeavenAuth = JSON.parse(raw);
-        setAuth(parsed);
-        if (parsed.role === "model" && parsed.model_slug) {
-          setCurrentModel(parsed.model_slug);
-        }
-      }
-    } catch { /* ignore corrupt storage */ }
-    setReady(true);
+    if (initialized.current) return;
+    initialized.current = true;
+    setState(readSessionAuth());
+  }, []);
+
+  const { auth, currentModel, ready } = state;
+
+  // Allow external model switching (root)
+  const setCurrentModel = useCallback((slug: string | null) => {
+    setState(prev => ({ ...prev, currentModel: slug }));
   }, []);
 
   // Load active models from API (root only)
   useEffect(() => {
-    if (!ready) return;
-    if (auth?.role === "root") {
-      fetch("/api/models")
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-          if (data?.models?.length) {
-            setModels(data.models.map((m: { slug?: string; model_slug?: string; display_name: string }) => ({
-              slug: m.slug || m.model_slug,
-              display_name: m.display_name,
-            })));
-            // Auto-select first model if none selected
-            if (!currentModel && data.models.length > 0) {
-              const first = data.models[0];
-              setCurrentModel(first.slug || first.model_slug);
-            }
+    if (!ready || auth?.role !== "root") return;
+    fetch("/api/models")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.models?.length) {
+          setModels(data.models.map((m: { slug?: string; model_slug?: string; display_name: string }) => ({
+            slug: m.slug || m.model_slug,
+            display_name: m.display_name,
+          })));
+          if (!currentModel && data.models.length > 0) {
+            const first = data.models[0];
+            setCurrentModel(first.slug || first.model_slug);
           }
-        })
-        .catch(() => {});
-    }
+        }
+      })
+      .catch(() => {});
   }, [ready, auth?.role]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isRoot = auth?.role === "root";
@@ -84,7 +98,7 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
 
   const contextValue = useMemo(() => ({
     currentModel, modelId, setCurrentModel, auth, isRoot, models, authHeaders, ready,
-  }), [currentModel, modelId, auth, isRoot, models, authHeaders, ready]);
+  }), [currentModel, modelId, setCurrentModel, auth, isRoot, models, authHeaders, ready]);
 
   return (
     <ModelContext.Provider value={contextValue}>
