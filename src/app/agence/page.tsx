@@ -128,7 +128,8 @@ export default function AgenceDashboard() {
   useEffect(() => { const iv = setInterval(() => setTick(t => t + 1), 60000); return () => clearInterval(iv); }, []);
 
   // ── Computed ──
-  const modelCodes = useMemo(() => codes.filter(c => c.model === modelSlug), [codes, modelSlug]);
+  const modelId = toModelId(modelSlug);
+  const modelCodes = useMemo(() => codes.filter(c => c.model === modelSlug || c.model === modelId), [codes, modelSlug, modelId]);
   const activeCodes = useMemo(() => modelCodes.filter(c => c.active && !c.revoked && !isExpired(c.expiresAt)), [modelCodes]);
   const revenue = useMemo(() => {
     return modelCodes.filter(c => c.type === "paid" && !c.revoked).reduce((sum, c) => {
@@ -269,7 +270,7 @@ export default function AgenceDashboard() {
         <div className="max-w-[1400px] mx-auto space-y-5">
 
           {/* ── Header: Avatar + Name + Status + Actions ── */}
-          <div className="flex items-center gap-3 sm:gap-4 fade-up">
+          <div className="flex items-start gap-3 sm:gap-4 fade-up">
             {/* Avatar — click to change photo */}
             <div className="relative">
               <label className="cursor-pointer">
@@ -355,18 +356,18 @@ export default function AgenceDashboard() {
                 onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 shrink-0">
               <a href={`/m/${modelSlug}`} target="_blank"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-transform no-underline"
+                className="flex items-center justify-center w-8 h-8 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-transform no-underline"
                 style={{ background: "rgba(0,0,0,0.04)", border: "1px solid var(--border)" }}>
                 <Eye className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
-                <span className="text-[11px] font-semibold hidden lg:inline" style={{ color: "var(--text-muted)" }}>Profil</span>
+                <span className="text-[11px] font-semibold hidden sm:inline sm:ml-1.5" style={{ color: "var(--text-muted)" }}>Profil</span>
               </a>
               <a href={`/m/${modelSlug}?edit=true`}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-transform no-underline"
+                className="flex items-center justify-center w-8 h-8 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-transform no-underline"
                 style={{ background: "rgba(230,51,41,0.12)", border: "1px solid rgba(230,51,41,0.25)" }}>
                 <Pencil className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
-                <span className="text-[11px] font-semibold hidden lg:inline" style={{ color: "var(--accent)" }}>Edit</span>
+                <span className="text-[11px] font-semibold hidden sm:inline sm:ml-1.5" style={{ color: "var(--accent)" }}>Edit</span>
               </a>
             </div>
           </div>

@@ -36,13 +36,22 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       .eq("active", true)
       .maybeSingle();
 
-    // Fetch extended profile if exists — accept both slug and model_id
+    // Fetch extended profile — try slug first, then model_id
     const resolvedSlug = account?.model_slug || slug;
-    const { data: modelInfo } = await supabase
+    let { data: modelInfo } = await supabase
       .from("agence_models")
       .select("*")
       .eq("slug", resolvedSlug)
       .maybeSingle();
+    // If not found by slug, try by model_id (e.g. slug="m4" → model_id="m4")
+    if (!modelInfo) {
+      const { data: byId } = await supabase
+        .from("agence_models")
+        .select("*")
+        .eq("model_id", slug)
+        .maybeSingle();
+      if (byId) modelInfo = byId;
+    }
 
     // Map DB columns to API response
     const displayName = account?.display_name || modelInfo?.display || slug.charAt(0).toUpperCase() + slug.slice(1);
@@ -83,10 +92,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug
 
     // Handle display_name separately (stored in agence_accounts, not agence_models)
     if (body.display_name !== undefined) {
-      await supabase
+      // Try by model_slug first, then by model_id
+      const { data: accUp } = await supabase
         .from("agence_accounts")
         .update({ display_name: body.display_name })
-        .eq("model_slug", slug);
+        .eq("model_slug", slug)
+        .select();
+      if (!accUp || accUp.length === 0) {
+        // slug might be a model_id like "m4" — resolve actual slug from agence_models
+        const { data: mdl } = await supabase.from("agence_models").select("slug").eq("model_id", slug).maybeSingle();
+        if (mdl?.slug) {
+          await supabase.from("agence_accounts").update({ display_name: body.display_name }).eq("model_slug", mdl.slug);
+        }
+      }
     }
 
     // Map request fields to actual DB columns
@@ -116,13 +134,23 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug
       return NextResponse.json({ success: true }, { headers: cors });
     }
 
-    // Upsert: try update first, if no row matched then insert
+    // Upsert: try update by slug first, then by model_id
     updates.updated_at = new Date().toISOString();
-    const { data: updated, error: updateError } = await supabase
+    let { data: updated, error: updateError } = await supabase
       .from("agence_models")
       .update(updates)
       .eq("slug", slug)
       .select();
+    // If no row matched by slug, try by model_id (e.g. slug="m4")
+    if ((!updated || updated.length === 0) && !updateError) {
+      const res = await supabase
+        .from("agence_models")
+        .update(updates)
+        .eq("model_id", slug)
+        .select();
+      updated = res.data;
+      updateError = res.error;
+    }
 
     if (updateError) {
       console.error("[API/models] PUT update error:", updateError);
