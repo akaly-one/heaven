@@ -83,17 +83,23 @@ export async function POST(req: NextRequest) {
       wise_url: p.wise_url || null, stripe_link: p.stripe_link || null, revolut_url: p.revolut_url || null,
     }));
 
-    // Delete old packs then insert — with await between to avoid race
+    // Step 1: delete all existing packs for this model
     const { error: delErr } = await supabase.from("agence_packs").delete().eq("model", model);
     if (delErr) {
       console.error("[API/packs] POST delete error:", delErr);
-      // Try upsert as fallback
+      return NextResponse.json({ error: "Database delete error", detail: delErr.message }, { status: 502, headers: cors });
     }
 
-    const { error: insErr } = await supabase.from("agence_packs").upsert(rows, { onConflict: "model,pack_id" });
-    if (insErr) {
-      console.error("[API/packs] POST upsert error:", insErr);
-      return NextResponse.json({ error: "Database error", detail: insErr.message }, { status: 502, headers: cors });
+    // Step 2: small delay to ensure delete is committed
+    await new Promise(r => setTimeout(r, 200));
+
+    // Step 3: insert new packs
+    if (rows.length > 0) {
+      const { error: insErr } = await supabase.from("agence_packs").insert(rows);
+      if (insErr) {
+        console.error("[API/packs] POST insert error:", insErr);
+        return NextResponse.json({ error: "Database insert error", detail: insErr.message }, { status: 502, headers: cors });
+      }
     }
 
     return NextResponse.json({ success: true, count: packs.length }, { headers: cors });
