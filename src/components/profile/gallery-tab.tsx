@@ -109,11 +109,10 @@ export function GalleryTab({
   }, []);
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
   const bulkAssignPack = useCallback((targetTier: string) => {
-    const isPublic = targetTier === "p0";
     selectedIds.forEach(id => {
       handleUpdateMedia(id, {
-        tier: isPublic ? "p1" : targetTier,
-        visibility: isPublic ? "promo" : "pack",
+        tier: targetTier,
+        visibility: targetTier === "p0" ? "promo" : "pack",
       });
     });
     clearSelection();
@@ -139,10 +138,9 @@ export function GalleryTab({
     e.preventDefault();
     const id = e.dataTransfer.getData("text/plain");
     if (id) {
-      const isPublic = targetTier === "p0";
       handleUpdateMedia(id, {
-        tier: isPublic ? "p1" : targetTier,
-        visibility: isPublic ? "promo" : "pack",
+        tier: targetTier,
+        visibility: targetTier === "p0" ? "promo" : "pack",
       });
     }
     setDragId(null);

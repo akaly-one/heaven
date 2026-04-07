@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { Image, Check, Trash2, Move, ZoomIn, ZoomOut, X, Settings2 } from "lucide-react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { Image, Check, Trash2, Move, ZoomIn, ZoomOut, X, Settings2, GripVertical, ChevronDown, ChevronRight } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { PackConfigurator } from "@/components/cockpit/pack-configurator";
@@ -13,18 +13,8 @@ import { TIER_CONFIG } from "@/constants/tiers";
 
 // ── Constants ──
 
-const TIERS = ["all", "p0", "p1", "p2", "p3", "p4", "p5"] as const;
-type TierFilter = (typeof TIERS)[number];
-
-const TIER_LABELS: Record<string, string> = {
-  all: "Tout",
-  p0: "Public",
-  p1: "♣ Silver",
-  p2: "♦ Gold",
-  p3: "🦶 Feet",
-  p4: "♠ VIP Black",
-  p5: "♥ Platinum",
-};
+const TIER_SLOTS = ["p0", "p1", "p2", "p3", "p4", "p5"] as const;
+type TierSlot = (typeof TIER_SLOTS)[number];
 
 // ── Component ──
 
@@ -36,8 +26,14 @@ export default function ContenuPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [filter, setFilter] = useState<TierFilter>("all");
   const [settingsPacks, setSettingsPacks] = useState<PackConfig[]>([]);
+  const [collapsedTiers, setCollapsedTiers] = useState<Set<string>>(new Set());
+
+  // ── Drag & Drop state ──
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverTier, setDragOverTier] = useState<string | null>(null);
+
+  // ── Crop state ──
   const [cropPost, setCropPost] = useState<Post | null>(null);
   const [cropZoom, setCropZoom] = useState(1);
   const [cropPos, setCropPos] = useState({ x: 50, y: 50 });
@@ -57,7 +53,6 @@ export default function ContenuPage() {
 
   useEffect(() => {
     fetchPosts();
-    // Fetch packs
     if (modelSlug) {
       fetch(`/api/packs?model=${toModelId(modelSlug)}`, { headers: authHeaders() })
         .then(r => r.json())
@@ -66,10 +61,19 @@ export default function ContenuPage() {
     }
   }, [fetchPosts, modelSlug, authHeaders]);
 
-  // ── Derived data ──
-  const imagePosts = posts.filter((p) => p.media_url);
-  const filtered = filter === "all" ? imagePosts : imagePosts.filter((p) => toSlot(p.tier_required) === filter);
-  const tierCount = (t: TierFilter) => (t === "all" ? imagePosts.length : imagePosts.filter((p) => toSlot(p.tier_required) === t).length);
+  // ── Group posts by tier ──
+  const grouped = useMemo(() => {
+    const g: Record<string, Post[]> = { p0: [], p1: [], p2: [], p3: [], p4: [], p5: [] };
+    const imagePosts = posts.filter((p) => p.media_url);
+    imagePosts.forEach((p) => {
+      const slot = toSlot(p.tier_required);
+      if (g[slot]) g[slot].push(p);
+      else g.p0.push(p); // fallback
+    });
+    return g;
+  }, [posts]);
+
+  const totalImages = posts.filter((p) => p.media_url).length;
 
   // ── Selection ──
   const toggleSelect = (id: string) =>
@@ -78,32 +82,104 @@ export default function ContenuPage() {
       n.has(id) ? n.delete(id) : n.add(id);
       return n;
     });
-  const selectAll = () => setSelected(new Set(filtered.map((p) => p.id)));
   const selectNone = () => setSelected(new Set());
 
-  // ── Bulk actions ──
-  const deleteSelected = async () => {
-    if (!confirm(`Supprimer ${selected.size} post(s) ?`)) return;
-    for (const id of selected) {
-      await fetch(`/api/posts?id=${id}&model=${toModelId(modelSlug)}`, { method: "DELETE", headers: authHeaders() });
-    }
-    selectNone();
-    fetchPosts();
-  };
+  // ── Tier collapse ──
+  const toggleCollapse = (tier: string) =>
+    setCollapsedTiers((prev) => {
+      const n = new Set(prev);
+      n.has(tier) ? n.delete(tier) : n.add(tier);
+      return n;
+    });
 
-  const changeTier = async (newTier: string) => {
-    for (const id of selected) {
+  // ── Single post tier change (drag & drop) ──
+  const changePostTier = useCallback(async (postId: string, newTier: string) => {
+    // Optimistic update
+    setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, tier_required: newTier } : p));
+    try {
       await fetch("/api/posts", {
         method: "PATCH",
         headers: { ...authHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ id, model: toModelId(modelSlug), tier_required: newTier }),
+        body: JSON.stringify({ id: postId, model: toModelId(modelSlug), tier_required: newTier }),
       });
+    } catch {
+      fetchPosts(); // rollback on error
     }
+  }, [modelSlug, authHeaders, fetchPosts]);
+
+  // ── Bulk tier change ──
+  const changeBulkTier = async (newTier: string) => {
+    // Optimistic update
+    setPosts((prev) => prev.map((p) => selected.has(p.id) ? { ...p, tier_required: newTier } : p));
+    const ids = Array.from(selected);
     selectNone();
+    try {
+      for (const id of ids) {
+        await fetch("/api/posts", {
+          method: "PATCH",
+          headers: { ...authHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ id, model: toModelId(modelSlug), tier_required: newTier }),
+        });
+      }
+    } catch {
+      fetchPosts();
+    }
+  };
+
+  // ── Bulk delete ──
+  const deleteSelected = async () => {
+    if (!confirm(`Supprimer ${selected.size} post(s) ?`)) return;
+    const ids = Array.from(selected);
+    setPosts((prev) => prev.filter((p) => !selected.has(p.id)));
+    selectNone();
+    for (const id of ids) {
+      await fetch(`/api/posts?id=${id}&model=${toModelId(modelSlug)}`, { method: "DELETE", headers: authHeaders() });
+    }
     fetchPosts();
   };
 
-  // ── Crop drag handlers ──
+  // ── Drag & Drop handlers ──
+  const onDragStart = useCallback((e: React.DragEvent, postId: string) => {
+    e.dataTransfer.setData("text/plain", postId);
+    e.dataTransfer.effectAllowed = "move";
+    setDragId(postId);
+  }, []);
+
+  const onDragOver = useCallback((e: React.DragEvent, tier: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverTier(tier);
+  }, []);
+
+  const onDragLeave = useCallback((e: React.DragEvent) => {
+    // Only clear if leaving the drop zone entirely
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const { clientX, clientY } = e;
+    if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+      setDragOverTier(null);
+    }
+  }, []);
+
+  const onDrop = useCallback((e: React.DragEvent, targetTier: string) => {
+    e.preventDefault();
+    const postId = e.dataTransfer.getData("text/plain");
+    if (postId) {
+      const post = posts.find((p) => p.id === postId);
+      const currentTier = post ? toSlot(post.tier_required) : null;
+      if (currentTier !== targetTier) {
+        changePostTier(postId, targetTier);
+      }
+    }
+    setDragId(null);
+    setDragOverTier(null);
+  }, [posts, changePostTier]);
+
+  const onDragEnd = useCallback(() => {
+    setDragId(null);
+    setDragOverTier(null);
+  }, []);
+
+  // ── Crop handlers ──
   const onCropMouseDown = (e: React.MouseEvent) => {
     cropDragging.current = true;
     cropStart.current = { x: e.clientX, y: e.clientY, px: cropPos.x, py: cropPos.y };
@@ -117,11 +193,9 @@ export default function ContenuPage() {
       y: Math.max(0, Math.min(100, cropStart.current.py + dy)),
     });
   };
-  const onCropMouseUp = () => {
-    cropDragging.current = false;
-  };
+  const onCropMouseUp = () => { cropDragging.current = false; };
 
-  // ── Loading state ──
+  // ── Loading ──
   if (loading) {
     return (
       <OsLayout cpId="agence">
@@ -164,11 +238,10 @@ export default function ContenuPage() {
               <div>
                 <h1 className="text-base font-bold" style={{ color: "var(--text)" }}>Contenu</h1>
                 <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                  {imagePosts.length} media{imagePosts.length !== 1 ? "s" : ""}
+                  {totalImages} media{totalImages !== 1 ? "s" : ""} · Glisse les images entre les packs
                 </p>
               </div>
             </div>
-            {/* Tab switcher: Contenu | Packs */}
             <div className="flex gap-1 p-1 rounded-xl" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
               <button
                 onClick={() => setActiveTab("contenu")}
@@ -219,163 +292,209 @@ export default function ContenuPage() {
               </div>
             )}
 
-            {/* ═══ CONTENU TAB ═══ */}
+            {/* ═══ CONTENU TAB — Grouped by tier with drag & drop ═══ */}
             {activeTab === "contenu" && (<>
-            {/* ── Bulk actions bar ── */}
-            {selected.size > 0 && (
-              <div
-                className="flex items-center gap-2 mb-4 px-3 py-2 rounded-xl"
-                style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}
-              >
-                <span className="text-[11px] font-bold" style={{ color: "var(--accent)" }}>
-                  {selected.size} selectionne{selected.size > 1 ? "s" : ""}
-                </span>
-                <div className="flex-1" />
-                <select
-                  onChange={(e) => {
-                    if (e.target.value) changeTier(e.target.value);
-                    e.target.value = "";
-                  }}
-                  className="text-[11px] px-2 py-1 rounded-lg cursor-pointer outline-none"
-                  style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border2)" }}
-                >
-                  <option value="">Changer tier...</option>
-                  {TIERS.filter((t) => t !== "all").map((t) => (
-                    <option key={t} value={t}>{TIER_LABELS[t]}</option>
-                  ))}
-                </select>
-                <button
-                  onClick={deleteSelected}
-                  className="w-9 h-9 flex items-center justify-center rounded-lg cursor-pointer"
-                  style={{ background: "rgba(220,38,38,0.1)", color: "#DC2626", border: "none" }}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-                <button onClick={selectNone} className="cursor-pointer p-1" style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
 
-            {/* ── Tier filter bar ── */}
-            <div className="flex gap-1.5 mb-4 overflow-x-auto no-scrollbar">
-              {TIERS.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => { setFilter(t); selectNone(); }}
-                  className="px-3 py-2 rounded-lg text-[11px] font-medium cursor-pointer shrink-0 transition-all"
-                  style={{
-                    background: filter === t ? "var(--accent)" : "var(--bg3)",
-                    color: filter === t ? "#fff" : "var(--text-muted)",
-                    border: filter === t ? "none" : "1px solid var(--border2)",
-                  }}
+              {/* ── Bulk actions bar (when items selected) ── */}
+              {selected.size > 0 && (
+                <div
+                  className="flex items-center gap-2 mb-4 px-3 py-2 rounded-xl sticky top-2 z-30"
+                  style={{ background: "var(--surface)", border: "1px solid var(--accent)", boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}
                 >
-                  {TIER_LABELS[t]} ({tierCount(t)})
-                </button>
-              ))}
-              <div className="flex-1" />
-              <button
-                onClick={selected.size === filtered.length && filtered.length > 0 ? selectNone : selectAll}
-                className="px-2.5 py-2 rounded-lg text-[11px] font-medium cursor-pointer shrink-0"
-                style={{ background: "var(--bg3)", color: "var(--text-muted)", border: "1px solid var(--border2)" }}
-              >
-                {selected.size === filtered.length && filtered.length > 0 ? "Aucun" : "Tout"}
-              </button>
-            </div>
+                  <span className="text-[11px] font-bold" style={{ color: "var(--accent)" }}>
+                    {selected.size} sélectionné{selected.size > 1 ? "s" : ""}
+                  </span>
+                  <div className="flex-1" />
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) changeBulkTier(e.target.value);
+                      e.target.value = "";
+                    }}
+                    className="text-[11px] px-2 py-1 rounded-lg cursor-pointer outline-none"
+                    style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border2)" }}
+                  >
+                    <option value="">Déplacer vers...</option>
+                    {TIER_SLOTS.map((t) => (
+                      <option key={t} value={t}>{TIER_CONFIG[t]?.symbol} {TIER_CONFIG[t]?.label || t} ({grouped[t]?.length || 0})</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={deleteSelected}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer"
+                    style={{ background: "rgba(220,38,38,0.1)", color: "#DC2626", border: "none" }}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={selectNone} className="cursor-pointer p-1" style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
 
-            {/* ── Empty state ── */}
-            {filtered.length === 0 && (
-              <div className="rounded-xl p-12 text-center" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
-                <Image className="w-10 h-10 mx-auto mb-3" style={{ color: "var(--text-muted)" }} />
-                <p className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>Aucun media</p>
-                <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)", opacity: 0.6 }}>
-                  Les contenus apparaitront ici une fois publies
-                </p>
-              </div>
-            )}
+              {/* ── Tier sections ── */}
+              <div className="space-y-3">
+                {TIER_SLOTS.map((tier) => {
+                  const tierPosts = grouped[tier] || [];
+                  const config = TIER_CONFIG[tier];
+                  const isCollapsed = collapsedTiers.has(tier);
+                  const isDragOver = dragOverTier === tier;
+                  const accentColor = config?.hex || "#888";
 
-            {/* ── Media grid ── */}
-            {filtered.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2">
-                {filtered.map((post) => {
-                  const isSelected = selected.has(post.id);
-                  const tier = toSlot(post.tier_required);
                   return (
                     <div
-                      key={post.id}
-                      className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group"
-                      onClick={() => toggleSelect(post.id)}
-                      style={{ border: isSelected ? "3px solid var(--accent)" : "1px solid var(--border2)" }}
+                      key={tier}
+                      className="rounded-2xl overflow-hidden transition-all duration-200"
+                      style={{
+                        background: "var(--surface)",
+                        border: isDragOver
+                          ? `2px dashed ${accentColor}`
+                          : "1px solid var(--border2)",
+                        boxShadow: isDragOver ? `0 0 20px ${accentColor}33` : "none",
+                      }}
+                      onDragOver={(e) => onDragOver(e, tier)}
+                      onDragLeave={onDragLeave}
+                      onDrop={(e) => onDrop(e, tier)}
                     >
-                      <img src={post.media_url!} alt="" className="w-full h-full object-cover" loading="lazy" />
-                      {isSelected && (
+                      {/* ── Section header ── */}
+                      <button
+                        onClick={() => toggleCollapse(tier)}
+                        className="w-full flex items-center gap-3 px-4 py-3 cursor-pointer"
+                        style={{ background: "none", border: "none" }}
+                      >
                         <div
-                          className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full flex items-center justify-center"
-                          style={{ background: "var(--accent)" }}
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{ background: accentColor, boxShadow: `0 0 8px ${accentColor}44` }}
+                        />
+                        <span className="text-[12px] font-bold" style={{ color: "var(--text)" }}>
+                          {config?.symbol} {config?.label || tier}
+                        </span>
+                        <span
+                          className="text-[11px] font-medium px-1.5 py-0.5 rounded-md"
+                          style={{ background: `${accentColor}18`, color: accentColor }}
                         >
-                          <Check className="w-3 h-3 text-white" />
+                          {tierPosts.length}
+                        </span>
+                        <span className="text-[10px] hidden sm:inline" style={{ color: "var(--text-muted)" }}>
+                          {config?.description}
+                        </span>
+                        <div className="flex-1" />
+                        {isCollapsed
+                          ? <ChevronRight className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                          : <ChevronDown className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                        }
+                      </button>
+
+                      {/* ── Section content ── */}
+                      {!isCollapsed && (
+                        <div className="px-3 pb-3">
+                          {tierPosts.length === 0 ? (
+                            <div
+                              className="rounded-xl py-6 text-center transition-all duration-200"
+                              style={{
+                                background: isDragOver ? `${accentColor}10` : "var(--bg3)",
+                                border: isDragOver ? `1px dashed ${accentColor}60` : "1px dashed var(--border2)",
+                              }}
+                            >
+                              <p className="text-[11px]" style={{ color: isDragOver ? accentColor : "var(--text-muted)" }}>
+                                {isDragOver ? "Déposer ici" : "Glisser des images ici"}
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 gap-1.5">
+                              {tierPosts.map((post) => {
+                                const isSelected = selected.has(post.id);
+                                const isDragging = dragId === post.id;
+                                return (
+                                  <div
+                                    key={post.id}
+                                    draggable
+                                    onDragStart={(e) => onDragStart(e, post.id)}
+                                    onDragEnd={onDragEnd}
+                                    className="relative aspect-square rounded-lg overflow-hidden cursor-grab active:cursor-grabbing group"
+                                    style={{
+                                      border: isSelected ? `2px solid var(--accent)` : "1px solid var(--border2)",
+                                      opacity: isDragging ? 0.4 : 1,
+                                      transform: isDragging ? "scale(0.95)" : "scale(1)",
+                                      transition: "opacity 0.15s, transform 0.15s",
+                                    }}
+                                    onClick={() => toggleSelect(post.id)}
+                                  >
+                                    <img src={post.media_url!} alt="" className="w-full h-full object-cover" loading="lazy" draggable={false} />
+
+                                    {/* Drag handle indicator */}
+                                    <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-80 transition-opacity">
+                                      <GripVertical className="w-3.5 h-3.5 drop-shadow-md" style={{ color: "#fff" }} />
+                                    </div>
+
+                                    {/* Selection check */}
+                                    {isSelected && (
+                                      <div
+                                        className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center"
+                                        style={{ background: "var(--accent)" }}
+                                      >
+                                        <Check className="w-3 h-3 text-white" />
+                                      </div>
+                                    )}
+
+                                    {/* Hover actions */}
+                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-1">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setCropPost(post);
+                                          setCropZoom(1);
+                                          setCropPos({ x: 50, y: 50 });
+                                        }}
+                                        className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer"
+                                        style={{ background: "rgba(255,255,255,0.9)" }}
+                                      >
+                                        <Move className="w-3 h-3" style={{ color: "#333" }} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       )}
-                      {tier !== "p0" && (
-                        <span
-                          className="absolute bottom-1.5 right-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded-md uppercase"
-                          style={{ background: "rgba(0,0,0,0.6)", color: "#fff", backdropFilter: "blur(4px)" }}
-                        >
-                          {TIER_CONFIG[tier]?.label || tier}
-                        </span>
-                      )}
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-1.5">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCropPost(post);
-                            setCropZoom(1);
-                            setCropPos({ x: 50, y: 50 });
-                          }}
-                          className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
-                          style={{ background: "rgba(255,255,255,0.9)" }}
-                        >
-                          <Move className="w-3.5 h-3.5" style={{ color: "#333" }} />
-                        </button>
-                      </div>
                     </div>
                   );
                 })}
               </div>
-            )}
 
-            {/* ── Text-only posts ── */}
-            {posts.filter((p) => !p.media_url && p.content).length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>
-                  Posts texte ({posts.filter((p) => !p.media_url && p.content).length})
-                </h3>
-                <div className="space-y-1">
-                  {posts
-                    .filter((p) => !p.media_url && p.content)
-                    .map((p) => (
-                      <div
-                        key={p.id}
-                        className="flex items-center gap-2 px-3 py-2 rounded-lg group"
-                        style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}
-                      >
-                        <p className="text-xs flex-1 truncate" style={{ color: "var(--text)" }}>{p.content}</p>
-                        <span className="text-[11px] uppercase" style={{ color: "var(--text-muted)" }}>{TIER_CONFIG[toSlot(p.tier_required)]?.label || toSlot(p.tier_required)}</span>
-                        <button
-                          onClick={async () => {
-                            await fetch(`/api/posts?id=${p.id}&model=${toModelId(modelSlug)}`, { method: "DELETE", headers: authHeaders() });
-                            fetchPosts();
-                          }}
-                          className="opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity"
-                          style={{ background: "none", border: "none", color: "var(--text-muted)" }}
+              {/* ── Text-only posts ── */}
+              {posts.filter((p) => !p.media_url && p.content).length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>
+                    Posts texte ({posts.filter((p) => !p.media_url && p.content).length})
+                  </h3>
+                  <div className="space-y-1">
+                    {posts
+                      .filter((p) => !p.media_url && p.content)
+                      .map((p) => (
+                        <div
+                          key={p.id}
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg group"
+                          style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}
                         >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
+                          <p className="text-xs flex-1 truncate" style={{ color: "var(--text)" }}>{p.content}</p>
+                          <span className="text-[11px] uppercase" style={{ color: "var(--text-muted)" }}>{TIER_CONFIG[toSlot(p.tier_required)]?.label || toSlot(p.tier_required)}</span>
+                          <button
+                            onClick={async () => {
+                              await fetch(`/api/posts?id=${p.id}&model=${toModelId(modelSlug)}`, { method: "DELETE", headers: authHeaders() });
+                              fetchPosts();
+                            }}
+                            className="opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity"
+                            style={{ background: "none", border: "none", color: "var(--text-muted)" }}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
             </>)}
           </div>
         </div>
