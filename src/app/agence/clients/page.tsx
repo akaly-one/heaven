@@ -6,6 +6,7 @@ import { OsLayout } from "@/components/os-layout";
 import {
   Search, ArrowLeft, Trash2, Check, X, MessageCircle, Key,
   Copy, Link2, Send, UserPlus, GitMerge, User, Clock,
+  ShieldCheck, ShieldX, ShieldAlert, Filter,
 } from "lucide-react";
 import type { AccessCode, Message } from "@/types/heaven";
 
@@ -17,7 +18,19 @@ interface Client {
   last_active: string | null; notes: string | null; created_at: string;
   firstname?: string | null; phone?: string | null;
   is_verified?: boolean; is_blocked?: boolean;
+  verified_status?: "pending" | "verified" | "rejected";
+  verified_at?: string | null;
+  lead_source?: string | null;
+  lead_hook?: string | null;
 }
+
+type VerifyFilter = "all" | "pending" | "verified" | "rejected";
+
+const VERIFY_BADGE: Record<string, { bg: string; color: string; label: string }> = {
+  pending: { bg: "rgba(245,158,11,0.12)", color: "#F59E0B", label: "EN ATTENTE" },
+  verified: { bg: "rgba(16,185,129,0.12)", color: "#10B981", label: "VERIFIE" },
+  rejected: { bg: "rgba(220,38,38,0.10)", color: "#DC2626", label: "REJETE" },
+};
 
 interface ClientEnriched extends Client {
   unreadCount: number;
@@ -71,6 +84,7 @@ export default function ClientsCRMPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [addPseudo, setAddPseudo] = useState("");
   const [addPlatform, setAddPlatform] = useState<"snap" | "insta">("snap");
+  const [verifyFilter, setVerifyFilter] = useState<VerifyFilter>("all");
   const msgEndRef = useRef<HTMLDivElement>(null);
 
   /* ── Merge modal ── */
@@ -142,10 +156,21 @@ export default function ClientsCRMPage() {
   }, [enriched]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return sorted;
-    const q = search.toLowerCase();
-    return sorted.filter(c => (c.pseudo_snap || c.pseudo_insta || c.firstname || "").toLowerCase().includes(q));
-  }, [sorted, search]);
+    let list = sorted;
+    // Verify filter
+    if (verifyFilter !== "all") {
+      list = list.filter(c => (c.verified_status || "pending") === verifyFilter);
+    }
+    // Search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(c => (c.pseudo_snap || c.pseudo_insta || c.firstname || "").toLowerCase().includes(q));
+    }
+    return list;
+  }, [sorted, search, verifyFilter]);
+
+  const pendingCount = enriched.filter(c => (c.verified_status || "pending") === "pending").length;
+  const verifiedCount = enriched.filter(c => c.verified_status === "verified").length;
 
   const totalUnread = enriched.reduce((s, c) => s + c.unreadCount, 0);
 
@@ -194,6 +219,21 @@ export default function ClientsCRMPage() {
     else payload.pseudo_insta = addPseudo.trim().toLowerCase();
     await fetch("/api/clients", { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) });
     setAddPseudo(""); setShowAdd(false); fetchAll();
+  };
+
+  const verifyClient = async (clientId: string, action: "verify" | "reject") => {
+    await fetch("/api/clients", {
+      method: "PUT",
+      headers: authHeaders(),
+      body: JSON.stringify({ id: clientId, action, verified_by: model }),
+    });
+    fetchAll();
+  };
+
+  const runCleanup = async () => {
+    if (!confirm("Supprimer tous les pseudos non-verifies de plus de 7 jours ?")) return;
+    await fetch(`/api/clients/cleanup?model=${model}`, { method: "DELETE", headers: authHeaders() });
+    fetchAll();
   };
 
   const sendReply = async () => {
@@ -418,6 +458,37 @@ export default function ClientsCRMPage() {
               </button>
             </div>
 
+            {/* Verify filter bar */}
+            <div className="flex items-center gap-1.5 px-3 py-2 shrink-0 overflow-x-auto no-scrollbar" style={{ borderBottom: "1px solid var(--border)" }}>
+              {([
+                { key: "all" as VerifyFilter, label: "Tous", count: clients.length },
+                { key: "pending" as VerifyFilter, label: "En attente", count: pendingCount },
+                { key: "verified" as VerifyFilter, label: "Verifies", count: verifiedCount },
+              ]).map(f => (
+                <button key={f.key} onClick={() => setVerifyFilter(f.key)}
+                  className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer shrink-0 transition-all"
+                  style={{
+                    background: verifyFilter === f.key
+                      ? f.key === "pending" ? "rgba(245,158,11,0.15)" : f.key === "verified" ? "rgba(16,185,129,0.15)" : "var(--accent)"
+                      : "var(--bg)",
+                    color: verifyFilter === f.key
+                      ? f.key === "pending" ? "#F59E0B" : f.key === "verified" ? "#10B981" : "#fff"
+                      : "var(--text-muted)",
+                    border: `1px solid ${verifyFilter === f.key ? "transparent" : "var(--border)"}`,
+                  }}>
+                  {f.label} ({f.count})
+                </button>
+              ))}
+              <div className="flex-1" />
+              {pendingCount > 0 && (
+                <button onClick={runCleanup}
+                  className="px-2 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer shrink-0"
+                  style={{ background: "rgba(220,38,38,0.06)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.12)" }}>
+                  Purger 7j+
+                </button>
+              )}
+            </div>
+
             {/* Client list */}
             <div className="flex-1 overflow-y-auto">
               {loading && <p className="text-xs text-center py-8" style={{ color: "var(--text-muted)" }}>Chargement...</p>}
@@ -470,6 +541,18 @@ export default function ClientsCRMPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-bold truncate" style={{ color: "var(--text)" }}>@{pseudo}</span>
+                        {/* Verification badge */}
+                        {(() => {
+                          const vs = c.verified_status || "pending";
+                          const badge = VERIFY_BADGE[vs];
+                          if (!badge) return null;
+                          return (
+                            <span className="text-[9px] font-bold px-1 py-0.5 rounded shrink-0"
+                              style={{ background: badge.bg, color: badge.color }}>
+                              {vs === "verified" ? "✓" : vs === "rejected" ? "✗" : "?"}
+                            </span>
+                          );
+                        })()}
                         {cActiveCode && (
                           <span className="text-[11px] font-bold px-1 py-0.5 rounded shrink-0"
                             style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)" }}>
@@ -487,6 +570,10 @@ export default function ClientsCRMPage() {
                         <p className="text-[11px] truncate mt-0.5" style={{ color: c.unreadCount > 0 ? "var(--text)" : "var(--text-muted)" }}>
                           {c.lastMessage.sender_type === "admin" ? "Admin: " : c.lastMessage.sender_type === "model" ? "Toi: " : ""}
                           {c.lastMessage.content}
+                        </p>
+                      ) : (c.verified_status || "pending") === "pending" ? (
+                        <p className="text-[10px] mt-0.5" style={{ color: "#F59E0B" }}>
+                          A verifier — {Math.max(0, 7 - Math.floor((Date.now() - new Date(c.created_at).getTime()) / 86400000))}j restants
                         </p>
                       ) : (
                         <p className="text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>Pas de messages</p>
@@ -674,6 +761,68 @@ export default function ClientsCRMPage() {
                           onBlur={async (e) => {
                             await fetch("/api/clients", { method: "PATCH", headers: authHeaders(), body: JSON.stringify({ id: detailClient.id, notes: e.target.value.trim() }) });
                           }} />
+                        {/* ── Verification section ── */}
+                        <div className="rounded-xl p-2.5" style={{
+                          background: (detailClient.verified_status || "pending") === "pending" ? "rgba(245,158,11,0.06)" : (detailClient.verified_status === "verified" ? "rgba(16,185,129,0.06)" : "rgba(220,38,38,0.04)"),
+                          border: `1px solid ${(detailClient.verified_status || "pending") === "pending" ? "rgba(245,158,11,0.2)" : (detailClient.verified_status === "verified" ? "rgba(16,185,129,0.2)" : "rgba(220,38,38,0.12)")}`,
+                        }}>
+                          <div className="flex items-center gap-1.5 mb-2">
+                            {(detailClient.verified_status || "pending") === "pending" && <ShieldAlert className="w-3 h-3" style={{ color: "#F59E0B" }} />}
+                            {detailClient.verified_status === "verified" && <ShieldCheck className="w-3 h-3" style={{ color: "#10B981" }} />}
+                            {detailClient.verified_status === "rejected" && <ShieldX className="w-3 h-3" style={{ color: "#DC2626" }} />}
+                            <span className="text-[10px] font-bold" style={{ color: VERIFY_BADGE[detailClient.verified_status || "pending"]?.color }}>
+                              {VERIFY_BADGE[detailClient.verified_status || "pending"]?.label}
+                            </span>
+                            {detailClient.verified_at && (
+                              <span className="text-[10px] ml-auto" style={{ color: "var(--text-muted)" }}>
+                                {new Date(detailClient.verified_at).toLocaleDateString("fr-FR")}
+                              </span>
+                            )}
+                          </div>
+                          {(detailClient.verified_status || "pending") === "pending" && (
+                            <>
+                              <p className="text-[10px] mb-2" style={{ color: "var(--text-muted)" }}>
+                                Verifie ce pseudo dans tes followers. Supprime auto dans {(() => {
+                                  const days = Math.max(0, 7 - Math.floor((Date.now() - new Date(detailClient.created_at).getTime()) / 86400000));
+                                  return `${days}j`;
+                                })()}
+                              </p>
+                              <div className="flex gap-1.5">
+                                <button onClick={() => verifyClient(detailClient.id, "verify")}
+                                  className="flex-1 py-2 rounded-lg text-[10px] font-bold cursor-pointer flex items-center justify-center gap-1"
+                                  style={{ background: "#10B981", color: "#fff", border: "none" }}>
+                                  <ShieldCheck className="w-3 h-3" />Verifier
+                                </button>
+                                <button onClick={() => verifyClient(detailClient.id, "reject")}
+                                  className="flex-1 py-2 rounded-lg text-[10px] font-bold cursor-pointer flex items-center justify-center gap-1"
+                                  style={{ background: "rgba(220,38,38,0.1)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.2)" }}>
+                                  <ShieldX className="w-3 h-3" />Faux pseudo
+                                </button>
+                              </div>
+                            </>
+                          )}
+                          {detailClient.verified_status === "verified" && (
+                            <p className="text-[10px]" style={{ color: "#10B981" }}>
+                              Pseudo verifie — contact permanent
+                            </p>
+                          )}
+                          {detailClient.verified_status === "rejected" && (
+                            <p className="text-[10px]" style={{ color: "#DC2626" }}>
+                              Faux pseudo — sera supprime au prochain nettoyage
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Lead source info */}
+                        {detailClient.lead_source && (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg" style={{ background: "var(--bg)" }}>
+                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Source:</span>
+                            <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>
+                              {detailClient.lead_source === "private_story" ? "Story privee" : detailClient.lead_source}
+                            </span>
+                          </div>
+                        )}
+
                         {/* Delete */}
                         <button onClick={async () => {
                           if (confirm(`Supprimer @${pseudoOf(detailClient)} ?`)) {

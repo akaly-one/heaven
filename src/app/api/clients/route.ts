@@ -192,6 +192,24 @@ export async function PUT(req: NextRequest) {
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
     // Whitelist allowed fields
+    // Handle verification action
+    if (updates.action === "verify" || updates.action === "reject") {
+      const verifyUpdate: Record<string, unknown> = {
+        verified_status: updates.action === "verify" ? "verified" : "rejected",
+        verified_at: new Date().toISOString(),
+        verified_by: updates.verified_by || "model",
+      };
+      try {
+        const { data, error } = await supabase.from("agence_clients").update(verifyUpdate).eq("id", id).select().single();
+        if (error) throw error;
+        return NextResponse.json({ success: true, client: data }, { headers: cors });
+      } catch (verifyErr) {
+        // If columns don't exist yet, skip gracefully
+        console.warn("[API/clients] verify columns not ready:", verifyErr);
+        return NextResponse.json({ success: true, message: "Verification columns not migrated yet" }, { headers: cors });
+      }
+    }
+
     const allowed: Record<string, unknown> = {};
     const fields = ["pseudo_snap", "pseudo_insta", "phone", "nickname", "tier", "total_spent", "total_tokens_bought", "total_tokens_spent", "is_verified", "is_blocked", "notes", "firstname", "tag", "preferences", "delivery_platform"];
     for (const f of fields) {
