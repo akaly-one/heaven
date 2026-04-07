@@ -28,6 +28,8 @@ interface ShopTabProps {
   displayPacks: PackConfig[];
   expandedPack: string | null;
   setExpandedPack: (v: string | null) => void;
+  focusPack?: string | null;
+  setFocusPack?: (v: string | null) => void;
   shopSection: "packs" | "credits";
   setShopSection: (v: "packs" | "credits") => void;
   setChatOpen: (v: boolean) => void;
@@ -58,7 +60,8 @@ async function createPendingPurchase(model: string, pseudo: string, item: string
 
 export function ShopTab({
   clientId, unlockedTier, isEditMode, activePacks, displayPacks,
-  expandedPack, setExpandedPack, shopSection, setShopSection,
+  expandedPack, setExpandedPack, focusPack, setFocusPack,
+  shopSection, setShopSection,
   setChatOpen,
   handleUpdatePack, handleDeletePack, handleAddPack, visitorHandle, model: modelSlug, authHeaders: getAuthHeaders,
   paypalHandle,
@@ -97,26 +100,36 @@ export function ShopTab({
         </button>
       </div>
 
-      {/* ──── PACKS SECTION — Scrollable tiles ──── */}
+      {/* ──── PACKS SECTION ──── */}
       {shopSection === "packs" && (
         <div>
           {(isEditMode ? displayPacks : activePacks).length === 0 ? (
             <EmptyState icon={ShoppingBag} text="No packs available" />
           ) : (
             <>
-              {/* Pack cards — tall vertical orientation */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                {(isEditMode ? displayPacks : activePacks).map((pack, i) => {
+              {/* "Voir tous les packs" button when focused on single pack */}
+              {focusPack && !isEditMode && (
+                <button onClick={() => { setFocusPack?.(null); setExpandedPack(null); }}
+                  className="flex items-center gap-1.5 mb-4 text-[11px] font-medium cursor-pointer transition-all hover:opacity-80"
+                  style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
+                  ← Voir tous les packs
+                </button>
+              )}
+
+              {/* Pack cards — show only focused pack or all */}
+              <div className={`grid gap-3 sm:gap-4 ${focusPack && !isEditMode ? "grid-cols-1 max-w-md mx-auto" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4"}`}>
+                {(isEditMode ? displayPacks : focusPack ? activePacks.filter(p => p.id === focusPack) : activePacks).map((pack, i) => {
                   const hex = TIER_HEX[pack.id] || pack.color;
                   const isSelected = expandedPack === pack.id;
                   const isCurrentTier = unlockedTier === pack.id;
+                  const isFocused = focusPack === pack.id;
                   return (
                     <button
                       key={pack.id}
                       onClick={() => setExpandedPack(isSelected ? null : pack.id)}
                       className="relative overflow-hidden rounded-2xl cursor-pointer group text-left"
                       style={{
-                        aspectRatio: "3/4",
+                        aspectRatio: isFocused ? "16/9" : "3/4",
                         background: `linear-gradient(160deg, ${hex}12, ${hex}04)`,
                         border: `${isSelected ? "2px" : "1px"} solid ${isSelected ? `${hex}50` : "var(--border2)"}`,
                         transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
@@ -137,12 +150,12 @@ export function ShopTab({
 
                       {/* Content */}
                       <div className="flex flex-col items-center justify-center h-full px-4 py-5 text-center">
-                        <span className="text-3xl sm:text-4xl mb-3">{TIER_META[pack.id]?.symbol}</span>
-                        <h3 className="text-base sm:text-lg font-bold uppercase tracking-wide mb-1" style={{ color: hex }}>{pack.name}</h3>
+                        <span className={`${isFocused ? "text-4xl" : "text-3xl sm:text-4xl"} mb-3`}>{TIER_META[pack.id]?.symbol}</span>
+                        <h3 className={`${isFocused ? "text-xl" : "text-base sm:text-lg"} font-bold uppercase tracking-wide mb-1`} style={{ color: hex }}>{pack.name}</h3>
                         {pack.badge && (
                           <span className="text-[9px] font-medium mb-2" style={{ color: "var(--text-muted)" }}>{pack.badge}</span>
                         )}
-                        <p className="text-2xl sm:text-3xl font-black tabular-nums" style={{ color: hex }}>{pack.price}€</p>
+                        <p className={`${isFocused ? "text-3xl" : "text-2xl sm:text-3xl"} font-black tabular-nums`} style={{ color: hex }}>{pack.price}€</p>
                         {!isCurrentTier && (
                           <span className="text-[10px] font-medium mt-2 uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
                             {isSelected ? "Details ci-dessous" : "Voir les details"}

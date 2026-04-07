@@ -172,6 +172,7 @@ export default function ModelPage() {
   const [purchasedItems, setPurchasedItems] = useState<Set<string>>(new Set());
   const [shopSection, setShopSection] = useState<"packs" | "credits">("packs");
   const [expandedPack, setExpandedPack] = useState<string | null>(null);
+  const [focusPack, setFocusPack] = useState<string | null>(null); // show only this pack in shop
   const [chatOpen, setChatOpen] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [selectedPack, setSelectedPack] = useState<PackConfig | null>(null);
@@ -1230,7 +1231,7 @@ export default function ModelPage() {
             <div className="flex items-center gap-0" role="tablist" style={{ borderBottom: "1px solid var(--border)" }}>
               {TABS.map(t => (
                 <button key={t.id} role="tab" aria-selected={tab === t.id} aria-label={t.label}
-                  onClick={() => setTab(t.id)}
+                  onClick={() => { setTab(t.id); setFocusPack(null); }}
                   className="relative px-5 sm:px-6 md:px-8 py-3.5 sm:py-4 text-xs sm:text-sm font-medium cursor-pointer transition-all"
                   style={{
                     color: tab === t.id ? "var(--accent)" : "var(--text-muted)",
@@ -1263,7 +1264,7 @@ export default function ModelPage() {
                   unlockedTier={unlockedTier}
                   isModelLoggedIn={isModelLoggedIn}
                   tierIncludes={tierIncludes}
-                  onPackClick={(id) => { setTab("shop"); setExpandedPack(id); }}
+                  onPackClick={(id) => { setFocusPack(id); setExpandedPack(id); setTab("shop"); }}
                   layout="horizontal"
                 />
               </div>
@@ -1279,7 +1280,7 @@ export default function ModelPage() {
                   unlockedTier={unlockedTier}
                   isModelLoggedIn={isModelLoggedIn}
                   tierIncludes={tierIncludes}
-                  onPackClick={(id) => { setTab("shop"); setExpandedPack(id); }}
+                  onPackClick={(id) => { setFocusPack(id); setExpandedPack(id); setTab("shop"); }}
                   layout="sidebar"
                 />
               </div>
@@ -1415,7 +1416,9 @@ export default function ModelPage() {
                           <div className="relative cursor-pointer mx-5 sm:mx-6 mb-4 rounded-xl overflow-hidden"
                             onClick={() => {
                               if (purchasedItems.has(post.id)) { setLightboxUrl(post.media_url); return; }
-                              setShowUnlock(true);
+                              setFocusPack(postTier !== "public" ? postTier : null);
+                              setExpandedPack(postTier !== "public" ? postTier : null);
+                              setTab("shop");
                             }}>
                             <div className="w-full h-[300px] sm:h-[400px]" style={{
                               background: `linear-gradient(135deg, ${tierHex}20, rgba(0,0,0,0.6))`,
@@ -1534,7 +1537,7 @@ export default function ModelPage() {
                   unlockedTier={unlockedTier}
                   isModelLoggedIn={isModelLoggedIn}
                   tierIncludes={tierIncludes}
-                  onPackClick={(id) => { setTab("shop"); setExpandedPack(id); }}
+                  onPackClick={(id) => { setFocusPack(id); setExpandedPack(id); setTab("shop"); }}
                   layout="sidebar"
                 />
               </div>
@@ -1560,7 +1563,7 @@ export default function ModelPage() {
                   unlockedTier={unlockedTier}
                   isModelLoggedIn={isModelLoggedIn}
                   tierIncludes={tierIncludes}
-                  onPackClick={(id) => { setTab("shop"); setExpandedPack(id); }}
+                  onPackClick={(id) => { setFocusPack(id); setExpandedPack(id); setTab("shop"); }}
                   layout="horizontal"
                 />
               )}
@@ -1624,7 +1627,9 @@ export default function ModelPage() {
                             ) : (
                               <div className="w-full h-full" onClick={() => {
                                 if (purchasedItems.has(post.id)) { setLightboxUrl(post.media_url); return; }
-                                setShowUnlock(true);
+                                setFocusPack(tier !== "public" ? tier : null);
+                                setExpandedPack(tier !== "public" ? tier : null);
+                                setTab("shop");
                               }}>
                                 {/* Blurred image behind lock */}
                                 {post.media_url && (
@@ -1680,6 +1685,8 @@ export default function ModelPage() {
               displayPacks={displayPacks}
               expandedPack={expandedPack}
               setExpandedPack={setExpandedPack}
+              focusPack={focusPack}
+              setFocusPack={setFocusPack}
               shopSection={shopSection}
               setShopSection={setShopSection}
               setChatOpen={setChatOpen}
