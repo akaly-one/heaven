@@ -1493,13 +1493,19 @@ export default function ModelPage() {
                               if (purchasedItems.has(post.id)) { setLightboxUrl(post.media_url); return; }
                               setGalleryTier(postTier !== "public" ? postTier : "feed");
                             }}>
-                            <div className="w-full h-[300px] sm:h-[400px]" style={{
-                              background: `linear-gradient(135deg, ${tierHex}20, rgba(0,0,0,0.6))`,
-                            }} />
+                            <div className="w-full h-[300px] sm:h-[400px] relative">
+                              {post.media_url && (
+                                <img src={post.media_url} alt="" className="absolute inset-0 w-full h-full object-cover"
+                                  style={{ filter: "blur(14px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" />
+                              )}
+                              <div className="absolute inset-0" style={{
+                                background: `linear-gradient(160deg, ${tierHex}20 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.6) 100%)`,
+                              }} />
+                            </div>
                             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                              <Lock className="w-6 h-6" style={{ color: tierHex, opacity: 0.8 }} />
-                              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: tierHex }}>
-                                {TIER_META[postTier]?.label || "Exclusive"}
+                              <Lock className="w-6 h-6" style={{ color: "#fff", opacity: 0.9 }} />
+                              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
+                                {TIER_META[postTier]?.symbol} {TIER_META[postTier]?.label || "Exclusive"}
                               </span>
                             </div>
                           </div>
