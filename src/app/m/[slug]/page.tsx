@@ -1029,133 +1029,134 @@ export default function ModelPage() {
       <div className="relative z-10">
 
         {/* ═══ HEADER BAR — minimal sticky ═══ */}
-        <div className="sticky top-0 left-0 right-0 z-40 px-4 md:px-6 py-2 md:py-2.5 flex items-center gap-3"
+        <div className="sticky top-0 left-0 right-0 z-40 px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-2.5"
           style={{ background: "color-mix(in srgb, var(--bg) 90%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderBottom: "1px solid var(--border)" }}>
 
-          {/* Left — model name */}
-          <div className="flex items-center gap-2.5 shrink-0 min-w-0">
-            {isModelLoggedIn && (
-              <a href="/agence" className="text-xs font-bold no-underline shrink-0" style={{ color: "var(--accent)" }}>&#8592;</a>
-            )}
-            <span className="text-xs font-semibold tracking-wide uppercase truncate" style={{ color: "var(--text)", letterSpacing: "0.1em" }}>
-              {model.display_name}
-            </span>
-            {displayModel?.online && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }} />}
-          </div>
+          {/* Row 1 — model name + core actions */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Left — model name */}
+            <div className="flex items-center gap-2 min-w-0">
+              {isModelLoggedIn && (
+                <a href="/agence" className="text-xs font-bold no-underline shrink-0" style={{ color: "var(--accent)" }}>&#8592;</a>
+              )}
+              <span className="text-[11px] sm:text-xs font-semibold tracking-wide uppercase truncate" style={{ color: "var(--text)", letterSpacing: "0.1em" }}>
+                {model.display_name}
+              </span>
+              {displayModel?.online && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }} />}
+            </div>
 
-          {/* Center spacer */}
-          <div className="flex-1" />
+            <div className="flex-1" />
 
-          {/* Right — badge + orders + code input + actions */}
-          <div className="flex items-center gap-2 shrink-0">
-            {visitorRegistered && (
-              <>
-                <div className="flex items-center gap-1 shrink min-w-0">
-                  <span className="text-[12px] font-semibold truncate max-w-[80px] sm:max-w-[140px]" style={{ color: "var(--text)" }}>@{visitorHandle}</span>
-                  {/* Verified dot — tap for tooltip */}
-                  {!isModelLoggedIn && (
-                    <div className="relative group shrink-0">
-                      <div
-                        className="w-3.5 h-3.5 rounded-full flex items-center justify-center cursor-pointer"
-                        style={{ background: visitorVerified ? "#10B981" : "#EF4444" }}
-                      >
-                        {visitorVerified
-                          ? <Check className="w-2 h-2 text-white" />
-                          : <Lock className="w-2 h-2 text-white" />
-                        }
+            {/* Right — visitor actions */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {visitorRegistered && (
+                <>
+                  {/* Handle + verified dot */}
+                  <div className="flex items-center gap-1 min-w-0">
+                    <span className="text-[10px] sm:text-[12px] font-semibold truncate max-w-[60px] sm:max-w-[140px]" style={{ color: "var(--text)" }}>@{visitorHandle}</span>
+                    {!isModelLoggedIn && (
+                      <div className="relative group shrink-0">
+                        <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full flex items-center justify-center cursor-pointer"
+                          style={{ background: visitorVerified ? "#10B981" : "#EF4444" }}>
+                          {visitorVerified
+                            ? <Check className="w-1.5 h-1.5 sm:w-2 sm:h-2 text-white" />
+                            : <Lock className="w-1.5 h-1.5 sm:w-2 sm:h-2 text-white" />
+                          }
+                        </div>
+                        <div className="absolute top-full right-0 sm:left-1/2 sm:-translate-x-1/2 mt-2 px-2.5 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto transition-opacity duration-200 z-50 whitespace-nowrap"
+                          style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }}>
+                          <span className="text-[10px] font-semibold" style={{ color: visitorVerified ? "#10B981" : "#EF4444" }}>
+                            {visitorVerified ? "Compte vérifié" : "Non vérifié"}
+                          </span>
+                        </div>
                       </div>
-                      {/* Tooltip bubble on hover/tap */}
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto transition-opacity duration-200 z-50 whitespace-nowrap"
-                        style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }}>
-                        <span className="text-[10px] font-semibold" style={{ color: visitorVerified ? "#10B981" : "#EF4444" }}>
-                          {visitorVerified ? "Compte vérifié" : "Non vérifié"}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <ClientBadge tier={unlockedTier || null} />
-                {/* Order history button */}
-                <button onClick={() => { setOrderHistoryOpen(!orderHistoryOpen); clearNotifications(); }}
-                  className="relative w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
-                  style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}>
-                  <ShoppingBag className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
-                  {newNotifications > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full text-[9px] font-bold flex items-center justify-center px-0.5"
-                      style={{ background: "#10B981", color: "#fff", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }}>
-                      {newNotifications}
-                    </span>
-                  )}
-                </button>
-                {unlockedTier ? (
-                  <CountdownBadge tier={unlockedTier} expiresAt={activeCode?.expiresAt || ""} />
-                ) : (
-                  <>
-                  {/* Desktop: inline code input */}
-                  <div className="relative group hidden sm:block">
-                    <form onSubmit={async (e) => {
-                      e.preventDefault();
-                      const input = (e.target as HTMLFormElement).querySelector("input") as HTMLInputElement;
-                      const code = input?.value?.trim();
-                      if (!code) return;
-                      try {
-                        const res = await fetch("/api/codes", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ action: "validate", code, model: modelId }),
-                        });
-                        const data = await res.json();
-                        if (data.code?.tier) {
-                          setUnlockedTier(data.code.tier);
-                          setActiveCode(data.code);
-                          const ad2 = JSON.stringify({ tier: data.code.tier, expiresAt: data.code.expiresAt, code: data.code.code });
-                          sessionStorage.setItem(`heaven_access_${slug}`, ad2);
-                          localStorage.setItem(`heaven_access_${slug}`, ad2);
-                          const fp = getDeviceFingerprint();
-                          fetch("/api/codes/security", {
+                    )}
+                  </div>
+                  {/* Tier badge — hidden on very small screens */}
+                  <span className="hidden sm:inline"><ClientBadge tier={unlockedTier || null} /></span>
+                  {/* Order history */}
+                  <button onClick={() => { setOrderHistoryOpen(!orderHistoryOpen); clearNotifications(); }}
+                    className="relative w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
+                    style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}>
+                    <ShoppingBag className="w-3 h-3 sm:w-3.5 sm:h-3.5" style={{ color: "var(--text-muted)" }} />
+                    {newNotifications > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] sm:min-w-[16px] sm:h-[16px] rounded-full text-[8px] sm:text-[9px] font-bold flex items-center justify-center"
+                        style={{ background: "#10B981", color: "#fff", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }}>
+                        {newNotifications}
+                      </span>
+                    )}
+                  </button>
+                  {/* Code / Countdown */}
+                  {unlockedTier ? (
+                    <CountdownBadge tier={unlockedTier} expiresAt={activeCode?.expiresAt || ""} />
+                  ) : (
+                    <>
+                    {/* Desktop: inline code input */}
+                    <div className="relative group hidden sm:block">
+                      <form onSubmit={async (e) => {
+                        e.preventDefault();
+                        const input = (e.target as HTMLFormElement).querySelector("input") as HTMLInputElement;
+                        const code = input?.value?.trim();
+                        if (!code) return;
+                        try {
+                          const res = await fetch("/api/codes", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ code_id: data.code.id, fingerprint: fp, user_agent: navigator.userAgent }),
-                          }).then(r2 => r2.json()).then(sec => {
-                            if (!sec.allowed) {
-                              setUnlockedTier(null);
-                              setActiveCode(null);
-                              sessionStorage.removeItem(`heaven_access_${slug}`);
-                              localStorage.removeItem(`heaven_access_${slug}`);
-                              alert(sec.message || "Code bloqué");
-                            }
-                          }).catch(() => {});
-                        } else {
-                          input.style.borderColor = "#EF4444";
-                          input.placeholder = "Code invalide";
-                          input.value = "";
-                          setTimeout(() => { input.placeholder = "CODE"; input.style.borderColor = ""; }, 2000);
-                        }
-                      } catch { input.placeholder = "Erreur"; input.value = ""; }
-                    }} className="flex items-center gap-1">
-                      <input type="text" placeholder="CODE"
-                        className="w-[90px] px-2 py-1 rounded-lg text-[10px] font-mono uppercase tracking-wider outline-none text-center"
-                        style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
-                      />
-                      <button type="submit"
-                        className="w-6 h-6 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
-                        style={{ background: "var(--accent)", border: "none" }}>
-                        <Key className="w-3 h-3 text-white" />
-                      </button>
-                    </form>
-                  </div>
-                  {/* Mobile: key icon only — opens bottom sheet */}
-                  <button
-                    onClick={() => setCodeSheetOpen(true)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0 sm:hidden"
-                    style={{ background: "var(--accent)", border: "none" }}>
-                    <Key className="w-3.5 h-3.5 text-white" />
-                  </button>
-                  </>
-                )}
-              </>
-            )}
-            <ThemeToggle size="sm" />
+                            body: JSON.stringify({ action: "validate", code, model: modelId }),
+                          });
+                          const data = await res.json();
+                          if (data.code?.tier) {
+                            setUnlockedTier(data.code.tier);
+                            setActiveCode(data.code);
+                            const ad2 = JSON.stringify({ tier: data.code.tier, expiresAt: data.code.expiresAt, code: data.code.code });
+                            sessionStorage.setItem(`heaven_access_${slug}`, ad2);
+                            localStorage.setItem(`heaven_access_${slug}`, ad2);
+                            const fp = getDeviceFingerprint();
+                            fetch("/api/codes/security", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ code_id: data.code.id, fingerprint: fp, user_agent: navigator.userAgent }),
+                            }).then(r2 => r2.json()).then(sec => {
+                              if (!sec.allowed) {
+                                setUnlockedTier(null);
+                                setActiveCode(null);
+                                sessionStorage.removeItem(`heaven_access_${slug}`);
+                                localStorage.removeItem(`heaven_access_${slug}`);
+                                alert(sec.message || "Code bloqué");
+                              }
+                            }).catch(() => {});
+                          } else {
+                            input.style.borderColor = "#EF4444";
+                            input.placeholder = "Code invalide";
+                            input.value = "";
+                            setTimeout(() => { input.placeholder = "CODE"; input.style.borderColor = ""; }, 2000);
+                          }
+                        } catch { input.placeholder = "Erreur"; input.value = ""; }
+                      }} className="flex items-center gap-1">
+                        <input type="text" placeholder="CODE"
+                          className="w-[90px] px-2 py-1 rounded-lg text-[10px] font-mono uppercase tracking-wider outline-none text-center"
+                          style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
+                        />
+                        <button type="submit"
+                          className="w-6 h-6 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
+                          style={{ background: "var(--accent)", border: "none" }}>
+                          <Key className="w-3 h-3 text-white" />
+                        </button>
+                      </form>
+                    </div>
+                    {/* Mobile: key icon only — opens bottom sheet */}
+                    <button
+                      onClick={() => setCodeSheetOpen(true)}
+                      className="w-6 h-6 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0 sm:hidden"
+                      style={{ background: "var(--accent)", border: "none" }}>
+                      <Key className="w-3 h-3 text-white" />
+                    </button>
+                    </>
+                  )}
+                </>
+              )}
+              <ThemeToggle size="sm" />
+            </div>
           </div>
         </div>
 
@@ -2644,19 +2645,24 @@ export default function ModelPage() {
               {/* Pack tiers — all packs, not sliced */}
               {activePacks.map(p => {
                 const hex = TIER_HEX[p.id] || p.color;
+                // Dark tiers (like VIP Black #1C1C1C) need lighter colors for visibility
+                const isDarkHex = hex && parseInt(hex.replace("#", "").slice(0, 2), 16) < 80;
+                const displayHex = isDarkHex ? "#9CA3AF" : hex; // lighter gray for dark tiers when inactive
+                const activeBg = isDarkHex ? "#374151" : hex;   // visible dark gray bg when active
                 const isActive = galleryTier === p.id;
                 const isLocked = !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, p.id));
                 return (
                   <button key={p.id} onClick={() => { setGalleryTier(p.id); setFocusPack(null); }}
                     className="relative flex flex-col items-center gap-1 px-3.5 py-1.5 rounded-xl cursor-pointer transition-all shrink-0"
                     style={{
-                      color: isActive ? "#fff" : hex,
-                      background: isActive ? hex : "transparent",
+                      color: isActive ? "#fff" : displayHex,
+                      background: isActive ? activeBg : "transparent",
+                      border: isActive ? `1px solid ${isDarkHex ? "#6B7280" : hex}` : "1px solid transparent",
                       opacity: isLocked && !isActive ? 0.5 : 1,
                     }}>
                     <span className="text-lg relative leading-none">
                       {TIER_META[p.id]?.symbol}
-                      {isLocked && <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-2" style={{ color: isActive ? "#fff" : hex, opacity: 0.7 }} />}
+                      {isLocked && <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-2" style={{ color: isActive ? "#fff" : displayHex, opacity: 0.7 }} />}
                     </span>
                     <span className="text-[10px] font-bold uppercase" style={{ letterSpacing: "0.04em" }}>{TIER_META[p.id]?.label}</span>
                   </button>
