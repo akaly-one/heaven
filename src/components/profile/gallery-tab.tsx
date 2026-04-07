@@ -373,8 +373,71 @@ export function GalleryTab({
   // ══════════════════════════════════════
   //  VISITOR MODE — Standard Gallery View
   // ══════════════════════════════════════
+
+  // Build pack preview data: last image per tier
+  const packPreviews = (["vip", "gold", "diamond", "platinum"] as const).map(tier => {
+    const tierItems = uploads.filter(u => u.visibility !== "promo" && u.tier === tier && u.dataUrl);
+    const lastImage = tierItems[0] || null; // uploads already sorted newest first
+    const count = tierItems.length;
+    const rule = PACK_RULES[tier];
+    const hasAccess = isModelLoggedIn || (unlockedTier ? tierIncludes(unlockedTier, tier) : false);
+    return { tier, lastImage, count, rule, hasAccess };
+  }).filter(p => p.count > 0);
+
   return (
     <div className="fade-up">
+
+      {/* ── Pack preview tiles ── */}
+      {packPreviews.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
+          {packPreviews.map(({ tier, lastImage, count, rule, hasAccess }) => (
+            <button key={tier}
+              onClick={() => { setGalleryTier(tier); if (!hasAccess) setShowUnlock(true); }}
+              className="relative rounded-xl overflow-hidden cursor-pointer group transition-all hover:scale-[1.02] active:scale-[0.98]"
+              style={{ aspectRatio: "4/5" }}>
+              {/* Background image — blurred if no access */}
+              {lastImage && (
+                <img src={lastImage.dataUrl} alt="" draggable={false}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{
+                    filter: hasAccess ? "none" : "blur(18px) brightness(0.5)",
+                    transform: hasAccess ? "none" : "scale(1.15)",
+                  }} />
+              )}
+              {/* Dark overlay */}
+              <div className="absolute inset-0" style={{
+                background: hasAccess
+                  ? `linear-gradient(to top, ${rule.color}CC 0%, transparent 60%)`
+                  : `linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.3) 100%)`,
+              }} />
+              {/* Lock icon for no access */}
+              {!hasAccess && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                    style={{ background: `${rule.color}30`, backdropFilter: "blur(4px)" }}>
+                    <Lock className="w-4.5 h-4.5" style={{ color: rule.color }} />
+                  </div>
+                </div>
+              )}
+              {/* Bottom info */}
+              <div className="absolute bottom-0 left-0 right-0 p-3">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <div className="w-4 h-4 rounded flex items-center justify-center" style={{ color: hasAccess ? "#fff" : rule.color }}>
+                    {rule.icon}
+                  </div>
+                  <span className="text-[11px] font-bold" style={{ color: hasAccess ? "#fff" : rule.color }}>
+                    {rule.label}
+                  </span>
+                </div>
+                <span className="text-[10px] block" style={{ color: "rgba(255,255,255,0.6)" }}>
+                  {count} contenu{count > 1 ? "s" : ""} {hasAccess ? "· Débloqué" : `· ${rule.desc.split("—")[0].trim()}`}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Tier filter — underline style */}
       <div className="flex mb-6" style={{ borderBottom: "1px solid var(--border)" }}>
         <button onClick={() => setGalleryTier("all")}
