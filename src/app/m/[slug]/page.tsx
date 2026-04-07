@@ -2264,12 +2264,12 @@ export default function ModelPage() {
                     if (!isFocused && focusPack) {
                       return (
                         <button key={pack.id} onClick={() => setFocusPack(pack.id)}
-                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all hover:scale-[1.01]"
-                          style={{ background: `${hex}06`, border: `1px solid ${hex}15` }}>
-                          <span className="text-base">{TIER_META[pack.id]?.symbol}</span>
-                          <span className="text-xs font-semibold flex-1 text-left" style={{ color: hex }}>{pack.name}</span>
-                          <span className="text-xs font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
-                          <ChevronRight className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                          className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl cursor-pointer transition-all hover:scale-[1.01]"
+                          style={{ background: "var(--bg3)", border: `1.5px solid color-mix(in srgb, ${hex} 30%, transparent)` }}>
+                          <span className="text-lg">{TIER_META[pack.id]?.symbol}</span>
+                          <span className="text-sm font-bold flex-1 text-left" style={{ color: "var(--text)" }}>{pack.name}</span>
+                          <span className="text-sm font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
+                          <ChevronRight className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
                         </button>
                       );
                     }
@@ -2277,48 +2277,54 @@ export default function ModelPage() {
                     // Expanded: full details
                     return (
                       <div key={pack.id} className="w-full rounded-xl overflow-hidden transition-all"
-                        style={{ background: `${hex}08`, border: `${isFocused ? "2px" : "1px"} solid ${isFocused ? `${hex}40` : `${hex}20`}`, boxShadow: isFocused ? `0 4px 20px ${hex}15` : "none" }}>
+                        style={{ background: "var(--bg3)", border: `2px solid color-mix(in srgb, ${hex} ${isFocused ? "50%" : "25%"}, transparent)`, boxShadow: isFocused ? `0 4px 24px color-mix(in srgb, ${hex} 20%, transparent)` : "none" }}>
                         <div className="p-4">
-                          <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2.5">
-                              <span className="text-xl">{TIER_META[pack.id]?.symbol}</span>
+                              <span className="text-2xl">{TIER_META[pack.id]?.symbol}</span>
                               <div>
-                                <span className="text-sm font-bold block" style={{ color: hex }}>{pack.name}</span>
-                                {pack.badge && <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{pack.badge}</span>}
+                                <span className="text-base font-bold block" style={{ color: "var(--text)" }}>{pack.name}</span>
+                                {pack.badge && <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>{pack.badge}</span>}
                               </div>
                             </div>
-                            <span className="text-xl font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
+                            <span className="text-2xl font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
                           </div>
-                          <div className="mb-3 space-y-1">
+                          <div className="mb-4 space-y-1.5">
                             {pack.features.map((f: string, j: number) => (
-                              <p key={j} className="text-[11px] flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
-                                <Check className="w-3 h-3 shrink-0" style={{ color: hex }} /> {f}
+                              <p key={j} className="text-xs flex items-center gap-2" style={{ color: "var(--text-muted)" }}>
+                                <Check className="w-3.5 h-3.5 shrink-0" style={{ color: hex }} /> {f}
                               </p>
                             ))}
                           </div>
                           {/* Payment buttons */}
-                          <div className="space-y-1.5">
+                          <div className="space-y-2">
                             {pack.stripe_link && (
                               <a href={pack.stripe_link} target="_blank" rel="noopener noreferrer"
-                                className="block w-full py-2.5 rounded-lg text-xs font-bold text-center no-underline transition-all hover:scale-[1.01]"
-                                style={{ background: hex, color: "#fff", boxShadow: `0 2px 12px ${hex}30` }}>
-                                Payer {pack.price}€
+                                className="block w-full py-3 rounded-xl text-sm font-bold text-center no-underline transition-all hover:scale-[1.02] hover:brightness-110"
+                                style={{ background: hex, color: "#fff", boxShadow: `0 4px 16px color-mix(in srgb, ${hex} 35%, transparent)` }}>
+                                💳 Payer {pack.price}€
                               </a>
                             )}
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {pack.wise_url && (
-                                <a href={pack.wise_url} target="_blank" rel="noopener noreferrer"
-                                  className="py-2 rounded-lg text-[10px] font-bold text-center no-underline"
-                                  style={{ background: "rgba(159,232,112,0.1)", color: "#5BB318", border: "1px solid rgba(159,232,112,0.2)" }}>Wise</a>
-                              )}
+                            <div className={`grid gap-2 ${pack.wise_url && pack.revolut_url ? "grid-cols-3" : pack.wise_url || pack.revolut_url ? "grid-cols-2" : "grid-cols-1"}`}>
                               {pack.revolut_url && (
                                 <a href={pack.revolut_url} target="_blank" rel="noopener noreferrer"
-                                  className="py-2 rounded-lg text-[10px] font-bold text-center no-underline"
-                                  style={{ background: "rgba(0,111,238,0.08)", color: "#006FEE", border: "1px solid rgba(0,111,238,0.2)" }}>Revolut</a>
+                                  className="py-2.5 rounded-xl text-xs font-bold text-center no-underline transition-all hover:scale-[1.02]"
+                                  style={{ background: "#191C32", color: "#8B9DFE", border: "1.5px solid #2D3258" }}>
+                                  Revolut
+                                </a>
                               )}
                               <a href={paypalUrl2} target="_blank" rel="noopener noreferrer"
-                                className={`py-2 rounded-lg text-[10px] font-bold text-center no-underline ${!pack.wise_url && !pack.revolut_url ? "col-span-2" : ""}`}
-                                style={{ background: "rgba(0,48,135,0.08)", color: "#003087", border: "1px solid rgba(0,48,135,0.15)" }}>PayPal</a>
+                                className={`py-2.5 rounded-xl text-xs font-bold text-center no-underline transition-all hover:scale-[1.02] ${!pack.wise_url && !pack.revolut_url ? "col-span-1" : ""}`}
+                                style={{ background: "#1A1D33", color: "#69A3F7", border: "1.5px solid #253056" }}>
+                                PayPal
+                              </a>
+                              {pack.wise_url && (
+                                <a href={pack.wise_url} target="_blank" rel="noopener noreferrer"
+                                  className="py-2.5 rounded-xl text-xs font-bold text-center no-underline transition-all hover:scale-[1.02]"
+                                  style={{ background: "#1A2E1A", color: "#76D672", border: "1.5px solid #2A4D2A" }}>
+                                  Wise
+                                </a>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -2344,21 +2350,21 @@ export default function ModelPage() {
                 </div>
 
                 {/* Pack hero */}
-                <div className="p-6 text-center" style={{ background: `${hex}06` }}>
+                <div className="p-6 text-center" style={{ background: `color-mix(in srgb, ${hex} 8%, var(--bg2))` }}>
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-3"
-                    style={{ background: `${hex}12`, border: `2px solid ${hex}30` }}>
+                    style={{ background: `color-mix(in srgb, ${hex} 15%, transparent)`, border: `2px solid color-mix(in srgb, ${hex} 35%, transparent)` }}>
                     {TIER_META[selectedPack.id]?.symbol}
                   </div>
-                  <h3 className="text-lg font-bold mb-0.5" style={{ color: hex }}>{selectedPack.name}</h3>
+                  <h3 className="text-lg font-bold mb-0.5" style={{ color: "var(--text)" }}>{selectedPack.name}</h3>
                   <p className="text-2xl font-black tabular-nums" style={{ color: hex }}>{selectedPack.price}€</p>
                 </div>
 
                 <div className="px-6 pb-6">
                   {/* Features */}
-                  <ul className="space-y-2 mb-4 pt-4">
+                  <ul className="space-y-2.5 mb-5 pt-4">
                     {selectedPack.features.map((f, j) => (
-                      <li key={j} className="flex items-center gap-2.5 text-xs" style={{ color: "var(--text-secondary)" }}>
-                        <Check className="w-3.5 h-3.5 shrink-0" style={{ color: hex }} />
+                      <li key={j} className="flex items-center gap-2.5 text-sm" style={{ color: "var(--text-muted)" }}>
+                        <Check className="w-4 h-4 shrink-0" style={{ color: hex }} />
                         {f}
                       </li>
                     ))}
