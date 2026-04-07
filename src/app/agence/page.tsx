@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Eye, Pencil, Image as ImageIcon, Heart, MessageCircle, Trash2, X, Newspaper } from "lucide-react";
+import { Eye, Pencil, Image as ImageIcon, Heart, MessageCircle, Trash2, X, Newspaper, Camera } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
@@ -70,6 +70,7 @@ export default function AgenceDashboard() {
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostTier, setNewPostTier] = useState("public");
   const [newPostImage, setNewPostImage] = useState<string | null>(null);
+  const [newPostType, setNewPostType] = useState<"feed" | "story">("feed");
   const [posting, setPosting] = useState(false);
 
   const [statusUpdating, setStatusUpdating] = useState(false);
@@ -202,6 +203,7 @@ export default function AgenceDashboard() {
           tier_required: newPostTier,
           media_url: mediaUrl,
           media_type: mediaUrl ? "image" : null,
+          post_type: newPostType,
         }),
       });
       if (res.ok) {
@@ -210,10 +212,11 @@ export default function AgenceDashboard() {
         setNewPostContent("");
         setNewPostTier("public");
         setNewPostImage(null);
+        setNewPostType("feed");
       }
     } catch (err) { console.error("[Feed] create:", err); }
     finally { setPosting(false); }
-  }, [newPostContent, newPostTier, newPostImage, posting, modelSlug, authHeaders]);
+  }, [newPostContent, newPostTier, newPostImage, newPostType, posting, modelSlug, authHeaders]);
 
   const handleDeletePost = useCallback(async (postId: string) => {
     try {
@@ -402,7 +405,7 @@ export default function AgenceDashboard() {
             {feedTab === "feed" && (
               <div className="max-w-3xl space-y-4 min-w-0">
                 {/* Composer */}
-                <div className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                <div className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--surface)", border: newPostType === "story" ? "1px solid var(--accent)" : "1px solid var(--border)", boxShadow: newPostType === "story" ? "0 0 0 1px rgba(230,51,41,0.15)" : "none" }}>
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
                       style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "#fff" }}>
@@ -429,6 +432,25 @@ export default function AgenceDashboard() {
                         </div>
                       )}
                       <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                        {/* Post type toggle: Feed / Story */}
+                        <div className="flex items-center rounded-lg overflow-hidden shrink-0" style={{ border: "1px solid var(--border)" }}>
+                          {([
+                            { id: "feed" as const, label: "Feed", Icon: Newspaper },
+                            { id: "story" as const, label: "Story", Icon: Camera },
+                          ]).map(opt => (
+                            <button key={opt.id} onClick={() => setNewPostType(opt.id)}
+                              className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium cursor-pointer transition-colors"
+                              style={{
+                                background: newPostType === opt.id ? "var(--accent)" : "transparent",
+                                color: newPostType === opt.id ? "#fff" : "var(--text-muted)",
+                                border: "none",
+                              }}>
+                              <opt.Icon className="w-3 h-3" />
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="w-px h-4 shrink-0" style={{ background: "var(--border)" }} />
                         <label className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium cursor-pointer shrink-0"
                           style={{ background: "rgba(0,0,0,0.04)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
                           <ImageIcon className="w-3.5 h-3.5" /> Photo

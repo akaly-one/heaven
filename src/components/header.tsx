@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import { MessageCircle, Users, Link2, ExternalLink, Globe, Instagram, X, KeyRound, Clock, Key, ArrowRight, CheckCircle, XCircle, ShieldAlert, ShoppingBag, Check, Ban } from "lucide-react";
+import { MessageCircle, Users, Link2, ExternalLink, Globe, Instagram, X, KeyRound, Clock, Key, ArrowRight, CheckCircle, XCircle, ShieldAlert, ShoppingBag, Check, Ban, ImagePlus } from "lucide-react";
+import { StoryGenerator } from "@/components/profile/story-generator";
 import { useModel } from "@/lib/model-context";
 
 // ── Page titles ──
@@ -55,6 +56,7 @@ export function Header() {
   const [clients, setClients] = useState<ClientItem[]>([]);
   const [codes, setCodes] = useState<CodeItem[]>([]);
 
+  const [showStoryGen, setShowStoryGen] = useState(false);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [pendingOrders, setPendingOrders] = useState<{ id: string; pseudo: string; content: string; created_at: string }[]>([]);
   const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
@@ -120,15 +122,20 @@ export function Header() {
       // Auto-generate access code
       let generatedCode: string | null = null;
       try {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let r = ""; for (let i = 0; i < 4; i++) r += chars[Math.floor(Math.random() * chars.length)];
+        const codeStr = `${modelSlug.slice(0, 3).toUpperCase()}-${new Date().getFullYear()}-${r}`;
         const codeRes = await fetch("/api/codes", {
           method: "POST",
           headers: authHeaders(),
           body: JSON.stringify({
-            action: "create",
             model: modelSlug,
+            code: codeStr,
+            client: pseudo.toLowerCase(),
             tier,
-            duration_hours: 720,
-            client_pseudo: pseudo,
+            type: "paid",
+            duration: 720,
+            platform: "snapchat",
           }),
         });
         const codeData = await codeRes.json();
@@ -146,7 +153,7 @@ export function Header() {
       if (generatedCode && clientId) {
         await fetch("/api/messages", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders(),
           body: JSON.stringify({
             model: modelSlug,
             client_id: clientId,
@@ -279,6 +286,16 @@ export function Header() {
         <KeyRound className="w-3.5 h-3.5" />
         <span className="hidden sm:inline">Générer</span>
       </button>
+
+      {/* Story Generator button — model/root only */}
+      {auth?.role && (auth.role === "model" || auth.role === "root") && (
+        <button onClick={() => setShowStoryGen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold cursor-pointer transition-all hover:scale-105 active:scale-95 shrink-0 mr-1"
+          style={{ background: "rgba(168,85,247,0.12)", color: "#A855F7", border: "1px solid rgba(168,85,247,0.2)" }}>
+          <ImagePlus className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Story</span>
+        </button>
+      )}
 
       {/* Right — 3 buttons with dropdowns */}
       <div className="flex items-center gap-1" ref={dropdownRef}>
@@ -569,6 +586,15 @@ export function Header() {
         </div>
 
       </div>
+
+      {/* Story Generator Modal */}
+      {showStoryGen && (
+        <StoryGenerator
+          modelName={modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase() || "HEAVEN"}
+          accentColor="#E63329"
+          onClose={() => setShowStoryGen(false)}
+        />
+      )}
     </header>
   );
 }
