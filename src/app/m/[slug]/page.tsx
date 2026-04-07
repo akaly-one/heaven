@@ -1125,7 +1125,9 @@ export default function ModelPage() {
 
           {/* ── FEED — Magazine editorial ── */}
           {tab === "feed" && (
-            <div className="space-y-5 sm:space-y-6 fade-up max-w-2xl mx-auto">
+            <div className={`fade-up ${!hasPurchased && !isModelLoggedIn && activePacks.length > 0 ? "flex gap-6 max-w-4xl mx-auto" : "max-w-2xl mx-auto"}`}>
+            {/* Feed column */}
+            <div className="space-y-5 sm:space-y-6 flex-1 min-w-0">
               {/* Visitor post composer */}
               {!isModelLoggedIn && (
                 <div className="rounded-2xl p-5 sm:p-6" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
@@ -1377,36 +1379,39 @@ export default function ModelPage() {
                     </div>
                   );
                 })}
-                {/* ── Inline shop promo tiles (disappear once purchased) ── */}
-                {!hasPurchased && !isModelLoggedIn && activePacks.length > 0 && (
-                  <div className="rounded-2xl overflow-hidden" style={{ background: "linear-gradient(135deg, var(--surface), rgba(230,51,41,0.03))", border: "1px solid var(--border)", animation: "slideUp 0.4s ease-out 0.1s both" }}>
-                    <div className="px-5 sm:px-6 py-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <ShoppingBag className="w-4 h-4" style={{ color: "var(--accent)" }} />
-                        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--accent)" }}>Contenu exclusif</span>
-                      </div>
-                      <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-                        Debloque du contenu premium avec un pack
-                      </p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {activePacks.slice(0, 4).map(pack => (
-                          <button key={pack.id} onClick={() => { setTab("shop"); setExpandedPack(pack.id); }}
-                            className="rounded-xl p-3 text-left cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                            style={{ background: `${pack.color || "var(--accent)"}12`, border: `1px solid ${pack.color || "var(--accent)"}25` }}>
-                            <span className="text-[11px] font-bold block truncate" style={{ color: pack.color || "var(--accent)" }}>
-                              {pack.name}
-                            </span>
-                            <span className="text-[10px] font-bold mt-1 block" style={{ color: "var(--text-muted)" }}>
-                              {pack.price}€
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
                 </>);
               })()}
+            </div>
+
+            {/* ── Shop sidebar (côte à côte, disappear once purchased) ── */}
+            {!hasPurchased && !isModelLoggedIn && activePacks.length > 0 && (
+              <div className="hidden md:block w-[220px] shrink-0 sticky top-24 self-start space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <ShoppingBag className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
+                  <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--accent)" }}>Packs</span>
+                </div>
+                {activePacks.map(pack => (
+                  <button key={pack.id} onClick={() => { setTab("shop"); setExpandedPack(pack.id); }}
+                    className="w-full rounded-xl p-3.5 text-left cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    style={{ background: `${pack.color || "var(--accent)"}10`, border: `1px solid ${pack.color || "var(--accent)"}20` }}>
+                    <span className="text-xs font-bold block truncate" style={{ color: pack.color || "var(--accent)" }}>
+                      {pack.name}
+                    </span>
+                    {pack.features?.[0] && (
+                      <span className="text-[10px] block mt-1 truncate" style={{ color: "var(--text-muted)" }}>
+                        {pack.features[0]}
+                      </span>
+                    )}
+                    <span className="text-[11px] font-bold mt-2 block" style={{ color: "var(--text)" }}>
+                      {pack.price}€
+                    </span>
+                  </button>
+                ))}
+                <p className="text-[10px] text-center pt-1" style={{ color: "var(--text-muted)", opacity: 0.6 }}>
+                  Contenu exclusif
+                </p>
+              </div>
+            )}
             </div>
           )}
 
@@ -1416,8 +1421,10 @@ export default function ModelPage() {
             const imagePosts = contentUnlocked
               ? posts.filter(p => p.media_url)
               : posts.filter(p => p.media_url && (!p.tier_required || p.tier_required === "public"));
+            const showSidebar = !hasPurchased && !isModelLoggedIn && activePacks.length > 0;
             return (
-              <div className="fade-up">
+              <div className={`fade-up ${showSidebar ? "flex gap-6" : ""}`}>
+              <div className="flex-1 min-w-0">
                 {/* Verification notice */}
                 {!contentUnlocked && visitorRegistered && (
                   <div className="rounded-xl px-4 py-3 mb-4 flex items-center gap-2" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
@@ -1519,26 +1526,35 @@ export default function ModelPage() {
                           </div>
                         );
                       })}
-                    {/* ── Inline pack tiles in gallery (disappear after purchase) ── */}
-                    {!hasPurchased && !isModelLoggedIn && activePacks.length > 0 && activePacks.slice(0, 2).map(pack => (
-                      <div key={`promo-${pack.id}`} className="relative aspect-[3/4] overflow-hidden rounded-xl cursor-pointer group"
-                        onClick={() => { setTab("shop"); setExpandedPack(pack.id); }}
-                        style={{ background: `linear-gradient(160deg, ${pack.color || "var(--accent)"}30, rgba(0,0,0,0.85))`, animation: "slideUp 0.4s ease-out both" }}>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center">
-                          <ShoppingBag className="w-6 h-6" style={{ color: pack.color || "var(--accent)", opacity: 0.8 }} />
-                          <span className="text-sm font-bold" style={{ color: "#fff" }}>{pack.name}</span>
-                          <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.6)" }}>
-                            Contenu exclusif
-                          </span>
-                          <span className="text-xs font-bold px-3 py-1.5 rounded-full mt-1" style={{ background: pack.color || "var(--accent)", color: "#fff" }}>
-                            {pack.price}€
-                          </span>
-                        </div>
-                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(255,255,255,0.05)" }} />
-                      </div>
-                    ))}
                   </div>
                 )}
+              </div>
+
+              {/* ── Shop sidebar for gallery (côte à côte, disappear after purchase) ── */}
+              {showSidebar && (
+                <div className="hidden md:block w-[200px] shrink-0 sticky top-24 self-start space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <ShoppingBag className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
+                    <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--accent)" }}>Packs</span>
+                  </div>
+                  {activePacks.map(pack => (
+                    <button key={pack.id} onClick={() => { setTab("shop"); setExpandedPack(pack.id); }}
+                      className="w-full rounded-xl overflow-hidden cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                      style={{ border: `1px solid ${pack.color || "var(--accent)"}20` }}>
+                      <div className="aspect-square flex flex-col items-center justify-center gap-2 p-3"
+                        style={{ background: `linear-gradient(160deg, ${pack.color || "var(--accent)"}15, rgba(0,0,0,0.04))` }}>
+                        <ShoppingBag className="w-5 h-5" style={{ color: pack.color || "var(--accent)", opacity: 0.7 }} />
+                        <span className="text-[11px] font-bold text-center truncate w-full" style={{ color: pack.color || "var(--accent)" }}>
+                          {pack.name}
+                        </span>
+                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: pack.color || "var(--accent)", color: "#fff" }}>
+                          {pack.price}€
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
               </div>
             );
           })()}
