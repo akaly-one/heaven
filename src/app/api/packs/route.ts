@@ -54,6 +54,7 @@ export async function GET(req: NextRequest) {
       features: r.features || [], bonuses: r.bonuses || {},
       face: r.face, badge: r.badge, active: r.active,
       wise_url: r.wise_url || "", stripe_link: r.stripe_link || "",
+      revolut_url: r.revolut_url || "",
     }));
     return NextResponse.json({ packs: mapped }, { headers: cors });
   } catch (err) {
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
       code: p.code || `AG-P${Math.round(Number(p.price) || 0)}`,
       color: p.color || "#C9A84C", features: p.features || [], bonuses: p.bonuses || {},
       face: p.face || false, badge: p.badge || null, active: p.active !== false, sort_order: i,
-      wise_url: p.wise_url || null, stripe_link: p.stripe_link || null,
+      wise_url: p.wise_url || null, stripe_link: p.stripe_link || null, revolut_url: p.revolut_url || null,
     }));
 
     const { error: insErr } = await supabase.from("agence_packs").insert(rows);

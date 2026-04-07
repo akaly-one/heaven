@@ -197,31 +197,65 @@ export function ShopTab({
                           style={{ background: `${hex}10`, color: hex, border: `1px solid ${hex}20` }}>
                           <Check className="w-4 h-4" /> Pack actif
                         </div>
-                      ) : (
+                      ) : (() => {
+                        const hasPaymentLinks = pack.wise_url || pack.revolut_url || pack.stripe_link;
+                        return (
                         <div className="space-y-2.5">
-                          {pack.wise_url && (
+                          {/* Primary CTA — first available payment link */}
+                          {pack.stripe_link ? (
+                            <a href={pack.stripe_link} target="_blank" rel="noopener noreferrer"
+                              className="w-full py-3.5 rounded-xl text-sm font-semibold cursor-pointer flex items-center justify-center no-underline transition-all hover:scale-[1.01] active:scale-[0.98]"
+                              style={{ background: hex, color: "#fff", boxShadow: `0 4px 20px ${hex}30` }}>
+                              Acheter {pack.price}€
+                            </a>
+                          ) : pack.wise_url ? (
                             <a href={pack.wise_url} target="_blank" rel="noopener noreferrer"
                               className="w-full py-3.5 rounded-xl text-sm font-semibold cursor-pointer flex items-center justify-center no-underline transition-all hover:scale-[1.01] active:scale-[0.98]"
                               style={{ background: hex, color: "#fff", boxShadow: `0 4px 20px ${hex}30` }}>
                               Acheter {pack.price}€
                             </a>
-                          )}
-                          {!pack.wise_url && (
+                          ) : pack.revolut_url ? (
+                            <a href={pack.revolut_url} target="_blank" rel="noopener noreferrer"
+                              className="w-full py-3.5 rounded-xl text-sm font-semibold cursor-pointer flex items-center justify-center no-underline transition-all hover:scale-[1.01] active:scale-[0.98]"
+                              style={{ background: hex, color: "#fff", boxShadow: `0 4px 20px ${hex}30` }}>
+                              Acheter {pack.price}€
+                            </a>
+                          ) : (
                             <button onClick={() => createPendingPurchase(modelSlug || "", pseudo, `Pack ${pack.name}`, pack.price, getAuthHeaders || (() => ({ "Content-Type": "application/json" })))}
                               className="w-full py-3.5 rounded-xl text-sm font-semibold cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] active:scale-[0.98]"
                               style={{ background: hex, color: "#fff", border: "none", boxShadow: `0 4px 20px ${hex}30` }}>
                               Acheter {pack.price}€
                             </button>
                           )}
-                          {pack.wise_url && (
-                            <button onClick={() => createPendingPurchase(modelSlug || "", pseudo, `Pack ${pack.name}`, pack.price, getAuthHeaders || (() => ({ "Content-Type": "application/json" })))}
-                              className="w-full py-2.5 rounded-xl text-xs font-medium cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] active:scale-[0.98]"
-                              style={{ background: "transparent", color: "var(--text-muted)", border: "1px solid var(--border2)" }}>
-                              Autre moyen de paiement
-                            </button>
+
+                          {/* Secondary payment methods */}
+                          {hasPaymentLinks && (
+                            <div className="flex gap-2">
+                              {pack.revolut_url && (
+                                <a href={pack.revolut_url} target="_blank" rel="noopener noreferrer"
+                                  className="flex-1 py-2.5 rounded-xl text-[11px] font-semibold cursor-pointer flex items-center justify-center gap-1.5 no-underline transition-all hover:scale-[1.01] active:scale-[0.98]"
+                                  style={{ background: "rgba(0,111,238,0.08)", color: "#006FEE", border: "1px solid rgba(0,111,238,0.2)" }}>
+                                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M20.037 5.98H3.963A1.963 1.963 0 0 0 2 7.943v8.114c0 1.084.879 1.963 1.963 1.963h16.074A1.963 1.963 0 0 0 22 16.057V7.943A1.963 1.963 0 0 0 20.037 5.98zM7.5 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7zm9 0a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg>
+                                  Revolut
+                                </a>
+                              )}
+                              {pack.wise_url && !pack.stripe_link && (
+                                <a href={pack.wise_url} target="_blank" rel="noopener noreferrer"
+                                  className="flex-1 py-2.5 rounded-xl text-[11px] font-semibold cursor-pointer flex items-center justify-center gap-1.5 no-underline transition-all hover:scale-[1.01] active:scale-[0.98]"
+                                  style={{ background: "rgba(159,232,112,0.08)", color: "#5BB318", border: "1px solid rgba(159,232,112,0.2)" }}>
+                                  Wise
+                                </a>
+                              )}
+                              <button onClick={() => createPendingPurchase(modelSlug || "", pseudo, `Pack ${pack.name}`, pack.price, getAuthHeaders || (() => ({ "Content-Type": "application/json" })))}
+                                className="flex-1 py-2.5 rounded-xl text-[11px] font-medium cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] active:scale-[0.98]"
+                                style={{ background: "transparent", color: "var(--text-muted)", border: "1px solid var(--border2)" }}>
+                                PayPal
+                              </button>
+                            </div>
                           )}
                         </div>
-                      )}
+                        );
+                      })()}
                     </div>
                   </div>
                 );
@@ -308,12 +342,24 @@ export function ShopTab({
                             </div>
                             <div>
                               <label className="text-[10px] font-medium uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>
-                                Lien Wise (alternatif)
+                                Lien Wise
                               </label>
                               <input
                                 value={pack.wise_url || ""}
                                 onChange={e => handleUpdatePack(pack.id, { wise_url: e.target.value })}
                                 placeholder="https://wise.com/pay/..."
+                                className="w-full text-[11px] bg-transparent outline-none rounded-lg px-3 py-2"
+                                style={{ color: "var(--text-secondary)", border: "1px dashed var(--border3)" }}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-medium uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>
+                                Lien Revolut
+                              </label>
+                              <input
+                                value={pack.revolut_url || ""}
+                                onChange={e => handleUpdatePack(pack.id, { revolut_url: e.target.value })}
+                                placeholder="https://revolut.me/..."
                                 className="w-full text-[11px] bg-transparent outline-none rounded-lg px-3 py-2"
                                 style={{ color: "var(--text-secondary)", border: "1px dashed var(--border3)" }}
                               />

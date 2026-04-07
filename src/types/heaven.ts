@@ -37,6 +37,7 @@ export interface PackConfig {
   active: boolean;
   wise_url?: string;
   stripe_link?: string;
+  revolut_url?: string;
   code?: string;
 }
 
