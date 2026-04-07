@@ -2642,27 +2642,22 @@ export default function ModelPage() {
                 <Newspaper className="w-5 h-5" />
                 <span className="text-[10px] font-bold uppercase" style={{ letterSpacing: "0.05em" }}>Feed</span>
               </button>
-              {/* Pack tiers — all packs, not sliced */}
+              {/* Pack tiers — all packs */}
               {activePacks.map(p => {
                 const hex = TIER_HEX[p.id] || p.color;
-                // Dark tiers (like VIP Black #1C1C1C) need lighter colors for visibility
-                const isDarkHex = hex && parseInt(hex.replace("#", "").slice(0, 2), 16) < 80;
-                const displayHex = isDarkHex ? "#9CA3AF" : hex; // lighter gray for dark tiers when inactive
-                const activeBg = isDarkHex ? "#374151" : hex;   // visible dark gray bg when active
                 const isActive = galleryTier === p.id;
                 const isLocked = !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, p.id));
                 return (
                   <button key={p.id} onClick={() => { setGalleryTier(p.id); setFocusPack(null); }}
                     className="relative flex flex-col items-center gap-1 px-3.5 py-1.5 rounded-xl cursor-pointer transition-all shrink-0"
                     style={{
-                      color: isActive ? "#fff" : displayHex,
-                      background: isActive ? activeBg : "transparent",
-                      border: isActive ? `1px solid ${isDarkHex ? "#6B7280" : hex}` : "1px solid transparent",
+                      color: isActive ? "#fff" : hex,
+                      background: isActive ? hex : "transparent",
                       opacity: isLocked && !isActive ? 0.5 : 1,
                     }}>
                     <span className="text-lg relative leading-none">
                       {TIER_META[p.id]?.symbol}
-                      {isLocked && <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-2" style={{ color: isActive ? "#fff" : displayHex, opacity: 0.7 }} />}
+                      {isLocked && <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-2" style={{ color: isActive ? "#fff" : hex, opacity: 0.7 }} />}
                     </span>
                     <span className="text-[10px] font-bold uppercase" style={{ letterSpacing: "0.04em" }}>{TIER_META[p.id]?.label}</span>
                   </button>

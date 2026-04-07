@@ -23,12 +23,12 @@
   /* Tier colors — luxe metallic */
   --tier-silver: #C0C0C0;
   --tier-gold: #D4AF37;
-  --tier-black: #1C1C1C;
+  --tier-black: #8B5CF6;
   --tier-platinum: #B8860B;
   --tier-feet: #E8A87C;
   /* Legacy aliases */
   --tier-vip: #C0C0C0;
-  --tier-diamond: #1C1C1C;
+  --tier-diamond: #8B5CF6;
 
   /* Status */
   --success: #16A34A;
@@ -89,11 +89,11 @@
   /* Tier colors — dark (luxe metallic) */
   --tier-silver: #D0D0D0;
   --tier-gold: #E5C76B;
-  --tier-black: #F5F5F5;
+  --tier-black: #A78BFA;
   --tier-platinum: #D4A84A;
   --tier-feet: #F0BA93;
   --tier-vip: #D0D0D0;
-  --tier-diamond: #F5F5F5;
+  --tier-diamond: #A78BFA;
   --tier-free: #94A3B8;
   --tier-public: var(--text-muted);
 
@@ -136,11 +136,11 @@
     --danger: #EF4444;
     --tier-silver: #D0D0D0;
     --tier-gold: #E5C76B;
-    --tier-black: #F5F5F5;
+    --tier-black: #A78BFA;
     --tier-platinum: #D4A84A;
     --tier-feet: #F0BA93;
     --tier-vip: #D0D0D0;
-    --tier-diamond: #F5F5F5;
+    --tier-diamond: #A78BFA;
     --tier-free: #94A3B8;
     --tier-public: var(--text-muted);
     --shadow-xs: 0 1px 3px rgba(0,0,0,0.4);
@@ -300,7 +300,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 }
 .tier-dot.silver, .tier-dot.vip { background: var(--tier-silver); box-shadow: 0 0 8px rgba(192,192,192,0.3); }
 .tier-dot.gold { background: var(--tier-gold); box-shadow: 0 0 8px rgba(212,175,55,0.3); }
-.tier-dot.black, .tier-dot.diamond { background: var(--tier-black); box-shadow: 0 0 8px rgba(28,28,28,0.4); }
+.tier-dot.black, .tier-dot.diamond { background: var(--tier-black); box-shadow: 0 0 8px rgba(139,92,246,0.4); }
 .tier-dot.platinum { background: var(--tier-platinum); box-shadow: 0 0 8px rgba(184,134,11,0.3); }
 .tier-dot.feet { background: var(--tier-feet); box-shadow: 0 0 8px rgba(232,168,124,0.3); }
 

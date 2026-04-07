@@ -49,10 +49,10 @@ export const TIER_CONFIG: Record<string, TierConfig> = {
   },
   p4: {
     color: "var(--tier-black)",
-    hex: "#1C1C1C",
+    hex: "#8B5CF6",
     symbol: "♠",
     label: "VIP Black",
-    bg: "rgba(28,28,28,0.12)",
+    bg: "rgba(139,92,246,0.10)",
     description: "Sextapes & nudes — visage caché",
   },
   p5: {
@@ -106,10 +106,10 @@ export const TIER_CONFIG: Record<string, TierConfig> = {
   },
   black: {
     color: "var(--tier-black)",
-    hex: "#1C1C1C",
+    hex: "#8B5CF6",
     symbol: "♠",
     label: "VIP Black",
-    bg: "rgba(28,28,28,0.12)",
+    bg: "rgba(139,92,246,0.10)",
     description: "Sextapes & nudes — visage caché",
   },
   feet: {
@@ -138,10 +138,10 @@ export const TIER_CONFIG: Record<string, TierConfig> = {
   },
   diamond: {
     color: "var(--tier-black)",
-    hex: "#1C1C1C",
+    hex: "#8B5CF6",
     symbol: "♠",
     label: "VIP Black",
-    bg: "rgba(28,28,28,0.12)",
+    bg: "rgba(139,92,246,0.10)",
     description: "Sextapes & nudes — visage caché",
   },
 };
