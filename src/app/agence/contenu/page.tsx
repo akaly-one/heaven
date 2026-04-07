@@ -95,8 +95,8 @@ export default function ContenuPage() {
     for (const id of selected) {
       await fetch("/api/posts", {
         method: "PATCH",
-        headers: authHeaders(),
-        body: JSON.stringify({ id, model: toModelId(modelSlug), updates: { tier_required: newTier } }),
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ id, model: toModelId(modelSlug), tier_required: newTier }),
       });
     }
     selectNone();
