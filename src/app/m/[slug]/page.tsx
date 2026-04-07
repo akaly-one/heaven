@@ -10,6 +10,7 @@ import {
   Upload, Pencil, GripVertical, Flame, Zap, Palette, Diamond, AlertTriangle, Key, Sparkles, ChevronRight,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { getDeviceFingerprint } from "@/lib/device-fingerprint";
 import { ContentProtection } from "@/components/content-protection";
 import { useScreenshotDetection } from "@/hooks/use-screenshot-detection";
 import { IdentityGate } from "@/components/identity-gate";
@@ -22,6 +23,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useClientProfile } from "@/hooks/use-client-profile";
 import { ClientBadge } from "@/components/profile/client-badge";
 import { OrderHistoryPanel } from "@/components/profile/order-history-panel";
+import { StoriesBar } from "@/components/profile/stories-bar";
 
 // ── Types & Constants (centralized) ──
 import type { ModelInfo, Post, PackConfig, UploadedContent, WallPost, AccessCode, VisitorPlatform } from "@/types/heaven";
@@ -117,6 +119,22 @@ function tierIncludes(unlockedTier: string, contentTier: string): boolean {
   return ui >= ci;
 }
 
+// ── Daily shuffle for gallery masonry ──
+function dailyShuffle<T>(arr: T[]): T[] {
+  const seed = new Date().toDateString(); // changes daily
+  const shuffled = [...arr];
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = ((h << 5) - h) + seed.charCodeAt(i);
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    h = (h * 16807 + 0) % 2147483647;
+    const j = Math.abs(h) % (i + 1);
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+const MASONRY_ASPECTS = ["aspect-[3/4]", "aspect-square", "aspect-[4/3]", "aspect-[3/4]", "aspect-[2/3]"];
+const getMasonryAspect = (i: number) => MASONRY_ASPECTS[i % MASONRY_ASPECTS.length];
+
 export default function ModelPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -126,6 +144,7 @@ export default function ModelPage() {
 
   const [model, setModel] = useState<ModelInfo | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [stories, setStories] = useState<Post[]>([]);
   const [packs, setPacks] = useState<PackConfig[]>([]);
   const [uploads, setUploads] = useState<UploadedContent[]>([]);
   // No separate tab state — galleryTier IS the main nav
@@ -180,6 +199,7 @@ export default function ModelPage() {
   const [focusPack, setFocusPack] = useState<string | null>(null); // show only this pack in shop
   const [chatOpen, setChatOpen] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [zoomedItem, setZoomedItem] = useState<string | null>(null);
   const [selectedPack, setSelectedPack] = useState<PackConfig | null>(null);
   const [shopToast, setShopToast] = useState<string | null>(null);
   const [orderHistoryOpen, setOrderHistoryOpen] = useState(false);
@@ -546,6 +566,10 @@ export default function ModelPage() {
       setPacks(packsData.packs || []);
       setUploads(uploadsData.uploads || []);
       setWallPosts(wallData.posts || []);
+      // Fetch stories
+      fetch(`/api/posts?model=${slug}&type=story`).then(r => r.json()).then(d => {
+        setStories((d.posts || []).filter((p: Post) => p.media_url));
+      }).catch(() => {});
     }).catch(() => setNotFound(true)).finally(() => setLoading(false));
 
     try {
@@ -562,6 +586,15 @@ export default function ModelPage() {
         // Sync to sessionStorage if only in localStorage
         if (!sessionStorage.getItem(`heaven_client_${slug}`)) {
           sessionStorage.setItem(`heaven_client_${slug}`, saved);
+        }
+        // Log connection with fingerprint
+        if (client.id && slug) {
+          const fp = getDeviceFingerprint();
+          fetch("/api/clients/visit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ model: slug, client_id: client.id, action: "connection", fingerprint: fp }),
+          }).catch(() => {});
         }
       }
       // Check for saved access tier (localStorage fallback)
@@ -601,6 +634,21 @@ export default function ModelPage() {
           const accessData = JSON.stringify({ tier: data.code.tier, expiresAt: data.code.expiresAt, code: data.code.code });
           sessionStorage.setItem(`heaven_access_${slug}`, accessData);
           localStorage.setItem(`heaven_access_${slug}`, accessData);
+          // Device security check
+          const fp = getDeviceFingerprint();
+          fetch("/api/codes/security", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code_id: data.code.id, fingerprint: fp, user_agent: navigator.userAgent }),
+          }).then(r2 => r2.json()).then(sec => {
+            if (!sec.allowed) {
+              setUnlockedTier(null);
+              setActiveCode(null);
+              sessionStorage.removeItem(`heaven_access_${slug}`);
+              localStorage.removeItem(`heaven_access_${slug}`);
+              alert(sec.message || "Code bloqué");
+            }
+          }).catch(() => {});
           // Auto-identify visitor from code's clientId
           if (data.code.clientId && !visitorRegistered) {
             try {
@@ -847,6 +895,7 @@ export default function ModelPage() {
   const allGalleryItems = [...uploads, ...postsAsGalleryItems];
   const galleryItems = allGalleryItems.filter(u => galleryTier === "all" || u.tier === galleryTier || (galleryTier === "promo" && u.visibility === "promo"));
   const tierCounts = allGalleryItems.reduce((acc, u) => { acc[u.tier] = (acc[u.tier] || 0) + 1; return acc; }, {} as Record<string, number>);
+  const isTierView = galleryTier !== "feed" && galleryTier !== "custom";
 
   // ── Loading / 404 ──
   // ── Global image protection ──
@@ -1040,6 +1089,21 @@ export default function ModelPage() {
                           const ad2 = JSON.stringify({ tier: data.code.tier, expiresAt: data.code.expiresAt, code: data.code.code });
                           sessionStorage.setItem(`heaven_access_${slug}`, ad2);
                           localStorage.setItem(`heaven_access_${slug}`, ad2);
+                          // Device security check
+                          const fp = getDeviceFingerprint();
+                          fetch("/api/codes/security", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ code_id: data.code.id, fingerprint: fp, user_agent: navigator.userAgent }),
+                          }).then(r2 => r2.json()).then(sec => {
+                            if (!sec.allowed) {
+                              setUnlockedTier(null);
+                              setActiveCode(null);
+                              sessionStorage.removeItem(`heaven_access_${slug}`);
+                              localStorage.removeItem(`heaven_access_${slug}`);
+                              alert(sec.message || "Code bloqué");
+                            }
+                          }).catch(() => {});
                         } else {
                           input.style.borderColor = "#EF4444";
                           input.placeholder = "Code invalide";
@@ -1074,8 +1138,28 @@ export default function ModelPage() {
           </div>
         </div>
 
+        {/* Stories bar */}
+        <div className="max-w-6xl mx-auto px-3 sm:px-5 md:px-8" style={{
+          maxHeight: isTierView ? "0px" : "500px",
+          overflow: "hidden",
+          transition: "max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+          opacity: isTierView ? 0 : 1,
+        }}>
+          <StoriesBar
+            stories={stories.filter(s => s.media_url).map(s => ({ id: s.id, media_url: s.media_url!, content: s.content ?? undefined, created_at: s.created_at, tier_required: s.tier_required }))}
+            modelName={displayModel?.display_name || ""}
+            modelAvatar={displayModel?.avatar ?? undefined}
+            isModelLoggedIn={isModelLoggedIn}
+          />
+        </div>
+
         {/* ═══ HERO SECTION — Cinematic full-viewport banner ═══ */}
-        <div className="relative">
+        <div className="relative" style={{
+          maxHeight: isTierView ? "0px" : "70vh",
+          overflow: "hidden",
+          transition: "max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease",
+          opacity: isTierView ? 0 : 1,
+        }}>
           {(() => {
             const latestImagePost = posts.find(p => p.media_url);
             const bannerUrl = displayModel?.banner || latestImagePost?.media_url || null;
@@ -1141,6 +1225,11 @@ export default function ModelPage() {
                         <p className="profile-stagger-3 text-sm sm:text-base mt-2 sm:mt-3 line-clamp-2 leading-relaxed max-w-lg"
                           style={{ color: "rgba(255,255,255,0.7)" }}>
                           {displayModel.bio}
+                        </p>
+                      )}
+                      {displayModel?.status_text && !isEditMode && (
+                        <p className="text-sm sm:text-base mt-2 max-w-md" style={{ color: "rgba(255,255,255,0.8)", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
+                          {displayModel.status_text}
                         </p>
                       )}
                       <div className="profile-stagger-4 flex items-center gap-6 sm:gap-8 mt-3 sm:mt-4">
@@ -1214,6 +1303,14 @@ export default function ModelPage() {
                   className="w-full text-xs bg-transparent outline-none rounded-lg px-3 py-2"
                   style={{ color: "var(--text-muted)", border: "1px dashed var(--border3)" }}
                   placeholder="Status"
+                />
+                <input
+                  value={editProfile.status_text ?? displayModel?.status_text ?? ""}
+                  onChange={e => updateEditField("status_text", e.target.value)}
+                  placeholder="Ton humeur, une promo, une annonce..."
+                  className="w-full text-sm bg-transparent outline-none rounded-lg px-3 py-2 text-center"
+                  style={{ color: "var(--text)", border: "1px dashed var(--border3)", background: "rgba(0,0,0,0.15)" }}
+                  maxLength={200}
                 />
                 <textarea
                   value={displayModel?.bio || ""}
@@ -1355,6 +1452,21 @@ export default function ModelPage() {
             </div>
           );
         })()}
+
+        {/* ═══ TIER VIEW MINI HEADER ═══ */}
+        {isTierView && (
+          <div className="flex items-center gap-3 max-w-6xl mx-auto px-5 sm:px-8 md:px-12 py-3 fade-up">
+            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0" style={{ border: `2px solid var(--tier-${normalizeTier(galleryTier)})` }}>
+              {displayModel?.avatar ? <img src={displayModel.avatar} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full" style={{ background: "var(--bg3)" }} />}
+            </div>
+            <div>
+              <span className="text-sm font-bold" style={{ color: "var(--text)" }}>{displayModel?.display_name}</span>
+              <span className="text-xs ml-2" style={{ color: `var(--tier-${normalizeTier(galleryTier)})` }}>
+                {TIER_META[galleryTier]?.symbol} {TIER_META[galleryTier]?.label}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* ═══ TAB CONTENT ═══ */}
         <div className="max-w-6xl mx-auto px-5 sm:px-8 md:px-12 py-6 sm:py-8">
@@ -1878,102 +1990,108 @@ export default function ModelPage() {
                   </div>
                 );
 
+                // Merge & shuffle all media for masonry layout
+                const allMedia = dailyShuffle([
+                  ...filteredUploads.map(u => ({ id: u.id, url: u.dataUrl, type: "upload" as const, tier: galleryTier, mediaType: u.type })),
+                  ...filteredPosts.map(p => ({ id: p.id, url: p.media_url!, type: "post" as const, tier: p.tier_required || "public", mediaType: "image" as string })),
+                ]);
+
                 return (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
-                    {/* Uploads (gallery content from agence_uploads) */}
-                    {filteredUploads.map((upload, i) => (
-                      <div key={`upload-${upload.id}`} className="relative aspect-[3/4] overflow-hidden rounded-xl cursor-pointer gallery-item group"
-                        style={{ animation: `slideUp 0.4s ease-out ${i * 0.03}s both` }}>
-                        <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">
-                          {upload.type === "video" ? (
-                            <video src={upload.dataUrl} className="w-full h-full object-cover" onClick={() => setLightboxUrl(upload.dataUrl)} data-clickable />
-                          ) : (
-                            <img src={upload.dataUrl} alt="" className="w-full h-full object-cover"
-                              onClick={() => setLightboxUrl(upload.dataUrl)} loading="lazy" data-clickable />
-                          )}
-                        </ContentProtection>
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                          <Eye className="w-5 h-5 text-white" />
-                        </div>
-                        {galleryTier !== "public" && (
-                          <span className="absolute top-2.5 right-2.5 text-[9px] font-bold px-2 py-0.5 rounded-full"
-                            style={{ background: "rgba(0,0,0,0.5)", color: "#fff", backdropFilter: "blur(4px)" }}>
-                            {TIER_META[galleryTier]?.label || galleryTier.toUpperCase()}
-                          </span>
-                        )}
-                        {isEditMode && (
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                            <button onClick={async () => {
-                              if (confirm("Supprimer ce contenu ?")) {
-                                await fetch(`/api/uploads?model=${slug}&id=${upload.id}`, { method: "DELETE" });
-                                setUploads(prev => prev.filter(u => u.id !== upload.id));
-                              }
-                            }} className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110" style={{ background: "rgba(220,38,38,0.8)" }}>
-                              <Trash2 className="w-4 h-4 text-white" />
-                            </button>
+                  <>
+                    <div className="columns-2 md:columns-3 lg:columns-4 gap-2">
+                      {allMedia.map((item, i) => {
+                        const aspect = getMasonryAspect(i);
+                        const tierHex = TIER_HEX[item.tier] || "var(--text-muted)";
+                        const unlocked = item.tier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, item.tier));
+
+                        return (
+                          <div key={`${item.type}-${item.id}`}
+                            className={`break-inside-avoid mb-2 relative ${aspect} overflow-hidden rounded-xl cursor-pointer group transition-all duration-300 hover:scale-[1.02] hover:shadow-lg`}
+                            style={{ animation: `slideUp 0.4s ease-out ${i * 0.03}s both` }}>
+                            {unlocked ? (
+                              <>
+                                <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">
+                                  {item.mediaType === "video" ? (
+                                    <video src={item.url} className="w-full h-full object-cover" onClick={() => setZoomedItem(item.id)} data-clickable />
+                                  ) : (
+                                    <img src={item.url} alt="" className="w-full h-full object-cover"
+                                      onClick={() => setZoomedItem(item.id)} loading="lazy" data-clickable />
+                                  )}
+                                </ContentProtection>
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                                  <Eye className="w-5 h-5 text-white" />
+                                </div>
+                                {item.tier !== "public" && (
+                                  <span className="absolute top-2.5 right-2.5 text-[9px] font-bold px-2 py-0.5 rounded-full"
+                                    style={{ background: "rgba(0,0,0,0.5)", color: "#fff", backdropFilter: "blur(4px)" }}>
+                                    {TIER_META[item.tier]?.label || item.tier.toUpperCase()}
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <div className="w-full h-full" onClick={() => { setGalleryTier(item.tier); }}>
+                                {item.url && (
+                                  <img src={item.url} alt="" className="absolute inset-0 w-full h-full object-cover"
+                                    style={{ filter: "blur(14px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" />
+                                )}
+                                <div className="absolute inset-0" style={{
+                                  background: `linear-gradient(160deg, ${tierHex}20 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.7) 100%)`,
+                                }} />
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                                  <Lock className="w-5 h-5" style={{ color: tierHex, opacity: 0.8 }} />
+                                  <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: tierHex }}>
+                                    {TIER_META[item.tier]?.label || item.tier}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            {isEditMode && (
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                <button onClick={async () => {
+                                  if (item.type === "upload") {
+                                    if (confirm("Supprimer ce contenu ?")) {
+                                      await fetch(`/api/uploads?model=${slug}&id=${item.id}`, { method: "DELETE" });
+                                      setUploads(prev => prev.filter(u => u.id !== item.id));
+                                    }
+                                  } else {
+                                    if (confirm("Supprimer ce post ?")) {
+                                      await fetch(`/api/posts?id=${item.id}&model=${slug}`, { method: "DELETE" });
+                                      setPosts(prev => prev.filter(p => p.id !== item.id));
+                                    }
+                                  }
+                                }} className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110" style={{ background: "rgba(220,38,38,0.8)" }}>
+                                  <Trash2 className="w-4 h-4 text-white" />
+                                </button>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    ))}
-                    {/* Posts with media (from agence_posts) */}
-                    {filteredPosts.map((post, i) => {
-                      const tier = post.tier_required || "public";
-                      const unlocked = tier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, tier));
-                      const tierHex = TIER_HEX[tier] || "var(--text-muted)";
+                        );
+                      })}
+                    </div>
+
+                    {/* Zoom overlay (Google Photos style) */}
+                    {zoomedItem && (() => {
+                      const zItem = allMedia.find(x => x.id === zoomedItem);
+                      const zUrl = zItem?.url;
+                      if (!zUrl) return null;
                       return (
-                        <div key={post.id} className="relative aspect-[3/4] overflow-hidden rounded-xl cursor-pointer gallery-item group"
-                          style={{ animation: `slideUp 0.4s ease-out ${(filteredUploads.length + i) * 0.03}s both` }}>
-                          {unlocked ? (
-                            <>
-                              <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">
-                                <img src={post.media_url!} alt="" className="w-full h-full object-cover"
-                                  onClick={() => setLightboxUrl(post.media_url)} loading="lazy" data-clickable />
-                              </ContentProtection>
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                                <Eye className="w-5 h-5 text-white" />
-                              </div>
-                              {tier !== "public" && (
-                                <span className="absolute top-2.5 right-2.5 text-[9px] font-bold px-2 py-0.5 rounded-full"
-                                  style={{ background: "rgba(0,0,0,0.5)", color: "#fff", backdropFilter: "blur(4px)" }}>
-                                  {TIER_META[tier]?.label || tier.toUpperCase()}
-                                </span>
-                              )}
-                            </>
-                          ) : (
-                            <div className="w-full h-full" onClick={() => {
-                              setGalleryTier(tier);
-                            }}>
-                              {post.media_url && (
-                                <img src={post.media_url} alt="" className="absolute inset-0 w-full h-full object-cover"
-                                  style={{ filter: "blur(14px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" />
-                              )}
-                              <div className="absolute inset-0" style={{
-                                background: `linear-gradient(160deg, ${tierHex}20 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.7) 100%)`,
-                              }} />
-                              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                                <Lock className="w-5 h-5" style={{ color: tierHex, opacity: 0.8 }} />
-                                <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: tierHex }}>
-                                  {TIER_META[tier]?.label || tier}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                          {isEditMode && (
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                              <button onClick={async () => {
-                                if (confirm("Supprimer ce post ?")) {
-                                  await fetch(`/api/posts?id=${post.id}&model=${slug}`, { method: "DELETE" });
-                                  setPosts(prev => prev.filter(p => p.id !== post.id));
-                                }
-                              }} className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110" style={{ background: "rgba(220,38,38,0.8)" }}>
-                                <Trash2 className="w-4 h-4 text-white" />
-                              </button>
-                            </div>
-                          )}
+                        <div className="fixed inset-0 z-[55] flex items-center justify-center"
+                          style={{ background: "rgba(0,0,0,0.92)", animation: "fadeIn 0.2s ease" }}
+                          onClick={() => setZoomedItem(null)}>
+                          <button className="absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center z-10 cursor-pointer transition-all hover:scale-110 hover:bg-white/20"
+                            style={{ background: "rgba(255,255,255,0.1)", border: "none" }}
+                            onClick={() => setZoomedItem(null)}>
+                            <X className="w-5 h-5 text-white" />
+                          </button>
+                          <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
+                            <img src={zUrl} alt="" className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg"
+                              style={{ animation: "scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)" }}
+                              onClick={e => e.stopPropagation()} />
+                          </ContentProtection>
                         </div>
                       );
-                    })}
-                  </div>
+                    })()}
+                  </>
                 );
               })()}
 
@@ -2032,6 +2150,21 @@ export default function ModelPage() {
               const ad = JSON.stringify({ tier: code.tier, expiresAt: code.expiresAt, code: code.code });
               sessionStorage.setItem(`heaven_access_${slug}`, ad);
               localStorage.setItem(`heaven_access_${slug}`, ad);
+              // Device security check
+              const fp = getDeviceFingerprint();
+              fetch("/api/codes/security", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code_id: code.code, fingerprint: fp, user_agent: navigator.userAgent }),
+              }).then(r => r.json()).then(sec => {
+                if (!sec.allowed) {
+                  setUnlockedTier(null);
+                  setActiveCode(null);
+                  sessionStorage.removeItem(`heaven_access_${slug}`);
+                  localStorage.removeItem(`heaven_access_${slug}`);
+                  alert(sec.message || "Code bloqué");
+                }
+              }).catch(() => {});
             }}
             onClose={() => setShowSubscriptionPanel(false)}
           />
@@ -2078,6 +2211,21 @@ export default function ModelPage() {
                         const ad2 = JSON.stringify({ tier: data.code.tier, expiresAt: data.code.expiresAt, code: data.code.code });
                         sessionStorage.setItem(`heaven_access_${slug}`, ad2);
                         localStorage.setItem(`heaven_access_${slug}`, ad2);
+                        // Device security check
+                        const fp = getDeviceFingerprint();
+                        fetch("/api/codes/security", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ code_id: data.code.id, fingerprint: fp, user_agent: navigator.userAgent }),
+                        }).then(r2 => r2.json()).then(sec => {
+                          if (!sec.allowed) {
+                            setUnlockedTier(null);
+                            setActiveCode(null);
+                            sessionStorage.removeItem(`heaven_access_${slug}`);
+                            localStorage.removeItem(`heaven_access_${slug}`);
+                            alert(sec.message || "Code bloqué");
+                          }
+                        }).catch(() => {});
                       } else {
                         input.style.borderColor = "#EF4444";
                         input.placeholder = data.error || "Code invalide";

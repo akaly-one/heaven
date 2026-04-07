@@ -90,35 +90,81 @@ export function Header() {
       }).catch(() => {});
   }, [modelSlug, authHeaders]);
 
-  // ── Accept order — mark as validated ──
+  // ── Accept order — mark as validated, generate code, send to client ──
   const handleAcceptOrder = async (orderId: string, content: string) => {
     setProcessingOrderId(orderId);
     try {
+      // Parse order details
+      const pseudoMatch = content?.match(/@(\S+)/);
+      const pseudo = pseudoMatch?.[1] || "";
+      const tierMatch = content?.match(/Silver|Gold|Feet|Black|Platinum/i);
+      const tier = tierMatch ? tierMatch[0].toLowerCase() : "silver";
+      const amountMatch = content?.match(/\((\d+)€\)/);
+      const amount = amountMatch ? amountMatch[1] : "0";
+      const itemMatch = content?.match(/commande:\s*(.+?)\s*\(/);
+      const items = itemMatch?.[1]?.trim() || "";
+
       // Delete the pending post
       await fetch(`/api/wall?id=${orderId}&model=${modelSlug}`, { method: "DELETE", headers: authHeaders() });
-      // Post a confirmation
-      const confirmed = content.replace("⏳", "✅").replace("en attente de validation", "VALIDÉE ✓");
+
+      // Find the client
+      let clientId: string | null = null;
+      if (pseudo) {
+        try {
+          const clientRes = await fetch(`/api/clients?model=${modelSlug}&search=${encodeURIComponent(pseudo)}`, { headers: authHeaders() });
+          const clientData = await clientRes.json();
+          clientId = (clientData.clients || [])[0]?.id || null;
+        } catch { /* ignore */ }
+      }
+
+      // Auto-generate access code
+      let generatedCode: string | null = null;
+      try {
+        const codeRes = await fetch("/api/codes", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            action: "create",
+            model: modelSlug,
+            tier,
+            duration_hours: 720,
+            client_pseudo: pseudo,
+          }),
+        });
+        const codeData = await codeRes.json();
+        generatedCode = codeData.code?.code || null;
+      } catch { /* ignore */ }
+
+      // Post explicit confirmation wall post
+      const confirmedContent = `✅ Paiement validé — @${pseudo} — ${items || `Pack ${tier}`} ${amount}€${generatedCode ? ` — Code envoyé ✓` : ""}`;
       await fetch("/api/wall", {
         method: "POST", headers: authHeaders(),
-        body: JSON.stringify({ model: modelSlug, pseudo: "SYSTEM", content: confirmed }),
+        body: JSON.stringify({ model: modelSlug, pseudo: "SYSTEM", content: confirmedContent }),
       });
+
+      // Send code to client via chat
+      if (generatedCode && clientId) {
+        await fetch("/api/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: modelSlug,
+            client_id: clientId,
+            sender_type: "model",
+            content: `✅ Paiement confirmé ! Voici ton code d'accès : ${generatedCode}\n\nEntre-le sur mon profil pour débloquer ton contenu. Le code est valable 30 jours.`,
+          }),
+        }).catch(() => {});
+      }
+
       setPendingOrders(prev => prev.filter(o => o.id !== orderId));
+
       // Increment orders_completed for the client
-      const handleMatch = content?.match(/@(\S+)/);
-      if (handleMatch?.[1]) {
-        fetch(`/api/clients?model=${modelSlug}&search=${encodeURIComponent(handleMatch[1])}`)
-          .then(r => r.json())
-          .then(d => {
-            const client = (d.clients || [])[0];
-            if (client?.id) {
-              fetch("/api/clients/visit", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ model: modelSlug, client_id: client.id, action: "order_completed" }),
-              }).catch(() => {});
-            }
-          })
-          .catch(() => {});
+      if (clientId) {
+        fetch("/api/clients/visit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: modelSlug, client_id: clientId, action: "order_completed" }),
+        }).catch(() => {});
       }
     } catch (e) { console.error("[Header] accept order error:", e); }
     setProcessingOrderId(null);
@@ -387,12 +433,16 @@ export function Header() {
                       const pseudo = pseudoMatch?.[1] || "?";
                       const descMatch = order.content?.match(/📝\s*"(.+?)"/);
                       const desc = descMatch?.[1] || null;
-                      const itemMatch = order.content?.match(/commande:\s*(.+?)\s*—/);
-                      const items = itemMatch?.[1]?.trim() || order.content?.slice(2, 80) || "";
+                      const itemMatch = order.content?.match(/commande:\s*(.+?)\s*\(/);
+                      const items = itemMatch?.[1]?.trim() || "";
+                      const amountMatch = order.content?.match(/\((\d+)€\)/);
+                      const amount = amountMatch?.[1] || null;
+                      const paymentMatch = order.content?.match(/via\s+(\w+)/i);
+                      const payment = paymentMatch?.[1] || null;
                       const isProcessing = processingOrderId === order.id;
                       return (
                         <div key={`order-${order.id}`} className="px-4 py-3" style={{ borderBottom: "1px solid var(--border)", background: "rgba(168,85,247,0.02)" }}>
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1.5">
                             <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
                               style={{ background: "rgba(168,85,247,0.12)", color: "#A855F7" }}>
                               {pseudo.charAt(0).toUpperCase()}
@@ -402,17 +452,29 @@ export function Header() {
                               {new Date(order.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                             </span>
                           </div>
-                          <p className="text-[11px] font-medium leading-snug mb-1" style={{ color: "var(--text-secondary)" }}>{items}</p>
+                          <div className="flex items-center gap-2 mb-1.5 px-2 py-1.5 rounded-lg" style={{ background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.1)" }}>
+                            <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{items || "Commande"}</span>
+                            {amount && (
+                              <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: "rgba(16,185,129,0.12)", color: "#10B981" }}>
+                                {amount}€
+                              </span>
+                            )}
+                            {payment && (
+                              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ background: "rgba(0,0,0,0.06)", color: "var(--text-muted)" }}>
+                                via {payment}
+                              </span>
+                            )}
+                          </div>
                           {desc && (
-                            <p className="text-[10px] leading-snug mb-1.5 px-2 py-1 rounded-md" style={{ background: "rgba(0,0,0,0.04)", color: "var(--text-muted)" }}>
+                            <p className="text-[10px] leading-snug mb-1.5 px-2 py-1.5 rounded-md" style={{ background: "rgba(0,0,0,0.04)", color: "var(--text-muted)" }}>
                               📝 &ldquo;{desc}&rdquo;
                             </p>
                           )}
-                          <div className="flex items-center gap-2 mt-1.5">
+                          <div className="flex items-center gap-2 mt-2">
                             <button onClick={() => handleAcceptOrder(order.id, order.content || "")} disabled={isProcessing}
                               className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.97]"
                               style={{ background: "rgba(16,185,129,0.12)", color: "#10B981", border: "1px solid rgba(16,185,129,0.2)", opacity: isProcessing ? 0.5 : 1 }}>
-                              <Check className="w-3 h-3" /> Valider
+                              <Check className="w-3 h-3" /> Valider paiement
                             </button>
                             <button onClick={() => handleRefuseOrder(order.id, order.content || "")} disabled={isProcessing}
                               className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.97]"

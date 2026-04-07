@@ -139,6 +139,8 @@ export interface ModelInfo {
   status: string | null;
   banner: string | null;
   paypal_handle?: string | null;
+  status_text?: string;
+  status_updated_at?: string;
 }
 
 // ── Gallery / Uploads ──

@@ -31,6 +31,9 @@ export async function GET(req: NextRequest) {
 
     if (model) q = q.eq("model", model);
 
+    const type = req.nextUrl.searchParams.get("type");
+    if (type) q = q.eq("post_type", type);
+
     const { data, error } = await q;
     if (error) throw error;
 
@@ -62,6 +65,7 @@ export async function POST(req: NextRequest) {
         media_type: body.media_type || null,
         tier_required: body.tier_required || "public",
         pinned: body.pinned || false,
+        post_type: body.post_type || "feed",
       })
       .select()
       .single();

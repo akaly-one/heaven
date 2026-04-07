@@ -58,6 +58,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       online: presence?.online || false,
       status: modelInfo?.status || "Creatrice exclusive",
       paypal_handle: config?.paypal_handle || null,
+      status_text: modelInfo?.status_text || null,
+      status_updated_at: modelInfo?.status_updated_at || null,
     }, { headers: cors });
   } catch (err) {
     console.error("[API/models] GET:", err);
@@ -98,6 +100,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug
     if (body.online !== undefined) {
       // online stored in presence jsonb
       updates.presence = { online: body.online, status: body.online ? "online" : "offline" };
+    }
+    if (body.status_text !== undefined) {
+      updates.status_text = body.status_text;
+      updates.status_updated_at = new Date().toISOString();
     }
 
     if (Object.keys(updates).length === 0 && body.display_name === undefined) {
