@@ -54,7 +54,15 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(true);
 
   const handleLogout = () => {
-    sessionStorage.removeItem("heaven_auth");
+    // Clear ALL heaven_* keys from both storages
+    [sessionStorage, localStorage].forEach(store => {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < store.length; i++) {
+        const key = store.key(i);
+        if (key && key.startsWith("heaven_")) keysToRemove.push(key);
+      }
+      keysToRemove.forEach(k => store.removeItem(k));
+    });
     router.push("/login");
   };
 

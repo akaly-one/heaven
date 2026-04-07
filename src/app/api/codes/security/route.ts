@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     // Check if code is blocked
     const { data: codeData } = await supabase
-      .from("agence_codes").select("blocked, max_devices, security_alert").eq("id", code_id).single();
+      .from("agence_codes").select("blocked, max_devices, security_alert, client_id, model").eq("id", code_id).single();
 
     if (codeData?.blocked) {
       return NextResponse.json({
@@ -46,11 +46,25 @@ export async function POST(req: NextRequest) {
 
     const existingDevice = (devices || []).find((d: { fingerprint: string; ip_address: string }) => d.fingerprint === fingerprint || d.ip_address === ip);
 
+    // Helper: log connection to agence_client_connections (fire-and-forget)
+    const logConnection = () => {
+      if (codeData?.client_id && codeData?.model) {
+        supabase.from("agence_client_connections").insert({
+          client_id: codeData.client_id,
+          model: codeData.model,
+          ip_address: ip,
+          fingerprint,
+          user_agent,
+        }).then(() => {});
+      }
+    };
+
     if (existingDevice) {
       // Known device — update last_seen
       await supabase.from("agence_code_devices")
         .update({ last_seen: new Date().toISOString(), ip_address: ip, user_agent })
         .eq("id", existingDevice.id);
+      logConnection();
       return NextResponse.json({ allowed: true, device_id: existingDevice.id }, { headers: cors });
     }
 
@@ -81,6 +95,7 @@ export async function POST(req: NextRequest) {
       .insert({ code_id, ip_address: ip, fingerprint, user_agent })
       .select().single();
 
+    logConnection();
     return NextResponse.json({ allowed: true, device_id: newDevice?.id, device_number: deviceCount + 1 }, { headers: cors });
   } catch (err) {
     console.error("[API/codes/security]:", err);

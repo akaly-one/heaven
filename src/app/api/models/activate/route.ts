@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders } from "@/lib/auth";
+import { DEFAULT_PACKS } from "@/constants/packs";
 
 /**
  * POST /api/models/activate — Activate a model in Heaven
@@ -17,12 +18,6 @@ import { getCorsHeaders } from "@/lib/auth";
  */
 
 const SYNC_SECRET = process.env.HEAVEN_SYNC_SECRET;
-
-const DEFAULT_PACKS = [
-  { pack_id: "basic", name: "Basic", price: 50, color: "#60A5FA", sort_order: 1, features: ["5 photos", "Chat basic"], face: false },
-  { pack_id: "premium", name: "Premium", price: 100, color: "#A855F7", sort_order: 2, features: ["15 photos", "3 videos", "Chat prioritaire"], face: false },
-  { pack_id: "vip", name: "VIP", price: 200, color: "#F59E0B", sort_order: 3, features: ["Acces complet", "Videos exclusives", "Chat direct", "Contenu personnalise"], face: true, badge: "VIP" },
-];
 
 export async function POST(request: Request) {
   const cors = getCorsHeaders(request as any);
@@ -105,12 +100,18 @@ export async function POST(request: Request) {
       .limit(1);
 
     if (!existingPacks || existingPacks.length === 0) {
-      const packRows = DEFAULT_PACKS.map(p => ({
-        ...p,
-        model: cleanSlug,
-        active: true,
+      const packRows = DEFAULT_PACKS.map((p, i) => ({
+        pack_id: p.id,
+        name: p.name,
+        price: p.price,
+        color: p.color,
         features: p.features,
-        bonuses: {},
+        bonuses: p.bonuses || {},
+        face: p.face,
+        badge: p.badge || null,
+        sort_order: i + 1,
+        model: cleanSlug,
+        active: p.active,
       }));
       await supabase.from("agence_packs").insert(packRows);
     }
