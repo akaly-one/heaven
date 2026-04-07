@@ -41,7 +41,7 @@ export const TIER_CONFIG: Record<string, TierConfig> = {
   silver: {
     color: "var(--tier-silver)",
     hex: "#C0C0C0",
-    symbol: "✦",
+    symbol: "♣",
     label: "Silver",
     bg: "rgba(192,192,192,0.10)",
     description: "Photos, shootings, promos — sans nudité",
@@ -49,7 +49,7 @@ export const TIER_CONFIG: Record<string, TierConfig> = {
   gold: {
     color: "var(--tier-gold)",
     hex: "#D4AF37",
-    symbol: "★",
+    symbol: "♦",
     label: "Gold",
     bg: "rgba(212,175,55,0.10)",
     description: "Tenue dentelle, sensuel, poses suggestives",
@@ -73,7 +73,7 @@ export const TIER_CONFIG: Record<string, TierConfig> = {
   platinum: {
     color: "var(--tier-platinum)",
     hex: "#B8860B",
-    symbol: "♛",
+    symbol: "♥",
     label: "VIP Platinum",
     bg: "rgba(184,134,11,0.10)",
     description: "Visage découvert, contenu explicite premium",
@@ -82,7 +82,7 @@ export const TIER_CONFIG: Record<string, TierConfig> = {
   vip: {
     color: "var(--tier-silver)",
     hex: "#C0C0C0",
-    symbol: "✦",
+    symbol: "♣",
     label: "Silver",
     bg: "rgba(192,192,192,0.10)",
     description: "Photos, shootings, promos — sans nudité",

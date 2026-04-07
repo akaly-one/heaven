@@ -185,7 +185,7 @@ export default function ModelPage() {
   const [orderHistoryOpen, setOrderHistoryOpen] = useState(false);
 
   // ── Client Profile & Badges ──
-  const { badgeGrade, orders, newNotifications, clearNotifications } = useClientProfile({
+  const { orders, newNotifications, clearNotifications } = useClientProfile({
     slug, clientId, visitorHandle, enabled: visitorRegistered && !isModelLoggedIn,
   });
 
@@ -1004,8 +1004,8 @@ export default function ModelPage() {
           <div className="flex items-center gap-2 shrink-0">
             {visitorRegistered && (
               <>
-                <span className="text-[10px] font-medium hidden sm:block" style={{ color: "var(--text-muted)" }}>@{visitorHandle}</span>
-                <ClientBadge grade={badgeGrade} tierColor={unlockedTier ? `var(--tier-${normalizeTier(unlockedTier)})` : undefined} />
+                <span className="text-[12px] font-semibold block truncate max-w-[100px] sm:max-w-[140px]" style={{ color: "var(--text)" }}>@{visitorHandle}</span>
+                <ClientBadge tier={unlockedTier || null} />
                 {/* Order history button */}
                 <button onClick={() => { setOrderHistoryOpen(!orderHistoryOpen); clearNotifications(); }}
                   className="relative w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
@@ -1252,7 +1252,7 @@ export default function ModelPage() {
         {(() => {
           const packTiers = activePacks.map(p => p.id);
           return (
-            <div className="sticky top-[40px] md:top-[44px] z-30 py-3"
+            <div className="sticky top-[36px] md:top-[40px] z-30 py-2"
               style={{ background: "color-mix(in srgb, var(--bg) 92%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
               <div className="max-w-6xl mx-auto px-3 sm:px-5 md:px-8">
                 <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1" role="tablist">
@@ -1286,7 +1286,7 @@ export default function ModelPage() {
                     const previewImg = uploads.find(u => u.tier === t && u.dataUrl && u.type === "photo")?.dataUrl;
                     return (
                       <button key={t} role="tab" aria-selected={isActive} onClick={() => { setGalleryTier(t); setFocusPack(null); }}
-                        className="relative shrink-0 rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] group overflow-hidden"
+                        className="relative shrink-0 rounded-xl cursor-pointer poker-tile group overflow-hidden"
                         style={{
                           minWidth: "90px",
                           height: "72px",
@@ -1308,6 +1308,11 @@ export default function ModelPage() {
                         </div>
                         {/* Content — white by default, tier color on hover/active */}
                         <div className="relative flex flex-col items-center justify-center h-full gap-0.5 px-3">
+                          {/* Poker card corners — visible on hover */}
+                          <span className="absolute top-1 left-1.5 text-[8px] font-bold opacity-0 group-hover:opacity-60 transition-opacity"
+                            style={{ color: isActive ? "#fff" : tierHex }}>{tierSymbol}</span>
+                          <span className="absolute bottom-1 right-1.5 text-[8px] font-bold opacity-0 group-hover:opacity-60 transition-opacity rotate-180"
+                            style={{ color: isActive ? "#fff" : tierHex }}>{tierSymbol}</span>
                           <span className="text-xl transition-all duration-200 group-hover:scale-110 relative"
                             style={{ color: isActive ? "#fff" : "var(--text-muted)", filter: `drop-shadow(0 1px 2px rgba(0,0,0,0.15))` }}>
                             {tierSymbol}
@@ -1418,8 +1423,13 @@ export default function ModelPage() {
               {(() => {
                 // Filter out SYSTEM messages (orders) from public feed — model sees them in CP notifications
                 const visitorPosts = wallPosts.filter(w => !w.content?.includes("#post-") && w.pseudo !== "SYSTEM").map(w => ({ type: "wall" as const, id: w.id, created_at: w.created_at, data: w }));
-                // Unverified visitors only see public posts
-                const filteredModelPosts = contentUnlocked ? posts : posts.filter(p => !p.tier_required || p.tier_required === "public");
+                // Unverified visitors only see public posts; code-unlocked visitors see posts matching their tier
+                const filteredModelPosts = contentUnlocked ? posts : posts.filter(p => {
+                  const tier = p.tier_required || "public";
+                  if (!tier || tier === "public") return true;
+                  if (unlockedTier && tierIncludes(unlockedTier, tier)) return true;
+                  return false;
+                });
                 const modelPosts = filteredModelPosts.map(p => ({ type: "post" as const, id: p.id, created_at: p.created_at, data: p }));
                 const allItems = [...visitorPosts, ...modelPosts].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
@@ -1850,16 +1860,18 @@ export default function ModelPage() {
                 );
               })()}
 
-              {/* ── Unlocked content grid ── */}
+              {/* ── Unlocked content grid (posts + uploads) ── */}
               {(() => {
-                // Filter posts for current tier
+                // Filter posts AND uploads for current tier
                 const filteredPosts = allImagePosts.filter(p => (p.tier_required || "public") === galleryTier);
+                const filteredUploads = uploads.filter(u => u.tier === galleryTier && u.dataUrl);
 
                 // For locked tiers, don't show the grid (the overlay above handles it)
                 const isLockedTier = !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, galleryTier));
                 if (isLockedTier) return null;
 
-                if (filteredPosts.length === 0) return (
+                const totalItems = filteredPosts.length + filteredUploads.length;
+                if (totalItems === 0) return (
                   <div className="text-center py-20 sm:py-24">
                     <Camera className="w-10 h-10 mx-auto mb-4" style={{ color: "var(--text-muted)", opacity: 0.5 }} />
                     <p className="text-sm" style={{ color: "var(--text-muted)" }}>Pas encore de shootings</p>
@@ -1868,13 +1880,49 @@ export default function ModelPage() {
 
                 return (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
+                    {/* Uploads (gallery content from agence_uploads) */}
+                    {filteredUploads.map((upload, i) => (
+                      <div key={`upload-${upload.id}`} className="relative aspect-[3/4] overflow-hidden rounded-xl cursor-pointer gallery-item group"
+                        style={{ animation: `slideUp 0.4s ease-out ${i * 0.03}s both` }}>
+                        <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">
+                          {upload.type === "video" ? (
+                            <video src={upload.dataUrl} className="w-full h-full object-cover" onClick={() => setLightboxUrl(upload.dataUrl)} data-clickable />
+                          ) : (
+                            <img src={upload.dataUrl} alt="" className="w-full h-full object-cover"
+                              onClick={() => setLightboxUrl(upload.dataUrl)} loading="lazy" data-clickable />
+                          )}
+                        </ContentProtection>
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                          <Eye className="w-5 h-5 text-white" />
+                        </div>
+                        {galleryTier !== "public" && (
+                          <span className="absolute top-2.5 right-2.5 text-[9px] font-bold px-2 py-0.5 rounded-full"
+                            style={{ background: "rgba(0,0,0,0.5)", color: "#fff", backdropFilter: "blur(4px)" }}>
+                            {TIER_META[galleryTier]?.label || galleryTier.toUpperCase()}
+                          </span>
+                        )}
+                        {isEditMode && (
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                            <button onClick={async () => {
+                              if (confirm("Supprimer ce contenu ?")) {
+                                await fetch(`/api/uploads?model=${slug}&id=${upload.id}`, { method: "DELETE" });
+                                setUploads(prev => prev.filter(u => u.id !== upload.id));
+                              }
+                            }} className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110" style={{ background: "rgba(220,38,38,0.8)" }}>
+                              <Trash2 className="w-4 h-4 text-white" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {/* Posts with media (from agence_posts) */}
                     {filteredPosts.map((post, i) => {
                       const tier = post.tier_required || "public";
                       const unlocked = tier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, tier));
                       const tierHex = TIER_HEX[tier] || "var(--text-muted)";
                       return (
                         <div key={post.id} className="relative aspect-[3/4] overflow-hidden rounded-xl cursor-pointer gallery-item group"
-                          style={{ animation: `slideUp 0.4s ease-out ${i * 0.03}s both` }}>
+                          style={{ animation: `slideUp 0.4s ease-out ${(filteredUploads.length + i) * 0.03}s both` }}>
                           {unlocked ? (
                             <>
                               <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">

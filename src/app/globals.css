@@ -472,3 +472,14 @@ input[type="range"]::-moz-range-thumb {
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
+
+/* ═══ Poker card hover ═══ */
+.poker-tile {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+}
+.poker-tile:hover {
+  transform: perspective(600px) rotateY(-2deg) scale(1.05);
+}
+.poker-tile:active {
+  transform: perspective(600px) scale(0.97);
+}

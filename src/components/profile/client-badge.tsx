@@ -1,15 +1,14 @@
 "use client";
 
-import { BADGE_CONFIG } from "@/constants/badges";
+import { getTierBadge } from "@/constants/badges";
 
 interface ClientBadgeProps {
-  grade: string;
-  tierColor?: string; // CSS var or hex for active pack tier ring
+  tier: string | null;
   size?: "sm" | "md";
 }
 
-export function ClientBadge({ grade, tierColor, size = "sm" }: ClientBadgeProps) {
-  const badge = BADGE_CONFIG[grade] || BADGE_CONFIG.nouveau;
+export function ClientBadge({ tier, size = "sm" }: ClientBadgeProps) {
+  const badge = getTierBadge(tier);
   const isSm = size === "sm";
 
   return (
@@ -20,7 +19,7 @@ export function ClientBadge({ grade, tierColor, size = "sm" }: ClientBadgeProps)
         padding: isSm ? "2px 6px" : "3px 10px",
         background: badge.bg,
         color: badge.color,
-        border: tierColor ? `1.5px solid ${tierColor}` : `1px solid ${badge.color}25`,
+        border: `1px solid ${badge.color}25`,
       }}
     >
       <span>{badge.emoji}</span>

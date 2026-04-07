@@ -201,7 +201,7 @@ export function Header() {
   const pseudoOf = (c: ClientItem) => c.pseudo_snap || c.pseudo_insta || c.id.slice(0, 8);
 
   // ── Dropdown box styling ──
-  const dropdownBox = "absolute top-[calc(100%+4px)] w-[340px] sm:w-[380px] max-h-[70vh] rounded-2xl overflow-hidden shadow-xl";
+  const dropdownBox = "fixed top-12 left-2 right-2 sm:absolute sm:top-[calc(100%+4px)] sm:left-auto sm:right-0 sm:w-[380px] max-h-[70vh] rounded-2xl overflow-hidden overflow-y-auto shadow-xl z-50";
   const dropdownStyle = { background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 12px 40px rgba(0,0,0,0.2)" };
 
   return (
@@ -252,7 +252,7 @@ export function Header() {
             )}
           </button>
           {openDropdown === "messages" && (
-            <div className={`${dropdownBox} right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2`} style={dropdownStyle}>
+            <div className={dropdownBox} style={dropdownStyle}>
               <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
                 <span className="text-xs font-bold" style={{ color: "var(--text)" }}>Messages</span>
                 <button onClick={() => setOpenDropdown(null)} className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
@@ -314,7 +314,7 @@ export function Header() {
             ) : null}
           </button>
           {openDropdown === "clients" && (
-            <div className={`${dropdownBox} right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2`} style={dropdownStyle}>
+            <div className={dropdownBox} style={dropdownStyle}>
               <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
                 <span className="text-xs font-bold" style={{ color: "var(--text)" }}>
                   Clients & Codes
@@ -473,7 +473,7 @@ export function Header() {
             <Link2 className="w-[18px] h-[18px]" />
           </button>
           {openDropdown === "socials" && (
-            <div className={`${dropdownBox} right-0`} style={dropdownStyle}>
+            <div className={dropdownBox} style={dropdownStyle}>
               <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
                 <span className="text-xs font-bold" style={{ color: "var(--text)" }}>Reseaux sociaux</span>
                 <button onClick={() => setOpenDropdown(null)} className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
