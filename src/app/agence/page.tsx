@@ -508,15 +508,21 @@ export default function AgenceDashboard() {
                             reader.readAsDataURL(file); e.target.value = "";
                           }} />
                         </label>
+                        {/* Public indicator — disappears when a paid pack is selected */}
+                        {(newPostTier === "p0" || newPostTier === "public") && (
+                          <span className="text-[11px] font-semibold shrink-0 px-2 py-1" style={{ color: "#10B981" }}>
+                            Public
+                          </span>
+                        )}
                       </div>
-                      {/* Row 2: Tier selection — visible when composing, collapses when empty */}
+                      {/* Paid pack selection — single row, no Public button */}
                       {(newPostContent.trim() || newPostImage) && (
-                        <div className="flex items-center gap-1.5 flex-wrap section-enter">
-                          {TIER_OPTIONS.map(t => {
+                        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar section-enter">
+                          {TIER_OPTIONS.filter(t => t.id !== "p0").map(t => {
                             const selected = newPostTier === t.id;
                             return (
-                              <button key={t.id} onClick={() => setNewPostTier(t.id)}
-                                className="px-3 py-1.5 rounded-full text-[11px] font-bold cursor-pointer shrink-0 transition-all"
+                              <button key={t.id} onClick={() => setNewPostTier(selected ? "p0" : t.id)}
+                                className="px-3 py-1.5 rounded-full text-[11px] font-bold cursor-pointer shrink-0 transition-all whitespace-nowrap"
                                 style={{
                                   background: selected ? t.color : "transparent",
                                   color: selected ? "#fff" : "var(--text)",
