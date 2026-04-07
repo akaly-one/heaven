@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@paypal/react-paypal-js": "^9.1.0",
     "@supabase/supabase-js": "^2.99.3",
     "cloudinary": "^2.9.0",
     "html-to-image": "^1.11.13",

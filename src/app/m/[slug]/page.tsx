@@ -24,6 +24,7 @@ import { useClientProfile } from "@/hooks/use-client-profile";
 import { ClientBadge } from "@/components/profile/client-badge";
 import { OrderHistoryPanel } from "@/components/profile/order-history-panel";
 import { StoriesBar } from "@/components/profile/stories-bar";
+import { PaymentCheckout } from "@/components/profile/payment-checkout";
 
 // ── Types & Constants (centralized) ──
 import type { ModelInfo, Post, PackConfig, UploadedContent, WallPost, AccessCode, VisitorPlatform } from "@/types/heaven";
@@ -201,6 +202,7 @@ export default function ModelPage() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [zoomedItem, setZoomedItem] = useState<string | null>(null);
   const [selectedPack, setSelectedPack] = useState<PackConfig | null>(null);
+  const [checkoutPack, setCheckoutPack] = useState<PackConfig | null>(null);
   const [shopToast, setShopToast] = useState<string | null>(null);
   const [orderHistoryOpen, setOrderHistoryOpen] = useState(false);
 
@@ -2296,15 +2298,14 @@ export default function ModelPage() {
                               </p>
                             ))}
                           </div>
-                          {/* Payment buttons */}
+                          {/* Payment buttons — auto checkout or fallback links */}
                           <div className="space-y-2">
-                            {pack.stripe_link && (
-                              <a href={pack.stripe_link} target="_blank" rel="noopener noreferrer"
-                                className="block w-full py-3 rounded-xl text-sm font-bold text-center no-underline transition-all hover:scale-[1.02] hover:brightness-110"
-                                style={{ background: hex, color: "#fff", boxShadow: `0 4px 16px color-mix(in srgb, ${hex} 35%, transparent)` }}>
-                                💳 Payer {pack.price}€
-                              </a>
-                            )}
+                            <button onClick={() => setCheckoutPack(pack)}
+                              className="block w-full py-3 rounded-xl text-sm font-bold text-center cursor-pointer transition-all hover:scale-[1.02] hover:brightness-110"
+                              style={{ background: hex, color: "#fff", boxShadow: `0 4px 16px color-mix(in srgb, ${hex} 35%, transparent)` }}>
+                              💳 Payer {pack.price}€
+                            </button>
+                            {/* Fallback direct links (for when auto-checkout providers aren't configured) */}
                             <div className={`grid gap-2 ${pack.wise_url && pack.revolut_url ? "grid-cols-3" : pack.wise_url || pack.revolut_url ? "grid-cols-2" : "grid-cols-1"}`}>
                               {pack.revolut_url && (
                                 <a href={pack.revolut_url} target="_blank" rel="noopener noreferrer"
@@ -2404,6 +2405,33 @@ export default function ModelPage() {
             </div>
           );
         })()}
+
+        {/* ═══ PAYMENT CHECKOUT — automated PayPal/Revolut ═══ */}
+        {checkoutPack && (
+          <PaymentCheckout
+            model={slug}
+            pack={{ id: checkoutPack.id, name: checkoutPack.name, price: checkoutPack.price, color: TIER_HEX[checkoutPack.id] || checkoutPack.color }}
+            tier={checkoutPack.id}
+            clientPseudo={subscriberUsername || visitorHandle || "visitor"}
+            clientPlatform={visitorPlatform || "snap"}
+            paypalClientId={process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}
+            revolutEnabled={!!process.env.NEXT_PUBLIC_REVOLUT_ENABLED}
+            onSuccess={(code) => {
+              setCheckoutPack(null);
+              setUnlockedTier(checkoutPack.id);
+              const ad = JSON.stringify({ tier: checkoutPack.id, expiresAt: new Date(Date.now() + 720 * 3600000).toISOString(), code });
+              sessionStorage.setItem(`heaven_access_${slug}`, ad);
+              localStorage.setItem(`heaven_access_${slug}`, ad);
+              setShopToast(`✅ Accès ${checkoutPack.name} activé ! Code: ${code}`);
+              setTimeout(() => setShopToast(null), 8000);
+            }}
+            onError={(msg) => {
+              setShopToast(`❌ ${msg}`);
+              setTimeout(() => setShopToast(null), 5000);
+            }}
+            onClose={() => setCheckoutPack(null)}
+          />
+        )}
 
         {/* ═══ LIGHTBOX — full-screen dark ═══ */}
         {lightboxUrl && (
