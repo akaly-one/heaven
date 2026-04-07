@@ -232,7 +232,7 @@ export default function AgenceDashboard() {
     { id: "p0", label: "Public", color: "#64748B" },
     { id: "p1", label: "Silver", color: "#C0C0C0" },
     { id: "p2", label: "Gold", color: "#D4AF37" },
-    { id: "p4", label: "VIP Black", color: "#1C1C1C" },
+    { id: "p4", label: "VIP Black", color: "#8B5CF6" },
     { id: "p5", label: "VIP Platinum", color: "#B8860B" },
   ];
 
@@ -471,18 +471,22 @@ export default function AgenceDashboard() {
                         </label>
                       </div>
                       {/* Row 2: Tier selection — wraps on mobile */}
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {TIER_OPTIONS.map(t => (
-                          <button key={t.id} onClick={() => setNewPostTier(t.id)}
-                            className="px-2.5 py-1.5 rounded-full text-[11px] font-bold cursor-pointer shrink-0"
-                            style={{
-                              background: newPostTier === t.id ? `${t.color}20` : "transparent",
-                              color: newPostTier === t.id ? t.color : "var(--text-muted)",
-                              border: `1px solid ${newPostTier === t.id ? `${t.color}40` : "var(--border)"}`,
-                            }}>
-                            {t.label}
-                          </button>
-                        ))}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {TIER_OPTIONS.map(t => {
+                          const selected = newPostTier === t.id;
+                          return (
+                            <button key={t.id} onClick={() => setNewPostTier(t.id)}
+                              className="px-3 py-1.5 rounded-full text-[11px] font-bold cursor-pointer shrink-0 transition-all"
+                              style={{
+                                background: selected ? t.color : "transparent",
+                                color: selected ? "#fff" : "var(--text)",
+                                border: `1.5px solid ${selected ? t.color : "var(--border)"}`,
+                                boxShadow: selected ? `0 2px 8px ${t.color}40` : "none",
+                              }}>
+                              {t.label}
+                            </button>
+                          );
+                        })}
                       </div>
                       <button onClick={handleCreatePost} disabled={(!newPostContent.trim() && !newPostImage) || posting}
                         className="w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-[1.01] disabled:opacity-30"
