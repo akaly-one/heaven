@@ -7,7 +7,7 @@ import {
   Coins, Pin, Eye, Star, Camera, Video, Play, X, Check,
   Instagram, Ghost, Crown, Plus, Edit3, Wifi,
   ImagePlus, Trash2, Save, RotateCcw, ToggleLeft, ToggleRight,
-  Upload, Pencil, GripVertical, Flame, Zap, Palette, Diamond, AlertTriangle, Key,
+  Upload, Pencil, GripVertical, Flame, Zap, Palette, Diamond, AlertTriangle, Key, Sparkles, ChevronRight,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ContentProtection } from "@/components/content-protection";
@@ -31,7 +31,6 @@ interface ModelAuth {
 const TABS = [
   { id: "shootings", label: "Shootings", icon: Camera },
   { id: "feed", label: "Feed", icon: Newspaper },
-  { id: "custom", label: "Contenu", icon: ShoppingBag },
 ] as const;
 type TabId = typeof TABS[number]["id"];
 
@@ -131,10 +130,9 @@ export default function ModelPage() {
   const [tab, setTab] = useState<TabId>(() => {
     if (typeof window !== "undefined") {
       const hash = window.location.hash.replace("#", "");
-      if (hash === "shootings" || hash === "custom" || hash === "feed") return hash as TabId;
+      if (hash === "shootings" || hash === "feed") return hash as TabId;
       // Legacy compat
-      if (hash === "gallery") return "shootings";
-      if (hash === "shop") return "custom";
+      if (hash === "gallery" || hash === "shop" || hash === "custom") return "shootings";
     }
     return "shootings";
   });
@@ -1557,7 +1555,7 @@ export default function ModelPage() {
 
             return (
               <div className="fade-up">
-              {/* ── Pack tier tabs — colored, single row ── */}
+              {/* ── Pack tier tabs + Contenu — colored, single row ── */}
               <div className="flex gap-0 overflow-x-auto scrollbar-hide mb-5 sm:mb-6" style={{ borderBottom: "1px solid var(--border)" }}>
                 <button onClick={() => setGalleryTier("all")}
                   className="relative px-4 sm:px-5 py-3 text-[11px] sm:text-xs font-semibold cursor-pointer shrink-0 transition-all uppercase"
@@ -1582,10 +1580,18 @@ export default function ModelPage() {
                     </button>
                   );
                 })}
+                {/* Contenu personnalisé — last sub-tab */}
+                <button onClick={() => setGalleryTier("custom")}
+                  className="relative px-4 sm:px-5 py-3 text-[11px] sm:text-xs font-semibold cursor-pointer shrink-0 transition-all uppercase flex items-center gap-1.5 ml-auto"
+                  style={{ color: galleryTier === "custom" ? "var(--gold, #D4A017)" : "var(--text-muted)", letterSpacing: "0.06em" }}>
+                  <Sparkles className="w-3 h-3" />
+                  Custom
+                  {galleryTier === "custom" && <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{ background: "var(--gold, #D4A017)" }} />}
+                </button>
               </div>
 
               {/* ── Locked tier overlay — shows pack details + CTA ── */}
-              {galleryTier !== "all" && galleryTier !== "public" && !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, galleryTier)) && (() => {
+              {galleryTier !== "all" && galleryTier !== "public" && galleryTier !== "custom" && !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, galleryTier)) && (() => {
                 const pack = activePacks.find(p => p.id === galleryTier);
                 const tierHex = TIER_HEX[galleryTier] || "#E63329";
                 const tierPosts = allImagePosts.filter(p => (p.tier_required || "public") === galleryTier);
@@ -1637,7 +1643,6 @@ export default function ModelPage() {
                           ) : (
                             <button onClick={() => {
                               setFocusPack(galleryTier);
-                              setExpandedPack(galleryTier);
                               setShowUnlock(true);
                             }}
                               className="mt-2 px-8 py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.03] active:scale-[0.97]"
@@ -1653,7 +1658,7 @@ export default function ModelPage() {
                         <Lock className="w-8 h-8 mx-auto mb-3" style={{ color: tierHex, opacity: 0.5 }} />
                         <h3 className="text-base font-bold mb-1" style={{ color: tierHex }}>{pack.name}</h3>
                         <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>Contenu bientôt disponible</p>
-                        <button onClick={() => { setFocusPack(galleryTier); setExpandedPack(galleryTier); setShowUnlock(true); }}
+                        <button onClick={() => { setFocusPack(galleryTier); setShowUnlock(true); }}
                           className="px-6 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-[1.03]"
                           style={{ background: `${tierHex}15`, color: tierHex, border: `1px solid ${tierHex}30` }}>
                           Débloquer — {pack.price}€
@@ -1665,7 +1670,7 @@ export default function ModelPage() {
               })()}
 
               {/* ── Unlocked content grid ── */}
-              {(() => {
+              {galleryTier !== "custom" && (() => {
                 // Filter by selected tier
                 const filteredPosts = galleryTier === "all"
                   ? (contentUnlocked ? allImagePosts : allImagePosts.filter(p => {
@@ -1748,39 +1753,39 @@ export default function ModelPage() {
                 );
               })()}
 
+              {/* ── Custom content (à la carte) — inline sub-tab ── */}
+              {galleryTier === "custom" && (
+                <ShopTab
+                  clientId={clientId}
+                  unlockedTier={unlockedTier}
+                  isEditMode={isEditMode}
+                  packs={packs}
+                  activePacks={activePacks}
+                  displayPacks={displayPacks}
+                  expandedPack={expandedPack}
+                  setExpandedPack={setExpandedPack}
+                  focusPack={focusPack}
+                  setFocusPack={setFocusPack}
+                  shopSection={shopSection}
+                  setShopSection={setShopSection}
+                  setChatOpen={setChatOpen}
+                  handleUpdatePack={handleUpdatePack}
+                  handleDeletePack={handleDeletePack}
+                  handleAddPack={handleAddPack}
+                  visitorHandle={visitorHandle}
+                  model={slug as string}
+                  authHeaders={() => {
+                    const h: Record<string, string> = { "Content-Type": "application/json" };
+                    if (modelAuth?.token) h["Authorization"] = `Bearer ${modelAuth.token}`;
+                    return h;
+                  }}
+                  paypalHandle={model?.paypal_handle}
+                />
+              )}
+
               </div>
             );
           })()}
-
-          {/* ── CONTENU PERSONNALISÉ (custom orders) ── */}
-          {tab === "custom" && (
-            <ShopTab
-              clientId={clientId}
-              unlockedTier={unlockedTier}
-              isEditMode={isEditMode}
-              packs={packs}
-              activePacks={activePacks}
-              displayPacks={displayPacks}
-              expandedPack={expandedPack}
-              setExpandedPack={setExpandedPack}
-              focusPack={focusPack}
-              setFocusPack={setFocusPack}
-              shopSection={shopSection}
-              setShopSection={setShopSection}
-              setChatOpen={setChatOpen}
-              handleUpdatePack={handleUpdatePack}
-              handleDeletePack={handleDeletePack}
-              handleAddPack={handleAddPack}
-              visitorHandle={visitorHandle}
-              model={slug as string}
-              authHeaders={() => {
-                const h: Record<string, string> = { "Content-Type": "application/json" };
-                if (modelAuth?.token) h["Authorization"] = `Bearer ${modelAuth.token}`;
-                return h;
-              }}
-              paypalHandle={model?.paypal_handle}
-            />
-          )}
 
         </div>
 
@@ -1867,42 +1872,86 @@ export default function ModelPage() {
                 </div>
 
                 <div className="text-center">
-                  <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>ou achete un pack</span>
+                  <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>ou achète un pack</span>
                 </div>
 
-                {activePacks.map(pack => {
-                  const hex = TIER_HEX[pack.id] || pack.color;
-                  const paypalUrl = `https://www.paypal.com/paypalme/aaclaraa/${pack.price}`;
-                  return (
-                    <div key={pack.id} className="w-full p-4 rounded-xl"
-                      style={{ background: `${hex}08`, border: `1px solid ${hex}20` }}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-lg">{TIER_META[pack.id]?.symbol}</span>
-                          <span className="text-sm font-bold" style={{ color: hex }}>{pack.name}</span>
+                {/* Focused pack first (expanded), others collapsed */}
+                {(() => {
+                  const sorted = focusPack
+                    ? [...activePacks].sort((a, b) => (a.id === focusPack ? -1 : b.id === focusPack ? 1 : 0))
+                    : activePacks;
+                  return sorted.map(pack => {
+                    const hex = TIER_HEX[pack.id] || pack.color;
+                    const isFocused = focusPack === pack.id;
+                    const paypalHandle2 = model?.paypal_handle || "aaclaraa";
+                    const paypalUrl2 = `https://www.paypal.com/paypalme/${paypalHandle2}/${pack.price}`;
+
+                    // Collapsed: just name + price + click to expand
+                    if (!isFocused && focusPack) {
+                      return (
+                        <button key={pack.id} onClick={() => setFocusPack(pack.id)}
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all hover:scale-[1.01]"
+                          style={{ background: `${hex}06`, border: `1px solid ${hex}15` }}>
+                          <span className="text-base">{TIER_META[pack.id]?.symbol}</span>
+                          <span className="text-xs font-semibold flex-1 text-left" style={{ color: hex }}>{pack.name}</span>
+                          <span className="text-xs font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
+                          <ChevronRight className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                        </button>
+                      );
+                    }
+
+                    // Expanded: full details
+                    return (
+                      <div key={pack.id} className="w-full rounded-xl overflow-hidden transition-all"
+                        style={{ background: `${hex}08`, border: `${isFocused ? "2px" : "1px"} solid ${isFocused ? `${hex}40` : `${hex}20`}`, boxShadow: isFocused ? `0 4px 20px ${hex}15` : "none" }}>
+                        <div className="p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-xl">{TIER_META[pack.id]?.symbol}</span>
+                              <div>
+                                <span className="text-sm font-bold block" style={{ color: hex }}>{pack.name}</span>
+                                {pack.badge && <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{pack.badge}</span>}
+                              </div>
+                            </div>
+                            <span className="text-xl font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
+                          </div>
+                          <div className="mb-3 space-y-1">
+                            {pack.features.map((f: string, j: number) => (
+                              <p key={j} className="text-[11px] flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
+                                <Check className="w-3 h-3 shrink-0" style={{ color: hex }} /> {f}
+                              </p>
+                            ))}
+                          </div>
+                          {/* Payment buttons */}
+                          <div className="space-y-1.5">
+                            {pack.stripe_link && (
+                              <a href={pack.stripe_link} target="_blank" rel="noopener noreferrer"
+                                className="block w-full py-2.5 rounded-lg text-xs font-bold text-center no-underline transition-all hover:scale-[1.01]"
+                                style={{ background: hex, color: "#fff", boxShadow: `0 2px 12px ${hex}30` }}>
+                                Payer {pack.price}€
+                              </a>
+                            )}
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {pack.wise_url && (
+                                <a href={pack.wise_url} target="_blank" rel="noopener noreferrer"
+                                  className="py-2 rounded-lg text-[10px] font-bold text-center no-underline"
+                                  style={{ background: "rgba(159,232,112,0.1)", color: "#5BB318", border: "1px solid rgba(159,232,112,0.2)" }}>Wise</a>
+                              )}
+                              {pack.revolut_url && (
+                                <a href={pack.revolut_url} target="_blank" rel="noopener noreferrer"
+                                  className="py-2 rounded-lg text-[10px] font-bold text-center no-underline"
+                                  style={{ background: "rgba(0,111,238,0.08)", color: "#006FEE", border: "1px solid rgba(0,111,238,0.2)" }}>Revolut</a>
+                              )}
+                              <a href={paypalUrl2} target="_blank" rel="noopener noreferrer"
+                                className={`py-2 rounded-lg text-[10px] font-bold text-center no-underline ${!pack.wise_url && !pack.revolut_url ? "col-span-2" : ""}`}
+                                style={{ background: "rgba(0,48,135,0.08)", color: "#003087", border: "1px solid rgba(0,48,135,0.15)" }}>PayPal</a>
+                            </div>
+                          </div>
                         </div>
-                        <span className="text-sm font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
                       </div>
-                      <div className="mb-2 space-y-0.5">
-                        {pack.features.map((f: string, j: number) => (
-                          <p key={j} className="text-[10px] flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
-                            <span style={{ color: hex }}>✓</span> {f}
-                          </p>
-                        ))}
-                      </div>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {pack.wise_url && (
-                          <a href={pack.wise_url} target="_blank" rel="noopener noreferrer"
-                            className="py-2 rounded-lg text-[10px] font-bold text-center no-underline"
-                            style={{ background: "#00B4D8", color: "#fff" }}>Revolut</a>
-                        )}
-                        <a href={paypalUrl} target="_blank" rel="noopener noreferrer"
-                          className={`py-2 rounded-lg text-[10px] font-bold text-center no-underline ${!pack.wise_url ? "col-span-2" : ""}`}
-                          style={{ background: "#003087", color: "#fff" }}>PayPal</a>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             </div>
           </div>
