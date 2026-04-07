@@ -31,7 +31,7 @@ const newPost: PilotFlow = {
   action: "api",
   apiEndpoint: "/api/posts",
   steps: [
-    { id: "tier", question: "Niveau d'acces ?", type: "select", options: ["public", "VIP", "gold", "diamond", "platinum"], required: true },
+    { id: "tier", question: "Niveau d'acces ?", type: "select", options: ["public", "silver", "gold", "black", "platinum"], required: true },
     { id: "content", question: "Contenu du post ?", type: "text", required: true, placeholder: "Ecris ton message..." },
   ],
   buildBody: (a, modelSlug) => ({
@@ -50,7 +50,7 @@ const generateCode: PilotFlow = {
   action: "callback",
   steps: [
     { id: "client", question: "Pseudo du client ?", type: "text", required: true, placeholder: "Ex: @username" },
-    { id: "tier", question: "Quel pack ?", type: "select", options: ["VIP", "gold", "diamond", "platinum"], required: true },
+    { id: "tier", question: "Quel pack ?", type: "select", options: ["silver", "gold", "black", "platinum"], required: true },
     { id: "duration", question: "Duree ?", type: "select", options: ["7", "30", "90"], required: true },
     { id: "platform", question: "Plateforme ?", type: "select", options: ["snapchat", "instagram", "autre"], required: true },
   ],

@@ -224,10 +224,10 @@ export default function AgenceDashboard() {
 
   const TIER_OPTIONS = [
     { id: "public", label: "Public", color: "#64748B" },
-    { id: "vip", label: "VIP", color: "#F43F5E" },
-    { id: "gold", label: "Gold", color: "#B45309" },
-    { id: "diamond", label: "Diamond", color: "#7C3AED" },
-    { id: "platinum", label: "Platinum", color: "#A78BFA" },
+    { id: "silver", label: "Silver", color: "#C0C0C0" },
+    { id: "gold", label: "Gold", color: "#D4AF37" },
+    { id: "black", label: "VIP Black", color: "#1C1C1C" },
+    { id: "platinum", label: "VIP Platinum", color: "#B8860B" },
   ];
 
   // ══════════ RENDER ══════════
@@ -675,12 +675,12 @@ export default function AgenceDashboard() {
                       </div>
                       <div>
                         <label className="text-[11px] font-medium block mb-1" style={{ color: "var(--text-muted)" }}>Pack</label>
-                        <select name="tier" defaultValue="vip" className="w-full px-3 py-2 rounded-xl text-xs outline-none cursor-pointer"
+                        <select name="tier" defaultValue="silver" className="w-full px-3 py-2 rounded-xl text-xs outline-none cursor-pointer"
                           style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}>
-                          <option value="vip">VIP</option>
+                          <option value="silver">Silver</option>
                           <option value="gold">Gold</option>
-                          <option value="diamond">Diamond</option>
-                          <option value="platinum">Platinum</option>
+                          <option value="black">VIP Black</option>
+                          <option value="platinum">VIP Platinum</option>
                         </select>
                       </div>
                     </div>

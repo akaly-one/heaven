@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════
 //  Heaven OS — Tier Configuration (single source)
-//  Replaces TIER_COLORS / TIER_META / TIER_HEX
-//  duplicated across 5+ files
+//  Silver → Gold → VIP Black → VIP Platinum
+//  Luxe metallic branding
 // ══════════════════════════════════════════════
 
 export interface TierConfig {
@@ -10,6 +10,7 @@ export interface TierConfig {
   symbol: string;  // unicode symbol
   label: string;   // display name
   bg: string;      // rgba for badges/backgrounds
+  description: string; // short tier description
 }
 
 export const TIER_CONFIG: Record<string, TierConfig> = {
@@ -19,6 +20,7 @@ export const TIER_CONFIG: Record<string, TierConfig> = {
     symbol: "",
     label: "Public",
     bg: "rgba(122,122,110,0.08)",
+    description: "Contenu gratuit",
   },
   free: {
     color: "var(--text-muted)",
@@ -26,34 +28,64 @@ export const TIER_CONFIG: Record<string, TierConfig> = {
     symbol: "",
     label: "Free",
     bg: "rgba(100,116,139,0.08)",
+    description: "Contenu gratuit",
   },
-  vip: {
-    color: "var(--tier-vip)",
-    hex: "#E63329",
-    symbol: "\u2665",
-    label: "VIP",
-    bg: "rgba(230,51,41,0.08)",
+  promo: {
+    color: "var(--text-muted)",
+    hex: "#64748B",
+    symbol: "",
+    label: "Promo",
+    bg: "rgba(100,116,139,0.08)",
+    description: "Contenu promotionnel",
+  },
+  silver: {
+    color: "var(--tier-silver)",
+    hex: "#C0C0C0",
+    symbol: "✦",
+    label: "Silver",
+    bg: "rgba(192,192,192,0.10)",
+    description: "Photos, shootings, promos — sans nudité",
   },
   gold: {
     color: "var(--tier-gold)",
-    hex: "#9E7C1F",
-    symbol: "\u2605",
+    hex: "#D4AF37",
+    symbol: "★",
     label: "Gold",
-    bg: "rgba(158,124,31,0.08)",
+    bg: "rgba(212,175,55,0.10)",
+    description: "Tenue dentelle, sensuel, poses suggestives",
   },
-  diamond: {
-    color: "var(--tier-diamond)",
-    hex: "#4F46E5",
-    symbol: "\u2666",
-    label: "Diamond",
-    bg: "rgba(79,70,229,0.08)",
+  black: {
+    color: "var(--tier-black)",
+    hex: "#1C1C1C",
+    symbol: "♠",
+    label: "VIP Black",
+    bg: "rgba(28,28,28,0.12)",
+    description: "Sextapes & nudes — visage caché",
   },
   platinum: {
     color: "var(--tier-platinum)",
-    hex: "#7C3AED",
-    symbol: "\u265B",
-    label: "Platinum",
-    bg: "rgba(124,58,237,0.08)",
+    hex: "#B8860B",
+    symbol: "♛",
+    label: "VIP Platinum",
+    bg: "rgba(184,134,11,0.10)",
+    description: "Visage découvert, contenu explicite premium",
+  },
+  // ── Legacy aliases (backward compat with existing DB data) ──
+  vip: {
+    color: "var(--tier-silver)",
+    hex: "#C0C0C0",
+    symbol: "✦",
+    label: "Silver",
+    bg: "rgba(192,192,192,0.10)",
+    description: "Photos, shootings, promos — sans nudité",
+  },
+  diamond: {
+    color: "var(--tier-black)",
+    hex: "#1C1C1C",
+    symbol: "♠",
+    label: "VIP Black",
+    bg: "rgba(28,28,28,0.12)",
+    description: "Sextapes & nudes — visage caché",
   },
 };
 
@@ -63,16 +95,19 @@ export const TIER_COLORS: Record<string, string> = Object.fromEntries(
 );
 
 /** Backward-compatible TIER_META (color as CSS var, symbol, label) */
-export const TIER_META: Record<string, { color: string; symbol: string; label: string }> = Object.fromEntries(
-  Object.entries(TIER_CONFIG).map(([k, v]) => [k, { color: v.color, symbol: v.symbol, label: v.label }])
+export const TIER_META: Record<string, { color: string; symbol: string; label: string; description?: string }> = Object.fromEntries(
+  Object.entries(TIER_CONFIG).map(([k, v]) => [k, { color: v.color, symbol: v.symbol, label: v.label, description: v.description }])
 );
 
 /** Backward-compatible TIER_HEX */
 export const TIER_HEX: Record<string, string> = Object.fromEntries(
   Object.entries(TIER_CONFIG)
-    .filter(([k]) => !["public", "free"].includes(k))
+    .filter(([k]) => !["public", "free", "promo"].includes(k))
     .map(([k, v]) => [k, v.hex])
 );
+
+/** Canonical tier order (new IDs) */
+export const TIER_HIERARCHY = ["silver", "gold", "black", "platinum"] as const;
 
 /** Platform colors (used in pipeline, messages) */
 export const PLATFORM_COLORS: Record<string, string> = {

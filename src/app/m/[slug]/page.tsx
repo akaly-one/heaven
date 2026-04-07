@@ -29,7 +29,7 @@ interface ModelAuth {
   role: string; model_slug?: string; display_name?: string; token?: string;
 }
 // No more TABS — the tier bar IS the main nav
-// galleryTier: "feed" (default, public+wall) | "vip" | "gold" | "diamond" | "platinum" | "custom"
+// galleryTier: "feed" (default) | "silver" | "gold" | "black" | "platinum" | "custom"
 
 
 // ── Platform icons for header ──
@@ -105,7 +105,7 @@ function useModelSession(slug: string): ModelAuth | null {
 }
 
 // ── Tier hierarchy: higher index = more access ──
-const TIER_HIERARCHY = ["vip", "gold", "diamond", "platinum"];
+const TIER_HIERARCHY = ["silver", "gold", "black", "platinum"];
 function tierIncludes(unlockedTier: string, contentTier: string): boolean {
   const ui = TIER_HIERARCHY.indexOf(unlockedTier);
   const ci = TIER_HIERARCHY.indexOf(contentTier);
@@ -159,7 +159,7 @@ export default function ModelPage() {
   const [galleryTier, setGalleryTier] = useState(() => {
     if (typeof window !== "undefined") {
       const hash = window.location.hash.replace("#", "");
-      if (["feed", "vip", "gold", "diamond", "platinum", "custom"].includes(hash)) return hash;
+      if (["feed", "silver", "gold", "black", "platinum", "vip", "diamond", "custom"].includes(hash)) return hash;
       // Legacy compat
       if (hash === "all" || hash === "public" || hash === "gallery" || hash === "shootings") return "feed";
       if (hash === "shop") return "custom";
@@ -328,7 +328,7 @@ export default function ModelPage() {
     if (url) {
       const newUpload: UploadedContent = {
         id: `upl-${Date.now()}`,
-        tier: "vip",
+        tier: "silver",
         type: file.type.startsWith("video/") ? "video" : "photo",
         label: "",
         dataUrl: url,
@@ -615,7 +615,7 @@ export default function ModelPage() {
           }
         } else if (r.status === 410) {
           // Code expired — show renewal banner
-          setExpiredCodeInfo({ tier: data.tier || "vip", pack: data.pack || "vip" });
+          setExpiredCodeInfo({ tier: data.tier || "silver", pack: data.pack || "silver" });
         }
       })
       .catch(() => {});
