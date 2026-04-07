@@ -70,7 +70,7 @@ export default function AgenceDashboard() {
 
   // Feed composer
   const [newPostContent, setNewPostContent] = useState("");
-  const [newPostTier, setNewPostTier] = useState("public");
+  const [newPostTier, setNewPostTier] = useState("p0");
   const [newPostImage, setNewPostImage] = useState<string | null>(null);
   const [newPostType, setNewPostType] = useState<"feed" | "story">("feed");
   const [posting, setPosting] = useState(false);
@@ -217,7 +217,7 @@ export default function AgenceDashboard() {
         const data = await res.json();
         if (data.post) setFeedPosts(prev => [data.post, ...prev]);
         setNewPostContent("");
-        setNewPostTier("public");
+        setNewPostTier("p0");
         setNewPostImage(null);
         setNewPostType("feed");
       }
@@ -440,7 +440,7 @@ export default function AgenceDashboard() {
 
             {/* ── TAB: Feed — composer + posts/media chronologically (synced with public profile) ── */}
             {feedTab === "feed" && (
-              <div className="space-y-4 min-w-0">
+              <div className="space-y-4 min-w-0 section-enter">
                 {/* Composer */}
                 <div className="rounded-2xl p-3 sm:p-5" style={{ background: "var(--surface)", border: newPostType === "story" ? "1px solid var(--accent)" : "1px solid var(--border)", boxShadow: newPostType === "story" ? "0 0 0 1px rgba(230,51,41,0.15)" : "none" }}>
                   <div className="flex items-start gap-2 sm:gap-3">
@@ -509,24 +509,26 @@ export default function AgenceDashboard() {
                           }} />
                         </label>
                       </div>
-                      {/* Row 2: Tier selection — wraps on mobile */}
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {TIER_OPTIONS.map(t => {
-                          const selected = newPostTier === t.id;
-                          return (
-                            <button key={t.id} onClick={() => setNewPostTier(t.id)}
-                              className="px-3 py-1.5 rounded-full text-[11px] font-bold cursor-pointer shrink-0 transition-all"
-                              style={{
-                                background: selected ? t.color : "transparent",
-                                color: selected ? "#fff" : "var(--text)",
-                                border: `1.5px solid ${selected ? t.color : "var(--border)"}`,
-                                boxShadow: selected ? `0 2px 8px ${t.color}40` : "none",
-                              }}>
-                              {t.label}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      {/* Row 2: Tier selection — visible when composing, collapses when empty */}
+                      {(newPostContent.trim() || newPostImage) && (
+                        <div className="flex items-center gap-1.5 flex-wrap section-enter">
+                          {TIER_OPTIONS.map(t => {
+                            const selected = newPostTier === t.id;
+                            return (
+                              <button key={t.id} onClick={() => setNewPostTier(t.id)}
+                                className="px-3 py-1.5 rounded-full text-[11px] font-bold cursor-pointer shrink-0 transition-all"
+                                style={{
+                                  background: selected ? t.color : "transparent",
+                                  color: selected ? "#fff" : "var(--text)",
+                                  border: `1.5px solid ${selected ? t.color : "var(--border)"}`,
+                                  boxShadow: selected ? `0 2px 8px ${t.color}40` : "none",
+                                }}>
+                                {t.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                       <button onClick={handleCreatePost} disabled={(!newPostContent.trim() && !newPostImage) || posting}
                         className="w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-[1.01] disabled:opacity-30"
                         style={{ background: "var(--accent)", color: "#fff" }}>
@@ -537,12 +539,25 @@ export default function AgenceDashboard() {
                 </div>
 
                 {/* Posts feed */}
-                {feedPosts.length === 0 ? (
-                  <div className="rounded-2xl p-8 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                {!dataLoaded ? (
+                  /* Skeleton loader while fetching */
+                  <div className="space-y-4 section-enter">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                        <div className="shimmer-load" style={{ height: 200 }} />
+                        <div className="p-4 space-y-2">
+                          <div className="shimmer-load rounded-lg" style={{ height: 12, width: "60%" }} />
+                          <div className="shimmer-load rounded-lg" style={{ height: 10, width: "40%" }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : feedPosts.length === 0 ? (
+                  <div className="rounded-2xl p-8 text-center section-enter" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                     <p className="text-xs" style={{ color: "var(--text-muted)" }}>Publie ton premier post</p>
                   </div>
-                ) : feedPosts.slice(0, 15).map(post => (
-                  <div key={post.id} className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                ) : feedPosts.slice(0, 15).map((post, i) => (
+                  <div key={post.id} className="rounded-2xl overflow-hidden fade-up" style={{ background: "var(--surface)", border: "1px solid var(--border)", animationDelay: `${i * 0.05}s` }}>
                     {post.media_url && (
                       <div className="relative">
                         <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover" loading="lazy" />
@@ -594,7 +609,7 @@ export default function AgenceDashboard() {
 
             {/* ── TAB: Wall — visitor messages from public profile (synced with /m/[slug] wall) ── */}
             {feedTab === "wall" && (
-              <div className="max-w-3xl space-y-4">
+              <div className="max-w-3xl space-y-4 section-enter">
                 {/* Pending purchases at top */}
                 {pendingPurchases.length > 0 && (
                   <div className="space-y-2">

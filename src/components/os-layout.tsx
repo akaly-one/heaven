@@ -17,7 +17,7 @@ export function OsLayout({ children, cpId = "group" }: OsLayoutProps) {
         <Header />
       </div>
       <main className="md:ml-[56px] relative overflow-x-hidden pt-12 pb-20 md:pb-0">
-        <div className="relative z-10">
+        <div className="relative z-10 page-enter">
           {children}
         </div>
       </main>

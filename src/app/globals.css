@@ -373,6 +373,30 @@ input[type="range"]::-moz-range-thumb {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes sheetIn {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
 @keyframes pulse-glow {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
@@ -404,17 +428,58 @@ input[type="range"]::-moz-range-thumb {
   animation: shimmer 6s linear infinite;
 }
 
+/* ── Page & content entrance ── */
 .fade-up { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .fade-up-1 { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both; }
 .fade-up-2 { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
 .fade-up-3 { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both; }
 .fade-up-4 { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both; }
+.page-enter { animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.section-enter { animation: fadeIn 0.3s ease both; }
+.slide-in-right { animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.slide-in-left { animation: slideInLeft 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.scale-in { animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ── Modals & overlays ── */
+.overlay-enter { animation: overlayIn 0.2s ease both; }
+.modal-enter { animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.sheet-enter { animation: sheetIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 /* ═══ FAB & modern effects ═══ */
 .animate-fade-in { animation: fadeIn 0.2s ease both; }
 .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-slide-down { animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .fab-item { will-change: transform, opacity; }
+
+/* ═══ Global smooth transitions ═══ */
+/* Buttons, links, interactive elements */
+button, a, [role="button"], [role="tab"], input, select, textarea {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* Cards, panels, surfaces */
+.rounded-2xl, .rounded-xl, .rounded-lg {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s ease,
+              border-color 0.2s ease,
+              opacity 0.2s ease;
+}
+/* Images */
+img {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.3s ease,
+              opacity 0.3s ease;
+}
+/* Smooth scroll globally */
+html { scroll-behavior: smooth; }
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  html { scroll-behavior: auto; }
+}
 
 /* ═══ Tabular numbers for stats ═══ */
 .tabular-nums {
