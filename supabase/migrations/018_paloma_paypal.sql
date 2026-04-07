@@ -1,4 +1,4 @@
--- 018: Set Paloma's PayPal email in model config
+-- 018: Set Paloma's PayPal handle in model config (for PayPal.me links)
 UPDATE agence_models
-SET config = COALESCE(config, '{}'::jsonb) || '{"paypal_email": "pika5811@gmail.com"}'::jsonb
+SET config = COALESCE(config, '{}'::jsonb) || '{"paypal_handle": "pika5811"}'::jsonb
 WHERE slug = 'paloma';

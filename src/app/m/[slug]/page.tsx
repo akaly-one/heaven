@@ -1599,7 +1599,7 @@ export default function ModelPage() {
                 if (modelAuth?.token) h["Authorization"] = `Bearer ${modelAuth.token}`;
                 return h;
               }}
-              paypalEmail={model?.paypal_email}
+              paypalHandle={model?.paypal_handle}
             />
           )}
 
