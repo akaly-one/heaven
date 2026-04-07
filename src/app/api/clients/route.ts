@@ -221,8 +221,9 @@ export async function PUT(req: NextRequest) {
   const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
-    const { id, ...updates } = body;
+    const { id, model, ...updates } = body;
     if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
+    if (!model || !isValidModelSlug(model)) return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
 
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
@@ -236,7 +237,7 @@ export async function PUT(req: NextRequest) {
         verified_by: updates.verified_by || "model",
       };
       try {
-        const { data, error } = await supabase.from("agence_clients").update(verifyUpdate).eq("id", id).select().single();
+        const { data, error } = await supabase.from("agence_clients").update(verifyUpdate).eq("id", id).eq("model", model).select().single();
         if (error) throw error;
         return NextResponse.json({ success: true, client: data }, { headers: cors });
       } catch (verifyErr) {
@@ -252,7 +253,7 @@ export async function PUT(req: NextRequest) {
       if (updates[f] !== undefined) allowed[f] = updates[f];
     }
 
-    const { data, error } = await supabase.from("agence_clients").update(allowed).eq("id", id).select().single();
+    const { data, error } = await supabase.from("agence_clients").update(allowed).eq("id", id).eq("model", model).select().single();
     if (error) throw error;
 
     return NextResponse.json({ success: true, client: data }, { headers: cors });
@@ -262,17 +263,19 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE /api/clients?id=xxx — Delete a client
+// DELETE /api/clients?id=xxx&model=xxx — Delete a client
 export async function DELETE(req: NextRequest) {
   const cors = getCorsHeaders(req);
   const id = req.nextUrl.searchParams.get("id");
+  const model = req.nextUrl.searchParams.get("model");
   if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
+  if (!model || !isValidModelSlug(model)) return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
 
   try {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    const { error } = await supabase.from("agence_clients").delete().eq("id", id);
+    const { error } = await supabase.from("agence_clients").delete().eq("id", id).eq("model", model);
     if (error) {
       console.error("[API/clients] DELETE error:", error);
       return NextResponse.json({ error: error.message }, { status: 500, headers: cors });
@@ -290,13 +293,14 @@ export async function PATCH(req: NextRequest) {
   const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
-    const { id, ...updates } = body;
+    const { id, model, ...updates } = body;
     if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
+    if (!model || !isValidModelSlug(model)) return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
 
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    const { data, error } = await supabase.from("agence_clients").update(updates).eq("id", id).select().single();
+    const { data, error } = await supabase.from("agence_clients").update(updates).eq("id", id).eq("model", model).select().single();
     if (error) {
       console.error("[API/clients] PATCH error:", error);
       return NextResponse.json({ error: error.message }, { status: 500, headers: cors });

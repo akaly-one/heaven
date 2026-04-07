@@ -234,10 +234,14 @@ export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
     const target = (body.code || "").toUpperCase();
+    const model = body.model;
+    if (!model || !isValidModelSlug(model)) {
+      return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
+    }
     const supabase = requireSupabase();
 
     const { data: found, error: findErr } = await supabase
-      .from("agence_codes").select("*").ilike("code", target).maybeSingle();
+      .from("agence_codes").select("*").ilike("code", target).eq("model", model).maybeSingle();
 
     if (findErr) {
       console.error("[API/codes] PUT find error:", findErr);
@@ -277,11 +281,15 @@ export async function PUT(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const cors = getCorsHeaders(req);
   const code = req.nextUrl.searchParams.get("code")?.toUpperCase();
+  const model = req.nextUrl.searchParams.get("model");
   if (!code) return NextResponse.json({ error: "Code requis" }, { status: 400, headers: cors });
+  if (!model || !isValidModelSlug(model)) {
+    return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
+  }
   try {
     const supabase = requireSupabase();
     const { data, error } = await supabase
-      .from("agence_codes").delete().ilike("code", code).select();
+      .from("agence_codes").delete().ilike("code", code).eq("model", model).select();
 
     if (error) {
       console.error("[API/codes] DELETE error:", error);

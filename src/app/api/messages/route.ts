@@ -101,17 +101,19 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// DELETE /api/messages?id=xxx — Delete a message
+// DELETE /api/messages?id=xxx&model=xxx — Delete a message
 export async function DELETE(req: NextRequest) {
   const cors = getCorsHeaders(req);
   const id = req.nextUrl.searchParams.get("id");
+  const model = req.nextUrl.searchParams.get("model");
   if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
+  if (!model || !isValidModelSlug(model)) return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
 
   try {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    const { error } = await supabase.from("agence_messages").delete().eq("id", id);
+    const { error } = await supabase.from("agence_messages").delete().eq("id", id).eq("model", model);
     if (error) throw error;
 
     return NextResponse.json({ success: true }, { headers: cors });
@@ -146,15 +148,19 @@ export async function PATCH(req: NextRequest) {
 
     // Reassign a single message to a different client_id (for merge)
     if (id && client_id) {
+      if (!model || !isValidModelSlug(model)) {
+        return NextResponse.json({ error: "model requis pour reassign" }, { status: 400, headers: cors });
+      }
       const { error } = await supabase
         .from("agence_messages")
         .update({ client_id })
-        .eq("id", id);
+        .eq("id", id)
+        .eq("model", model);
       if (error) throw error;
       return NextResponse.json({ success: true }, { headers: cors });
     }
 
-    return NextResponse.json({ error: "id+client_id ou action+model+client_id requis" }, { status: 400, headers: cors });
+    return NextResponse.json({ error: "id+client_id+model ou action+model+client_id requis" }, { status: 400, headers: cors });
   } catch (err) {
     console.error("[API/messages] PATCH:", err);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500, headers: cors });

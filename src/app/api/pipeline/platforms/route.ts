@@ -114,11 +114,18 @@ export async function PUT(req: NextRequest) {
   const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
-    const { id, ...updates } = body;
+    const { id, model_slug, ...updates } = body;
 
     if (!id) {
       return NextResponse.json(
         { error: "ID is required" },
+        { status: 400, headers: cors }
+      );
+    }
+
+    if (!isValidModelSlug(model_slug)) {
+      return NextResponse.json(
+        { error: "model_slug requis" },
         { status: 400, headers: cors }
       );
     }
@@ -145,6 +152,7 @@ export async function PUT(req: NextRequest) {
       .from("agence_platform_accounts")
       .update(sanitized)
       .eq("id", id)
+      .eq("model_slug", model_slug)
       .select()
       .single();
 

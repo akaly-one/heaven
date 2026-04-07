@@ -122,9 +122,12 @@ export async function PUT(req: NextRequest) {
   const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
-    const { id, action, client_id, content: commentContent } = body;
+    const { id, action, client_id, content: commentContent, model } = body;
 
     if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
+    if (!model || !isValidModelSlug(model)) {
+      return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
+    }
 
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
@@ -147,8 +150,8 @@ export async function PUT(req: NextRequest) {
           if (rpcErr) throw rpcErr;
         } catch {
           // Fallback if RPC doesn't exist: manual decrement
-          const { data: p } = await supabase.from("agence_posts").select("likes_count").eq("id", id).single();
-          if (p) await supabase.from("agence_posts").update({ likes_count: Math.max(0, (p.likes_count || 0) - 1) }).eq("id", id);
+          const { data: p } = await supabase.from("agence_posts").select("likes_count").eq("id", id).eq("model", model).single();
+          if (p) await supabase.from("agence_posts").update({ likes_count: Math.max(0, (p.likes_count || 0) - 1) }).eq("id", id).eq("model", model);
         }
         return NextResponse.json({ liked: false }, { headers: cors });
       } else {
@@ -161,8 +164,8 @@ export async function PUT(req: NextRequest) {
           const { error: rpcErr } = await supabase.rpc("increment_likes", { post_id_param: id });
           if (rpcErr) throw rpcErr;
         } catch {
-          const { data: p } = await supabase.from("agence_posts").select("likes_count").eq("id", id).single();
-          if (p) await supabase.from("agence_posts").update({ likes_count: (p.likes_count || 0) + 1 }).eq("id", id);
+          const { data: p } = await supabase.from("agence_posts").select("likes_count").eq("id", id).eq("model", model).single();
+          if (p) await supabase.from("agence_posts").update({ likes_count: (p.likes_count || 0) + 1 }).eq("id", id).eq("model", model);
         }
         return NextResponse.json({ liked: true }, { headers: cors });
       }
@@ -179,17 +182,17 @@ export async function PUT(req: NextRequest) {
         const { error: rpcErr } = await supabase.rpc("increment_comments", { post_id_param: id });
         if (rpcErr) throw rpcErr;
       } catch {
-        const { data: post } = await supabase.from("agence_posts").select("comments_count").eq("id", id).single();
-        if (post) await supabase.from("agence_posts").update({ comments_count: (post.comments_count || 0) + 1 }).eq("id", id);
+        const { data: post } = await supabase.from("agence_posts").select("comments_count").eq("id", id).eq("model", model).single();
+        if (post) await supabase.from("agence_posts").update({ comments_count: (post.comments_count || 0) + 1 }).eq("id", id).eq("model", model);
       }
       return NextResponse.json({ success: true }, { headers: cors });
     }
 
     // Pin/unpin
     if (action === "pin") {
-      const { data: post } = await supabase.from("agence_posts").select("pinned").eq("id", id).single();
+      const { data: post } = await supabase.from("agence_posts").select("pinned").eq("id", id).eq("model", model).single();
       if (post) {
-        await supabase.from("agence_posts").update({ pinned: !post.pinned }).eq("id", id);
+        await supabase.from("agence_posts").update({ pinned: !post.pinned }).eq("id", id).eq("model", model);
       }
       return NextResponse.json({ success: true }, { headers: cors });
     }
@@ -206,8 +209,11 @@ export async function PATCH(req: NextRequest) {
   const cors = getCorsHeaders(req);
   try {
     const body = await req.json();
-    const { id, content, tier_required } = body;
+    const { id, content, tier_required, model } = body;
     if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
+    if (!model || !isValidModelSlug(model)) {
+      return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
+    }
 
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
@@ -224,6 +230,7 @@ export async function PATCH(req: NextRequest) {
       .from("agence_posts")
       .update(updates)
       .eq("id", id)
+      .eq("model", model)
       .select()
       .single();
 
@@ -239,13 +246,17 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const cors = getCorsHeaders(req);
   const id = req.nextUrl.searchParams.get("id");
+  const model = req.nextUrl.searchParams.get("model");
   if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
+  if (!model || !isValidModelSlug(model)) {
+    return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
+  }
 
   try {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    const { error } = await supabase.from("agence_posts").delete().eq("id", id);
+    const { error } = await supabase.from("agence_posts").delete().eq("id", id).eq("model", model);
     if (error) throw error;
 
     return NextResponse.json({ success: true }, { headers: cors });
