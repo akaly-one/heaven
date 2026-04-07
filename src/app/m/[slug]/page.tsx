@@ -1289,22 +1289,6 @@ export default function ModelPage() {
                 </div>
               )}
 
-              {/* Verification banner for unverified visitors */}
-              {!contentUnlocked && visitorRegistered && (
-                <div className="rounded-2xl p-5 sm:p-6" style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02))", border: "1px solid rgba(245,158,11,0.2)" }}>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(245,158,11,0.15)" }}>
-                      <AlertTriangle className="w-4 h-4" style={{ color: "#F59E0B" }} />
-                    </div>
-                    <span className="text-sm font-bold" style={{ color: "#F59E0B" }}>Pseudo en attente de verification</span>
-                  </div>
-                  <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                    Ton pseudo est en cours de verification. Tu as acces au contenu public en attendant.
-                    Une fois verifie, tu debloques tout le contenu exclusif !
-                  </p>
-                </div>
-              )}
-
               {/* All posts merged + sorted by date (newest first) */}
               {(() => {
                 const visitorPosts = wallPosts.filter(w => !w.content?.includes("#post-")).map(w => ({ type: "wall" as const, id: w.id, created_at: w.created_at, data: w }));
@@ -1533,15 +1517,6 @@ export default function ModelPage() {
             return (
               <div className={`fade-up ${showSidebar ? "flex gap-6" : ""}`}>
               <div className="flex-1 min-w-0">
-                {/* Verification notice */}
-                {!contentUnlocked && visitorRegistered && (
-                  <div className="rounded-xl px-4 py-3 mb-4 flex items-center gap-2" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
-                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" style={{ color: "#F59E0B" }} />
-                    <span className="text-[11px]" style={{ color: "#F59E0B" }}>
-                      Pseudo en attente — galerie limitee au contenu public
-                    </span>
-                  </div>
-                )}
                 {/* Tier filter — underline style */}
                 <div className="flex gap-1 mb-6 sm:mb-8 overflow-x-auto scrollbar-hide pb-1" style={{ borderBottom: "1px solid var(--border)" }}>
                   {["all", "public", "vip", "gold", "diamond", "platinum"].map(t => {
