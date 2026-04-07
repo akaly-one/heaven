@@ -52,7 +52,7 @@ function isExpired(expiresAt: string): boolean { return new Date(expiresAt).getT
 
 // ══════════ MAIN ══════════
 export default function AgenceDashboard() {
-  const { currentModel, auth, authHeaders, isRoot } = useModel();
+  const { currentModel, auth, authHeaders, isRoot, ready } = useModel();
   const _modelSlug = currentModel || auth?.model_slug || null;
   const modelSlug = _modelSlug ?? "";
 
@@ -130,11 +130,14 @@ export default function AgenceDashboard() {
   const [dataLoaded, setDataLoaded] = useState<string | null>(null);
   const [loadRetries, setLoadRetries] = useState(0);
   useEffect(() => {
-    if (!modelSlug) return;
+    if (!ready || !modelSlug) return;
     if (dataLoaded === modelSlug) return;
     const mid = toModelId(modelSlug);
     const headers = { "Content-Type": "application/json" };
-    const safeFetch = (url: string) => fetch(url, { headers }).then(r => r.ok ? r.json() : null).catch(() => null);
+    const safeFetch = (url: string) => fetch(url, { headers }).then(r => {
+      if (!r.ok) { console.warn(`[Dashboard] ${url} → ${r.status}`); return null; }
+      return r.json();
+    }).catch(err => { console.warn(`[Dashboard] ${url} failed:`, err); return null; });
 
     Promise.all([
       safeFetch(`/api/codes?model=${mid}`),
@@ -158,7 +161,7 @@ export default function AgenceDashboard() {
         setTimeout(() => setLoadRetries(r => r + 1), 2000);
       }
     });
-  }, [modelSlug, dataLoaded, loadRetries]);
+  }, [ready, modelSlug, dataLoaded, loadRetries]);
 
   // Messages & purchase notifications polling handled by Header component
 
@@ -282,24 +285,12 @@ export default function AgenceDashboard() {
   ];
 
   // ══════════ RENDER ══════════
-  if (!modelSlug) {
-    return (
-      <OsLayout cpId="agence">
-        <div className="flex items-center justify-center h-[60vh]">
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-            {isRoot ? "Selectionne un modele dans le header" : "Chargement du profil..."}
-          </p>
-        </div>
-      </OsLayout>
-    );
-  }
 
-  // Skeleton while data loads
-  if (dataLoaded !== modelSlug) {
+  // Wait for context to initialize from sessionStorage
+  if (!ready) {
     return (
       <OsLayout cpId="agence">
         <div className="px-5 sm:px-8 md:px-12 py-6 space-y-6">
-          {/* Stat cards skeleton */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[1,2,3,4].map(i => (
               <div key={i} className="rounded-2xl p-4 animate-pulse" style={{ background: "var(--surface)" }}>
@@ -308,7 +299,41 @@ export default function AgenceDashboard() {
               </div>
             ))}
           </div>
-          {/* Feed skeleton */}
+          <div className="rounded-2xl p-4 animate-pulse" style={{ background: "var(--surface)" }}>
+            <div className="h-4 w-32 rounded mb-3" style={{ background: "var(--border)" }} />
+            <div className="h-20 rounded" style={{ background: "var(--border)" }} />
+          </div>
+        </div>
+      </OsLayout>
+    );
+  }
+
+  // Context ready but no model selected (root must pick one)
+  if (!modelSlug) {
+    return (
+      <OsLayout cpId="agence">
+        <div className="flex items-center justify-center h-[60vh]">
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+            {isRoot ? "Selectionne un modele dans le header" : "Erreur: modele introuvable"}
+          </p>
+        </div>
+      </OsLayout>
+    );
+  }
+
+  // Data loading skeleton (model known, API fetching in progress)
+  if (dataLoaded !== modelSlug) {
+    return (
+      <OsLayout cpId="agence">
+        <div className="px-5 sm:px-8 md:px-12 py-6 space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="rounded-2xl p-4 animate-pulse" style={{ background: "var(--surface)" }}>
+                <div className="h-3 w-16 rounded" style={{ background: "var(--border)" }} />
+                <div className="h-6 w-12 rounded mt-2" style={{ background: "var(--border)" }} />
+              </div>
+            ))}
+          </div>
           <div className="rounded-2xl p-4 animate-pulse" style={{ background: "var(--surface)" }}>
             <div className="h-4 w-32 rounded mb-3" style={{ background: "var(--border)" }} />
             <div className="h-20 rounded" style={{ background: "var(--border)" }} />

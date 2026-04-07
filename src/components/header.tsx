@@ -44,7 +44,7 @@ interface CodeItem {
 
 export function Header() {
   const pathname = usePathname();
-  const { currentModel, auth, authHeaders } = useModel();
+  const { currentModel, auth, authHeaders, ready } = useModel();
   const modelSlug = currentModel || auth?.model_slug || "";
 
   const [modelInfo, setModelInfo] = useState<{
@@ -213,11 +213,11 @@ export function Header() {
 
   // ── Fetch model info ──
   useEffect(() => {
-    if (!modelSlug) return;
+    if (!ready || !modelSlug) return;
     fetch(`/api/models/${modelSlug}`, { headers: authHeaders() })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setModelInfo(d); }).catch(() => {});
-  }, [modelSlug, authHeaders]);
+  }, [ready, modelSlug, authHeaders]);
 
   // ── Fetch messages ──
   const fetchMessages = useCallback(() => {
@@ -244,12 +244,13 @@ export function Header() {
     }).catch(() => {});
   }, [modelSlug, authHeaders]);
 
-  // ── Initial + polling ──
+  // ── Initial + polling — wait for context to be ready ──
   useEffect(() => {
+    if (!ready || !modelSlug) return;
     fetchMessages(); fetchClients(); fetchOrders();
     const iv = setInterval(() => { fetchMessages(); fetchOrders(); }, 15000);
     return () => clearInterval(iv);
-  }, [fetchMessages, fetchClients, fetchOrders]);
+  }, [ready, modelSlug, fetchMessages, fetchClients, fetchOrders]);
 
   // ── Open conversation with a client ──
   const openChat = useCallback(async (clientId: string, pseudo: string) => {

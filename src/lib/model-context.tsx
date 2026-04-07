@@ -13,6 +13,7 @@ interface ModelContextValue {
   isRoot: boolean;
   models: { slug: string; display_name: string }[];
   authHeaders: () => Record<string, string>;
+  ready: boolean; // true once auth has been read from sessionStorage
 }
 
 const ModelContext = createContext<ModelContextValue>({
@@ -23,29 +24,33 @@ const ModelContext = createContext<ModelContextValue>({
   isRoot: false,
   models: [],
   authHeaders: () => ({}),
+  ready: false,
 });
 
-// Read auth from sessionStorage synchronously to avoid loading flash
-function getInitialAuth(): HeavenAuth | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = sessionStorage.getItem("heaven_auth");
-    if (raw) return JSON.parse(raw);
-  } catch { /* ignore */ }
-  return null;
-}
-
 export function ModelProvider({ children }: { children: React.ReactNode }) {
-  const [auth, setAuth] = useState<HeavenAuth | null>(() => getInitialAuth());
-  const [currentModel, setCurrentModel] = useState<string | null>(() => {
-    const a = getInitialAuth();
-    if (a?.role === "model" && a.model_slug) return a.model_slug;
-    return null;
-  });
+  const [auth, setAuth] = useState<HeavenAuth | null>(null);
+  const [currentModel, setCurrentModel] = useState<string | null>(null);
   const [models, setModels] = useState<{ slug: string; display_name: string }[]>([]);
+  const [ready, setReady] = useState(false);
 
-  // Load active models from API (root only — models don't need the list)
+  // Read auth from sessionStorage ONCE on mount (client-only, avoids SSR mismatch)
   useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("heaven_auth");
+      if (raw) {
+        const parsed: HeavenAuth = JSON.parse(raw);
+        setAuth(parsed);
+        if (parsed.role === "model" && parsed.model_slug) {
+          setCurrentModel(parsed.model_slug);
+        }
+      }
+    } catch { /* ignore corrupt storage */ }
+    setReady(true);
+  }, []);
+
+  // Load active models from API (root only)
+  useEffect(() => {
+    if (!ready) return;
     if (auth?.role === "root") {
       fetch("/api/models")
         .then(r => r.ok ? r.json() : null)
@@ -62,29 +67,24 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
             }
           }
         })
-        .catch(() => {
-          // No fallback to hardcoded models — if API fails, empty list
-        });
+        .catch(() => {});
     }
-  }, [auth?.role]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready, auth?.role]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isRoot = auth?.role === "root";
 
-  // Generic model ID (m1, m2...) — always derived from slug or auth
   const modelId = useMemo(
     () => toModelId(currentModel || auth?.model_slug || ""),
     [currentModel, auth?.model_slug]
   );
 
-  // Stable ref — never changes
   const authHeaders = useCallback(() => {
     return { "Content-Type": "application/json" };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Memoize context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
-    currentModel, modelId, setCurrentModel, auth, isRoot, models, authHeaders,
-  }), [currentModel, modelId, auth, isRoot, models, authHeaders]);
+    currentModel, modelId, setCurrentModel, auth, isRoot, models, authHeaders, ready,
+  }), [currentModel, modelId, auth, isRoot, models, authHeaders, ready]);
 
   return (
     <ModelContext.Provider value={contextValue}>
