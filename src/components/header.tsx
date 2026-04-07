@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import { MessageCircle, Users, Link2, ExternalLink, Globe, Instagram, X, KeyRound, Clock, Key, ArrowRight } from "lucide-react";
+import { MessageCircle, Users, Link2, ExternalLink, Globe, Instagram, X, KeyRound, Clock, Key, ArrowRight, CheckCircle, XCircle, ShieldAlert } from "lucide-react";
 import { useModel } from "@/lib/model-context";
 
 // ── Page titles ──
@@ -32,6 +32,7 @@ interface MessageItem {
 interface ClientItem {
   id: string; pseudo_snap: string | null; pseudo_insta: string | null;
   model: string; tier: string | null; last_active: string | null; created_at: string;
+  verified_status?: string | null; lead_source?: string | null;
 }
 interface CodeItem {
   code: string; client: string; tier: string; active: boolean;
@@ -54,8 +55,26 @@ export function Header() {
   const [clients, setClients] = useState<ClientItem[]>([]);
   const [codes, setCodes] = useState<CodeItem[]>([]);
 
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pageTitle = PAGE_TITLES[pathname] || pathname.split("/").pop()?.replace(/-/g, " ") || "";
+
+  const pendingClients = clients.filter(c => !c.verified_status || c.verified_status === "pending");
+
+  // ── Verify/reject client directly from header ──
+  const handleVerify = async (clientId: string, action: "verify" | "reject") => {
+    setVerifyingId(clientId);
+    try {
+      await fetch("/api/clients", {
+        method: "PUT",
+        headers: authHeaders(),
+        body: JSON.stringify({ id: clientId, action, verified_by: modelSlug }),
+      });
+      fetchClients();
+    } catch (e) { console.error("[Header] verify error:", e); }
+    setVerifyingId(null);
+  };
 
   // ── Close on outside click ──
   useEffect(() => {
@@ -219,12 +238,17 @@ export function Header() {
             style={{ background: openDropdown === "clients" ? "rgba(0,0,0,0.08)" : "transparent", border: "none", color: "var(--text-muted)" }}
             title="Clients & Codes">
             <Users className="w-[18px] h-[18px]" />
-            {clients.length > 0 && (
+            {pendingClients.length > 0 ? (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 animate-pulse"
+                style={{ background: "#F59E0B", color: "#000", fontSize: "10px", fontWeight: 700, lineHeight: 1 }}>
+                {pendingClients.length}
+              </span>
+            ) : clients.length > 0 ? (
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1"
                 style={{ background: "var(--text-muted)", color: "var(--bg)", fontSize: "10px", fontWeight: 700, lineHeight: 1 }}>
                 {clients.length}
               </span>
-            )}
+            ) : null}
           </button>
           {openDropdown === "clients" && (
             <div className={`${dropdownBox} right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2`} style={dropdownStyle}>
@@ -241,9 +265,55 @@ export function Header() {
                 </div>
               </div>
               <div className="max-h-[50vh] overflow-y-auto">
+                {/* ── Pending Verification Section ── */}
+                {pendingClients.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 px-4 py-2" style={{ background: "rgba(245,158,11,0.08)", borderBottom: "1px solid var(--border)" }}>
+                      <ShieldAlert className="w-3 h-3" style={{ color: "#F59E0B" }} />
+                      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#F59E0B" }}>
+                        En attente de verification ({pendingClients.length})
+                      </span>
+                    </div>
+                    {pendingClients.slice(0, 8).map(c => {
+                      const pseudo = pseudoOf(c);
+                      const isProcessing = verifyingId === c.id;
+                      return (
+                        <div key={`pending-${c.id}`} className="flex items-center gap-2 px-4 py-2.5"
+                          style={{ borderBottom: "1px solid var(--border)", background: "rgba(245,158,11,0.03)" }}>
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                            style={{ background: "rgba(245,158,11,0.15)", color: "#F59E0B" }}>
+                            {pseudo.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-[11px] font-bold truncate block" style={{ color: "var(--text)" }}>@{pseudo}</span>
+                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                              {c.lead_source ? `via ${c.lead_source}` : "Nouveau"} · {new Date(c.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button onClick={() => handleVerify(c.id, "verify")} disabled={isProcessing}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
+                              style={{ background: "rgba(16,185,129,0.15)", border: "none", opacity: isProcessing ? 0.5 : 1 }}
+                              title="Valider">
+                              <CheckCircle className="w-3.5 h-3.5" style={{ color: "#10B981" }} />
+                            </button>
+                            <button onClick={() => handleVerify(c.id, "reject")} disabled={isProcessing}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
+                              style={{ background: "rgba(239,68,68,0.15)", border: "none", opacity: isProcessing ? 0.5 : 1 }}
+                              title="Rejeter">
+                              <XCircle className="w-3.5 h-3.5" style={{ color: "#EF4444" }} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* ── All Clients ── */}
                 {clients.length === 0 ? (
                   <p className="text-[11px] text-center py-8" style={{ color: "var(--text-muted)" }}>Aucun client</p>
-                ) : clients.slice(0, 15).map(c => {
+                ) : clients.filter(c => c.verified_status === "verified" || (c.verified_status && c.verified_status !== "pending")).slice(0, 15).map(c => {
                   const pseudo = pseudoOf(c);
                   const clientCodes = codes.filter(co => co.client?.toLowerCase() === pseudo.toLowerCase());
                   const activeCode = clientCodes.find(co => co.active && !co.revoked && new Date(co.expiresAt).getTime() > Date.now());

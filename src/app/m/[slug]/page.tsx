@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import {
   Heart, MessageCircle, Send, Lock, Image, Newspaper, ShoppingBag,
@@ -157,6 +157,7 @@ export default function ModelPage() {
   const [chatMessages, setChatMessages] = useState<{ id: string; client_id: string; sender_type: string; content: string; created_at: string }[]>([]);
   const [chatInput, setChatInput] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const seenMsgIdsRef = useRef<Set<string>>(new Set());
 
   // Unlock sheet
   const [showUnlock, setShowUnlock] = useState(false);
@@ -657,14 +658,53 @@ export default function ModelPage() {
     return null;
   }, [visitorPlatform, visitorHandle, slug]);
 
-  // ── Chat: poll messages ──
+  // ── iPhone notification sound (Web Audio API — tri-tone) ──
+  const playNotifSound = useCallback(() => {
+    try {
+      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const playTone = (freq: number, startTime: number, duration: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      };
+      // iPhone tri-tone pattern
+      const t = ctx.currentTime;
+      playTone(1046.5, t, 0.12);       // C6
+      playTone(1318.5, t + 0.14, 0.12); // E6
+      playTone(1568,   t + 0.28, 0.18); // G6
+    } catch { /* audio not available */ }
+  }, []);
+
+  // ── Chat: poll messages + notification sound ──
   useEffect(() => {
     if (!clientId) return;
+    let isFirst = true;
     const fetchChat = () => {
       fetch(`/api/messages?model=${slug}&client_id=${clientId}`)
         .then(r => r.json())
         .then(d => {
-          setChatMessages(((d.messages || []) as typeof chatMessages).reverse());
+          const msgs = ((d.messages || []) as typeof chatMessages).reverse();
+          // Detect new model messages → play sound
+          if (!isFirst) {
+            const newModelMsgs = msgs.filter(
+              m => m.sender_type === "model" && !seenMsgIdsRef.current.has(m.id)
+            );
+            if (newModelMsgs.length > 0) {
+              playNotifSound();
+            }
+          }
+          // Track all known message IDs
+          msgs.forEach(m => seenMsgIdsRef.current.add(m.id));
+          isFirst = false;
+          setChatMessages(msgs);
         })
         .catch(e => console.error("[Chat] poll error:", e));
     };
@@ -672,7 +712,20 @@ export default function ModelPage() {
     const interval = chatOpen ? 5000 : 15000;
     const iv = setInterval(fetchChat, interval);
     return () => clearInterval(iv);
-  }, [clientId, slug, chatOpen]);
+  }, [clientId, slug, chatOpen, playNotifSound]);
+
+  // ── Unread = model messages not yet "seen" by opening chat ──
+  const chatUnread = useMemo(() => {
+    if (chatOpen) return 0; // chat is open → no unread
+    return chatMessages.filter(m => m.sender_type === "model").length;
+  }, [chatMessages, chatOpen]);
+
+  // ── Mark model messages as "seen" when chat opens ──
+  useEffect(() => {
+    if (chatOpen) {
+      chatMessages.forEach(m => seenMsgIdsRef.current.add(m.id));
+    }
+  }, [chatOpen, chatMessages]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -691,9 +744,12 @@ export default function ModelPage() {
       return;
     }
     setChatInput("");
+    // Mark all as seen since user just interacted
     const res = await fetch(`/api/messages?model=${slug}&client_id=${clientId}`);
     const d = await res.json();
-    setChatMessages(((d.messages || []) as typeof chatMessages).reverse());
+    const msgs = ((d.messages || []) as typeof chatMessages).reverse();
+    msgs.forEach(m => seenMsgIdsRef.current.add(m.id));
+    setChatMessages(msgs);
   };
 
   // ── Wall: post (auto-registers client if not yet) ──
@@ -861,6 +917,7 @@ export default function ModelPage() {
         @keyframes heroFadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes chevronBounce { 0%, 100% { transform: translateY(0); opacity: 0.4; } 50% { transform: translateY(6px); opacity: 0.8; } }
         @keyframes countUp { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+        @keyframes notifPulse { 0%, 100% { box-shadow: 0 4px 20px rgba(230,51,41,0.4); } 50% { box-shadow: 0 4px 20px rgba(230,51,41,0.4), 0 0 20px rgba(16,185,129,0.5), 0 0 40px rgba(16,185,129,0.2); } }
         .profile-stagger-1 { animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
         .profile-stagger-2 { animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both; }
         .profile-stagger-3 { animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both; }
@@ -1814,24 +1871,24 @@ export default function ModelPage() {
         {/* ═══ CHAT FLOATING BUBBLE ═══ */}
         {!isModelLoggedIn && model && (
           <>
-            {/* Chat FAB */}
+            {/* Chat FAB — badge disappears on open */}
             {!chatOpen && (
               <button onClick={() => setChatOpen(true)}
                 className="fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full flex items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110 active:scale-95"
                 style={{
                   background: "linear-gradient(135deg, var(--rose), var(--accent))",
-                  boxShadow: "0 4px 20px rgba(230,51,41,0.4)",
+                  boxShadow: chatUnread > 0
+                    ? "0 4px 20px rgba(230,51,41,0.4), 0 0 12px rgba(16,185,129,0.6)"
+                    : "0 4px 20px rgba(230,51,41,0.4)",
+                  animation: chatUnread > 0 ? "notifPulse 2s ease-in-out infinite" : "none",
                 }}>
                 <MessageCircle className="w-6 h-6 text-white" />
-                {(() => {
-                  const unread = chatMessages.filter(m => m.sender_type === "model").length;
-                  return unread > 0 ? (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center"
-                      style={{ background: "var(--success)", color: "#fff" }}>
-                      {unread}
-                    </span>
-                  ) : null;
-                })()}
+                {chatUnread > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center animate-bounce"
+                    style={{ background: "var(--success)", color: "#fff" }}>
+                    {chatUnread}
+                  </span>
+                )}
               </button>
             )}
 
