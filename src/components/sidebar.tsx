@@ -26,12 +26,19 @@ const NAV_ROOT = [
   { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings", color: "#94A3B8", rootOnly: true },
 ] as const;
 
-// Mobile bottom nav — 4 core pages
-const MOBILE_NAV = [
+// Mobile bottom nav — all pages in horizontal scroll
+const MOBILE_NAV_MAIN = [
   { id: "dashboard", label: "Home", icon: LayoutDashboard, href: "/agence" },
   { id: "clients", label: "Clients", icon: Users, href: "/agence/clients" },
   { id: "contenu", label: "Contenu", icon: Workflow, href: "/agence/contenu" },
   { id: "strategie", label: "Stratégie", icon: Target, href: "/agence/strategie" },
+] as const;
+
+const MOBILE_NAV_ROOT = [
+  { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances" },
+  { id: "automation", label: "Auto", icon: Zap, href: "/agence/automation" },
+  { id: "architecture", label: "Archi", icon: Network, href: "/agence/architecture" },
+  { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings" },
 ] as const;
 
 function useAuth(): HeavenAuth | null {
@@ -171,23 +178,53 @@ export function Sidebar() {
           style={{ background: "rgba(0,0,0,0.04)" }} />
       )}
 
-      {/* Mobile bottom nav — 4 core pages */}
+      {/* Mobile bottom nav — horizontal scroll, all pages */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden safe-area-bottom"
         style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
-        <div className="flex items-center justify-around py-2.5">
-          {MOBILE_NAV.map((item) => {
+        <div className="flex items-center gap-1 px-2 py-2 overflow-x-auto no-scrollbar">
+          {MOBILE_NAV_MAIN.map((item) => {
             const active = item.href === "/agence"
               ? pathname === "/agence"
               : pathname.startsWith(item.href);
             return (
               <a key={item.id} href={item.href}
-                className="flex flex-col items-center gap-1 px-3 py-1 no-underline transition-colors"
-                style={{ color: active ? "var(--accent)" : "var(--text-muted)" }}>
-                <item.icon className="w-5 h-5" />
-                <span className="text-[11px] font-semibold">{item.label}</span>
+                className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg no-underline transition-colors shrink-0"
+                style={{
+                  color: active ? "var(--accent)" : "var(--text-muted)",
+                  background: active ? "rgba(230,51,41,0.08)" : "transparent",
+                }}>
+                <item.icon className="w-4.5 h-4.5" />
+                <span className="text-[9px] font-semibold">{item.label}</span>
               </a>
             );
           })}
+          {/* Separator + Root pages (admin only) */}
+          {isRoot && (
+            <>
+              <div className="w-px h-7 shrink-0 mx-0.5" style={{ background: "var(--border)" }} />
+              {MOBILE_NAV_ROOT.map((item) => {
+                const active = pathname.startsWith(item.href);
+                return (
+                  <a key={item.id} href={item.href}
+                    className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg no-underline transition-colors shrink-0"
+                    style={{
+                      color: active ? "var(--accent)" : "var(--text-muted)",
+                      background: active ? "rgba(230,51,41,0.08)" : "transparent",
+                    }}>
+                    <item.icon className="w-4.5 h-4.5" />
+                    <span className="text-[9px] font-semibold">{item.label}</span>
+                  </a>
+                );
+              })}
+            </>
+          )}
+          {/* Logout */}
+          <button onClick={handleLogout}
+            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors shrink-0 cursor-pointer"
+            style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
+            <LogOut className="w-4.5 h-4.5" />
+            <span className="text-[9px] font-semibold">Quitter</span>
+          </button>
         </div>
       </nav>
     </>
