@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import { MessageCircle, Users, Link2, ExternalLink, Globe, Instagram, X, KeyRound, Clock, Key, ArrowRight, CheckCircle, XCircle, ShieldAlert } from "lucide-react";
+import { MessageCircle, Users, Link2, ExternalLink, Globe, Instagram, X, KeyRound, Clock, Key, ArrowRight, CheckCircle, XCircle, ShieldAlert, ShoppingBag, Check, Ban } from "lucide-react";
 import { useModel } from "@/lib/model-context";
 
 // ── Page titles ──
@@ -56,6 +56,8 @@ export function Header() {
   const [codes, setCodes] = useState<CodeItem[]>([]);
 
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [pendingOrders, setPendingOrders] = useState<{ id: string; pseudo: string; content: string; created_at: string }[]>([]);
+  const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pageTitle = PAGE_TITLES[pathname] || pathname.split("/").pop()?.replace(/-/g, " ") || "";
@@ -74,6 +76,50 @@ export function Header() {
       fetchClients();
     } catch (e) { console.error("[Header] verify error:", e); }
     setVerifyingId(null);
+  };
+
+  // ── Fetch pending orders (wall posts from SYSTEM with ⏳) ──
+  const fetchOrders = useCallback(() => {
+    if (!modelSlug) return;
+    fetch(`/api/wall?model=${modelSlug}`, { headers: authHeaders() })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return;
+        const posts = (d.posts || []) as { id: string; pseudo: string; content: string; created_at: string }[];
+        setPendingOrders(posts.filter(p => p.pseudo === "SYSTEM" && p.content?.startsWith("⏳")));
+      }).catch(() => {});
+  }, [modelSlug, authHeaders]);
+
+  // ── Accept order — mark as validated ──
+  const handleAcceptOrder = async (orderId: string, content: string) => {
+    setProcessingOrderId(orderId);
+    try {
+      // Delete the pending post
+      await fetch(`/api/wall?id=${orderId}&model=${modelSlug}`, { method: "DELETE", headers: authHeaders() });
+      // Post a confirmation
+      const confirmed = content.replace("⏳", "✅").replace("en attente de validation", "VALIDÉE ✓");
+      await fetch("/api/wall", {
+        method: "POST", headers: authHeaders(),
+        body: JSON.stringify({ model: modelSlug, pseudo: "SYSTEM", content: confirmed }),
+      });
+      setPendingOrders(prev => prev.filter(o => o.id !== orderId));
+    } catch (e) { console.error("[Header] accept order error:", e); }
+    setProcessingOrderId(null);
+  };
+
+  // ── Refuse order ──
+  const handleRefuseOrder = async (orderId: string, content: string) => {
+    setProcessingOrderId(orderId);
+    try {
+      await fetch(`/api/wall?id=${orderId}&model=${modelSlug}`, { method: "DELETE", headers: authHeaders() });
+      const refused = content.replace("⏳", "❌").replace("en attente de validation", "REFUSÉE");
+      await fetch("/api/wall", {
+        method: "POST", headers: authHeaders(),
+        body: JSON.stringify({ model: modelSlug, pseudo: "SYSTEM", content: refused }),
+      });
+      setPendingOrders(prev => prev.filter(o => o.id !== orderId));
+    } catch (e) { console.error("[Header] refuse order error:", e); }
+    setProcessingOrderId(null);
   };
 
   // ── Close on outside click ──
@@ -120,10 +166,10 @@ export function Header() {
 
   // ── Initial + polling ──
   useEffect(() => {
-    fetchMessages(); fetchClients();
-    const iv = setInterval(fetchMessages, 15000);
+    fetchMessages(); fetchClients(); fetchOrders();
+    const iv = setInterval(() => { fetchMessages(); fetchOrders(); }, 15000);
     return () => clearInterval(iv);
-  }, [fetchMessages, fetchClients]);
+  }, [fetchMessages, fetchClients, fetchOrders]);
 
   // ── Save platform ──
   const handleSavePlatform = async (platformId: string, value: string) => {
@@ -238,10 +284,10 @@ export function Header() {
             style={{ background: openDropdown === "clients" ? "rgba(0,0,0,0.08)" : "transparent", border: "none", color: "var(--text-muted)" }}
             title="Clients & Codes">
             <Users className="w-[18px] h-[18px]" />
-            {pendingClients.length > 0 ? (
+            {(pendingClients.length + pendingOrders.length) > 0 ? (
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 animate-pulse"
                 style={{ background: "#F59E0B", color: "#000", fontSize: "10px", fontWeight: 700, lineHeight: 1 }}>
-                {pendingClients.length}
+                {pendingClients.length + pendingOrders.length}
               </span>
             ) : clients.length > 0 ? (
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1"
@@ -302,6 +348,59 @@ export function Header() {
                               style={{ background: "rgba(239,68,68,0.15)", border: "none", opacity: isProcessing ? 0.5 : 1 }}
                               title="Rejeter">
                               <XCircle className="w-3.5 h-3.5" style={{ color: "#EF4444" }} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* ── Pending Orders ── */}
+                {pendingOrders.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 px-4 py-2" style={{ background: "rgba(168,85,247,0.06)", borderBottom: "1px solid var(--border)" }}>
+                      <ShoppingBag className="w-3 h-3" style={{ color: "#A855F7" }} />
+                      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#A855F7" }}>
+                        Commandes en attente ({pendingOrders.length})
+                      </span>
+                    </div>
+                    {pendingOrders.map(order => {
+                      const pseudoMatch = order.content?.match(/@(\S+)/);
+                      const pseudo = pseudoMatch?.[1] || "?";
+                      const descMatch = order.content?.match(/📝\s*"(.+?)"/);
+                      const desc = descMatch?.[1] || null;
+                      const itemMatch = order.content?.match(/commande:\s*(.+?)\s*—/);
+                      const items = itemMatch?.[1]?.trim() || order.content?.slice(2, 80) || "";
+                      const isProcessing = processingOrderId === order.id;
+                      return (
+                        <div key={`order-${order.id}`} className="px-4 py-3" style={{ borderBottom: "1px solid var(--border)", background: "rgba(168,85,247,0.02)" }}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                              style={{ background: "rgba(168,85,247,0.12)", color: "#A855F7" }}>
+                              {pseudo.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>@{pseudo}</span>
+                            <span className="text-[10px] ml-auto shrink-0" style={{ color: "var(--text-muted)" }}>
+                              {new Date(order.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-medium leading-snug mb-1" style={{ color: "var(--text-secondary)" }}>{items}</p>
+                          {desc && (
+                            <p className="text-[10px] leading-snug mb-1.5 px-2 py-1 rounded-md" style={{ background: "rgba(0,0,0,0.04)", color: "var(--text-muted)" }}>
+                              📝 &ldquo;{desc}&rdquo;
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <button onClick={() => handleAcceptOrder(order.id, order.content || "")} disabled={isProcessing}
+                              className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.97]"
+                              style={{ background: "rgba(16,185,129,0.12)", color: "#10B981", border: "1px solid rgba(16,185,129,0.2)", opacity: isProcessing ? 0.5 : 1 }}>
+                              <Check className="w-3 h-3" /> Valider
+                            </button>
+                            <button onClick={() => handleRefuseOrder(order.id, order.content || "")} disabled={isProcessing}
+                              className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.97]"
+                              style={{ background: "rgba(239,68,68,0.08)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.15)", opacity: isProcessing ? 0.5 : 1 }}>
+                              <Ban className="w-3 h-3" /> Refuser
                             </button>
                           </div>
                         </div>
