@@ -62,6 +62,14 @@ export const TIER_CONFIG: Record<string, TierConfig> = {
     bg: "rgba(28,28,28,0.12)",
     description: "Sextapes & nudes — visage caché",
   },
+  feet: {
+    color: "var(--tier-feet)",
+    hex: "#E8A87C",
+    symbol: "🦶",
+    label: "Feet Lovers",
+    bg: "rgba(232,168,124,0.10)",
+    description: "Photos pieds glamour, accessoires, dédicaces",
+  },
   platinum: {
     color: "var(--tier-platinum)",
     hex: "#B8860B",

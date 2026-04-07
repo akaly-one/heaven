@@ -25,6 +25,7 @@
   --tier-gold: #D4AF37;
   --tier-black: #1C1C1C;
   --tier-platinum: #B8860B;
+  --tier-feet: #E8A87C;
   /* Legacy aliases */
   --tier-vip: #C0C0C0;
   --tier-diamond: #1C1C1C;
@@ -90,6 +91,7 @@
   --tier-gold: #E5C76B;
   --tier-black: #F5F5F5;
   --tier-platinum: #D4A84A;
+  --tier-feet: #F0BA93;
   --tier-vip: #D0D0D0;
   --tier-diamond: #F5F5F5;
   --tier-free: #94A3B8;

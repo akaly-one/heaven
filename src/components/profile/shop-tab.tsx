@@ -11,11 +11,12 @@ import { TIER_META, TIER_HEX } from "@/constants/tiers";
 const TIER_PRICING: Record<string, { photo: number; videoPerMin: number }> = {
   silver: { photo: 5, videoPerMin: 10 },
   gold: { photo: 10, videoPerMin: 25 },
+  feet: { photo: 8, videoPerMin: 15 },
   black: { photo: 20, videoPerMin: 50 },
   platinum: { photo: 35, videoPerMin: 80 },
 };
 
-const TIER_ORDER = ["silver", "gold", "black", "platinum"] as const;
+const TIER_ORDER = ["silver", "gold", "feet", "black", "platinum"] as const;
 
 interface CartItem {
   id: string;

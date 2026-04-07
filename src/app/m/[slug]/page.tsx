@@ -105,7 +105,7 @@ function useModelSession(slug: string): ModelAuth | null {
 }
 
 // ── Tier hierarchy: higher index = more access ──
-const TIER_HIERARCHY = ["silver", "gold", "black", "platinum"];
+const TIER_HIERARCHY = ["silver", "gold", "feet", "black", "platinum"];
 function tierIncludes(unlockedTier: string, contentTier: string): boolean {
   const ui = TIER_HIERARCHY.indexOf(unlockedTier);
   const ci = TIER_HIERARCHY.indexOf(contentTier);
@@ -159,7 +159,7 @@ export default function ModelPage() {
   const [galleryTier, setGalleryTier] = useState(() => {
     if (typeof window !== "undefined") {
       const hash = window.location.hash.replace("#", "");
-      if (["feed", "silver", "gold", "black", "platinum", "vip", "diamond", "custom"].includes(hash)) return hash;
+      if (["feed", "silver", "gold", "feet", "black", "platinum", "vip", "diamond", "custom"].includes(hash)) return hash;
       // Legacy compat
       if (hash === "all" || hash === "public" || hash === "gallery" || hash === "shootings") return "feed";
       if (hash === "shop") return "custom";
@@ -1227,58 +1227,101 @@ export default function ModelPage() {
         {(() => {
           const packTiers = activePacks.map(p => p.id);
           return (
-            <div className="sticky top-[40px] md:top-[44px] z-30"
+            <div className="sticky top-[40px] md:top-[44px] z-30 py-3"
               style={{ background: "color-mix(in srgb, var(--bg) 92%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
-              <div className="max-w-6xl mx-auto px-3 sm:px-6 md:px-10">
-                <div className="flex items-center gap-0 overflow-x-auto scrollbar-hide" role="tablist" style={{ borderBottom: "1px solid var(--border)" }}>
-                  {/* Feed — default landing, public content + wall */}
+              <div className="max-w-6xl mx-auto px-3 sm:px-5 md:px-8">
+                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1" role="tablist">
+                  {/* Feed tile */}
                   <button role="tab" aria-selected={galleryTier === "feed"} onClick={() => { setGalleryTier("feed"); setFocusPack(null); }}
-                    className="relative px-3 sm:px-4 py-3 sm:py-3.5 text-[10px] sm:text-xs font-bold cursor-pointer shrink-0 transition-all uppercase flex items-center gap-1.5 group"
-                    style={{ color: galleryTier === "feed" ? "var(--accent)" : "var(--text-muted)", letterSpacing: "0.06em" }}>
-                    <Newspaper className="w-3 h-3 transition-transform group-hover:scale-110" />
-                    Feed
-                    {galleryTier === "feed" && (
-                      <div className="absolute bottom-0 left-2 right-2 h-[2.5px] rounded-full"
-                        style={{ background: "var(--accent)", boxShadow: "0 0 8px rgba(var(--accent-rgb, 200,100,100), 0.4)" }} />
-                    )}
+                    className="relative shrink-0 rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] group overflow-hidden"
+                    style={{
+                      minWidth: "80px",
+                      padding: "12px 16px",
+                      background: galleryTier === "feed"
+                        ? "linear-gradient(135deg, var(--accent), #F43F5E)"
+                        : "var(--surface)",
+                      border: galleryTier === "feed" ? "none" : "1px solid var(--border)",
+                      boxShadow: galleryTier === "feed" ? "0 4px 16px rgba(230,51,41,0.25)" : "none",
+                    }}>
+                    <div className="flex flex-col items-center gap-1">
+                      <Newspaper className="w-4 h-4" style={{ color: galleryTier === "feed" ? "#fff" : "var(--text-muted)" }} />
+                      <span className="text-[10px] font-bold uppercase tracking-wider"
+                        style={{ color: galleryTier === "feed" ? "#fff" : "var(--text-muted)" }}>Feed</span>
+                    </div>
                   </button>
-                  {/* Pack tier tabs — with symbols + premium glow */}
+
+                  {/* Pack tier tiles — metallic dynamic cards */}
                   {packTiers.map(t => {
                     const tierHex = TIER_HEX[t] || "var(--text-muted)";
                     const tierLabel = TIER_META[t]?.label || t.toUpperCase();
                     const tierSymbol = TIER_META[t]?.symbol || "";
                     const isLocked = !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, t));
                     const isActive = galleryTier === t;
-                    const pack = activePacks.find(p => p.id === t);
+                    // Try to find a preview image for the tile background
+                    const previewImg = uploads.find(u => u.tier === t && u.dataUrl && u.type === "photo")?.dataUrl;
                     return (
                       <button key={t} role="tab" aria-selected={isActive} onClick={() => { setGalleryTier(t); setFocusPack(null); }}
-                        className="relative px-3 sm:px-4 py-3 sm:py-3.5 text-[10px] sm:text-xs font-bold cursor-pointer shrink-0 transition-all uppercase flex items-center gap-1.5 group"
-                        style={{ color: isActive ? tierHex : "var(--text-muted)", letterSpacing: "0.06em", opacity: isLocked && !isActive ? 0.5 : 1 }}>
-                        {/* Symbol always visible — lock only as small overlay */}
-                        <span className="text-sm transition-transform group-hover:scale-110 relative" style={{ color: tierHex }}>
-                          {tierSymbol}
-                          {isLocked && <Lock className="w-2 h-2 absolute -bottom-0.5 -right-1" style={{ color: tierHex, opacity: 0.7 }} />}
-                        </span>
-                        {tierLabel}
-                        {/* Prix masqué dans la nav — visible uniquement au moment du paiement */}
-                        {/* Active indicator — glowing bar */}
+                        className="relative shrink-0 rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] group overflow-hidden"
+                        style={{
+                          minWidth: "90px",
+                          height: "72px",
+                          border: isActive ? `2px solid ${tierHex}` : "1px solid var(--border)",
+                          boxShadow: isActive ? `0 4px 20px ${tierHex}30` : "none",
+                          opacity: isLocked && !isActive ? 0.7 : 1,
+                        }}>
+                        {/* Background — preview image or gradient */}
+                        <div className="absolute inset-0">
+                          {previewImg ? (
+                            <img src={previewImg} alt="" draggable={false}
+                              className="w-full h-full object-cover"
+                              style={{ filter: isLocked ? "blur(8px) brightness(0.3)" : "brightness(0.35)", transform: isLocked ? "scale(1.1)" : "none" }} />
+                          ) : (
+                            <div className="w-full h-full"
+                              style={{ background: `linear-gradient(135deg, ${tierHex}20, ${tierHex}08)` }} />
+                          )}
+                          {/* Active glow overlay */}
+                          {isActive && (
+                            <div className="absolute inset-0"
+                              style={{ background: `linear-gradient(135deg, ${tierHex}35, transparent)`, boxShadow: `inset 0 0 30px ${tierHex}20` }} />
+                          )}
+                        </div>
+                        {/* Content */}
+                        <div className="relative flex flex-col items-center justify-center h-full gap-0.5 px-3">
+                          <span className="text-xl transition-transform group-hover:scale-110 relative">
+                            {tierSymbol}
+                            {isLocked && <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-2" style={{ color: "#fff", opacity: 0.7 }} />}
+                          </span>
+                          <span className="text-[10px] font-black uppercase tracking-wider"
+                            style={{ color: isActive ? "#fff" : tierHex, textShadow: previewImg ? "0 1px 4px rgba(0,0,0,0.5)" : "none" }}>
+                            {tierLabel}
+                          </span>
+                        </div>
+                        {/* Bottom glow line when active */}
                         {isActive && (
-                          <div className="absolute bottom-0 left-2 right-2 h-[2.5px] rounded-full"
-                            style={{ background: tierHex, boxShadow: `0 0 8px ${tierHex}60` }} />
+                          <div className="absolute bottom-0 left-0 right-0 h-[3px]"
+                            style={{ background: tierHex, boxShadow: `0 0 10px ${tierHex}` }} />
                         )}
                       </button>
                     );
                   })}
-                  {/* Custom — à la carte */}
+
+                  {/* Custom tile */}
                   <button role="tab" aria-selected={galleryTier === "custom"} onClick={() => { setGalleryTier("custom"); setFocusPack(null); }}
-                    className="relative px-3 sm:px-4 py-3 sm:py-3.5 text-[10px] sm:text-xs font-bold cursor-pointer shrink-0 transition-all uppercase flex items-center gap-1.5 ml-auto group"
-                    style={{ color: galleryTier === "custom" ? "var(--gold, #D4A017)" : "var(--text-muted)", letterSpacing: "0.06em" }}>
-                    <Sparkles className="w-3 h-3 transition-transform group-hover:scale-110" />
-                    Custom
-                    {galleryTier === "custom" && (
-                      <div className="absolute bottom-0 left-2 right-2 h-[2.5px] rounded-full"
-                        style={{ background: "var(--gold, #D4A017)", boxShadow: "0 0 8px rgba(212,160,23,0.4)" }} />
-                    )}
+                    className="relative shrink-0 rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] group overflow-hidden ml-auto"
+                    style={{
+                      minWidth: "80px",
+                      padding: "12px 16px",
+                      background: galleryTier === "custom"
+                        ? "linear-gradient(135deg, #D4AF37, #B8860B)"
+                        : "var(--surface)",
+                      border: galleryTier === "custom" ? "none" : "1px solid var(--border)",
+                      boxShadow: galleryTier === "custom" ? "0 4px 16px rgba(184,134,11,0.25)" : "none",
+                    }}>
+                    <div className="flex flex-col items-center gap-1">
+                      <Sparkles className="w-4 h-4" style={{ color: galleryTier === "custom" ? "#fff" : "var(--text-muted)" }} />
+                      <span className="text-[10px] font-bold uppercase tracking-wider"
+                        style={{ color: galleryTier === "custom" ? "#fff" : "var(--text-muted)" }}>Custom</span>
+                    </div>
                   </button>
                 </div>
               </div>
