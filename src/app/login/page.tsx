@@ -39,6 +39,7 @@ export default function LoginPage() {
             loggedAt: new Date().toISOString(),
           })
         );
+        window.dispatchEvent(new Event("heaven:auth-changed"));
         router.push(data.redirect || "/agence");
       } else {
         setError("Code invalide");

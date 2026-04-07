@@ -58,6 +58,13 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
     setState(readSessionAuth());
   }, []);
 
+  // Re-read sessionStorage when login writes auth (fixes first-visit load bug)
+  useEffect(() => {
+    const handler = () => setState(readSessionAuth());
+    window.addEventListener("heaven:auth-changed", handler);
+    return () => window.removeEventListener("heaven:auth-changed", handler);
+  }, []);
+
   const { auth, currentModel, ready } = state;
 
   // Allow external model switching (root)
