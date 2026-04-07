@@ -8,6 +8,7 @@ import { PackConfigurator } from "@/components/cockpit/pack-configurator";
 import type { FeedPost as Post, PackConfig } from "@/types/heaven";
 import { DEFAULT_PACKS } from "@/constants/packs";
 import { toSlot } from "@/lib/tier-utils";
+import { toModelId } from "@/lib/model-utils";
 import { TIER_CONFIG } from "@/constants/tiers";
 
 // ── Constants ──
@@ -47,7 +48,7 @@ export default function ContenuPage() {
   const fetchPosts = useCallback(() => {
     if (!modelSlug) { setLoading(false); return; }
     setLoading(true);
-    fetch(`/api/posts?model=${modelSlug}`, { headers: authHeaders() })
+    fetch(`/api/posts?model=${toModelId(modelSlug)}`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setPosts(d.posts || []))
       .catch(() => {})
@@ -58,7 +59,7 @@ export default function ContenuPage() {
     fetchPosts();
     // Fetch packs
     if (modelSlug) {
-      fetch(`/api/packs?model=${modelSlug}`, { headers: authHeaders() })
+      fetch(`/api/packs?model=${toModelId(modelSlug)}`, { headers: authHeaders() })
         .then(r => r.json())
         .then(d => setSettingsPacks(d.packs?.length ? d.packs : DEFAULT_PACKS))
         .catch(() => setSettingsPacks(DEFAULT_PACKS));
@@ -84,7 +85,7 @@ export default function ContenuPage() {
   const deleteSelected = async () => {
     if (!confirm(`Supprimer ${selected.size} post(s) ?`)) return;
     for (const id of selected) {
-      await fetch(`/api/posts?id=${id}&model=${modelSlug}`, { method: "DELETE", headers: authHeaders() });
+      await fetch(`/api/posts?id=${id}&model=${toModelId(modelSlug)}`, { method: "DELETE", headers: authHeaders() });
     }
     selectNone();
     fetchPosts();
@@ -95,7 +96,7 @@ export default function ContenuPage() {
       await fetch("/api/posts", {
         method: "PATCH",
         headers: authHeaders(),
-        body: JSON.stringify({ id, model: modelSlug, updates: { tier_required: newTier } }),
+        body: JSON.stringify({ id, model: toModelId(modelSlug), updates: { tier_required: newTier } }),
       });
     }
     selectNone();
@@ -362,7 +363,7 @@ export default function ContenuPage() {
                         <span className="text-[11px] uppercase" style={{ color: "var(--text-muted)" }}>{TIER_CONFIG[toSlot(p.tier_required)]?.label || toSlot(p.tier_required)}</span>
                         <button
                           onClick={async () => {
-                            await fetch(`/api/posts?id=${p.id}&model=${modelSlug}`, { method: "DELETE", headers: authHeaders() });
+                            await fetch(`/api/posts?id=${p.id}&model=${toModelId(modelSlug)}`, { method: "DELETE", headers: authHeaders() });
                             fetchPosts();
                           }}
                           className="opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity"

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useModel } from "@/lib/model-context";
+import { toModelId } from "@/lib/model-utils";
 import { OsLayout } from "@/components/os-layout";
 import {
   Search, ArrowLeft, Trash2, Check, X, MessageCircle, Key,
@@ -117,10 +118,10 @@ export default function ClientsCRMPage() {
   const fetchAll = useCallback(() => {
     if (!model) { setLoading(false); return; }
     Promise.all([
-      fetch(`/api/clients?model=${model}`, { headers: authHeaders() }).then(r => r.json()),
-      fetch(`/api/codes?model=${model}`, { headers: authHeaders() }).then(r => r.json()),
-      fetch(`/api/messages?model=${model}`, { headers: authHeaders() }).then(r => r.json()),
-      fetch(`/api/packs?model=${model}`, { headers: authHeaders() }).then(r => r.json()),
+      fetch(`/api/clients?model=${toModelId(model)}`, { headers: authHeaders() }).then(r => r.json()),
+      fetch(`/api/codes?model=${toModelId(model)}`, { headers: authHeaders() }).then(r => r.json()),
+      fetch(`/api/messages?model=${toModelId(model)}`, { headers: authHeaders() }).then(r => r.json()),
+      fetch(`/api/packs?model=${toModelId(model)}`, { headers: authHeaders() }).then(r => r.json()),
     ]).then(([cd, co, mg, pk]) => {
       setClients(cd.clients || []);
       setCodes(co.codes || []);
@@ -135,7 +136,7 @@ export default function ClientsCRMPage() {
   useEffect(() => {
     if (!chatClient) return;
     const iv = setInterval(() => {
-      fetch(`/api/messages?model=${model}`, { headers: authHeaders() }).then(r => r.json())
+      fetch(`/api/messages?model=${toModelId(model)}`, { headers: authHeaders() }).then(r => r.json())
         .then(mg => setMessages(mg.messages || [])).catch(() => {});
     }, 8000);
     return () => clearInterval(iv);
@@ -225,14 +226,14 @@ export default function ClientsCRMPage() {
   const deleteSelected = async () => {
     if (!confirm(`Supprimer ${selected.size} client(s) ?`)) return;
     for (const id of selected) {
-      await fetch(`/api/clients?id=${id}&model=${model}`, { method: "DELETE", headers: authHeaders() });
+      await fetch(`/api/clients?id=${id}&model=${toModelId(model)}`, { method: "DELETE", headers: authHeaders() });
     }
     selectNone(); fetchAll();
   };
 
   const addClient = async () => {
     if (!addPseudo.trim()) return;
-    const payload: Record<string, unknown> = { model };
+    const payload: Record<string, unknown> = { model: toModelId(model) };
     if (addPlatform === "snap") payload.pseudo_snap = addPseudo.trim().toLowerCase();
     else payload.pseudo_insta = addPseudo.trim().toLowerCase();
     await fetch("/api/clients", { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) });
@@ -242,14 +243,14 @@ export default function ClientsCRMPage() {
   const verifyClient = async (clientId: string, action: "verify" | "reject") => {
     await fetch("/api/clients", {
       method: "PUT", headers: authHeaders(),
-      body: JSON.stringify({ id: clientId, model, action, verified_by: model }),
+      body: JSON.stringify({ id: clientId, model: toModelId(model), action, verified_by: toModelId(model) }),
     });
     fetchAll();
   };
 
   const runCleanup = async () => {
     if (!confirm("Supprimer tous les pseudos non-vérifiés de plus de 7 jours ?")) return;
-    await fetch(`/api/clients/cleanup?model=${model}`, { method: "DELETE", headers: authHeaders() });
+    await fetch(`/api/clients/cleanup?model=${toModelId(model)}`, { method: "DELETE", headers: authHeaders() });
     fetchAll();
   };
 
@@ -258,7 +259,7 @@ export default function ClientsCRMPage() {
     if (targets.length === 0) return;
     if (!confirm(`Purger ${targets.length} client(s) inactifs depuis +48h sans vérification ?`)) return;
     for (const c of targets) {
-      await fetch(`/api/clients?id=${c.id}&model=${model}`, { method: "DELETE", headers: authHeaders() });
+      await fetch(`/api/clients?id=${c.id}&model=${toModelId(model)}`, { method: "DELETE", headers: authHeaders() });
     }
     fetchAll();
   };
@@ -279,13 +280,13 @@ export default function ClientsCRMPage() {
     if (!reply.trim() || !chatClient) return;
     await fetch("/api/messages", {
       method: "POST", headers: authHeaders(),
-      body: JSON.stringify({ model, client_id: chatClient, content: reply.trim(), sender_type: "model" }),
+      body: JSON.stringify({ model: toModelId(model), client_id: chatClient, content: reply.trim(), sender_type: "model" }),
     });
     setReply(""); fetchAll();
   };
 
   const deleteMessage = async (msgId: string) => {
-    await fetch(`/api/messages?id=${msgId}&model=${model}`, { method: "DELETE", headers: authHeaders() });
+    await fetch(`/api/messages?id=${msgId}&model=${toModelId(model)}`, { method: "DELETE", headers: authHeaders() });
     fetchAll();
   };
 
@@ -296,7 +297,7 @@ export default function ClientsCRMPage() {
     const codeStr = `${model.slice(0, 3).toUpperCase()}-${new Date().getFullYear()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
     await fetch("/api/codes", {
       method: "POST", headers: authHeaders(),
-      body: JSON.stringify({ model, code: codeStr, client: pseudo.toLowerCase(), platform: isSnap(c) ? "snapchat" : "instagram", tier: genTier, duration: genDays * 24, type: genType }),
+      body: JSON.stringify({ model: toModelId(model), code: codeStr, client: pseudo.toLowerCase(), platform: isSnap(c) ? "snapchat" : "instagram", tier: genTier, duration: genDays * 24, type: genType }),
     });
     setShowGenerateFor(null);
     fetchAll();
@@ -335,13 +336,13 @@ export default function ClientsCRMPage() {
       }
       if (Object.keys(updates).length > 0) {
         await fetch("/api/clients", { method: "PATCH", headers: authHeaders(),
-          body: JSON.stringify({ id: keepId, model, ...updates }) });
+          body: JSON.stringify({ id: keepId, model: toModelId(model), ...updates }) });
       }
       const otherIds = mergeModal.slice(1).map(c => c.id);
       const msgPromises = otherIds.flatMap(otherId =>
         messages.filter(m => m.client_id === otherId).map(msg =>
           fetch("/api/messages", { method: "PATCH", headers: authHeaders(),
-            body: JSON.stringify({ id: msg.id, client_id: keepId, model }) })
+            body: JSON.stringify({ id: msg.id, client_id: keepId, model: toModelId(model) }) })
         )
       );
       if (msgPromises.length > 0) await Promise.allSettled(msgPromises);
@@ -350,12 +351,12 @@ export default function ClientsCRMPage() {
         const otherPseudo = other.pseudo_snap || other.pseudo_insta || "";
         return codes.filter(c => c.client === otherPseudo).map(code =>
           fetch("/api/codes", { method: "PATCH", headers: authHeaders(),
-            body: JSON.stringify({ code: code.code, model, updates: { client: keptPseudo } }) })
+            body: JSON.stringify({ code: code.code, model: toModelId(model), updates: { client: keptPseudo } }) })
         );
       });
       if (codePromises.length > 0) await Promise.allSettled(codePromises);
       await Promise.allSettled(otherIds.map(id =>
-        fetch(`/api/clients?id=${id}&model=${model}`, { method: "DELETE", headers: authHeaders() })
+        fetch(`/api/clients?id=${id}&model=${toModelId(model)}`, { method: "DELETE", headers: authHeaders() })
       ));
       setMergeModal(null); selectNone(); fetchAll();
     } catch (err) { console.error("[Merge] error:", err); }
@@ -743,7 +744,7 @@ export default function ClientsCRMPage() {
                       <button onClick={async (e) => {
                         e.stopPropagation();
                         if (confirm(`Supprimer @${pseudo} ?`)) {
-                          await fetch(`/api/clients?id=${c.id}&model=${model}`, { method: "DELETE", headers: authHeaders() });
+                          await fetch(`/api/clients?id=${c.id}&model=${toModelId(model)}`, { method: "DELETE", headers: authHeaders() });
                           setExpandedClient(null); fetchAll();
                         }
                       }} className="p-1.5 rounded-lg cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>

@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await supabase
       .from("agence_accounts")
-      .select("model_slug, display_name, active")
+      .select("model_slug, display_name, active, model_id")
       .eq("active", true)
       .order("display_name");
 

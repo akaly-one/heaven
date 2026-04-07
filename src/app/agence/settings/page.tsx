@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useModel } from "@/lib/model-context";
+import { toModelId } from "@/lib/model-utils";
 import { OsLayout } from "@/components/os-layout";
 import { SecurityAlerts } from "@/components/cockpit/security-alerts";
 import { Settings, UserPlus, Trash2, Shield, ShieldCheck, Power, Lock, Users, Edit3, GitMerge, Zap, ChevronDown, ChevronUp, Database, Cloud, CreditCard, Server, CheckCircle, AlertCircle, Globe, Monitor, RefreshCw, Hash, UserCheck, Key, DollarSign, FileText } from "lucide-react";
@@ -61,7 +62,7 @@ export default function SettingsPage() {
   const fetchAccounts = () => {
     setLoading(true);
     // Root sees all accounts, models see only their own
-    const url = isRoot ? "/api/accounts" : `/api/accounts?model=${modelSlug || ""}`;
+    const url = isRoot ? "/api/accounts" : `/api/accounts?model=${toModelId(modelSlug) || ""}`;
     fetch(url, { headers: authHeaders() })
       .then(r => r.json())
       .then(d => { if (d.accounts) setAccounts(d.accounts); })
@@ -349,7 +350,7 @@ export default function SettingsPage() {
                         await fetch(`/api/purge`, {
                           method: "POST",
                           headers: authHeaders(),
-                          body: JSON.stringify({ table, model: modelSlug }),
+                          body: JSON.stringify({ table, model: toModelId(modelSlug) }),
                         });
                       } catch {}
                     }
