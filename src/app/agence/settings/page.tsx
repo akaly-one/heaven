@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useModel } from "@/lib/model-context";
 import { OsLayout } from "@/components/os-layout";
 import { SecurityAlerts } from "@/components/cockpit/security-alerts";
-import { Settings, UserPlus, Trash2, Shield, ShieldCheck, Power, Lock, Users, Edit3, GitMerge, Zap, ChevronDown, ChevronUp, Database, Cloud, CreditCard, Server, CheckCircle, AlertCircle, Globe, Monitor } from "lucide-react";
+import { Settings, UserPlus, Trash2, Shield, ShieldCheck, Power, Lock, Users, Edit3, GitMerge, Zap, ChevronDown, ChevronUp, Database, Cloud, CreditCard, Server, CheckCircle, AlertCircle, Globe, Monitor, RefreshCw, Hash, UserCheck, Key, DollarSign, FileText } from "lucide-react";
 
 // ── Types ──
 interface Account {
@@ -32,6 +32,29 @@ export default function SettingsPage() {
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [merging, setMerging] = useState<{ from: string; to: string } | null>(null);
+
+  // ── System status for Dev Center ──
+  interface SystemStatus {
+    db: { tables: number; total_rows: number };
+    models: { active: number; total: number };
+    clients: { total: number; active_30d: number; paying: number };
+    codes: { total: number; active: number; expired: number };
+    payments: { completed: number; pending: number; total_revenue: number };
+    posts: { feed: number; stories: number };
+    env: { paypal_configured: boolean; revolut_configured: boolean; cloudinary_configured: boolean; sqwensy_configured: boolean };
+  }
+  const [sysStatus, setSysStatus] = useState<SystemStatus | null>(null);
+  const [sysLoading, setSysLoading] = useState(false);
+
+  const fetchSystemStatus = () => {
+    setSysLoading(true);
+    fetch("/api/system/status", { headers: authHeaders() })
+      .then(r => r.json())
+      .then(d => { if (!d.error) setSysStatus(d); })
+      .catch(() => {})
+      .finally(() => setSysLoading(false));
+  };
+  useEffect(() => { if (section === "devcenter" && isRoot) fetchSystemStatus(); }, [section, isRoot]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchAccounts = () => {
     setLoading(true);
@@ -345,76 +368,140 @@ export default function SettingsPage() {
           {section === "devcenter" && isRoot && (
             <div className="space-y-4 fade-up-2">
 
-              {/* ── Infrastructure Status ── */}
+              {/* ── Infrastructure Status (dynamic) ── */}
               <div className="card-premium p-5">
-                <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: "var(--text-muted)" }}>Infrastructure</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {/* Supabase */}
-                  <div className="rounded-xl p-3" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Database className="w-3.5 h-3.5" style={{ color: "#10B981" }} />
-                      <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>Supabase</span>
-                    </div>
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981" }}>
-                      <CheckCircle className="w-2.5 h-2.5" /> Connecté
-                    </span>
-                  </div>
-                  {/* Cloudinary */}
-                  <div className="rounded-xl p-3" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Cloud className="w-3.5 h-3.5" style={{ color: "#10B981" }} />
-                      <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>Cloudinary</span>
-                    </div>
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981" }}>
-                      <CheckCircle className="w-2.5 h-2.5" /> Connecté
-                    </span>
-                    {process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME && (
-                      <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>Cloud: {process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}</p>
-                    )}
-                  </div>
-                  {/* PayPal */}
-                  <div className="rounded-xl p-3" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <CreditCard className="w-3.5 h-3.5" style={{ color: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ? "#10B981" : "#F59E0B" }} />
-                      <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>PayPal</span>
-                    </div>
-                    {process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ? (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981" }}>
-                        <CheckCircle className="w-2.5 h-2.5" /> Configuré
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>
-                        <AlertCircle className="w-2.5 h-2.5" /> Non configuré
-                      </span>
-                    )}
-                  </div>
-                  {/* Revolut */}
-                  <div className="rounded-xl p-3" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <CreditCard className="w-3.5 h-3.5" style={{ color: process.env.NEXT_PUBLIC_REVOLUT_CONFIGURED ? "#10B981" : "#F59E0B" }} />
-                      <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>Revolut</span>
-                    </div>
-                    {process.env.NEXT_PUBLIC_REVOLUT_CONFIGURED ? (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981" }}>
-                        <CheckCircle className="w-2.5 h-2.5" /> Configuré
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>
-                        <AlertCircle className="w-2.5 h-2.5" /> Non configuré
-                      </span>
-                    )}
-                  </div>
-                  {/* Vercel */}
-                  <div className="rounded-xl p-3" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Globe className="w-3.5 h-3.5" style={{ color: "#10B981" }} />
-                      <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>Vercel</span>
-                    </div>
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981" }}>
-                      <CheckCircle className="w-2.5 h-2.5" /> Actif
-                    </span>
-                  </div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Infrastructure</h2>
+                  <button onClick={fetchSystemStatus} disabled={sysLoading}
+                    className="p-1.5 rounded-lg cursor-pointer hover:scale-105 active:scale-95 transition-transform disabled:opacity-50"
+                    style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
+                    <RefreshCw className={`w-3 h-3 ${sysLoading ? "animate-spin" : ""}`} style={{ color: "var(--text-muted)" }} />
+                  </button>
                 </div>
+
+                {sysLoading && !sysStatus ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(230,51,41,0.2)", borderTopColor: "var(--accent)" }} />
+                  </div>
+                ) : (
+                  <>
+                    {/* DB + Environment */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                      {/* Supabase DB */}
+                      <div className="rounded-xl p-3" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Database className="w-3.5 h-3.5" style={{ color: "#10B981" }} />
+                          <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>Supabase</span>
+                        </div>
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981" }}>
+                          <CheckCircle className="w-2.5 h-2.5" /> Connecte
+                        </span>
+                        {sysStatus && (
+                          <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>
+                            {sysStatus.db.tables} tables / {sysStatus.db.total_rows.toLocaleString()} rows
+                          </p>
+                        )}
+                      </div>
+                      {/* Cloudinary */}
+                      <div className="rounded-xl p-3" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Cloud className="w-3.5 h-3.5" style={{ color: sysStatus?.env.cloudinary_configured ? "#10B981" : "#F59E0B" }} />
+                          <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>Cloudinary</span>
+                        </div>
+                        {sysStatus?.env.cloudinary_configured ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981" }}>
+                            <CheckCircle className="w-2.5 h-2.5" /> Configure
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>
+                            <AlertCircle className="w-2.5 h-2.5" /> Non configure
+                          </span>
+                        )}
+                      </div>
+                      {/* PayPal */}
+                      <div className="rounded-xl p-3" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <CreditCard className="w-3.5 h-3.5" style={{ color: sysStatus?.env.paypal_configured ? "#10B981" : "#F59E0B" }} />
+                          <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>PayPal</span>
+                        </div>
+                        {sysStatus?.env.paypal_configured ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981" }}>
+                            <CheckCircle className="w-2.5 h-2.5" /> Configure
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>
+                            <AlertCircle className="w-2.5 h-2.5" /> Non configure
+                          </span>
+                        )}
+                      </div>
+                      {/* Revolut */}
+                      <div className="rounded-xl p-3" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <CreditCard className="w-3.5 h-3.5" style={{ color: sysStatus?.env.revolut_configured ? "#10B981" : "#F59E0B" }} />
+                          <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>Revolut</span>
+                        </div>
+                        {sysStatus?.env.revolut_configured ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981" }}>
+                            <CheckCircle className="w-2.5 h-2.5" /> Configure
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>
+                            <AlertCircle className="w-2.5 h-2.5" /> Non configure
+                          </span>
+                        )}
+                      </div>
+                      {/* SQWENSY Sync */}
+                      <div className="rounded-xl p-3" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Globe className="w-3.5 h-3.5" style={{ color: sysStatus?.env.sqwensy_configured ? "#10B981" : "#F59E0B" }} />
+                          <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>SQWENSY</span>
+                        </div>
+                        {sysStatus?.env.sqwensy_configured ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981" }}>
+                            <CheckCircle className="w-2.5 h-2.5" /> Configure
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>
+                            <AlertCircle className="w-2.5 h-2.5" /> Non configure
+                          </span>
+                        )}
+                      </div>
+                      {/* Vercel */}
+                      <div className="rounded-xl p-3" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Server className="w-3.5 h-3.5" style={{ color: "#10B981" }} />
+                          <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>Vercel</span>
+                        </div>
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981" }}>
+                          <CheckCircle className="w-2.5 h-2.5" /> Actif
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Live Stats */}
+                    {sysStatus && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {[
+                          { icon: UserCheck, label: "Models", value: `${sysStatus.models.active}/${sysStatus.models.total}`, sub: "actifs", color: "#A882FF" },
+                          { icon: Users, label: "Clients", value: sysStatus.clients.total.toLocaleString(), sub: `${sysStatus.clients.active_30d} actifs 30j / ${sysStatus.clients.paying} payants`, color: "#10B981" },
+                          { icon: Key, label: "Codes", value: sysStatus.codes.total.toLocaleString(), sub: `${sysStatus.codes.active} actifs / ${sysStatus.codes.expired} expires`, color: "#F59E0B" },
+                          { icon: DollarSign, label: "Paiements", value: `${sysStatus.payments.completed + sysStatus.payments.pending}`, sub: `${sysStatus.payments.total_revenue.toFixed(2)} EUR`, color: "#E84393" },
+                          { icon: FileText, label: "Feed", value: sysStatus.posts.feed.toString(), sub: "posts", color: "#6366F1" },
+                          { icon: Hash, label: "Stories", value: sysStatus.posts.stories.toString(), sub: "stories", color: "#EC4899" },
+                        ].map(stat => (
+                          <div key={stat.label} className="rounded-xl p-3" style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <stat.icon className="w-3.5 h-3.5" style={{ color: stat.color }} />
+                              <span className="text-[11px] font-semibold" style={{ color: "var(--text-muted)" }}>{stat.label}</span>
+                            </div>
+                            <p className="text-lg font-bold" style={{ color: "var(--text)" }}>{stat.value}</p>
+                            <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{stat.sub}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* ── Payment Setup Guide ── */}

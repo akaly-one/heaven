@@ -11,6 +11,7 @@ export async function OPTIONS(req: NextRequest) {
 }
 
 // GET /api/posts?model=yumi — List posts (public)
+// Supports pagination: ?page=1&limit=30 (default: return all for backward compat)
 export async function GET(req: NextRequest) {
   const cors = getCorsHeaders(req);
   try {
@@ -22,6 +23,45 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
     }
 
+    const type = req.nextUrl.searchParams.get("type");
+    const pageParam = req.nextUrl.searchParams.get("page");
+    const limitParam = req.nextUrl.searchParams.get("limit");
+    const paginated = pageParam !== null;
+    const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(limitParam || "30", 10) || 30));
+    const offset = (page - 1) * limit;
+
+    if (paginated) {
+      // Paginated mode: return page + total count
+      let countQ = supabase.from("agence_posts").select("*", { count: "exact", head: true });
+      if (model) countQ = countQ.eq("model", model);
+      if (type) countQ = countQ.eq("post_type", type);
+      const { count } = await countQ;
+      const total = count ?? 0;
+
+      let q = supabase
+        .from("agence_posts")
+        .select("*")
+        .order("pinned", { ascending: false })
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (model) q = q.eq("model", model);
+      if (type) q = q.eq("post_type", type);
+
+      const { data, error } = await q;
+      if (error) throw error;
+
+      return NextResponse.json({
+        posts: data || [],
+        total,
+        page,
+        limit,
+        hasMore: offset + limit < total,
+      }, { headers: cors });
+    }
+
+    // Legacy mode: return all (backward compat)
     let q = supabase
       .from("agence_posts")
       .select("*")
@@ -30,8 +70,6 @@ export async function GET(req: NextRequest) {
       .limit(50);
 
     if (model) q = q.eq("model", model);
-
-    const type = req.nextUrl.searchParams.get("type");
     if (type) q = q.eq("post_type", type);
 
     const { data, error } = await q;

@@ -26,20 +26,64 @@ export async function OPTIONS(req: NextRequest) {
 }
 
 // ── GET ──
+// Supports pagination: ?page=1&limit=50 (default: return all for backward compat)
 export async function GET(req: NextRequest) {
   const cors = getCorsHeaders(req);
   const model = req.nextUrl.searchParams.get("model");
   const clientId = req.nextUrl.searchParams.get("client_id");
-  const status = req.nextUrl.searchParams.get("status"); // "active" = active + not revoked + not expired
+  const statusFilter = req.nextUrl.searchParams.get("status"); // "active" = active + not revoked + not expired
   if (model && !isValidModelSlug(model)) {
     return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
   }
   try {
     const supabase = requireSupabase();
+
+    const pageParam = req.nextUrl.searchParams.get("page");
+    const limitParam = req.nextUrl.searchParams.get("limit");
+    const paginated = pageParam !== null;
+    const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
+    const limit = Math.min(500, Math.max(1, parseInt(limitParam || "50", 10) || 50));
+    const offset = (page - 1) * limit;
+
+    if (paginated) {
+      // Paginated mode: return page + total count
+      let countQ = supabase.from("agence_codes").select("*", { count: "exact", head: true });
+      if (model) countQ = countQ.eq("model", model);
+      if (clientId) countQ = countQ.eq("client_id", clientId);
+      if (statusFilter === "active") {
+        countQ = countQ.eq("active", true).eq("revoked", false).gt("expires_at", new Date().toISOString());
+      }
+      const { count } = await countQ;
+      const total = count ?? 0;
+
+      let q = supabase.from("agence_codes").select("*").order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+      if (model) q = q.eq("model", model);
+      if (clientId) q = q.eq("client_id", clientId);
+      if (statusFilter === "active") {
+        q = q.eq("active", true).eq("revoked", false).gt("expires_at", new Date().toISOString());
+      }
+      const { data, error } = await q;
+
+      if (error) {
+        console.error("[API/codes] GET Supabase error:", error);
+        return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
+      }
+
+      const mapped = (data || []).map(mapFromDb);
+      return NextResponse.json({
+        codes: mapped,
+        total,
+        page,
+        limit,
+        hasMore: offset + limit < total,
+      }, { headers: cors });
+    }
+
+    // Legacy mode: return all (backward compat)
     let q = supabase.from("agence_codes").select("*").order("created_at", { ascending: false }).limit(500);
     if (model) q = q.eq("model", model);
     if (clientId) q = q.eq("client_id", clientId);
-    if (status === "active") {
+    if (statusFilter === "active") {
       q = q.eq("active", true).eq("revoked", false).gt("expires_at", new Date().toISOString());
     }
     const { data, error } = await q;
@@ -53,8 +97,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ codes: mapped }, { headers: cors });
   } catch (err) {
     console.error("[API/codes] GET:", err);
-    const status = err instanceof DbConnectionError ? 502 : 500;
-    return NextResponse.json({ error: status === 502 ? "DB non configuree" : "Erreur serveur" }, { status, headers: cors });
+    const errStatus = err instanceof DbConnectionError ? 502 : 500;
+    return NextResponse.json({ error: errStatus === 502 ? "DB non configuree" : "Erreur serveur" }, { status: errStatus, headers: cors });
   }
 }
 

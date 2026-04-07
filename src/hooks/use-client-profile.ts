@@ -4,10 +4,15 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 interface ParsedOrder {
   id: string;
-  status: "pending" | "accepted" | "refused";
-  item: string;
+  pack_name: string;
+  tier: string;
   amount: number;
+  currency: string;
+  status: "completed" | "pending" | "failed";
+  payment_method: string;
+  generated_code: string | null;
   created_at: string;
+  completed_at: string | null;
 }
 
 interface UseClientProfileProps {

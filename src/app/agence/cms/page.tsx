@@ -7,6 +7,7 @@ import {
   ExternalLink, Lock, User, Trash2, Edit3
 } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
+import { useModel } from "@/lib/model-context";
 import Link from "next/link";
 
 /* ── Types ── */
@@ -22,33 +23,24 @@ interface Collaborator {
   id: string;
   name: string;
   role: string;
-  profile: string;
+  email?: string;
+  phone?: string;
+  avatar_url?: string;
+  model: string;
   active: boolean;
 }
 
 interface ModelPage {
   id: string;
-  name: string;
+  model: string;
+  title: string;
   slug: string;
   status: "published" | "draft" | "private";
-  coverImage: string;
-  galleryCount: number;
-  lastUpdated: string;
+  content: Record<string, unknown>;
+  meta: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
 }
-
-/* ── Seed Data ── */
-const SEED_COLLABORATORS: Collaborator[] = [
-  { id: "c1", name: "Greta", role: "Gestionnaire contenu", profile: "YUMI", active: true },
-  { id: "c2", name: "Oceane", role: "Assistante production", profile: "YUMI", active: true },
-];
-
-const SEED_PAGES: ModelPage[] = [
-  {
-    id: "mp-1", name: "YUMI", slug: "yumi", status: "published",
-    coverImage: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80",
-    galleryCount: 24, lastUpdated: "2026-03-20",
-  },
-];
 
 /* ── Helpers ── */
 function generateCode(): string {
@@ -58,97 +50,105 @@ function generateCode(): string {
   return code.slice(0, 4) + "-" + code.slice(4);
 }
 
-function loadData<T>(key: string, seed: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) return JSON.parse(raw);
-  } catch { /* ignore */ }
-  return seed;
-}
-
-function saveData(key: string, data: unknown) {
-  localStorage.setItem(key, JSON.stringify(data));
-}
-
-/* ── CMS Auth Gate — uses main heaven_auth session (JWT) ── */
-function CmsAuthGate({ onAuth }: { onAuth: () => void }) {
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("heaven_auth");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.role === "root" || parsed.role === "model") {
-          onAuth();
-          return;
-        }
-      }
-    } catch { /* ignore */ }
-    // Not authenticated or legacy session — redirect to login
-    sessionStorage.removeItem("heaven_auth");
-    window.location.href = "/login";
-  }, [onAuth]);
-
-  return (
-    <OsLayout cpId="agence" showChat={false}>
-      <div className="flex items-center justify-center min-h-[80vh] p-6">
-        <div className="w-full max-w-sm">
-          <div className="glass rounded-2xl p-8 text-center"
-            style={{ boxShadow: "0 0 40px rgba(230,51,41,0.08)" }}>
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-5"
-              style={{ background: "rgba(230,51,41,0.1)", border: "1px solid rgba(230,51,41,0.2)" }}>
-              <Lock className="w-7 h-7" style={{ color: "#C9A84C" }} />
-            </div>
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Redirection vers le login...
-            </p>
-          </div>
-        </div>
-      </div>
-    </OsLayout>
-  );
-}
-
 /* ── Main CMS Dashboard ── */
 export default function AgenceCmsPage() {
-  const [authed, setAuthed] = useState(false);
+  const { currentModel, auth } = useModel();
+  const modelSlug = currentModel || auth?.model_slug || null;
+
   const [tab, setTab] = useState<"pages" | "codes" | "collaborators">("pages");
   const [codes, setCodes] = useState<TempCode[]>([]);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [pages, setPages] = useState<ModelPage[]>([]);
+  const [loadingPages, setLoadingPages] = useState(false);
+  const [loadingCollabs, setLoadingCollabs] = useState(false);
   const [selectedPage, setSelectedPage] = useState<string | null>(null);
   const [showNewCollab, setShowNewCollab] = useState(false);
-  const [collabForm, setCollabForm] = useState({ name: "", role: "", profile: "YUMI" });
+  const [collabForm, setCollabForm] = useState({ name: "", role: "", email: "" });
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
-  useEffect(() => {
+  // ── Fetch pages from DB ──
+  const fetchPages = useCallback(async () => {
+    if (!modelSlug) return;
+    setLoadingPages(true);
     try {
-      const raw = sessionStorage.getItem("heaven_auth");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.role === "root" || parsed.role === "model") {
-          setAuthed(true);
-        }
+      const res = await fetch(`/api/cms/pages?model=${modelSlug}`);
+      if (res.ok) {
+        const json = await res.json();
+        setPages(json.pages || []);
       }
-    } catch { /* ignore */ }
-  }, []);
+    } catch (err) {
+      console.error("[CMS] fetch pages error:", err);
+    } finally {
+      setLoadingPages(false);
+    }
+  }, [modelSlug]);
 
+  // ── Fetch collaborators from DB ──
+  const fetchCollaborators = useCallback(async () => {
+    if (!modelSlug) return;
+    setLoadingCollabs(true);
+    try {
+      const res = await fetch(`/api/cms/collaborators?model=${modelSlug}`);
+      if (res.ok) {
+        const json = await res.json();
+        setCollaborators(json.collaborators || []);
+      }
+    } catch (err) {
+      console.error("[CMS] fetch collaborators error:", err);
+    } finally {
+      setLoadingCollabs(false);
+    }
+  }, [modelSlug]);
+
+  // ── Fetch codes (existing API) ──
+  const fetchCodes = useCallback(async () => {
+    if (!modelSlug) return;
+    try {
+      const res = await fetch(`/api/codes?model=${modelSlug}`);
+      if (res.ok) {
+        const json = await res.json();
+        const mapped = (json.codes || []).map((c: Record<string, unknown>) => ({
+          code: c.code as string,
+          createdAt: new Date(c.created as string).getTime(),
+          expiresAt: new Date(c.expiresAt as string).getTime(),
+          label: (c.client as string) || "Acces temporaire",
+          used: c.used as boolean,
+        }));
+        setCodes(mapped);
+      }
+    } catch (err) {
+      console.error("[CMS] fetch codes error:", err);
+    }
+  }, [modelSlug]);
+
+  // ── Load all data on mount / model change ──
   useEffect(() => {
-    if (!authed) return;
-    setCodes(loadData("heaven_cms_codes", []));
-    setCollaborators(loadData("heaven_cms_collaborators", SEED_COLLABORATORS));
-    setPages(loadData("heaven_cms_pages", SEED_PAGES));
-  }, [authed]);
+    if (!modelSlug) return;
+    fetchPages();
+    fetchCollaborators();
+    fetchCodes();
+  }, [modelSlug, fetchPages, fetchCollaborators, fetchCodes]);
 
-  useEffect(() => { if (authed && codes.length) saveData("heaven_cms_codes", codes); }, [codes, authed]);
-  useEffect(() => { if (authed && collaborators.length) saveData("heaven_cms_collaborators", collaborators); }, [collaborators, authed]);
-  useEffect(() => { if (authed && pages.length) saveData("heaven_cms_pages", pages); }, [pages, authed]);
+  // ── Page CRUD ──
+  const deletePage = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/cms/pages?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setPages((prev) => prev.filter((p) => p.id !== id));
+        if (selectedPage === id) setSelectedPage(null);
+      }
+    } catch (err) {
+      console.error("[CMS] delete page error:", err);
+    }
+  }, [selectedPage]);
 
+  // ── Code helpers (codes tab uses existing /api/codes) ──
   const generateNewCode = useCallback((label: string) => {
     const now = Date.now();
     const newCode: TempCode = {
       code: generateCode(),
       createdAt: now,
-      expiresAt: now + 24 * 60 * 60 * 1000, // 24h
+      expiresAt: now + 24 * 60 * 60 * 1000,
       label: label || "Acces temporaire",
       used: false,
     };
@@ -165,25 +165,57 @@ export default function AgenceCmsPage() {
     setCodes((prev) => prev.filter((c) => c.code !== code));
   };
 
-  const addCollaborator = () => {
-    if (!collabForm.name.trim()) return;
-    const nc: Collaborator = {
-      id: `c-${Date.now()}`,
-      name: collabForm.name,
-      role: collabForm.role || "Collaborateur",
-      profile: collabForm.profile,
-      active: true,
-    };
-    setCollaborators((prev) => [...prev, nc]);
-    setCollabForm({ name: "", role: "", profile: "YUMI" });
-    setShowNewCollab(false);
-  };
+  // ── Collaborator CRUD ──
+  const addCollaborator = useCallback(async () => {
+    if (!collabForm.name.trim() || !modelSlug) return;
+    try {
+      const res = await fetch("/api/cms/collaborators", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: modelSlug,
+          name: collabForm.name,
+          role: collabForm.role || "editor",
+          email: collabForm.email || undefined,
+        }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setCollaborators((prev) => [json.collaborator, ...prev]);
+        setCollabForm({ name: "", role: "", email: "" });
+        setShowNewCollab(false);
+      }
+    } catch (err) {
+      console.error("[CMS] add collaborator error:", err);
+    }
+  }, [collabForm, modelSlug]);
 
-  const removeCollaborator = (id: string) => {
-    setCollaborators((prev) => prev.filter((c) => c.id !== id));
-  };
+  const removeCollaborator = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/cms/collaborators?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setCollaborators((prev) => prev.filter((c) => c.id !== id));
+      }
+    } catch (err) {
+      console.error("[CMS] remove collaborator error:", err);
+    }
+  }, []);
 
-  if (!authed) return <CmsAuthGate onAuth={() => setAuthed(true)} />;
+  // ── No model selected ──
+  if (!modelSlug) {
+    return (
+      <OsLayout cpId="agence" showChat={false}>
+        <div className="flex items-center justify-center min-h-[80vh] p-6">
+          <div className="glass rounded-2xl p-8 text-center max-w-sm">
+            <Lock className="w-8 h-8 mx-auto mb-3" style={{ color: "var(--text-muted)" }} />
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+              Aucun model selectionne.
+            </p>
+          </div>
+        </div>
+      </OsLayout>
+    );
+  }
 
   const activeCodes = codes.filter((c) => c.expiresAt > Date.now() && !c.used);
   const expiredCodes = codes.filter((c) => c.expiresAt <= Date.now() || c.used);
@@ -214,11 +246,6 @@ export default function AgenceCmsPage() {
               </p>
             </div>
           </div>
-          <button onClick={() => { sessionStorage.removeItem("heaven_cms_auth"); setAuthed(false); }}
-            className="text-[10px] px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
-            style={{ background: "rgba(255,77,106,0.1)", color: "#FF4D6A", border: "1px solid rgba(255,77,106,0.2)" }}>
-            Deconnexion
-          </button>
         </header>
 
         {/* KPI Bar */}
@@ -227,7 +254,7 @@ export default function AgenceCmsPage() {
             { icon: FileText, label: "Pages", value: pages.length, color: "#C9A84C" },
             { icon: Key, label: "Codes actifs", value: activeCodes.length, color: "#00D68F" },
             { icon: Users, label: "Collaborateurs", value: collaborators.filter((c) => c.active).length, color: "#5B8DEF" },
-            { icon: Image, label: "Medias total", value: pages.reduce((s, p) => s + p.galleryCount, 0), color: "#A78BFA" },
+            { icon: Image, label: "Pages publiees", value: pages.filter((p) => p.status === "published").length, color: "#A78BFA" },
           ].map((kpi) => (
             <div key={kpi.label} className="glass rounded-xl p-4 group relative overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-[2px] opacity-0 group-hover:opacity-60 transition-opacity"
@@ -266,16 +293,27 @@ export default function AgenceCmsPage() {
         {tab === "pages" && (
           <div className="anim-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-3">
+              {loadingPages && !pages.length && (
+                <div className="glass rounded-xl p-6 text-center">
+                  <RefreshCw className="w-5 h-5 mx-auto mb-2 animate-spin" style={{ color: "var(--text-muted)" }} />
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>Chargement...</p>
+                </div>
+              )}
               {pages.map((page) => (
                 <div key={page.id} onClick={() => setSelectedPage(page.id)}
                   className="glass rounded-xl p-4 flex items-center gap-4 cursor-pointer transition-all"
                   style={{ outline: selectedPage === page.id ? "1px solid #C9A84C" : "none" }}>
-                  <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0">
-                    <img src={page.coverImage} alt={page.name} className="w-full h-full object-cover" />
+                  <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
+                    style={{ background: "rgba(230,51,41,0.1)" }}>
+                    {(page.meta as Record<string, string>)?.cover_image ? (
+                      <img src={(page.meta as Record<string, string>).cover_image} alt={page.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <FileText className="w-6 h-6" style={{ color: "#C9A84C" }} />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-bold" style={{ color: "var(--text)" }}>{page.name}</span>
+                      <span className="text-sm font-bold" style={{ color: "var(--text)" }}>{page.title}</span>
                       <span className="text-[10px] px-2 py-0.5 rounded-full"
                         style={{
                           background: page.status === "published" ? "#00D68F15" : page.status === "draft" ? "#FF9F4315" : "#8E8EA315",
@@ -285,24 +323,44 @@ export default function AgenceCmsPage() {
                       </span>
                     </div>
                     <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                      /{page.slug} — {page.galleryCount} medias — Maj {page.lastUpdated}
+                      /{page.slug} — Maj {new Date(page.updated_at).toLocaleDateString("fr-FR")}
                     </p>
                   </div>
-                  <Eye className="w-4 h-4 shrink-0" style={{ color: "var(--text-muted)" }} />
+                  <div className="flex items-center gap-1">
+                    <button onClick={(e) => { e.stopPropagation(); deletePage(page.id); }}
+                      className="p-2 rounded-lg transition-all hover:opacity-80"
+                      style={{ background: "rgba(255,77,106,0.08)" }}>
+                      <Trash2 className="w-3.5 h-3.5" style={{ color: "#FF4D6A" }} />
+                    </button>
+                    <Eye className="w-4 h-4 shrink-0" style={{ color: "var(--text-muted)" }} />
+                  </div>
                 </div>
               ))}
+              {!loadingPages && !pages.length && (
+                <div className="glass rounded-xl p-8 text-center">
+                  <FileText className="w-8 h-8 mx-auto mb-3" style={{ color: "var(--text-muted)" }} />
+                  <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                    Aucune page. Les pages seront creees depuis la base de donnees.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Page detail / preview */}
             <div>
               {selectedPageData ? (
                 <div className="glass rounded-xl p-5">
-                  <div className="w-full h-40 rounded-lg overflow-hidden mb-4">
-                    <img src={selectedPageData.coverImage} alt={selectedPageData.name}
-                      className="w-full h-full object-cover" />
+                  <div className="w-full h-40 rounded-lg overflow-hidden mb-4 flex items-center justify-center"
+                    style={{ background: "rgba(230,51,41,0.05)" }}>
+                    {(selectedPageData.meta as Record<string, string>)?.cover_image ? (
+                      <img src={(selectedPageData.meta as Record<string, string>).cover_image} alt={selectedPageData.title}
+                        className="w-full h-full object-cover" />
+                    ) : (
+                      <Camera className="w-10 h-10" style={{ color: "var(--text-muted)" }} />
+                    )}
                   </div>
                   <h3 className="text-sm font-bold mb-3" style={{ color: "var(--text)" }}>
-                    {selectedPageData.name}
+                    {selectedPageData.title}
                   </h3>
                   <div className="space-y-2 text-xs mb-4" style={{ color: "var(--text-muted)" }}>
                     <div className="flex justify-between">
@@ -316,12 +374,12 @@ export default function AgenceCmsPage() {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Medias</span>
-                      <span style={{ color: "var(--text)" }}>{selectedPageData.galleryCount}</span>
+                      <span>Cree le</span>
+                      <span style={{ color: "var(--text)" }}>{new Date(selectedPageData.created_at).toLocaleDateString("fr-FR")}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Derniere maj</span>
-                      <span style={{ color: "var(--text)" }}>{selectedPageData.lastUpdated}</span>
+                      <span style={{ color: "var(--text)" }}>{new Date(selectedPageData.updated_at).toLocaleDateString("fr-FR")}</span>
                     </div>
                   </div>
                   <div className="flex gap-2 flex-wrap">
@@ -458,6 +516,13 @@ export default function AgenceCmsPage() {
               </button>
             </div>
 
+            {loadingCollabs && !collaborators.length && (
+              <div className="glass rounded-xl p-6 text-center">
+                <RefreshCw className="w-5 h-5 mx-auto mb-2 animate-spin" style={{ color: "var(--text-muted)" }} />
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Chargement...</p>
+              </div>
+            )}
+
             <div className="space-y-3">
               {collaborators.map((c) => (
                 <div key={c.id} className="glass rounded-xl p-4 flex items-center gap-4">
@@ -474,7 +539,7 @@ export default function AgenceCmsPage() {
                       </span>
                     </div>
                     <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                      {c.role} — Profil {c.profile}
+                      {c.role}{c.email ? ` — ${c.email}` : ""}
                     </p>
                   </div>
                   <button onClick={() => removeCollaborator(c.id)}
@@ -485,6 +550,15 @@ export default function AgenceCmsPage() {
                 </div>
               ))}
             </div>
+
+            {!loadingCollabs && !collaborators.length && (
+              <div className="glass rounded-xl p-8 text-center mt-3">
+                <Users className="w-8 h-8 mx-auto mb-3" style={{ color: "var(--text-muted)" }} />
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                  Aucun collaborateur. Cliquez &quot;Ajouter&quot; pour commencer.
+                </p>
+              </div>
+            )}
 
             {/* New collaborator modal */}
             {showNewCollab && (
@@ -506,17 +580,16 @@ export default function AgenceCmsPage() {
                     <div>
                       <label className="text-[10px] block mb-1" style={{ color: "var(--text-muted)" }}>Role</label>
                       <input value={collabForm.role} onChange={(e) => setCollabForm({ ...collabForm, role: e.target.value })}
-                        placeholder="Gestionnaire contenu, Photographe..."
+                        placeholder="editor, photographer, manager..."
                         className="w-full text-xs rounded-lg px-3 py-2 outline-none"
                         style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }} />
                     </div>
                     <div>
-                      <label className="text-[10px] block mb-1" style={{ color: "var(--text-muted)" }}>Profil assigne</label>
-                      <select value={collabForm.profile} onChange={(e) => setCollabForm({ ...collabForm, profile: e.target.value })}
+                      <label className="text-[10px] block mb-1" style={{ color: "var(--text-muted)" }}>Email</label>
+                      <input value={collabForm.email} onChange={(e) => setCollabForm({ ...collabForm, email: e.target.value })}
+                        placeholder="optionnel"
                         className="w-full text-xs rounded-lg px-3 py-2 outline-none"
-                        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
-                        {pages.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
-                      </select>
+                        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }} />
                     </div>
                   </div>
                   <div className="flex gap-3 mt-5">

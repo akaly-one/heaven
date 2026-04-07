@@ -10,6 +10,7 @@ export async function OPTIONS(req: NextRequest) {
 }
 
 // GET /api/clients?model=yumi — List clients
+// Supports pagination: ?page=1&limit=50 (default: return all for backward compat)
 export async function GET(req: NextRequest) {
   const cors = getCorsHeaders(req);
   try {
@@ -21,6 +22,41 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
     }
 
+    const pageParam = req.nextUrl.searchParams.get("page");
+    const limitParam = req.nextUrl.searchParams.get("limit");
+    const paginated = pageParam !== null;
+    const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(limitParam || "50", 10) || 50));
+    const offset = (page - 1) * limit;
+
+    if (paginated) {
+      // Paginated mode: return page + total count
+      let countQ = supabase.from("agence_clients").select("*", { count: "exact", head: true });
+      if (modelFilter) countQ = countQ.eq("model", modelFilter);
+      const { count } = await countQ;
+      const total = count ?? 0;
+
+      let q = supabase
+        .from("agence_clients")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (modelFilter) q = q.eq("model", modelFilter);
+
+      const { data, error } = await q;
+      if (error) throw error;
+
+      return NextResponse.json({
+        clients: data || [],
+        total,
+        page,
+        limit,
+        hasMore: offset + limit < total,
+      }, { headers: cors });
+    }
+
+    // Legacy mode: return all (backward compat)
     let q = supabase
       .from("agence_clients")
       .select("*")

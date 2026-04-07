@@ -23,7 +23,37 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ orders: [] }, { headers: cors });
     }
 
-    // Fetch SYSTEM wall posts mentioning this handle
+    // ── Primary: query agence_pending_payments ──
+    const normalizedHandle = handle.trim().toLowerCase();
+    const { data: payments, error: payErr } = await supabase
+      .from("agence_pending_payments")
+      .select("id, pack_name, tier, amount, currency, status, payment_method, generated_code, created_at, completed_at")
+      .eq("model", model)
+      .or(`client_pseudo.ilike.${normalizedHandle},client_pseudo.ilike.@${normalizedHandle}`)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (!payErr && payments && payments.length > 0) {
+      const orders = payments.map(p => ({
+        id: p.id,
+        pack_name: p.pack_name || p.tier || "Pack",
+        tier: p.tier || "silver",
+        amount: Number(p.amount) || 0,
+        currency: p.currency || "EUR",
+        status: p.status as "completed" | "pending" | "failed",
+        payment_method: p.payment_method || "manual",
+        generated_code: p.generated_code || null,
+        created_at: p.created_at,
+        completed_at: p.completed_at || null,
+      }));
+      return NextResponse.json({ orders, source: "payments" }, { headers: cors });
+    }
+
+    // ── Fallback: parse SYSTEM wall posts (legacy) ──
+    if (payErr) {
+      console.warn("[API/clients/orders] pending_payments query failed, falling back to wall posts:", payErr.message);
+    }
+
     const { data, error } = await supabase
       .from("agence_wall_posts")
       .select("id, content, created_at")
@@ -34,35 +64,37 @@ export async function GET(req: NextRequest) {
       .limit(50);
 
     if (error) {
-      console.error("[API/clients/orders] error:", error);
+      console.error("[API/clients/orders] wall fallback error:", error);
       return NextResponse.json({ error: "DB error" }, { status: 502, headers: cors });
     }
 
-    // Parse order posts
     const orders = (data || []).map(post => {
       const content = post.content || "";
-      let status: "pending" | "accepted" | "refused" = "pending";
-      if (content.startsWith("\u2705")) status = "accepted";
-      else if (content.startsWith("\u274C")) status = "refused";
+      let status: "completed" | "pending" | "failed" = "pending";
+      if (content.startsWith("\u2705")) status = "completed";
+      else if (content.startsWith("\u274C")) status = "failed";
 
-      // Extract amount: look for (XXX\u20AC)
       const amountMatch = content.match(/\((\d+)\u20AC\)/);
       const amount = amountMatch ? Number(amountMatch[1]) : 0;
 
-      // Extract item description: after "commande:" and before "(XX\u20AC)"
       const itemMatch = content.match(/commande:\s*(.+?)(?:\s*\(\d+\u20AC\)|\s*\u2014)/);
       const item = itemMatch ? itemMatch[1].trim() : content.slice(2, 60);
 
       return {
         id: post.id,
-        status,
-        item,
+        pack_name: item || "Commande",
+        tier: "silver",
         amount,
+        currency: "EUR",
+        status,
+        payment_method: "manual",
+        generated_code: null,
         created_at: post.created_at,
+        completed_at: status === "completed" ? post.created_at : null,
       };
     });
 
-    return NextResponse.json({ orders }, { headers: cors });
+    return NextResponse.json({ orders, source: "wall_fallback" }, { headers: cors });
   } catch (err) {
     console.error("[API/clients/orders]:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500, headers: cors });
