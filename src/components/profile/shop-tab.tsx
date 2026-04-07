@@ -132,7 +132,7 @@ export function ShopTab({
           <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
             Envoyé via <strong style={{ color: deliveryPlatform === "snapchat" ? "#FFFC00" : "#E4405F" }}>
               {deliveryPlatform === "snapchat" ? "Snapchat" : "Instagram"}
-            </strong> à <strong style={{ color: "var(--text-primary)" }}>{visitorHandle}</strong>
+            </strong> à <strong style={{ color: "var(--text)" }}>{visitorHandle}</strong>
           </span>
         </div>
       )}
@@ -159,7 +159,7 @@ export function ShopTab({
               <Flame className="w-6 h-6" style={{ color: tierHex, opacity: 0.6 + (tierIdx * 0.13) }} />
             </div>
             <div className="relative">
-              <input type="range" min={0} max={3} step={1} value={tierIdx}
+              <input type="range" min={0} max={4} step={1} value={tierIdx}
                 onChange={e => setTierIdx(Number(e.target.value))}
                 className="w-full h-2.5 rounded-full appearance-none cursor-pointer"
                 style={{ background: `linear-gradient(to right, ${fireGradient})` }} />

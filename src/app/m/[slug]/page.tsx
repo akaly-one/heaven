@@ -106,9 +106,11 @@ function useModelSession(slug: string): ModelAuth | null {
 
 // ── Tier hierarchy: higher index = more access ──
 const TIER_HIERARCHY = ["silver", "gold", "feet", "black", "platinum"];
+const TIER_ALIASES: Record<string, string> = { vip: "silver", diamond: "black" };
+function normalizeTier(t: string): string { return TIER_ALIASES[t] || t; }
 function tierIncludes(unlockedTier: string, contentTier: string): boolean {
-  const ui = TIER_HIERARCHY.indexOf(unlockedTier);
-  const ci = TIER_HIERARCHY.indexOf(contentTier);
+  const ui = TIER_HIERARCHY.indexOf(normalizeTier(unlockedTier));
+  const ci = TIER_HIERARCHY.indexOf(normalizeTier(contentTier));
   if (ui === -1 || ci === -1) return false;
   return ui >= ci;
 }
@@ -159,7 +161,9 @@ export default function ModelPage() {
   const [galleryTier, setGalleryTier] = useState(() => {
     if (typeof window !== "undefined") {
       const hash = window.location.hash.replace("#", "");
-      if (["feed", "silver", "gold", "feet", "black", "platinum", "vip", "diamond", "custom"].includes(hash)) return hash;
+      if (["feed", "silver", "gold", "feet", "black", "platinum", "custom"].includes(hash)) return hash;
+      if (hash === "vip") return "silver";
+      if (hash === "diamond") return "black";
       // Legacy compat
       if (hash === "all" || hash === "public" || hash === "gallery" || hash === "shootings") return "feed";
       if (hash === "shop") return "custom";
@@ -1644,6 +1648,100 @@ export default function ModelPage() {
             return (
               <div className="fade-up">
 
+              {/* ── Pack editor (edit mode only) ── */}
+              {isEditMode && (() => {
+                const packIdx = displayPacks.findIndex(p => p.id === galleryTier);
+                if (packIdx === -1) return null;
+                const pack = displayPacks[packIdx];
+                const tierHex = TIER_HEX[galleryTier] || "#E63329";
+
+                const updatePack = (updates: Partial<PackConfig>) => {
+                  const newPacks = [...(editPacks ?? packs)];
+                  newPacks[packIdx] = { ...newPacks[packIdx], ...updates };
+                  setEditPacks(newPacks);
+                  setEditDirty(true);
+                };
+
+                return (
+                  <div className="mb-6 rounded-2xl p-5 sm:p-6" style={{ background: "var(--surface)", border: `1.5px solid ${tierHex}25` }}>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Edit3 className="w-4 h-4" style={{ color: tierHex }} />
+                        <span className="text-sm font-bold" style={{ color: tierHex }}>Éditer le pack</span>
+                      </div>
+                      <button onClick={() => updatePack({ active: !pack.active })}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all"
+                        style={{
+                          background: pack.active ? `${tierHex}15` : "var(--bg3)",
+                          color: pack.active ? tierHex : "var(--text-muted)",
+                          border: `1px solid ${pack.active ? `${tierHex}30` : "var(--border)"}`,
+                        }}>
+                        {pack.active ? <ToggleRight className="w-3.5 h-3.5" /> : <ToggleLeft className="w-3.5 h-3.5" />}
+                        {pack.active ? "Actif" : "Désactivé"}
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                      {/* Pack name */}
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={{ color: "var(--text-muted)" }}>Nom du pack</label>
+                        <input value={pack.name} onChange={e => updatePack({ name: e.target.value })}
+                          className="w-full px-3 py-2.5 rounded-xl text-sm font-medium outline-none transition-all"
+                          style={{ background: "var(--bg2)", color: "var(--text)", border: `1px solid var(--border)` }} />
+                      </div>
+                      {/* Price */}
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={{ color: "var(--text-muted)" }}>Prix (€)</label>
+                        <input type="number" value={pack.price} onChange={e => updatePack({ price: Number(e.target.value) })}
+                          className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none transition-all"
+                          style={{ background: "var(--bg2)", color: tierHex, border: `1px solid var(--border)` }} />
+                      </div>
+                    </div>
+
+                    {/* Badge */}
+                    <div className="mb-4">
+                      <label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={{ color: "var(--text-muted)" }}>Badge (optionnel)</label>
+                      <input value={pack.badge || ""} onChange={e => updatePack({ badge: e.target.value || null })}
+                        placeholder="ex: Populaire, Nouveau..."
+                        className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all"
+                        style={{ background: "var(--bg2)", color: "var(--text)", border: `1px solid var(--border)` }} />
+                    </div>
+
+                    {/* Features */}
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--text-muted)" }}>Avantages inclus</label>
+                      <div className="space-y-2">
+                        {(pack.features || []).map((f: string, j: number) => (
+                          <div key={j} className="flex items-center gap-2">
+                            <Check className="w-3.5 h-3.5 shrink-0" style={{ color: tierHex }} />
+                            <input value={f} onChange={e => {
+                              const newFeatures = [...(pack.features || [])];
+                              newFeatures[j] = e.target.value;
+                              updatePack({ features: newFeatures });
+                            }}
+                              className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
+                              style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)" }} />
+                            <button onClick={() => {
+                              const newFeatures = (pack.features || []).filter((_: string, k: number) => k !== j);
+                              updatePack({ features: newFeatures });
+                            }}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-all shrink-0"
+                              style={{ background: "rgba(220,38,38,0.08)", color: "var(--danger)" }}>
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                        <button onClick={() => updatePack({ features: [...(pack.features || []), ""] })}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-medium cursor-pointer transition-all hover:scale-[1.01]"
+                          style={{ background: `${tierHex}08`, color: tierHex, border: `1px dashed ${tierHex}30` }}>
+                          <Plus className="w-3 h-3" /> Ajouter un avantage
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* ── Locked tier overlay — shows pack details + CTA ── */}
               {!isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, galleryTier)) && (() => {
                 const pack = activePacks.find(p => p.id === galleryTier);
@@ -1672,7 +1770,7 @@ export default function ModelPage() {
                             {previewImages.map((url, i) => (
                               <div key={i} className="aspect-[3/4] relative overflow-hidden rounded-lg">
                                 <img src={url} alt="" className="w-full h-full object-cover"
-                                  style={{ filter: "blur(16px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" />
+                                  style={{ filter: "blur(14px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" />
                               </div>
                             ))}
                           </div>
@@ -1774,7 +1872,7 @@ export default function ModelPage() {
                             }}>
                               {post.media_url && (
                                 <img src={post.media_url} alt="" className="absolute inset-0 w-full h-full object-cover"
-                                  style={{ filter: "blur(18px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" />
+                                  style={{ filter: "blur(14px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" />
                               )}
                               <div className="absolute inset-0" style={{
                                 background: `linear-gradient(160deg, ${tierHex}20 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.7) 100%)`,
