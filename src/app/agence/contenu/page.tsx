@@ -34,6 +34,9 @@ export default function ContenuPage() {
   // ── Zoom lightbox ──
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
 
+  // ── Mobile touch pick (no native drag on mobile) ──
+  const [touchPickedId, setTouchPickedId] = useState<string | null>(null);
+
   // ── Fetch ──
   const fetchPosts = useCallback(() => {
     if (!modelSlug) { setLoading(false); return; }
@@ -272,20 +275,29 @@ export default function ContenuPage() {
                   return (
                     <div
                       key={tier}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all duration-150 shrink-0"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all duration-150 shrink-0 cursor-pointer"
                       style={{
-                        background: isDragOver ? `${accent}20` : "var(--bg3)",
-                        border: isDragOver ? `2px dashed ${accent}` : "1px solid var(--border2)",
+                        background: isDragOver || touchPickedId ? `${accent}20` : "var(--bg3)",
+                        border: isDragOver ? `2px dashed ${accent}` : touchPickedId ? `1px dashed ${accent}` : "1px solid var(--border2)",
                         boxShadow: isDragOver ? `0 0 12px ${accent}30` : "none",
                       }}
                       onDragOver={(e) => onDragOver(e, tier)}
                       onDragLeave={onDragLeave}
                       onDrop={(e) => onDrop(e, tier)}
+                      onClick={() => {
+                        if (touchPickedId) {
+                          changePostTier(touchPickedId, tier);
+                          setTouchPickedId(null);
+                        }
+                      }}
                     >
                       <div className="w-2 h-2 rounded-full" style={{ background: accent }} />
-                      <span className="text-[10px] font-medium" style={{ color: isDragOver ? accent : "var(--text-muted)" }}>
+                      <span className="text-[10px] font-medium" style={{ color: isDragOver || touchPickedId ? accent : "var(--text-muted)" }}>
                         {config?.label || tier}
                       </span>
+                      {touchPickedId && (
+                        <span className="text-[8px] animate-pulse" style={{ color: accent }}>+</span>
+                      )}
                     </div>
                   );
                 })}
@@ -319,8 +331,22 @@ export default function ContenuPage() {
                     onDragLeave={onDragLeave}
                     onDrop={(e) => onDrop(e, tier)}
                   >
-                    {/* Column header */}
-                    <div className="flex items-center gap-1.5 px-2 py-2 shrink-0" style={{ borderBottom: `2px solid ${accent}25` }}>
+                    {/* Column header — tap to drop on mobile */}
+                    <div
+                      className="flex items-center gap-1.5 px-2 py-2 shrink-0 cursor-pointer transition-all"
+                      style={{
+                        borderBottom: `2px solid ${touchPickedId ? `${accent}60` : `${accent}25`}`,
+                        background: touchPickedId ? `${accent}08` : "transparent",
+                      }}
+                      onClick={() => {
+                        if (touchPickedId) {
+                          const post = posts.find(p => p.id === touchPickedId);
+                          const currentTier = post ? toSlot(post.tier_required) : null;
+                          if (currentTier !== tier) changePostTier(touchPickedId, tier);
+                          setTouchPickedId(null);
+                        }
+                      }}
+                    >
                       <div className="w-2 h-2 rounded-full" style={{ background: accent, boxShadow: `0 0 6px ${accent}55` }} />
                       <span className="text-[11px] font-bold truncate" style={{ color: "var(--text)" }}>
                         {config?.symbol} {config?.label || tier}
@@ -328,6 +354,11 @@ export default function ContenuPage() {
                       <span className="text-[9px] font-bold px-1 py-0.5 rounded-full ml-auto shrink-0" style={{ background: `${accent}18`, color: accent }}>
                         {tierPosts.length}
                       </span>
+                      {touchPickedId && (
+                        <span className="text-[8px] font-medium px-1.5 py-0.5 rounded-md animate-pulse shrink-0" style={{ background: `${accent}20`, color: accent }}>
+                          Déposer
+                        </span>
+                      )}
                     </div>
 
                     {/* Column body — small cubes grid */}
@@ -336,18 +367,21 @@ export default function ContenuPage() {
                         {tierPosts.map((post) => {
                           const isSelected = selected.has(post.id);
                           const isDragging = dragId === post.id;
+                          const isTouchPicked = touchPickedId === post.id;
                           return (
                             <div
                               key={post.id}
                               draggable
                               onDragStart={(e) => onDragStart(e, post.id)}
                               onDragEnd={onDragEnd}
-                              className="relative aspect-square rounded-md overflow-hidden cursor-grab active:cursor-grabbing group"
+                              className={`relative aspect-square rounded-md overflow-hidden cursor-grab active:cursor-grabbing group${isTouchPicked ? " glow-pulse" : ""}`}
                               style={{
-                                border: isSelected ? "2px solid var(--accent)" : "1px solid var(--border2)",
+                                border: isTouchPicked ? "2px solid var(--accent)" : isSelected ? "2px solid var(--accent)" : "1px solid var(--border2)",
                                 opacity: isDragging ? 0.3 : 1,
-                                transform: isDragging ? "scale(0.85) rotate(-3deg)" : "scale(1)",
-                                transition: "opacity 0.15s, transform 0.15s",
+                                transform: isDragging ? "scale(0.85) rotate(-3deg)" : isTouchPicked ? "scale(1.08)" : "scale(1)",
+                                transition: "opacity 0.15s, transform 0.2s",
+                                boxShadow: isTouchPicked ? "0 0 18px rgba(230,51,41,0.5), 0 0 40px rgba(230,51,41,0.2)" : "none",
+                                zIndex: isTouchPicked ? 10 : "auto",
                               }}
                             >
                               <img src={post.media_url!} alt="" className="w-full h-full object-cover" loading="lazy" draggable={false} />
@@ -357,19 +391,36 @@ export default function ContenuPage() {
                                 <GripVertical className="w-2.5 h-2.5 drop-shadow-lg" style={{ color: "#fff" }} />
                               </div>
 
-                              {/* Selection check */}
-                              {isSelected && (
+                              {/* Selection check / touch picked indicator */}
+                              {(isSelected || isTouchPicked) && (
                                 <div className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center" style={{ background: "var(--accent)" }}>
                                   <Check className="w-2 h-2 text-white" />
                                 </div>
                               )}
 
-                              {/* Click overlay — zoom on click, select on shift/ctrl */}
+                              {/* Click overlay — mobile: tap to pick, tap again to cancel. Desktop: click zoom, shift+click select */}
                               <div
                                 className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center"
                                 onClick={(e) => {
+                                  // Desktop: shift/ctrl for select, normal click for zoom
                                   if (e.shiftKey || e.ctrlKey || e.metaKey) {
                                     toggleSelect(post.id);
+                                    return;
+                                  }
+                                  // Mobile touch pick flow: tap to pick, tap another image or column header to drop
+                                  if (touchPickedId) {
+                                    if (touchPickedId === post.id) {
+                                      // Tap same image again = cancel pick
+                                      setTouchPickedId(null);
+                                    } else {
+                                      // Tap another image = zoom (drop happens via column header)
+                                      setZoomUrl(post.media_url!);
+                                    }
+                                    return;
+                                  }
+                                  // Check if likely mobile (no hover capability)
+                                  if (window.matchMedia("(hover: none)").matches) {
+                                    setTouchPickedId(post.id);
                                   } else {
                                     setZoomUrl(post.media_url!);
                                   }

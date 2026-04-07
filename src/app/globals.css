@@ -377,6 +377,13 @@ input[type="range"]::-moz-range-thumb {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
+@keyframes glow-breathe {
+  0%, 100% { box-shadow: 0 0 12px rgba(230,51,41,0.4), 0 0 30px rgba(230,51,41,0.15); }
+  50% { box-shadow: 0 0 22px rgba(230,51,41,0.6), 0 0 50px rgba(230,51,41,0.25); }
+}
+.glow-pulse {
+  animation: glow-breathe 1.2s ease-in-out infinite;
+}
 @keyframes countUp {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
