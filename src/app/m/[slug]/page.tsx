@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import {
   Heart, MessageCircle, Send, Lock, Image, Newspaper, ShoppingBag,
   Coins, Pin, Eye, Star, Camera, Video, Play, X, Check,
-  Instagram, Ghost, ChevronRight, Crown, Plus, Edit3, Wifi,
+  Instagram, Ghost, Crown, Plus, Edit3, Wifi,
   ImagePlus, Trash2, Save, RotateCcw, ToggleLeft, ToggleRight,
   Upload, Pencil, GripVertical, Flame, Zap, Palette, Diamond, AlertTriangle,
 } from "lucide-react";
@@ -918,7 +918,6 @@ export default function ModelPage() {
         @keyframes chevronBounce { 0%, 100% { transform: translateY(0); opacity: 0.4; } 50% { transform: translateY(6px); opacity: 0.8; } }
         @keyframes countUp { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
         @keyframes notifPulse { 0%, 100% { box-shadow: 0 4px 20px rgba(230,51,41,0.4); } 50% { box-shadow: 0 4px 20px rgba(230,51,41,0.4), 0 0 20px rgba(16,185,129,0.5), 0 0 40px rgba(16,185,129,0.2); } }
-        @keyframes verifyBannerPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.85; } }
         .profile-stagger-1 { animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
         .profile-stagger-2 { animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both; }
         .profile-stagger-3 { animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both; }
@@ -944,67 +943,55 @@ export default function ModelPage() {
       <div className="relative z-10">
 
         {/* ═══ HEADER BAR — minimal sticky ═══ */}
-        <div className="sticky top-0 left-0 right-0 z-40"
+        <div className="sticky top-0 left-0 right-0 z-40 px-4 md:px-6 py-2 md:py-2.5 flex items-center gap-3"
           style={{ background: "color-mix(in srgb, var(--bg) 90%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderBottom: "1px solid var(--border)" }}>
 
-          {/* Main header row */}
-          <div className="px-4 md:px-6 py-2 md:py-2.5 flex items-center gap-3">
-            <div className="flex items-center gap-2.5 flex-1 min-w-0">
-              {isModelLoggedIn && (
-                <a href="/agence" className="text-xs font-bold no-underline shrink-0" style={{ color: "var(--accent)" }}>&#8592;</a>
-              )}
-              <span className="text-xs font-semibold tracking-wide uppercase truncate" style={{ color: "var(--text)", letterSpacing: "0.1em" }}>
-                {model.display_name}
-              </span>
-              {displayModel?.online && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }} />}
-            </div>
-            <div className="flex items-center gap-2.5 shrink-0">
-              {visitorRegistered && (
-                <>
-                  <span className="text-[10px] font-medium hidden sm:block" style={{ color: "var(--text-muted)" }}>@{visitorHandle}</span>
-                  {unlockedTier ? (
-                    <CountdownBadge tier={unlockedTier} expiresAt={activeCode?.expiresAt || ""} />
-                  ) : (
-                    <button onClick={() => setShowUnlock(true)} className="text-[10px] font-semibold px-2.5 py-1 rounded-full cursor-pointer transition-all hover:scale-105"
-                      style={{ background: "rgba(230,51,41,0.1)", color: "var(--accent)", border: "1px solid rgba(230,51,41,0.15)" }}>
-                      Code
-                    </button>
-                  )}
-                </>
-              )}
-              <ThemeToggle size="sm" />
-            </div>
+          {/* Left — model name */}
+          <div className="flex items-center gap-2.5 shrink-0 min-w-0">
+            {isModelLoggedIn && (
+              <a href="/agence" className="text-xs font-bold no-underline shrink-0" style={{ color: "var(--accent)" }}>&#8592;</a>
+            )}
+            <span className="text-xs font-semibold tracking-wide uppercase truncate" style={{ color: "var(--text)", letterSpacing: "0.1em" }}>
+              {model.display_name}
+            </span>
+            {displayModel?.online && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }} />}
           </div>
 
-          {/* ── Verification status banner ── */}
-          {!isModelLoggedIn && visitorRegistered && !visitorVerified && (
-            <button onClick={() => setTab("shop")}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 cursor-pointer transition-all hover:brightness-110"
-              style={{
-                background: "linear-gradient(90deg, #DC2626, #EF4444)",
-                border: "none",
-                borderTop: "1px solid rgba(255,255,255,0.1)",
-                animation: "verifyBannerPulse 3s ease-in-out infinite",
-              }}>
-              <Lock className="w-3.5 h-3.5 text-white shrink-0" />
-              <span className="text-[11px] sm:text-xs font-bold text-white">
-                Vérifiez votre compte pour accéder au contenu exclusif
-              </span>
-              <ChevronRight className="w-3.5 h-3.5 text-white/60 shrink-0" />
-            </button>
-          )}
-          {!isModelLoggedIn && visitorRegistered && visitorVerified && (
-            <div className="w-full flex items-center justify-center gap-2 px-4 py-1.5"
-              style={{
-                background: "linear-gradient(90deg, #059669, #10B981)",
-                borderTop: "1px solid rgba(255,255,255,0.1)",
-              }}>
-              <Check className="w-3.5 h-3.5 text-white shrink-0" />
-              <span className="text-[11px] sm:text-xs font-semibold text-white">
-                Compte vérifié — Accès au contenu activé
-              </span>
+          {/* Center — verification status (visitor only) */}
+          {!isModelLoggedIn && visitorRegistered && (
+            <div className="flex-1 flex justify-center min-w-0">
+              {visitorVerified ? (
+                <span className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold" style={{ color: "#10B981" }}>
+                  <Check className="w-3 h-3 shrink-0" />
+                  <span className="truncate">Compte vérifié</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold" style={{ color: "#EF4444" }}>
+                  <Lock className="w-3 h-3 shrink-0" />
+                  <span className="truncate">Non vérifié</span>
+                </span>
+              )}
             </div>
           )}
+          {(isModelLoggedIn || !visitorRegistered) && <div className="flex-1" />}
+
+          {/* Right — visitor info + actions */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            {visitorRegistered && (
+              <>
+                <span className="text-[10px] font-medium hidden sm:block" style={{ color: "var(--text-muted)" }}>@{visitorHandle}</span>
+                {unlockedTier ? (
+                  <CountdownBadge tier={unlockedTier} expiresAt={activeCode?.expiresAt || ""} />
+                ) : (
+                  <button onClick={() => setShowUnlock(true)} className="text-[10px] font-semibold px-2.5 py-1 rounded-full cursor-pointer transition-all hover:scale-105"
+                    style={{ background: "rgba(230,51,41,0.1)", color: "var(--accent)", border: "1px solid rgba(230,51,41,0.15)" }}>
+                    Code
+                  </button>
+                )}
+              </>
+            )}
+            <ThemeToggle size="sm" />
+          </div>
         </div>
 
         {/* ═══ HERO SECTION — Cinematic full-viewport banner ═══ */}
