@@ -1,22 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ShoppingBag, Check, ChevronRight,
   Plus, X, Trash2, ToggleLeft, ToggleRight,
-  Camera, Play,
+  Camera, Play, Minus, ShoppingCart, Send,
 } from "lucide-react";
 import type { PackConfig, UploadedContent } from "@/types/heaven";
 import { TIER_META, TIER_HEX } from "@/constants/tiers";
 
 // ── Custom content pricing by tier (euros) ──
 const CONTENT_PRICING = [
-  { tier: "VIP", symbol: "♥", color: "#E63329", photo: 10, videoPerMin: 20 },
-  { tier: "Gold", symbol: "★", color: "#9E7C1F", photo: 20, videoPerMin: 40 },
-  { tier: "Diamond", symbol: "♦", color: "#4F46E5", photo: 30, videoPerMin: 60 },
-  { tier: "Platinum", symbol: "♛", color: "#7C3AED", photo: 40, videoPerMin: 80 },
+  { tier: "VIP", symbol: "♥", color: "#E63329", photo: 10, videoPerMin: 20,
+    desc: "Photo ou vidéo personnalisée sur demande — niveau suggestif" },
+  { tier: "Gold", symbol: "★", color: "#9E7C1F", photo: 20, videoPerMin: 40,
+    desc: "Contenu custom plus poussé — semi-explicite, poses sur mesure" },
+  { tier: "Diamond", symbol: "♦", color: "#4F46E5", photo: 30, videoPerMin: 60,
+    desc: "Contenu explicite personnalisé — nude artistique, sur demande" },
+  { tier: "Platinum", symbol: "♛", color: "#7C3AED", photo: 40, videoPerMin: 80,
+    desc: "Sans limites — contenu premium custom selon tes envies" },
 ];
+
+// No subscription here — packs handle that. This is à la carte custom content only.
+
+// Cart item type
+interface CartItem {
+  id: string;
+  tier: string;
+  type: "photo" | "video";
+  videoMin?: number;
+  qty: number;
+  unitPrice: number;
+}
 
 
 interface ShopTabProps {
@@ -70,6 +86,34 @@ export function ShopTab({
   const [selTier, setSelTier] = useState("vip");
   const [selType, setSelType] = useState<"photo" | "video">("photo");
   const [videoMin, setVideoMin] = useState(1);
+  const [cart, setCart] = useState<CartItem[]>([]);
+
+  // Detect delivery platform from visitor handle
+  const deliveryPlatform = useMemo(() => {
+    if (!visitorHandle) return null;
+    if (visitorHandle.startsWith("@")) return "instagram";
+    return "snapchat";
+  }, [visitorHandle]);
+
+  const cartTotal = useMemo(() => cart.reduce((sum, item) => sum + item.unitPrice * item.qty, 0), [cart]);
+
+  const addToCart = (tier: string, type: "photo" | "video", vidMin?: number) => {
+    const pricing = CONTENT_PRICING.find(t => t.tier.toLowerCase() === tier);
+    if (!pricing) return;
+    const unitPrice = type === "photo" ? pricing.photo : pricing.videoPerMin * (vidMin || 1);
+    const itemId = `${tier}-${type}${type === "video" ? `-${vidMin}min` : ""}`;
+    setCart(prev => {
+      const existing = prev.find(c => c.id === itemId);
+      if (existing) return prev.map(c => c.id === itemId ? { ...c, qty: c.qty + 1 } : c);
+      return [...prev, { id: itemId, tier, type, videoMin: vidMin, qty: 1, unitPrice }];
+    });
+  };
+
+  const updateCartQty = (itemId: string, delta: number) => {
+    setCart(prev => prev.map(c => c.id === itemId ? { ...c, qty: Math.max(0, c.qty + delta) } : c).filter(c => c.qty > 0));
+  };
+
+  const removeFromCart = (itemId: string) => setCart(prev => prev.filter(c => c.id !== itemId));
   return (
     <div className="space-y-4 fade-up">
 
@@ -407,90 +451,225 @@ export function ShopTab({
         </div>
       )}
 
-      {/* ──── CONTENU PERSONNALISE ──── */}
+      {/* ──── CONTENU PERSONNALISE — CART BUILDER ──── */}
       {shopSection === "credits" && (() => {
-        const tier = CONTENT_PRICING.find(t => t.tier.toLowerCase() === selTier) || CONTENT_PRICING[0];
-        const price = selType === "photo" ? tier.photo : tier.videoPerMin * videoMin;
+        const activeTier = CONTENT_PRICING.find(t => t.tier.toLowerCase() === selTier) || CONTENT_PRICING[0];
+        const currentPrice = selType === "photo" ? activeTier.photo : activeTier.videoPerMin * videoMin;
 
         return (
-          <div className="space-y-4">
-            {/* Step 1: Tier */}
+          <div className="space-y-5">
+
+            {/* ── Delivery platform indicator ── */}
+            {visitorHandle && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}>
+                <Send className="w-3.5 h-3.5" style={{ color: deliveryPlatform === "snapchat" ? "#FFFC00" : "#E4405F" }} />
+                <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
+                  Livraison via <strong style={{ color: deliveryPlatform === "snapchat" ? "#FFFC00" : "#E4405F" }}>
+                    {deliveryPlatform === "snapchat" ? "Snapchat" : "Instagram"}
+                  </strong> à <strong style={{ color: "var(--text-primary)" }}>{visitorHandle}</strong>
+                </span>
+              </div>
+            )}
+
+            {/* ── Tier selector with descriptions ── */}
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>Niveau</p>
-              <div className="flex gap-2">
-                {CONTENT_PRICING.map(t => (
-                  <button key={t.tier} onClick={() => setSelTier(t.tier.toLowerCase())}
-                    className="flex-1 py-2.5 rounded-xl text-center cursor-pointer transition-all"
-                    style={{
-                      background: selTier === t.tier.toLowerCase() ? `${t.color}15` : "rgba(0,0,0,0.03)",
-                      border: `2px solid ${selTier === t.tier.toLowerCase() ? t.color : "transparent"}`,
-                      color: selTier === t.tier.toLowerCase() ? t.color : "var(--text-muted)",
-                    }}>
-                    <span className="text-lg block">{t.symbol}</span>
-                    <span className="text-[9px] font-bold">{t.tier}</span>
-                  </button>
-                ))}
+              <p className="text-[10px] font-bold uppercase tracking-wider mb-2.5" style={{ color: "var(--text-muted)" }}>
+                Choisis le niveau
+              </p>
+              <div className="space-y-2">
+                {CONTENT_PRICING.map(t => {
+                  const isActive = selTier === t.tier.toLowerCase();
+                  return (
+                    <button key={t.tier} onClick={() => setSelTier(t.tier.toLowerCase())}
+                      className="w-full rounded-xl cursor-pointer transition-all text-left overflow-hidden"
+                      style={{
+                        background: isActive ? `${t.color}10` : "var(--bg2)",
+                        border: `1.5px solid ${isActive ? `${t.color}50` : "var(--border)"}`,
+                        transform: isActive ? "scale(1.01)" : "scale(1)",
+                      }}>
+                      <div className="flex items-center gap-3 px-3.5 py-3">
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ background: `${t.color}15`, border: `1px solid ${t.color}25` }}>
+                          <span className="text-lg">{t.symbol}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold" style={{ color: isActive ? t.color : "var(--text-primary)" }}>{t.tier}</span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: `${t.color}12`, color: t.color }}>
+                              {t.photo}€/photo · {t.videoPerMin}€/min
+                            </span>
+                          </div>
+                          <p className="text-[10px] mt-0.5 leading-snug" style={{ color: "var(--text-muted)" }}>{t.desc}</p>
+                        </div>
+                        {isActive && <Check className="w-4 h-4 shrink-0" style={{ color: t.color }} />}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Step 2: Photo or Video */}
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>Type</p>
-              <div className="grid grid-cols-2 gap-2">
+            {/* ── Type + Duration + Add to cart ── */}
+            <div className="rounded-2xl p-4" style={{ background: `${activeTier.color}06`, border: `1px solid ${activeTier.color}15` }}>
+              {/* Type toggle */}
+              <div className="grid grid-cols-2 gap-2 mb-3">
                 <button onClick={() => setSelType("photo")}
-                  className="py-3 rounded-xl text-center cursor-pointer transition-all"
+                  className="py-2.5 rounded-xl text-center cursor-pointer transition-all flex items-center justify-center gap-2"
                   style={{
-                    background: selType === "photo" ? `${tier.color}15` : "rgba(0,0,0,0.03)",
-                    border: `2px solid ${selType === "photo" ? tier.color : "transparent"}`,
-                    color: selType === "photo" ? tier.color : "var(--text-muted)",
+                    background: selType === "photo" ? `${activeTier.color}18` : "rgba(0,0,0,0.04)",
+                    border: `1.5px solid ${selType === "photo" ? activeTier.color : "transparent"}`,
+                    color: selType === "photo" ? activeTier.color : "var(--text-muted)",
                   }}>
-                  <Camera className="w-5 h-5 mx-auto mb-1" />
+                  <Camera className="w-4 h-4" />
                   <span className="text-xs font-bold">Photo</span>
+                  <span className="text-[10px] font-medium opacity-70">{activeTier.photo}€</span>
                 </button>
                 <button onClick={() => setSelType("video")}
-                  className="py-3 rounded-xl text-center cursor-pointer transition-all"
+                  className="py-2.5 rounded-xl text-center cursor-pointer transition-all flex items-center justify-center gap-2"
                   style={{
-                    background: selType === "video" ? `${tier.color}15` : "rgba(0,0,0,0.03)",
-                    border: `2px solid ${selType === "video" ? tier.color : "transparent"}`,
-                    color: selType === "video" ? tier.color : "var(--text-muted)",
+                    background: selType === "video" ? `${activeTier.color}18` : "rgba(0,0,0,0.04)",
+                    border: `1.5px solid ${selType === "video" ? activeTier.color : "transparent"}`,
+                    color: selType === "video" ? activeTier.color : "var(--text-muted)",
                   }}>
-                  <Play className="w-5 h-5 mx-auto mb-1" />
-                  <span className="text-xs font-bold">Video</span>
+                  <Play className="w-4 h-4" />
+                  <span className="text-xs font-bold">Vidéo</span>
+                  <span className="text-[10px] font-medium opacity-70">{activeTier.videoPerMin}€/min</span>
                 </button>
               </div>
+
+              {/* Video duration slider */}
+              {selType === "video" && (
+                <div className="mb-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Durée</p>
+                    <span className="text-sm font-bold tabular-nums" style={{ color: activeTier.color }}>{videoMin} min</span>
+                  </div>
+                  <input type="range" min={1} max={10} value={videoMin} onChange={e => setVideoMin(Number(e.target.value))}
+                    className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                    style={{ background: `linear-gradient(to right, ${activeTier.color} ${(videoMin / 10) * 100}%, var(--border) ${(videoMin / 10) * 100}%)` }} />
+                  <div className="flex justify-between text-[9px] mt-1" style={{ color: "var(--text-muted)" }}>
+                    <span>1 min</span><span>5 min</span><span>10 min</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Add to cart button */}
+              <button onClick={() => addToCart(selTier, selType, selType === "video" ? videoMin : undefined)}
+                className="w-full py-3 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2"
+                style={{ background: `${activeTier.color}15`, color: activeTier.color, border: `1px solid ${activeTier.color}30` }}>
+                <Plus className="w-4 h-4" />
+                Ajouter — {currentPrice}€
+              </button>
             </div>
 
-            {/* Step 3: Duration (video only) */}
-            {selType === "video" && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Duree</p>
-                  <span className="text-sm font-bold" style={{ color: tier.color }}>{videoMin} min</span>
+            {/* ── Cart ── */}
+            {cart.length > 0 && (
+              <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)", background: "var(--bg2)" }}>
+                {/* Cart header */}
+                <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
+                  <ShoppingCart className="w-4 h-4" style={{ color: "var(--accent)" }} />
+                  <span className="text-xs font-bold flex-1" style={{ color: "var(--text-primary)" }}>
+                    Ma commande ({cart.reduce((s, c) => s + c.qty, 0)} article{cart.reduce((s, c) => s + c.qty, 0) > 1 ? "s" : ""})
+                  </span>
+                  <button onClick={() => setCart([])} className="text-[10px] cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
+                    Vider
+                  </button>
                 </div>
-                <input type="range" min={1} max={10} value={videoMin} onChange={e => setVideoMin(Number(e.target.value))}
-                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-                  style={{ background: `linear-gradient(to right, ${tier.color} ${(videoMin / 10) * 100}%, var(--border) ${(videoMin / 10) * 100}%)` }} />
-                <div className="flex justify-between text-[9px] mt-1" style={{ color: "var(--text-muted)" }}>
-                  <span>1 min</span><span>5 min</span><span>10 min</span>
+
+                {/* Cart items */}
+                <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+                  {cart.map(item => {
+                    const tierData = CONTENT_PRICING.find(t => t.tier.toLowerCase() === item.tier);
+                    if (!tierData) return null;
+                    return (
+                      <div key={item.id} className="flex items-center gap-3 px-4 py-3">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ background: `${tierData.color}12` }}>
+                          {item.type === "photo" ? <Camera className="w-3.5 h-3.5" style={{ color: tierData.color }} /> : <Play className="w-3.5 h-3.5" style={{ color: tierData.color }} />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[11px] font-semibold block" style={{ color: "var(--text-primary)" }}>
+                            {item.type === "photo" ? "Photo" : `Vidéo ${item.videoMin}min`} {tierData.tier}
+                          </span>
+                          <span className="text-[10px]" style={{ color: tierData.color }}>{item.unitPrice}€ chacun</span>
+                        </div>
+                        {/* Qty controls */}
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => updateCartQty(item.id, -1)}
+                            className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer transition-all hover:scale-110"
+                            style={{ background: "var(--bg3)", border: "1px solid var(--border)" }}>
+                            <Minus className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
+                          </button>
+                          <span className="text-xs font-bold w-5 text-center tabular-nums" style={{ color: "var(--text-primary)" }}>{item.qty}</span>
+                          <button onClick={() => updateCartQty(item.id, 1)}
+                            className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer transition-all hover:scale-110"
+                            style={{ background: "var(--bg3)", border: "1px solid var(--border)" }}>
+                            <Plus className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
+                          </button>
+                        </div>
+                        <span className="text-xs font-bold tabular-nums w-12 text-right" style={{ color: "var(--text-primary)" }}>
+                          {item.unitPrice * item.qty}€
+                        </span>
+                        <button onClick={() => removeFromCart(item.id)}
+                          className="cursor-pointer p-1" style={{ background: "none", border: "none" }}>
+                          <X className="w-3.5 h-3.5" style={{ color: "var(--danger)" }} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Cart total + pay */}
+                <div className="px-4 py-4" style={{ borderTop: "1px solid var(--border)", background: "rgba(0,0,0,0.02)" }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>Total</span>
+                    <span className="text-2xl font-black tabular-nums" style={{ color: "var(--accent)" }}>{cartTotal}€</span>
+                  </div>
+                  {visitorHandle && (
+                    <p className="text-[10px] mb-3 flex items-center gap-1.5" style={{ color: "var(--text-muted)" }}>
+                      <Send className="w-3 h-3" style={{ color: deliveryPlatform === "snapchat" ? "#FFFC00" : "#E4405F" }} />
+                      Envoyé via {deliveryPlatform === "snapchat" ? "Snap" : "Insta"} à {visitorHandle}
+                    </p>
+                  )}
+                  <button onClick={() => {
+                    const desc = cart.map(c => {
+                      const tData = CONTENT_PRICING.find(t => t.tier.toLowerCase() === c.tier);
+                      return `${c.qty}x ${c.type === "photo" ? "Photo" : `Video ${c.videoMin}min`} ${tData?.tier || c.tier}`;
+                    }).join(", ");
+                    createPendingPurchase(modelSlug || "", pseudo, desc, cartTotal, getAuthHeaders || (() => ({ "Content-Type": "application/json" })), paypalHandle);
+                  }}
+                    className="w-full py-3.5 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2"
+                    style={{ background: "var(--accent)", color: "#fff", border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>
+                    <ShoppingCart className="w-4 h-4" />
+                    Commander — {cartTotal}€
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* Price + Pay */}
-            <div className="rounded-2xl p-5 sm:p-6 text-center" style={{ background: `${tier.color}06`, border: `1px solid ${tier.color}15` }}>
-              <p className="text-4xl font-black mb-1 tabular-nums" style={{ color: tier.color }}>{price}€</p>
-              <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-                {selType === "photo" ? "1 photo" : `${videoMin} min de video`} {tier.tier}
-              </p>
-              <button onClick={() => {
-                const desc = selType === "photo" ? `Photo ${tier.tier}` : `Video ${tier.tier} ${videoMin}min`;
-                createPendingPurchase(modelSlug || "", pseudo, desc, price, getAuthHeaders || (() => ({ "Content-Type": "application/json" })), paypalHandle);
-              }}
-                className="block w-full py-3.5 rounded-xl text-sm font-semibold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.98]"
-                style={{ background: tier.color, color: "#fff", border: "none", boxShadow: `0 4px 20px ${tier.color}30` }}>
-                Acheter {price}€
-              </button>
-            </div>
+            {/* ── Quick add shortcuts (when cart empty) ── */}
+            {cart.length === 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>
+                  Ajout rapide
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {CONTENT_PRICING.map(t => (
+                    <button key={t.tier} onClick={() => addToCart(t.tier.toLowerCase(), "photo")}
+                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                      style={{ background: `${t.color}08`, border: `1px solid ${t.color}18` }}>
+                      <span className="text-sm">{t.symbol}</span>
+                      <div className="text-left">
+                        <span className="text-[10px] font-bold block" style={{ color: t.color }}>Photo {t.tier}</span>
+                        <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{t.photo}€</span>
+                      </div>
+                      <Plus className="w-3 h-3 ml-auto" style={{ color: t.color }} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
           </div>
         );
       })()}

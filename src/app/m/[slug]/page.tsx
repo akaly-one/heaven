@@ -29,9 +29,9 @@ interface ModelAuth {
   role: string; model_slug?: string; display_name?: string; token?: string;
 }
 const TABS = [
-  { id: "gallery", label: "Portfolio", icon: Image },
+  { id: "shootings", label: "Shootings", icon: Camera },
   { id: "feed", label: "Feed", icon: Newspaper },
-  { id: "shop", label: "Boutique", icon: ShoppingBag },
+  { id: "custom", label: "Contenu", icon: ShoppingBag },
 ] as const;
 type TabId = typeof TABS[number]["id"];
 
@@ -131,9 +131,12 @@ export default function ModelPage() {
   const [tab, setTab] = useState<TabId>(() => {
     if (typeof window !== "undefined") {
       const hash = window.location.hash.replace("#", "");
-      if (hash === "gallery" || hash === "shop" || hash === "wall" || hash === "feed") return hash as TabId;
+      if (hash === "shootings" || hash === "custom" || hash === "feed") return hash as TabId;
+      // Legacy compat
+      if (hash === "gallery") return "shootings";
+      if (hash === "shop") return "custom";
     }
-    return "gallery";
+    return "shootings";
   });
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -350,7 +353,7 @@ export default function ModelPage() {
           setUploads(prev => [data.upload || newUpload, ...prev]);
           setEditToast("Média ajouté");
           setTimeout(() => setEditToast(null), 2000);
-          setTab("gallery");
+          setTab("shootings");
         } else {
           console.error("[EditMode] Upload save failed:", data);
           setEditToast("Erreur: " + (data.error || "upload échoué"));
@@ -586,7 +589,7 @@ export default function ModelPage() {
         if (data.code?.tier) {
           setUnlockedTier(data.code.tier);
           setActiveCode(data.code);
-          setTab("gallery");
+          setTab("shootings");
           const accessData = JSON.stringify({ tier: data.code.tier, expiresAt: data.code.expiresAt, code: data.code.code });
           sessionStorage.setItem(`heaven_access_${slug}`, accessData);
           localStorage.setItem(`heaven_access_${slug}`, accessData);
@@ -919,7 +922,7 @@ export default function ModelPage() {
     <div className="min-h-screen pb-24 md:pb-8" style={{ background: "var(--bg)", userSelect: "none", WebkitUserSelect: "none" }}>
       {/* Identity Gate — blocks browsing until visitor identifies */}
       {!visitorRegistered && !isModelLoggedIn && model && (
-        <IdentityGate slug={slug} modelName={model.display_name} onRegistered={handleGateRegistered} onNeedShop={() => setTab("shop")} />
+        <IdentityGate slug={slug} modelName={model.display_name} onRegistered={handleGateRegistered} onNeedShop={() => setTab("shootings")} />
       )}
       <style>{`
         img { -webkit-touch-callout: none; -webkit-user-select: none; pointer-events: none; }
@@ -1214,7 +1217,7 @@ export default function ModelPage() {
                 <span>Ton code a expire</span>
               </div>
               <button
-                onClick={() => { setTab("shop"); setExpiredCodeInfo(null); }}
+                onClick={() => { setTab("shootings"); setExpiredCodeInfo(null); }}
                 className="px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all"
                 style={{ background: "var(--warning)", color: "#fff" }}
               >
@@ -1264,7 +1267,7 @@ export default function ModelPage() {
                   unlockedTier={unlockedTier}
                   isModelLoggedIn={isModelLoggedIn}
                   tierIncludes={tierIncludes}
-                  onPackClick={(id) => { setFocusPack(id); setExpandedPack(id); setTab("shop"); }}
+                  onPackClick={(id) => { setGalleryTier(id); setTab("shootings"); }}
                   layout="horizontal"
                 />
               </div>
@@ -1280,7 +1283,7 @@ export default function ModelPage() {
                   unlockedTier={unlockedTier}
                   isModelLoggedIn={isModelLoggedIn}
                   tierIncludes={tierIncludes}
-                  onPackClick={(id) => { setFocusPack(id); setExpandedPack(id); setTab("shop"); }}
+                  onPackClick={(id) => { setGalleryTier(id); setTab("shootings"); }}
                   layout="sidebar"
                 />
               </div>
@@ -1416,9 +1419,8 @@ export default function ModelPage() {
                           <div className="relative cursor-pointer mx-5 sm:mx-6 mb-4 rounded-xl overflow-hidden"
                             onClick={() => {
                               if (purchasedItems.has(post.id)) { setLightboxUrl(post.media_url); return; }
-                              setFocusPack(postTier !== "public" ? postTier : null);
-                              setExpandedPack(postTier !== "public" ? postTier : null);
-                              setTab("shop");
+                              setGalleryTier(postTier !== "public" ? postTier : "all");
+                              setTab("shootings");
                             }}>
                             <div className="w-full h-[300px] sm:h-[400px]" style={{
                               background: `linear-gradient(135deg, ${tierHex}20, rgba(0,0,0,0.6))`,
@@ -1537,7 +1539,7 @@ export default function ModelPage() {
                   unlockedTier={unlockedTier}
                   isModelLoggedIn={isModelLoggedIn}
                   tierIncludes={tierIncludes}
-                  onPackClick={(id) => { setFocusPack(id); setExpandedPack(id); setTab("shop"); }}
+                  onPackClick={(id) => { setGalleryTier(id); setTab("shootings"); }}
                   layout="sidebar"
                 />
               </div>
@@ -1546,136 +1548,212 @@ export default function ModelPage() {
             </div>
           )}
 
-          {/* ── PORTFOLIO / GALLERY — editorial grid ── */}
-          {tab === "gallery" && (() => {
-            // Unverified visitors only see public gallery content
-            const imagePosts = contentUnlocked
-              ? posts.filter(p => p.media_url)
-              : posts.filter(p => p.media_url && (!p.tier_required || p.tier_required === "public"));
-            const showPacks = !hasPurchased && !isModelLoggedIn && activePacks.length > 0;
+          {/* ── SHOOTINGS — unified gallery with pack-colored tier tabs ── */}
+          {tab === "shootings" && (() => {
+            const allImagePosts = posts.filter(p => p.media_url);
+            // Build tier list: always show "public" + active pack tiers that have content or are active packs
+            const tierList = ["public", ...activePacks.map(p => p.id)];
+            const uniqueTiers = [...new Set(tierList)];
+
             return (
               <div className="fade-up">
-              {/* Pack tiles above gallery */}
-              {showPacks && (
-                <PackTiles
-                  packs={activePacks}
-                  uploads={uploads}
-                  unlockedTier={unlockedTier}
-                  isModelLoggedIn={isModelLoggedIn}
-                  tierIncludes={tierIncludes}
-                  onPackClick={(id) => { setFocusPack(id); setExpandedPack(id); setTab("shop"); }}
-                  layout="horizontal"
-                />
-              )}
-              <div className="flex-1 min-w-0">
-                {/* Tier filter — underline style */}
-                <div className="flex gap-1 mb-6 sm:mb-8 overflow-x-auto scrollbar-hide pb-1" style={{ borderBottom: "1px solid var(--border)" }}>
-                  {["all", "public", "vip", "gold", "diamond", "platinum"].map(t => {
-                    const count = t === "all" ? imagePosts.length : imagePosts.filter(p => (p.tier_required || "public") === t).length;
-                    if (t !== "all" && count === 0) return null;
-                    const tierHex = t === "all" ? "var(--text)" : TIER_HEX[t] || "var(--text-muted)";
-                    return (
-                      <button key={t} onClick={() => setGalleryTier(t)}
-                        className="relative px-4 sm:px-5 py-2.5 text-[11px] sm:text-xs font-medium cursor-pointer shrink-0 transition-all uppercase"
-                        style={{
-                          color: galleryTier === t ? tierHex : "var(--text-muted)",
-                          letterSpacing: "0.06em",
-                        }}>
-                        {t === "all" ? "Tout" : TIER_META[t]?.label || t} {count > 0 && <span className="opacity-50">({count})</span>}
-                        {galleryTier === t && (
-                          <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full" style={{ background: tierHex }} />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Portfolio grid — editorial aspect ratios */}
-                {imagePosts.length === 0 ? (
-                  <div className="text-center py-20 sm:py-24">
-                    <Image className="w-10 h-10 mx-auto mb-4" style={{ color: "var(--text-muted)", opacity: 0.5 }} />
-                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>Pas de contenu dans le portfolio</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
-                    {imagePosts
-                      .filter(p => galleryTier === "all" || (p.tier_required || "public") === galleryTier)
-                      .map((post, i) => {
-                        const tier = post.tier_required || "public";
-                        const unlocked = tier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, tier));
-                        const tierHex = TIER_HEX[tier] || "var(--text-muted)";
-                        return (
-                          <div key={post.id} className="relative aspect-[3/4] overflow-hidden rounded-xl cursor-pointer gallery-item group"
-                            style={{ animation: `slideUp 0.4s ease-out ${i * 0.03}s both` }}>
-                            {unlocked ? (
-                              <>
-                                <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">
-                                  <img src={post.media_url!} alt="" className="w-full h-full object-cover"
-                                    onClick={() => setLightboxUrl(post.media_url)} loading="lazy" data-clickable />
-                                </ContentProtection>
-                                {/* Hover overlay */}
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                                  <Eye className="w-5 h-5 text-white" />
-                                </div>
-                                {tier !== "public" && (
-                                  <span className="absolute top-2.5 right-2.5 text-[9px] font-bold px-2 py-0.5 rounded-full"
-                                    style={{ background: "rgba(0,0,0,0.5)", color: "#fff", backdropFilter: "blur(4px)" }}>
-                                    {TIER_META[tier]?.label || tier.toUpperCase()}
-                                  </span>
-                                )}
-                              </>
-                            ) : (
-                              <div className="w-full h-full" onClick={() => {
-                                if (purchasedItems.has(post.id)) { setLightboxUrl(post.media_url); return; }
-                                setFocusPack(tier !== "public" ? tier : null);
-                                setExpandedPack(tier !== "public" ? tier : null);
-                                setTab("shop");
-                              }}>
-                                {/* Blurred image behind lock */}
-                                {post.media_url && (
-                                  <img src={post.media_url} alt="" className="absolute inset-0 w-full h-full object-cover"
-                                    style={{ filter: "blur(18px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" />
-                                )}
-                                <div className="absolute inset-0" style={{
-                                  background: `linear-gradient(160deg, ${tierHex}20 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.7) 100%)`,
-                                }} />
-                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                                  <Lock className="w-5 h-5" style={{ color: tierHex, opacity: 0.8 }} />
-                                  <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: tierHex }}>
-                                    Exclusive
-                                  </span>
-                                  <span className="text-[9px]" style={{ color: "rgba(255,255,255,0.5)" }}>
-                                    {TIER_META[tier]?.label || tier}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                            {/* Edit mode overlay */}
-                            {isEditMode && (
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                                <button onClick={async () => {
-                                  if (confirm("Supprimer ce post ?")) {
-                                    await fetch(`/api/posts?id=${post.id}&model=${slug}`, { method: "DELETE" });
-                                    setPosts(prev => prev.filter(p => p.id !== post.id));
-                                  }
-                                }} className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110" style={{ background: "rgba(220,38,38,0.8)" }}>
-                                  <Trash2 className="w-4 h-4 text-white" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
-                )}
+              {/* ── Pack tier tabs — colored, single row ── */}
+              <div className="flex gap-0 overflow-x-auto scrollbar-hide mb-5 sm:mb-6" style={{ borderBottom: "1px solid var(--border)" }}>
+                <button onClick={() => setGalleryTier("all")}
+                  className="relative px-4 sm:px-5 py-3 text-[11px] sm:text-xs font-semibold cursor-pointer shrink-0 transition-all uppercase"
+                  style={{ color: galleryTier === "all" ? "var(--text)" : "var(--text-muted)", letterSpacing: "0.06em" }}>
+                  Tout
+                  {galleryTier === "all" && <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />}
+                </button>
+                {uniqueTiers.map(t => {
+                  const tierHex = t === "public" ? "#64748B" : TIER_HEX[t] || "var(--text-muted)";
+                  const tierLabel = t === "public" ? "Public" : TIER_META[t]?.label || t.toUpperCase();
+                  const isLocked = t !== "public" && !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, t));
+                  const isActive = galleryTier === t;
+                  const pack = activePacks.find(p => p.id === t);
+                  return (
+                    <button key={t} onClick={() => setGalleryTier(t)}
+                      className="relative px-4 sm:px-5 py-3 text-[11px] sm:text-xs font-semibold cursor-pointer shrink-0 transition-all uppercase flex items-center gap-1.5"
+                      style={{ color: isActive ? tierHex : "var(--text-muted)", letterSpacing: "0.06em", opacity: isLocked && !isActive ? 0.6 : 1 }}>
+                      {isLocked && <Lock className="w-3 h-3" style={{ color: tierHex }} />}
+                      {tierLabel}
+                      {pack && <span className="text-[9px] font-bold opacity-60">{pack.price}€</span>}
+                      {isActive && <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{ background: tierHex }} />}
+                    </button>
+                  );
+                })}
               </div>
+
+              {/* ── Locked tier overlay — shows pack details + CTA ── */}
+              {galleryTier !== "all" && galleryTier !== "public" && !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, galleryTier)) && (() => {
+                const pack = activePacks.find(p => p.id === galleryTier);
+                const tierHex = TIER_HEX[galleryTier] || "#E63329";
+                const tierPosts = allImagePosts.filter(p => (p.tier_required || "public") === galleryTier);
+                if (!pack) return null;
+                return (
+                  <div className="mb-6">
+                    {/* Blurred preview grid */}
+                    {tierPosts.length > 0 && (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 mb-4 relative rounded-xl overflow-hidden">
+                        {tierPosts.slice(0, 8).map((post, i) => (
+                          <div key={post.id} className="aspect-[3/4] relative overflow-hidden">
+                            <img src={post.media_url!} alt="" className="w-full h-full object-cover"
+                              style={{ filter: "blur(20px) brightness(0.35)", transform: "scale(1.2)" }} loading="lazy" />
+                          </div>
+                        ))}
+                        {/* Overlay on entire grid */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10"
+                          style={{ background: `radial-gradient(ellipse at center, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 100%)` }}>
+                          <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                            style={{ background: `${tierHex}20`, border: `1px solid ${tierHex}30` }}>
+                            <Lock className="w-6 h-6" style={{ color: tierHex }} />
+                          </div>
+                          <div className="text-center">
+                            <h3 className="text-lg font-bold mb-1" style={{ color: "#fff" }}>{pack.name}</h3>
+                            <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.6)" }}>{tierPosts.length} contenu{tierPosts.length > 1 ? "s" : ""} exclusif{tierPosts.length > 1 ? "s" : ""}</p>
+                          </div>
+                          {/* Features */}
+                          <div className="flex flex-col gap-1 max-w-xs">
+                            {pack.features?.slice(0, 4).map((f, j) => (
+                              <div key={j} className="flex items-center gap-2 text-[11px]" style={{ color: "rgba(255,255,255,0.7)" }}>
+                                <Check className="w-3 h-3 shrink-0" style={{ color: tierHex }} />
+                                {f}
+                              </div>
+                            ))}
+                          </div>
+                          {/* CTA */}
+                          {pack.stripe_link ? (
+                            <a href={pack.stripe_link} target="_blank" rel="noopener noreferrer"
+                              className="mt-2 px-8 py-3 rounded-xl text-sm font-bold no-underline transition-all hover:scale-[1.03] active:scale-[0.97]"
+                              style={{ background: tierHex, color: "#fff", boxShadow: `0 4px 20px ${tierHex}40` }}>
+                              Débloquer — {pack.price}€
+                            </a>
+                          ) : pack.wise_url ? (
+                            <a href={pack.wise_url} target="_blank" rel="noopener noreferrer"
+                              className="mt-2 px-8 py-3 rounded-xl text-sm font-bold no-underline transition-all hover:scale-[1.03] active:scale-[0.97]"
+                              style={{ background: tierHex, color: "#fff", boxShadow: `0 4px 20px ${tierHex}40` }}>
+                              Débloquer — {pack.price}€
+                            </a>
+                          ) : (
+                            <button onClick={() => {
+                              setFocusPack(galleryTier);
+                              setExpandedPack(galleryTier);
+                              setShowUnlock(true);
+                            }}
+                              className="mt-2 px-8 py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.03] active:scale-[0.97]"
+                              style={{ background: tierHex, color: "#fff", border: "none", boxShadow: `0 4px 20px ${tierHex}40` }}>
+                              Débloquer — {pack.price}€
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {tierPosts.length === 0 && (
+                      <div className="text-center py-16 rounded-2xl" style={{ background: `${tierHex}06`, border: `1px solid ${tierHex}15` }}>
+                        <Lock className="w-8 h-8 mx-auto mb-3" style={{ color: tierHex, opacity: 0.5 }} />
+                        <h3 className="text-base font-bold mb-1" style={{ color: tierHex }}>{pack.name}</h3>
+                        <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>Contenu bientôt disponible</p>
+                        <button onClick={() => { setFocusPack(galleryTier); setExpandedPack(galleryTier); setShowUnlock(true); }}
+                          className="px-6 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-[1.03]"
+                          style={{ background: `${tierHex}15`, color: tierHex, border: `1px solid ${tierHex}30` }}>
+                          Débloquer — {pack.price}€
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* ── Unlocked content grid ── */}
+              {(() => {
+                // Filter by selected tier
+                const filteredPosts = galleryTier === "all"
+                  ? (contentUnlocked ? allImagePosts : allImagePosts.filter(p => {
+                      const tier = p.tier_required || "public";
+                      return tier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, tier));
+                    }))
+                  : allImagePosts.filter(p => (p.tier_required || "public") === galleryTier);
+
+                // For locked tiers, don't show the grid (the overlay above handles it)
+                const isLockedTier = galleryTier !== "all" && galleryTier !== "public" && !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, galleryTier));
+                if (isLockedTier) return null;
+
+                if (filteredPosts.length === 0) return (
+                  <div className="text-center py-20 sm:py-24">
+                    <Camera className="w-10 h-10 mx-auto mb-4" style={{ color: "var(--text-muted)", opacity: 0.5 }} />
+                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>Pas encore de shootings</p>
+                  </div>
+                );
+
+                return (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
+                    {filteredPosts.map((post, i) => {
+                      const tier = post.tier_required || "public";
+                      const unlocked = tier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, tier));
+                      const tierHex = TIER_HEX[tier] || "var(--text-muted)";
+                      return (
+                        <div key={post.id} className="relative aspect-[3/4] overflow-hidden rounded-xl cursor-pointer gallery-item group"
+                          style={{ animation: `slideUp 0.4s ease-out ${i * 0.03}s both` }}>
+                          {unlocked ? (
+                            <>
+                              <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">
+                                <img src={post.media_url!} alt="" className="w-full h-full object-cover"
+                                  onClick={() => setLightboxUrl(post.media_url)} loading="lazy" data-clickable />
+                              </ContentProtection>
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                                <Eye className="w-5 h-5 text-white" />
+                              </div>
+                              {tier !== "public" && (
+                                <span className="absolute top-2.5 right-2.5 text-[9px] font-bold px-2 py-0.5 rounded-full"
+                                  style={{ background: "rgba(0,0,0,0.5)", color: "#fff", backdropFilter: "blur(4px)" }}>
+                                  {TIER_META[tier]?.label || tier.toUpperCase()}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <div className="w-full h-full" onClick={() => {
+                              setGalleryTier(tier);
+                            }}>
+                              {post.media_url && (
+                                <img src={post.media_url} alt="" className="absolute inset-0 w-full h-full object-cover"
+                                  style={{ filter: "blur(18px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" />
+                              )}
+                              <div className="absolute inset-0" style={{
+                                background: `linear-gradient(160deg, ${tierHex}20 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.7) 100%)`,
+                              }} />
+                              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                                <Lock className="w-5 h-5" style={{ color: tierHex, opacity: 0.8 }} />
+                                <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: tierHex }}>
+                                  {TIER_META[tier]?.label || tier}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                          {isEditMode && (
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                              <button onClick={async () => {
+                                if (confirm("Supprimer ce post ?")) {
+                                  await fetch(`/api/posts?id=${post.id}&model=${slug}`, { method: "DELETE" });
+                                  setPosts(prev => prev.filter(p => p.id !== post.id));
+                                }
+                              }} className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110" style={{ background: "rgba(220,38,38,0.8)" }}>
+                                <Trash2 className="w-4 h-4 text-white" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
               </div>
             );
           })()}
 
-          {/* ── BOUTIQUE / SHOP ── */}
-          {tab === "shop" && (
+          {/* ── CONTENU PERSONNALISÉ (custom orders) ── */}
+          {tab === "custom" && (
             <ShopTab
               clientId={clientId}
               unlockedTier={unlockedTier}
