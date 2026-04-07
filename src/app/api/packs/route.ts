@@ -77,7 +77,6 @@ export async function POST(req: NextRequest) {
 
     const rows = packs.map((p: Record<string, unknown>, i: number) => ({
       model, pack_id: p.id || `pack-${i}`, name: p.name || "", price: p.price || 0,
-      code: p.code || `AG-P${Math.round(Number(p.price) || 0)}`,
       color: p.color || "#C9A84C", features: p.features || [], bonuses: p.bonuses || {},
       face: p.face || false, badge: p.badge || null, active: p.active !== false, sort_order: i,
       wise_url: p.wise_url || null, stripe_link: p.stripe_link || null, revolut_url: p.revolut_url || null,
