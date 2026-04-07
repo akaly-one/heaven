@@ -1254,9 +1254,10 @@ export default function ModelPage() {
                       <button key={t} role="tab" aria-selected={isActive} onClick={() => { setGalleryTier(t); setFocusPack(null); }}
                         className="relative px-3 sm:px-4 py-3 sm:py-3.5 text-[10px] sm:text-xs font-bold cursor-pointer shrink-0 transition-all uppercase flex items-center gap-1.5 group"
                         style={{ color: isActive ? tierHex : "var(--text-muted)", letterSpacing: "0.06em", opacity: isLocked && !isActive ? 0.5 : 1 }}>
-                        {/* Symbol or lock */}
-                        <span className="text-sm transition-transform group-hover:scale-110" style={{ color: tierHex, filter: isLocked && !isActive ? "grayscale(0.5)" : "none" }}>
-                          {isLocked ? "🔒" : tierSymbol}
+                        {/* Symbol always visible — lock only as small overlay */}
+                        <span className="text-sm transition-transform group-hover:scale-110 relative" style={{ color: tierHex }}>
+                          {tierSymbol}
+                          {isLocked && <Lock className="w-2 h-2 absolute -bottom-0.5 -right-1" style={{ color: tierHex, opacity: 0.7 }} />}
                         </span>
                         {tierLabel}
                         {/* Prix masqué dans la nav — visible uniquement au moment du paiement */}
@@ -1604,77 +1605,81 @@ export default function ModelPage() {
               {!isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, galleryTier)) && (() => {
                 const pack = activePacks.find(p => p.id === galleryTier);
                 const tierHex = TIER_HEX[galleryTier] || "#E63329";
+                const tierSymbol = TIER_META[galleryTier]?.symbol || "";
                 const tierPosts = allImagePosts.filter(p => (p.tier_required || "public") === galleryTier);
+                const tierUploads = uploads.filter(u => u.tier === galleryTier && u.dataUrl);
+                const previewImages = [...tierPosts.map(p => p.media_url!), ...tierUploads.map(u => u.dataUrl)].filter(Boolean).slice(0, 6);
                 if (!pack) return null;
+
+                const ctaLink = pack.stripe_link || pack.wise_url || null;
+                const ctaAction = ctaLink
+                  ? () => window.open(ctaLink, "_blank")
+                  : () => { setFocusPack(galleryTier); setShowUnlock(true); };
+
                 return (
                   <div className="mb-6">
-                    {/* Blurred preview grid */}
-                    {tierPosts.length > 0 && (
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 mb-4 relative rounded-xl overflow-hidden">
-                        {tierPosts.slice(0, 8).map((post, i) => (
-                          <div key={post.id} className="aspect-[3/4] relative overflow-hidden">
-                            <img src={post.media_url!} alt="" className="w-full h-full object-cover"
-                              style={{ filter: "blur(20px) brightness(0.35)", transform: "scale(1.2)" }} loading="lazy" />
-                          </div>
-                        ))}
-                        {/* Overlay on entire grid */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10"
-                          style={{ background: `radial-gradient(ellipse at center, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 100%)` }}>
-                          <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                            style={{ background: `${tierHex}20`, border: `1px solid ${tierHex}30` }}>
-                            <Lock className="w-6 h-6" style={{ color: tierHex }} />
-                          </div>
-                          <div className="text-center">
-                            <h3 className="text-lg font-bold mb-1" style={{ color: "#fff" }}>{pack.name}</h3>
-                            <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.6)" }}>{tierPosts.length} contenu{tierPosts.length > 1 ? "s" : ""} exclusif{tierPosts.length > 1 ? "s" : ""}</p>
-                          </div>
-                          {/* Features */}
-                          <div className="flex flex-col gap-1 max-w-xs">
-                            {pack.features?.slice(0, 4).map((f, j) => (
-                              <div key={j} className="flex items-center gap-2 text-[11px]" style={{ color: "rgba(255,255,255,0.7)" }}>
-                                <Check className="w-3 h-3 shrink-0" style={{ color: tierHex }} />
-                                {f}
+                    {/* ── 2-column layout: blurred previews left + pack info right ── */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 rounded-2xl overflow-hidden p-4 md:p-6"
+                      style={{ background: "var(--surface)", border: `1px solid ${tierHex}15` }}>
+
+                      {/* Left — blurred preview grid */}
+                      <div className="relative rounded-xl overflow-hidden" style={{ minHeight: "280px" }}>
+                        {previewImages.length > 0 ? (
+                          <div className="grid grid-cols-3 gap-1 h-full">
+                            {previewImages.map((url, i) => (
+                              <div key={i} className="aspect-[3/4] relative overflow-hidden rounded-lg">
+                                <img src={url} alt="" className="w-full h-full object-cover"
+                                  style={{ filter: "blur(16px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" />
                               </div>
                             ))}
                           </div>
-                          {/* CTA */}
-                          {pack.stripe_link ? (
-                            <a href={pack.stripe_link} target="_blank" rel="noopener noreferrer"
-                              className="mt-2 px-8 py-3 rounded-xl text-sm font-bold no-underline transition-all hover:scale-[1.03] active:scale-[0.97]"
-                              style={{ background: tierHex, color: "#fff", boxShadow: `0 4px 20px ${tierHex}40` }}>
-                              Débloquer — {pack.price}€
-                            </a>
-                          ) : pack.wise_url ? (
-                            <a href={pack.wise_url} target="_blank" rel="noopener noreferrer"
-                              className="mt-2 px-8 py-3 rounded-xl text-sm font-bold no-underline transition-all hover:scale-[1.03] active:scale-[0.97]"
-                              style={{ background: tierHex, color: "#fff", boxShadow: `0 4px 20px ${tierHex}40` }}>
-                              Débloquer — {pack.price}€
-                            </a>
-                          ) : (
-                            <button onClick={() => {
-                              setFocusPack(galleryTier);
-                              setShowUnlock(true);
-                            }}
-                              className="mt-2 px-8 py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.03] active:scale-[0.97]"
-                              style={{ background: tierHex, color: "#fff", border: "none", boxShadow: `0 4px 20px ${tierHex}40` }}>
-                              Débloquer — {pack.price}€
-                            </button>
-                          )}
+                        ) : (
+                          <div className="w-full h-full rounded-xl" style={{ background: `linear-gradient(135deg, ${tierHex}10, ${tierHex}05)`, minHeight: "280px" }} />
+                        )}
+                        {/* Center lock badge */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-16 h-16 rounded-2xl flex items-center justify-center backdrop-blur-sm"
+                            style={{ background: `${tierHex}25`, border: `1.5px solid ${tierHex}40` }}>
+                            <span className="text-3xl">{tierSymbol}</span>
+                          </div>
                         </div>
                       </div>
-                    )}
-                    {tierPosts.length === 0 && (
-                      <div className="text-center py-16 rounded-2xl" style={{ background: `${tierHex}06`, border: `1px solid ${tierHex}15` }}>
-                        <Lock className="w-8 h-8 mx-auto mb-3" style={{ color: tierHex, opacity: 0.5 }} />
-                        <h3 className="text-base font-bold mb-1" style={{ color: tierHex }}>{pack.name}</h3>
-                        <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>Contenu bientôt disponible</p>
-                        <button onClick={() => { setFocusPack(galleryTier); setShowUnlock(true); }}
-                          className="px-6 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-[1.03]"
-                          style={{ background: `${tierHex}15`, color: tierHex, border: `1px solid ${tierHex}30` }}>
+
+                      {/* Right — pack info + features + CTA */}
+                      <div className="flex flex-col justify-center gap-4 py-2">
+                        {/* Title */}
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xl">{tierSymbol}</span>
+                            <h3 className="text-xl font-black" style={{ color: "var(--text)" }}>{pack.name}</h3>
+                          </div>
+                          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                            {previewImages.length > 0
+                              ? `${previewImages.length} contenu${previewImages.length > 1 ? "s" : ""} exclusif${previewImages.length > 1 ? "s" : ""}`
+                              : "Contenu exclusif bientôt disponible"}
+                          </p>
+                        </div>
+
+                        {/* Features list */}
+                        {pack.features && pack.features.length > 0 && (
+                          <div className="space-y-2">
+                            {pack.features.map((f, j) => (
+                              <div key={j} className="flex items-start gap-2.5">
+                                <Check className="w-4 h-4 shrink-0 mt-0.5" style={{ color: tierHex }} />
+                                <span className="text-sm leading-snug" style={{ color: "var(--text-secondary)" }}>{f}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* CTA button */}
+                        <button onClick={ctaAction}
+                          className="w-full sm:w-auto px-8 py-3.5 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.97]"
+                          style={{ background: tierHex, color: "#fff", border: "none", boxShadow: `0 4px 24px ${tierHex}35` }}>
                           Débloquer — {pack.price}€
                         </button>
                       </div>
-                    )}
+                    </div>
                   </div>
                 );
               })()}
@@ -2224,7 +2229,10 @@ export default function ModelPage() {
                     className="relative flex flex-col items-center gap-0.5 px-2 py-1.5 cursor-pointer transition-all"
                     style={{ color: isActive ? hex : "var(--text-muted)", opacity: isLocked && !isActive ? 0.5 : 1 }}>
                     {isActive && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[2.5px] rounded-full" style={{ background: hex, boxShadow: `0 0 6px ${hex}60` }} />}
-                    <span className="text-base">{isLocked ? "🔒" : TIER_META[p.id]?.symbol}</span>
+                    <span className="text-base relative">
+                      {TIER_META[p.id]?.symbol}
+                      {isLocked && <Lock className="w-2 h-2 absolute -bottom-0.5 -right-1.5" style={{ color: hex, opacity: 0.7 }} />}
+                    </span>
                     <span className="text-[8px] font-bold uppercase" style={{ letterSpacing: "0.04em", color: hex }}>{TIER_META[p.id]?.label}</span>
                   </button>
                 );
