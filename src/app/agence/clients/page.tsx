@@ -225,7 +225,7 @@ export default function ClientsCRMPage() {
   const deleteSelected = async () => {
     if (!confirm(`Supprimer ${selected.size} client(s) ?`)) return;
     for (const id of selected) {
-      await fetch(`/api/clients?id=${id}`, { method: "DELETE", headers: authHeaders() });
+      await fetch(`/api/clients?id=${id}&model=${model}`, { method: "DELETE", headers: authHeaders() });
     }
     selectNone(); fetchAll();
   };
@@ -242,7 +242,7 @@ export default function ClientsCRMPage() {
   const verifyClient = async (clientId: string, action: "verify" | "reject") => {
     await fetch("/api/clients", {
       method: "PUT", headers: authHeaders(),
-      body: JSON.stringify({ id: clientId, action, verified_by: model }),
+      body: JSON.stringify({ id: clientId, model, action, verified_by: model }),
     });
     fetchAll();
   };
@@ -258,7 +258,7 @@ export default function ClientsCRMPage() {
     if (targets.length === 0) return;
     if (!confirm(`Purger ${targets.length} client(s) inactifs depuis +48h sans vérification ?`)) return;
     for (const c of targets) {
-      await fetch(`/api/clients?id=${c.id}`, { method: "DELETE", headers: authHeaders() });
+      await fetch(`/api/clients?id=${c.id}&model=${model}`, { method: "DELETE", headers: authHeaders() });
     }
     fetchAll();
   };
@@ -285,7 +285,7 @@ export default function ClientsCRMPage() {
   };
 
   const deleteMessage = async (msgId: string) => {
-    await fetch(`/api/messages?id=${msgId}`, { method: "DELETE", headers: authHeaders() });
+    await fetch(`/api/messages?id=${msgId}&model=${model}`, { method: "DELETE", headers: authHeaders() });
     fetchAll();
   };
 
@@ -335,13 +335,13 @@ export default function ClientsCRMPage() {
       }
       if (Object.keys(updates).length > 0) {
         await fetch("/api/clients", { method: "PATCH", headers: authHeaders(),
-          body: JSON.stringify({ id: keepId, ...updates }) });
+          body: JSON.stringify({ id: keepId, model, ...updates }) });
       }
       const otherIds = mergeModal.slice(1).map(c => c.id);
       const msgPromises = otherIds.flatMap(otherId =>
         messages.filter(m => m.client_id === otherId).map(msg =>
           fetch("/api/messages", { method: "PATCH", headers: authHeaders(),
-            body: JSON.stringify({ id: msg.id, client_id: keepId }) })
+            body: JSON.stringify({ id: msg.id, client_id: keepId, model }) })
         )
       );
       if (msgPromises.length > 0) await Promise.allSettled(msgPromises);
@@ -355,7 +355,7 @@ export default function ClientsCRMPage() {
       });
       if (codePromises.length > 0) await Promise.allSettled(codePromises);
       await Promise.allSettled(otherIds.map(id =>
-        fetch(`/api/clients?id=${id}`, { method: "DELETE", headers: authHeaders() })
+        fetch(`/api/clients?id=${id}&model=${model}`, { method: "DELETE", headers: authHeaders() })
       ));
       setMergeModal(null); selectNone(); fetchAll();
     } catch (err) { console.error("[Merge] error:", err); }
@@ -743,7 +743,7 @@ export default function ClientsCRMPage() {
                       <button onClick={async (e) => {
                         e.stopPropagation();
                         if (confirm(`Supprimer @${pseudo} ?`)) {
-                          await fetch(`/api/clients?id=${c.id}`, { method: "DELETE", headers: authHeaders() });
+                          await fetch(`/api/clients?id=${c.id}&model=${model}`, { method: "DELETE", headers: authHeaders() });
                           setExpandedClient(null); fetchAll();
                         }
                       }} className="p-1.5 rounded-lg cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
@@ -816,7 +816,7 @@ export default function ClientsCRMPage() {
                           style={{ color: "var(--text)" }}
                           onClick={(e) => e.stopPropagation()}
                           onBlur={async (e) => {
-                            await fetch("/api/clients", { method: "PATCH", headers: authHeaders(), body: JSON.stringify({ id: c.id, notes: e.target.value.trim() }) });
+                            await fetch("/api/clients", { method: "PATCH", headers: authHeaders(), body: JSON.stringify({ id: c.id, model, notes: e.target.value.trim() }) });
                           }} />
                       </div>
                     </div>

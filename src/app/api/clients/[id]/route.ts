@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { getCorsHeaders } from "@/lib/auth";
+import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -9,16 +9,21 @@ export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
-// GET /api/clients/[id] — Full client detail with messages + codes history
+// GET /api/clients/[id]?model=xxx — Full client detail with messages + codes history
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const cors = getCorsHeaders(_req);
   try {
     const { id } = await params;
+    const model = _req.nextUrl.searchParams.get("model");
+    if (!model || !isValidModelSlug(model)) {
+      return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
+    }
+
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    // Fetch client
-    const { data: client, error } = await supabase.from("agence_clients").select("*").eq("id", id).single();
+    // Fetch client scoped to model
+    const { data: client, error } = await supabase.from("agence_clients").select("*").eq("id", id).eq("model", model).single();
     if (error || !client) return NextResponse.json({ error: "Client introuvable" }, { status: 404, headers: cors });
 
     // Fetch messages for this client

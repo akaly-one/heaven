@@ -660,7 +660,7 @@ export default function ModelPage() {
           // Auto-identify visitor from code's clientId
           if (data.code.clientId && !visitorRegistered) {
             try {
-              const clientRes = await fetch(`/api/clients/${data.code.clientId}`);
+              const clientRes = await fetch(`/api/clients/${data.code.clientId}?model=${slug}`);
               if (clientRes.ok) {
                 const clientData = await clientRes.json();
                 const client = clientData.client;
