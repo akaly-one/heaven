@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 import { sanitize } from "@/lib/api-utils";
+import { normalizeTier } from "@/lib/tier-utils";
 
 export const runtime = "nodejs";
 
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
         content: body.content ? sanitize(body.content) : null,
         media_url: body.media_url || null,
         media_type: body.media_type || null,
-        tier_required: body.tier_required || "public",
+        tier_required: body.tier_required ? normalizeTier(body.tier_required) : "public",
         pinned: body.pinned || false,
         post_type: body.post_type || "feed",
       })
@@ -213,7 +214,7 @@ export async function PATCH(req: NextRequest) {
 
     const updates: Record<string, unknown> = {};
     if (content !== undefined) updates.content = content ? sanitize(content) : null;
-    if (tier_required !== undefined) updates.tier_required = tier_required;
+    if (tier_required !== undefined) updates.tier_required = tier_required ? normalizeTier(tier_required) : tier_required;
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: "Rien a modifier" }, { status: 400, headers: cors });

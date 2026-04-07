@@ -115,7 +115,7 @@ export const TIER_HEX: Record<string, string> = Object.fromEntries(
 );
 
 /** Canonical tier order (new IDs) */
-export const TIER_HIERARCHY = ["silver", "gold", "black", "platinum"] as const;
+export const TIER_HIERARCHY = ["silver", "gold", "feet", "black", "platinum"] as const;
 
 /** Platform colors (used in pipeline, messages) */
 export const PLATFORM_COLORS: Record<string, string> = {

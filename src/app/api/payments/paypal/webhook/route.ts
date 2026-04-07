@@ -171,7 +171,7 @@ async function handleCaptureCompleted(resource: any): Promise<void> {
   try {
     const result = await fulfillPayment({
       model,
-      tier: "vip",  // Default tier for webhook-based fulfillment
+      tier: "silver",  // Default tier for webhook-based fulfillment
       duration: 720,
       clientPseudo: customData.client_pseudo || "",
       clientPlatform: customData.client_platform || "snapchat",

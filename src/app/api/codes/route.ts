@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
+import { normalizeTier } from "@/lib/tier-utils";
 
 export const runtime = "nodejs";
 
@@ -160,8 +161,8 @@ export async function POST(req: NextRequest) {
       client: normalizedClient,
       platform,
       role: body.role || "client",
-      tier: body.tier || "vip",
-      pack: body.pack || body.tier || "vip",
+      tier: normalizeTier(body.tier),
+      pack: normalizeTier(body.pack || body.tier),
       type: body.type || "paid",
       duration: body.duration || 72,
       expiresAt: body.expiresAt || new Date(Date.now() + 72 * 3600000).toISOString(),
@@ -327,7 +328,7 @@ export async function PATCH(req: NextRequest) {
 function mapFromDb(row: any): CodeRow {
   return {
     code: row.code, model: row.model, client: row.client, platform: row.platform,
-    role: row.role, tier: row.tier, pack: row.pack, type: row.type,
+    role: row.role, tier: normalizeTier(row.tier), pack: normalizeTier(row.pack), type: row.type,
     duration: row.duration, expiresAt: row.expires_at || row.expiresAt,
     created: row.created_at || row.created, used: row.used, active: row.active,
     revoked: row.revoked, isTrial: row.is_trial ?? row.isTrial, lastUsed: row.last_used ?? row.lastUsed,
