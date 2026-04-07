@@ -1370,7 +1370,7 @@ export default function ModelPage() {
         {(() => {
           const packTiers = activePacks.map(p => p.id);
           return (
-            <div className="sticky top-[36px] md:top-[40px] z-30 py-2"
+            <div className="sticky top-[36px] md:top-[40px] z-30 py-2 hidden md:block"
               style={{ background: "color-mix(in srgb, var(--bg) 92%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
               <div className="max-w-6xl mx-auto px-3 sm:px-5 md:px-8">
                 <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1" role="tablist">
@@ -2629,41 +2629,48 @@ export default function ModelPage() {
         {/* ═══ MOBILE BOTTOM NAV ═══ */}
         {!(isEditMode && editDirty) && (
           <nav className="fixed bottom-0 left-0 right-0 z-30 md:hidden safe-area-bottom"
-            style={{ background: "color-mix(in srgb, var(--bg) 90%, transparent)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: "1px solid var(--border)" }}>
-            <div className="flex items-center justify-around py-2">
+            style={{ background: "color-mix(in srgb, var(--bg) 95%, transparent)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: "1px solid var(--border)" }}>
+            <div className="flex items-center overflow-x-auto no-scrollbar px-2 py-2.5 gap-1">
               {/* Feed */}
-              <button onClick={() => setGalleryTier("feed")}
-                className="relative flex flex-col items-center gap-0.5 px-3 py-1.5 cursor-pointer transition-all"
-                style={{ color: galleryTier === "feed" ? "var(--accent)" : "var(--text-muted)" }}>
-                {galleryTier === "feed" && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />}
+              <button onClick={() => { setGalleryTier("feed"); setFocusPack(null); }}
+                className="relative flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl cursor-pointer transition-all shrink-0"
+                style={{
+                  color: galleryTier === "feed" ? "#fff" : "var(--text-muted)",
+                  background: galleryTier === "feed" ? "var(--accent)" : "transparent",
+                }}>
                 <Newspaper className="w-5 h-5" />
-                <span className="text-[9px] font-medium uppercase" style={{ letterSpacing: "0.06em" }}>Feed</span>
+                <span className="text-[10px] font-bold uppercase" style={{ letterSpacing: "0.05em" }}>Feed</span>
               </button>
-              {/* Pack tiers — symbols + label */}
-              {activePacks.slice(0, 3).map(p => {
+              {/* Pack tiers — all packs, not sliced */}
+              {activePacks.map(p => {
                 const hex = TIER_HEX[p.id] || p.color;
                 const isActive = galleryTier === p.id;
                 const isLocked = !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, p.id));
                 return (
-                  <button key={p.id} onClick={() => setGalleryTier(p.id)}
-                    className="relative flex flex-col items-center gap-0.5 px-2 py-1.5 cursor-pointer transition-all"
-                    style={{ color: isActive ? hex : "var(--text-muted)", opacity: isLocked && !isActive ? 0.5 : 1 }}>
-                    {isActive && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[2.5px] rounded-full" style={{ background: hex, boxShadow: `0 0 6px ${hex}60` }} />}
-                    <span className="text-base relative">
+                  <button key={p.id} onClick={() => { setGalleryTier(p.id); setFocusPack(null); }}
+                    className="relative flex flex-col items-center gap-1 px-3.5 py-1.5 rounded-xl cursor-pointer transition-all shrink-0"
+                    style={{
+                      color: isActive ? "#fff" : hex,
+                      background: isActive ? hex : "transparent",
+                      opacity: isLocked && !isActive ? 0.5 : 1,
+                    }}>
+                    <span className="text-lg relative leading-none">
                       {TIER_META[p.id]?.symbol}
-                      {isLocked && <Lock className="w-2 h-2 absolute -bottom-0.5 -right-1.5" style={{ color: hex, opacity: 0.7 }} />}
+                      {isLocked && <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-2" style={{ color: isActive ? "#fff" : hex, opacity: 0.7 }} />}
                     </span>
-                    <span className="text-[8px] font-bold uppercase" style={{ letterSpacing: "0.04em", color: hex }}>{TIER_META[p.id]?.label}</span>
+                    <span className="text-[10px] font-bold uppercase" style={{ letterSpacing: "0.04em" }}>{TIER_META[p.id]?.label}</span>
                   </button>
                 );
               })}
               {/* Custom */}
-              <button onClick={() => setGalleryTier("custom")}
-                className="relative flex flex-col items-center gap-0.5 px-3 py-1.5 cursor-pointer transition-all"
-                style={{ color: galleryTier === "custom" ? "var(--gold, #D4A017)" : "var(--text-muted)" }}>
-                {galleryTier === "custom" && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full" style={{ background: "var(--gold, #D4A017)" }} />}
+              <button onClick={() => { setGalleryTier("custom"); setFocusPack(null); }}
+                className="relative flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl cursor-pointer transition-all shrink-0"
+                style={{
+                  color: galleryTier === "custom" ? "#fff" : "var(--text-muted)",
+                  background: galleryTier === "custom" ? "var(--gold, #D4A017)" : "transparent",
+                }}>
                 <Sparkles className="w-5 h-5" />
-                <span className="text-[9px] font-medium uppercase" style={{ letterSpacing: "0.06em" }}>Custom</span>
+                <span className="text-[10px] font-bold uppercase" style={{ letterSpacing: "0.05em" }}>Custom</span>
               </button>
             </div>
           </nav>
