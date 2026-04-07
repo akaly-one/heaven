@@ -86,11 +86,11 @@ export default function AgenceDashboard() {
   // Messages state (for handler compatibility)
   const [chatMessages, setChatMessages] = useState<{ id: string; client_id: string; content: string; created_at: string; sender_type: string; read?: boolean; model?: string }[]>([]);
 
-  // ── Load data — single parallel fetch ──
+  // ── Load data — single parallel fetch with auto-retry ──
   const [dataLoaded, setDataLoaded] = useState<string | null>(null);
+  const [loadRetries, setLoadRetries] = useState(0);
   useEffect(() => {
     if (!modelSlug) return;
-    // Skip if already loaded for this model
     if (dataLoaded === modelSlug) return;
     const mid = toModelId(modelSlug);
     const headers = { "Content-Type": "application/json" };
@@ -111,8 +111,13 @@ export default function AgenceDashboard() {
       if (postsData?.posts) setFeedPosts(postsData.posts.slice(0, 5));
       if (wallData?.posts) setWallPosts(wallData.posts.slice(0, 20));
       setDataLoaded(modelSlug);
+    }).catch(() => {
+      // Auto-retry up to 3 times with 2s delay
+      if (loadRetries < 3) {
+        setTimeout(() => setLoadRetries(r => r + 1), 2000);
+      }
     });
-  }, [modelSlug, dataLoaded]);
+  }, [modelSlug, dataLoaded, loadRetries]);
 
   // Messages & purchase notifications polling handled by Header component
 
@@ -243,6 +248,40 @@ export default function AgenceDashboard() {
           <p className="text-sm" style={{ color: "var(--text-muted)" }}>
             {isRoot ? "Selectionne un modele dans le header" : "Chargement du profil..."}
           </p>
+        </div>
+      </OsLayout>
+    );
+  }
+
+  // Skeleton while data loads
+  if (dataLoaded !== modelSlug) {
+    return (
+      <OsLayout cpId="agence">
+        <div className="px-5 sm:px-8 md:px-12 py-6 space-y-6">
+          {/* Stat cards skeleton */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="rounded-2xl p-4 animate-pulse" style={{ background: "var(--surface)" }}>
+                <div className="h-3 w-16 rounded" style={{ background: "var(--border)" }} />
+                <div className="h-6 w-12 rounded mt-2" style={{ background: "var(--border)" }} />
+              </div>
+            ))}
+          </div>
+          {/* Feed skeleton */}
+          <div className="rounded-2xl p-4 animate-pulse" style={{ background: "var(--surface)" }}>
+            <div className="h-4 w-32 rounded mb-3" style={{ background: "var(--border)" }} />
+            <div className="h-20 rounded" style={{ background: "var(--border)" }} />
+          </div>
+          {[1,2].map(i => (
+            <div key={i} className="rounded-2xl p-4 animate-pulse" style={{ background: "var(--surface)" }}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-full" style={{ background: "var(--border)" }} />
+                <div className="h-3 w-24 rounded" style={{ background: "var(--border)" }} />
+              </div>
+              <div className="h-3 w-full rounded mb-2" style={{ background: "var(--border)" }} />
+              <div className="h-3 w-2/3 rounded" style={{ background: "var(--border)" }} />
+            </div>
+          ))}
         </div>
       </OsLayout>
     );

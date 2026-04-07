@@ -25,26 +25,24 @@ const ModelContext = createContext<ModelContextValue>({
   authHeaders: () => ({}),
 });
 
+// Read auth from sessionStorage synchronously to avoid loading flash
+function getInitialAuth(): HeavenAuth | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem("heaven_auth");
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return null;
+}
+
 export function ModelProvider({ children }: { children: React.ReactNode }) {
-  const [auth, setAuth] = useState<HeavenAuth | null>(null);
-  const [currentModel, setCurrentModel] = useState<string | null>(null);
+  const [auth, setAuth] = useState<HeavenAuth | null>(() => getInitialAuth());
+  const [currentModel, setCurrentModel] = useState<string | null>(() => {
+    const a = getInitialAuth();
+    if (a?.role === "model" && a.model_slug) return a.model_slug;
+    return null;
+  });
   const [models, setModels] = useState<{ slug: string; display_name: string }[]>([]);
-
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("heaven_auth");
-      if (raw) {
-        const parsed: HeavenAuth = JSON.parse(raw);
-        setAuth(parsed);
-
-        // Models are locked to their own slug — NO fallback to another model
-        if (parsed.role === "model" && parsed.model_slug) {
-          setCurrentModel(parsed.model_slug);
-        }
-        // Root starts with no model selected — must pick from switcher
-      }
-    } catch { /* ignore */ }
-  }, []);
 
   // Load active models from API (root only — models don't need the list)
   useEffect(() => {
