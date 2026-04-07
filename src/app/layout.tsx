@@ -4,6 +4,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import { ModelProvider } from "@/lib/model-context";
 import { ToastProvider } from "@/components/ui/toast";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Analytics } from "@vercel/analytics/next";
 
 import type { Viewport } from "next";
 
@@ -40,6 +41,7 @@ export default function RootLayout({
             <ToastProvider>{children}</ToastProvider>
           </ModelProvider>
         </AuthGuard>
+        <Analytics />
       </body>
     </html>
   );
