@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 import { getRevolutBaseUrl } from "@/lib/payment-utils";
+import { getServerSupabase } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 
@@ -103,6 +104,25 @@ export async function POST(req: NextRequest) {
     }
 
     const order = await res.json();
+
+    // ── Store pending payment in DB ──
+    const supabase = getServerSupabase();
+    if (supabase) {
+      await supabase.from("agence_pending_payments").insert({
+        payment_provider_id: order.id,
+        model,
+        client_pseudo: (client_pseudo || "").trim().toLowerCase(),
+        client_platform: client_platform || "snapchat",
+        pack_id,
+        pack_name: pack_name || pack_id,
+        amount,
+        currency: currency?.toUpperCase() || "EUR",
+        payment_method: "revolut",
+        status: "pending",
+      }).then(({ error }) => {
+        if (error) console.error("[Revolut/create] Pending payment insert error:", error);
+      });
+    }
 
     return NextResponse.json(
       {

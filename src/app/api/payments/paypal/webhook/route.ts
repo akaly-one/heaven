@@ -119,11 +119,11 @@ async function handleCaptureCompleted(resource: any): Promise<void> {
   // Check if this capture was already processed (by capture route or previous webhook)
   const { data: existing } = await supabase
     .from("agence_pending_payments")
-    .select("id, status, code_generated")
-    .eq("payment_id", captureId)
+    .select("id, status, generated_code")
+    .eq("payment_provider_id", captureId)
     .maybeSingle();
 
-  if (existing?.status === "completed" && existing?.code_generated) {
+  if (existing?.status === "completed" && existing?.generated_code) {
     console.log("[PayPal/webhook] Capture already processed:", captureId);
     return;
   }
@@ -133,11 +133,11 @@ async function handleCaptureCompleted(resource: any): Promise<void> {
   if (orderId) {
     const { data: orderPayment } = await supabase
       .from("agence_pending_payments")
-      .select("id, status, code_generated")
-      .eq("payment_id", orderId)
+      .select("id, status, generated_code")
+      .eq("payment_provider_id", orderId)
       .maybeSingle();
 
-    if (orderPayment?.status === "completed" && orderPayment?.code_generated) {
+    if (orderPayment?.status === "completed" && orderPayment?.generated_code) {
       console.log("[PayPal/webhook] Order already fulfilled:", orderId);
       return;
     }

@@ -65,9 +65,9 @@ export async function GET(req: NextRequest) {
 
       if (supabase) {
         const { data: existing } = await supabase
-          .from("payments")
+          .from("agence_pending_payments")
           .select("id")
-          .eq("payment_id", orderId)
+          .eq("payment_provider_id", orderId)
           .eq("status", "completed")
           .maybeSingle();
 

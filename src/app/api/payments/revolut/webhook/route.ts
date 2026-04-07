@@ -73,9 +73,9 @@ export async function POST(req: NextRequest) {
       const supabase = getServerSupabase();
       if (supabase) {
         const { data: existing } = await supabase
-          .from("payments")
+          .from("agence_pending_payments")
           .select("id")
-          .eq("payment_id", orderId)
+          .eq("payment_provider_id", orderId)
           .eq("status", "completed")
           .maybeSingle();
 
@@ -129,9 +129,9 @@ export async function POST(req: NextRequest) {
       const supabase = getServerSupabase();
       if (supabase) {
         await supabase
-          .from("payments")
+          .from("agence_pending_payments")
           .update({ status: "failed" })
-          .eq("payment_id", orderId)
+          .eq("payment_provider_id", orderId)
           .eq("status", "pending");
       }
 

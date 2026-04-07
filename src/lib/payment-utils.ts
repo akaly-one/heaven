@@ -172,7 +172,7 @@ export async function fulfillPayment(params: FulfillParams): Promise<FulfillResu
 
   // 6. Log/update payment record
   await supabase.from("agence_pending_payments").upsert({
-    payment_id: paymentId,
+    payment_provider_id: paymentId,
     model,
     client_pseudo: normalizedPseudo,
     client_platform: clientPlatform,
@@ -183,9 +183,11 @@ export async function fulfillPayment(params: FulfillParams): Promise<FulfillResu
     currency: currency || "EUR",
     payment_method: paymentMethod,
     status: "completed",
-    code_generated: code,
+    generated_code: code,
+    code_sent: !!clientId,
+    provider_response: { fulfilled_at: new Date().toISOString(), method: paymentMethod },
     completed_at: new Date().toISOString(),
-  }, { onConflict: "payment_id" }).then(({ error }) => {
+  }, { onConflict: "payment_provider_id" }).then(({ error }) => {
     if (error) console.error("[fulfillPayment] Payment log error:", error);
   });
 

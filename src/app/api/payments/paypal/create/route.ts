@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
     const supabase = getServerSupabase();
     if (supabase) {
       await supabase.from("agence_pending_payments").insert({
-        payment_id: orderId,
+        payment_provider_id: orderId,
         model,
         client_pseudo: (client_pseudo || "").trim().toLowerCase(),
         client_platform: client_platform || "snapchat",
