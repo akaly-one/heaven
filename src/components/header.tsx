@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { MessageCircle, Users, Link2, ExternalLink, Globe, Instagram, X, KeyRound, Clock, Key, ArrowRight, CheckCircle, XCircle, ShieldAlert, ShoppingBag, Check, Ban, ImagePlus } from "lucide-react";
 import { StoryGenerator } from "@/components/profile/story-generator";
 import { useModel } from "@/lib/model-context";
+import { toSlot } from "@/lib/tier-utils";
 
 // ── Page titles ──
 const PAGE_TITLES: Record<string, string> = {
@@ -100,7 +101,7 @@ export function Header() {
       const pseudoMatch = content?.match(/@(\S+)/);
       const pseudo = pseudoMatch?.[1] || "";
       const tierMatch = content?.match(/Silver|Gold|Feet|Black|Platinum/i);
-      const tier = tierMatch ? tierMatch[0].toLowerCase() : "silver";
+      const tier = tierMatch ? toSlot(tierMatch[0].toLowerCase()) : "p1";
       const amountMatch = content?.match(/\((\d+)€\)/);
       const amount = amountMatch ? amountMatch[1] : "0";
       const itemMatch = content?.match(/commande:\s*(.+?)\s*\(/);

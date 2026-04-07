@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
       const orders = payments.map(p => ({
         id: p.id,
         pack_name: p.pack_name || p.tier || "Pack",
-        tier: p.tier || "silver",
+        tier: p.tier || "p1",
         amount: Number(p.amount) || 0,
         currency: p.currency || "EUR",
         status: p.status as "completed" | "pending" | "failed",
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
       return {
         id: post.id,
         pack_name: item || "Commande",
-        tier: "silver",
+        tier: "p1",
         amount,
         currency: "EUR",
         status,

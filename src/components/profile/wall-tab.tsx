@@ -7,6 +7,7 @@ import {
 import { ContentProtection } from "@/components/content-protection";
 import type { ModelInfo, Post, WallPost, VisitorPlatform } from "@/types/heaven";
 import { TIER_META, TIER_HEX } from "@/constants/tiers";
+import { toSlot } from "@/lib/tier-utils";
 
 interface SocialPopup {
   pseudo: string;
@@ -118,8 +119,8 @@ export function WallTab({
             <div className="grid grid-cols-3 gap-1 rounded-xl overflow-hidden mb-3">
               {imagePosts.map((item) => {
                 const post = item.data as Post;
-                const postTier = post.tier_required || "public";
-                const mediaUnlocked = postTier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, postTier));
+                const postTier = toSlot(post.tier_required || "public");
+                const mediaUnlocked = postTier === "p0" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, postTier));
                 const tierHex = TIER_HEX[postTier] || "#64748B";
                 return (
                   <div key={`grid-${post.id}`} className="relative aspect-square overflow-hidden cursor-pointer group"
@@ -139,7 +140,7 @@ export function WallTab({
                       <span className="flex items-center gap-1 text-white text-xs font-bold"><Heart className="w-3.5 h-3.5" fill="white" /> {post.likes_count || 0}</span>
                       <span className="flex items-center gap-1 text-white text-xs font-bold"><MessageCircle className="w-3.5 h-3.5" /> {post.comments_count || 0}</span>
                     </div>
-                    {postTier !== "public" && mediaUnlocked && (
+                    {postTier !== "p0" && mediaUnlocked && (
                       <span className="absolute top-1.5 right-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${tierHex}80`, color: "#fff" }}>
                         {postTier.toUpperCase()}
                       </span>
@@ -160,8 +161,8 @@ export function WallTab({
         feedItems.filter(item => !(item.type === "model" && (item.data as Post).media_url)).map((item, i) => {
           if (item.type === "model") {
             const post = item.data;
-            const postTier = post.tier_required || "public";
-            const mediaUnlocked = postTier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, postTier));
+            const postTier = toSlot(post.tier_required || "public");
+            const mediaUnlocked = postTier === "p0" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, postTier));
             const tierMeta = TIER_META[postTier];
             const tierHex = TIER_HEX[postTier] || "#64748B";
             return (
@@ -183,7 +184,7 @@ export function WallTab({
                       <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>@{slug}</span>
                       <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>·</span>
                       <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{timeAgo(post.created_at)}</span>
-                      {postTier !== "public" && (
+                      {postTier !== "p0" && (
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${tierHex}18`, color: tierHex }}>
                           {tierMeta?.label || postTier}
                         </span>

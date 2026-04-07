@@ -10,6 +10,7 @@ import { GenerateModal } from "@/components/cockpit/generate-modal";
 
 import type { PackConfig, AccessCode, ClientInfo, FeedPost, WallPost } from "@/types/heaven";
 import { DEFAULT_PACKS } from "@/constants/packs";
+import { toSlot, isFreeSlot } from "@/lib/tier-utils";
 
 // ── Upload config ──
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -226,11 +227,11 @@ export default function AgenceDashboard() {
   }, [modelSlug, authHeaders]);
 
   const TIER_OPTIONS = [
-    { id: "public", label: "Public", color: "#64748B" },
-    { id: "silver", label: "Silver", color: "#C0C0C0" },
-    { id: "gold", label: "Gold", color: "#D4AF37" },
-    { id: "black", label: "VIP Black", color: "#1C1C1C" },
-    { id: "platinum", label: "VIP Platinum", color: "#B8860B" },
+    { id: "p0", label: "Public", color: "#64748B" },
+    { id: "p1", label: "Silver", color: "#C0C0C0" },
+    { id: "p2", label: "Gold", color: "#D4AF37" },
+    { id: "p4", label: "VIP Black", color: "#1C1C1C" },
+    { id: "p5", label: "VIP Platinum", color: "#B8860B" },
   ];
 
   // ══════════ RENDER ══════════
@@ -505,9 +506,9 @@ export default function AgenceDashboard() {
                               {modelSlug.charAt(0).toUpperCase()}
                             </div>
                             <span className="text-xs font-bold text-white" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>{modelInfo?.display_name || modelSlug}</span>
-                            {post.tier_required !== "public" && (
+                            {!isFreeSlot(post.tier_required) && (
                               <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}>
-                                {post.tier_required.toUpperCase()}
+                                {toSlot(post.tier_required).toUpperCase()}
                               </span>
                             )}
                           </div>
@@ -522,11 +523,11 @@ export default function AgenceDashboard() {
                             {modelSlug.charAt(0).toUpperCase()}
                           </div>
                           <span className="text-xs font-bold" style={{ color: "var(--text)" }}>{modelInfo?.display_name || modelSlug}</span>
-                          {post.tier_required !== "public" && (
+                          {!isFreeSlot(post.tier_required) && (
                             <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full" style={{
-                              background: (TIER_OPTIONS.find(t => t.id === post.tier_required)?.color || "#64748B") + "20",
-                              color: TIER_OPTIONS.find(t => t.id === post.tier_required)?.color || "#64748B",
-                            }}>{post.tier_required.toUpperCase()}</span>
+                              background: (TIER_OPTIONS.find(t => t.id === toSlot(post.tier_required))?.color || "#64748B") + "20",
+                              color: TIER_OPTIONS.find(t => t.id === toSlot(post.tier_required))?.color || "#64748B",
+                            }}>{toSlot(post.tier_required).toUpperCase()}</span>
                           )}
                         </div>
                       )}
@@ -697,12 +698,12 @@ export default function AgenceDashboard() {
                       </div>
                       <div>
                         <label className="text-[11px] font-medium block mb-1" style={{ color: "var(--text-muted)" }}>Pack</label>
-                        <select name="tier" defaultValue="silver" className="w-full px-3 py-2 rounded-xl text-xs outline-none cursor-pointer"
+                        <select name="tier" defaultValue="p1" className="w-full px-3 py-2 rounded-xl text-xs outline-none cursor-pointer"
                           style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}>
-                          <option value="silver">Silver</option>
-                          <option value="gold">Gold</option>
-                          <option value="black">VIP Black</option>
-                          <option value="platinum">VIP Platinum</option>
+                          <option value="p1">Silver</option>
+                          <option value="p2">Gold</option>
+                          <option value="p4">VIP Black</option>
+                          <option value="p5">VIP Platinum</option>
                         </select>
                       </div>
                     </div>

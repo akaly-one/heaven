@@ -476,7 +476,7 @@ export function GalleryTab({
 
   // Build pack preview data: last image per tier
   const packPreviews = (["p1", "p2", "p3", "p4", "p5"] as const).map(tier => {
-    const tierItems = uploads.filter(u => u.visibility !== "promo" && u.tier === tier && u.dataUrl);
+    const tierItems = uploads.filter(u => u.visibility !== "promo" && toSlot(u.tier) === tier && u.dataUrl);
     const lastImage = tierItems[0] || null; // uploads already sorted newest first
     const count = tierItems.length;
     const rule = PACK_RULES[tier];
@@ -570,7 +570,7 @@ export function GalleryTab({
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
           {galleryItems.map((item, i) => {
-            const hex = TIER_HEX[item.tier] || "#64748B";
+            const hex = TIER_HEX[toSlot(item.tier)] || "#64748B";
             const isCreditItem = (item.tokenPrice || 0) > 0;
             const isCreditUnlocked = purchasedItems.has(item.id);
             const isUnlocked = item.visibility === "promo" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, item.tier)) || isCreditUnlocked;
@@ -608,7 +608,7 @@ export function GalleryTab({
                         Exclusive
                       </span>
                       <span className="text-[9px] block mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
-                        {TIER_META[item.tier]?.label}
+                        {TIER_META[toSlot(item.tier)]?.label}
                       </span>
                     </div>
                   </div>

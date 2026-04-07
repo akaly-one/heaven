@@ -101,7 +101,7 @@ export default function ClientsCRMPage() {
   const [verifyFilter, setVerifyFilter] = useState<VerifyFilter>("all");
   const [sortMode, setSortMode] = useState<SortMode>("recent");
   const [showGenerateFor, setShowGenerateFor] = useState<string | null>(null);
-  const [genTier, setGenTier] = useState("vip");
+  const [genTier, setGenTier] = useState("p1");
   const [genDays, setGenDays] = useState(7);
   const [genType, setGenType] = useState<"paid" | "promo" | "gift">("paid");
   const [genPromoCode, setGenPromoCode] = useState("");

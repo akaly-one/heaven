@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Lock, Crown, Star, Heart, Diamond, ChevronDown, ShoppingBag, Sparkles } from "lucide-react";
 import type { PackConfig, UploadedContent } from "@/types/heaven";
 import { TIER_HEX } from "@/constants/tiers";
+import { toSlot } from "@/lib/tier-utils";
 
 const PACK_ICONS: Record<string, React.ReactNode> = {
   // Generic slot IDs
@@ -38,7 +39,7 @@ export function PackTiles({ packs, uploads, unlockedTier, isModelLoggedIn, tierI
   if (activePacks.length === 0) return null;
 
   const getPreviewImage = (tier: string) => {
-    const items = uploads.filter(u => u.visibility !== "promo" && u.tier === tier && u.dataUrl);
+    const items = uploads.filter(u => u.visibility !== "promo" && toSlot(u.tier) === toSlot(tier) && u.dataUrl);
     return items[0]?.dataUrl || null;
   };
 
