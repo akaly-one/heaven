@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import { MessageCircle, Users, Link2, ExternalLink, Globe, Instagram, X, KeyRound, Clock, Key, ArrowRight, CheckCircle, XCircle, ShieldAlert, ShoppingBag, Check, Ban, ImagePlus } from "lucide-react";
+import { MessageCircle, Users, Link2, ExternalLink, Globe, Instagram, X, KeyRound, Clock, Key, ArrowRight, CheckCircle, XCircle, ShieldAlert, ShoppingBag, Check, Ban, ImagePlus, Send, ArrowLeft } from "lucide-react";
 import { StoryGenerator } from "@/components/profile/story-generator";
 import { useModel } from "@/lib/model-context";
 import { toModelId } from "@/lib/model-utils";
@@ -60,6 +60,14 @@ export function Header() {
 
   const [showStoryGen, setShowStoryGen] = useState(false);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
+
+  // Inline chat state
+  const [activeChat, setActiveChat] = useState<{ clientId: string; pseudo: string } | null>(null);
+  const [chatMessages, setChatMessages] = useState<MessageItem[]>([]);
+  const [replyText, setReplyText] = useState("");
+  const [sending, setSending] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const replyInputRef = useRef<HTMLInputElement>(null);
   const [pendingOrders, setPendingOrders] = useState<{ id: string; pseudo: string; content: string; created_at: string }[]>([]);
   const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
 
@@ -197,7 +205,7 @@ export function Header() {
   // ── Close on outside click ──
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setOpenDropdown(null);
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) { setOpenDropdown(null); setActiveChat(null); setReplyText(""); }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -242,6 +250,55 @@ export function Header() {
     const iv = setInterval(() => { fetchMessages(); fetchOrders(); }, 15000);
     return () => clearInterval(iv);
   }, [fetchMessages, fetchClients, fetchOrders]);
+
+  // ── Open conversation with a client ──
+  const openChat = useCallback(async (clientId: string, pseudo: string) => {
+    setActiveChat({ clientId, pseudo });
+    setReplyText("");
+    setChatMessages([]);
+    try {
+      const res = await fetch(`/api/messages?model=${toModelId(modelSlug)}&client_id=${clientId}`, { headers: authHeaders() });
+      const d = await res.json();
+      if (d?.messages) {
+        setChatMessages(d.messages.sort((a: MessageItem, b: MessageItem) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
+      }
+      // Mark as read
+      await fetch("/api/messages", {
+        method: "PATCH", headers: authHeaders(),
+        body: JSON.stringify({ model: toModelId(modelSlug), client_id: clientId, action: "mark_read" }),
+      });
+      fetchMessages();
+    } catch {}
+    setTimeout(() => {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      replyInputRef.current?.focus();
+    }, 100);
+  }, [modelSlug, authHeaders, fetchMessages]);
+
+  // ── Send reply ──
+  const sendReply = useCallback(async () => {
+    if (!activeChat || !replyText.trim() || sending) return;
+    setSending(true);
+    try {
+      const res = await fetch("/api/messages", {
+        method: "POST", headers: authHeaders(),
+        body: JSON.stringify({
+          model: toModelId(modelSlug),
+          client_id: activeChat.clientId,
+          sender_type: "model",
+          content: replyText.trim(),
+        }),
+      });
+      const d = await res.json();
+      if (d?.message) {
+        setChatMessages(prev => [...prev, d.message]);
+        setReplyText("");
+        fetchMessages();
+        setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+      }
+    } catch {}
+    setSending(false);
+  }, [activeChat, replyText, sending, modelSlug, authHeaders, fetchMessages]);
 
   // ── Save platform ──
   const handleSavePlatform = async (platformId: string, value: string) => {
@@ -317,44 +374,143 @@ export function Header() {
             )}
           </button>
           {openDropdown === "messages" && (
-            <div className={dropdownBox} style={dropdownStyle}>
-              <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
-                <span className="text-xs font-bold" style={{ color: "var(--text)" }}>Messages</span>
-                <button onClick={() => setOpenDropdown(null)} className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
-                  style={{ background: "none", border: "none", color: "var(--text-muted)" }}><X className="w-3.5 h-3.5" /></button>
-              </div>
-              <div className="max-h-[50vh] overflow-y-auto">
-                {recentMessages.length === 0 ? (
-                  <p className="text-[11px] text-center py-8" style={{ color: "var(--text-muted)" }}>Aucun message</p>
-                ) : recentMessages.map(m => (
-                  <div key={m.id} className="flex items-start gap-2.5 px-4 py-2.5 transition-colors"
-                    style={{ borderBottom: "1px solid var(--border)", background: !m.read && m.sender_type === "client" ? "rgba(230,51,41,0.05)" : "transparent" }}>
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5"
-                      style={{ background: m.sender_type === "client" ? "rgba(0,0,0,0.08)" : "rgba(230,51,41,0.12)",
-                        color: m.sender_type === "client" ? "var(--text-muted)" : "var(--accent)" }}>
-                      {m.sender_type === "client" ? (m.client_id?.charAt(0)?.toUpperCase() || "?") : "M"}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-bold truncate" style={{ color: "var(--text)" }}>
-                          {m.sender_type === "client" ? m.client_id?.slice(0, 12) : "Vous"}
-                        </span>
-                        <span className="text-[10px] shrink-0" style={{ color: "var(--text-muted)" }}>
-                          {new Date(m.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                        </span>
+            <div className={dropdownBox} style={{ ...dropdownStyle, overflow: "hidden" }}>
+              {/* ── Active Chat View ── */}
+              {activeChat ? (<>
+                <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
+                  <button onClick={() => setActiveChat(null)}
+                    className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer shrink-0"
+                    style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-xs font-bold truncate" style={{ color: "var(--text)" }}>@{activeChat.pseudo}</span>
+                  {(() => {
+                    const cl = clients.find(c => c.id === activeChat.clientId);
+                    if (!cl) return null;
+                    const isSnap = !!cl.pseudo_snap;
+                    const profileUrl = isSnap ? `https://snapchat.com/add/${cl.pseudo_snap}` : cl.pseudo_insta ? `https://instagram.com/${cl.pseudo_insta}` : null;
+                    return profileUrl ? (
+                      <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 no-underline ml-auto">
+                        <ExternalLink className="w-3 h-3" style={{ color: isSnap ? "#C4A600" : "#C13584" }} />
+                      </a>
+                    ) : null;
+                  })()}
+                  <button onClick={() => { setActiveChat(null); setOpenDropdown(null); }}
+                    className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer shrink-0 ml-auto"
+                    style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="overflow-y-auto px-3 py-3 space-y-2" style={{ maxHeight: "50vh", minHeight: 120 }}>
+                  {chatMessages.length === 0 && (
+                    <p className="text-[11px] text-center py-6" style={{ color: "var(--text-muted)" }}>Debut de la conversation</p>
+                  )}
+                  {chatMessages.map(m => (
+                    <div key={m.id} className={`flex ${m.sender_type === "model" ? "justify-end" : "justify-start"}`}>
+                      <div className="max-w-[80%] px-3 py-2 rounded-2xl" style={{
+                        background: m.sender_type === "model" ? "var(--accent)" : "var(--bg)",
+                        color: m.sender_type === "model" ? "#fff" : "var(--text)",
+                        border: m.sender_type === "model" ? "none" : "1px solid var(--border)",
+                        borderBottomRightRadius: m.sender_type === "model" ? 4 : 16,
+                        borderBottomLeftRadius: m.sender_type === "model" ? 16 : 4,
+                      }}>
+                        <p className="text-[11px] whitespace-pre-wrap break-words">{m.content}</p>
+                        <p className="text-[9px] mt-0.5" style={{ opacity: 0.6 }}>
+                          {new Date(m.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                        </p>
                       </div>
-                      <p className="text-[11px] truncate mt-0.5" style={{ color: "var(--text-muted)" }}>{m.content}</p>
                     </div>
-                    {!m.read && m.sender_type === "client" && (
-                      <div className="w-2 h-2 rounded-full shrink-0 mt-2" style={{ background: "var(--accent)" }} />
-                    )}
-                  </div>
-                ))}
-              </div>
-              <a href="/agence/clients" className="flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold no-underline"
-                style={{ color: "var(--accent)", borderTop: "1px solid var(--border)" }}>
-                Voir tout <ArrowRight className="w-3 h-3" />
-              </a>
+                  ))}
+                  <div ref={chatEndRef} />
+                </div>
+                <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderTop: "1px solid var(--border)" }}>
+                  <input ref={replyInputRef} value={replyText} onChange={e => setReplyText(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply(); } }}
+                    placeholder="Repondre..."
+                    className="flex-1 text-xs bg-transparent outline-none px-3 py-2 rounded-xl"
+                    style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }} />
+                  <button onClick={sendReply} disabled={!replyText.trim() || sending}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0 disabled:opacity-30"
+                    style={{ background: "var(--accent)", color: "#fff", border: "none" }}>
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </>) : (<>
+                {/* ── Conversations List ── */}
+                <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
+                  <span className="text-xs font-bold" style={{ color: "var(--text)" }}>Messages</span>
+                  <button onClick={() => setOpenDropdown(null)} className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
+                    style={{ background: "none", border: "none", color: "var(--text-muted)" }}><X className="w-3.5 h-3.5" /></button>
+                </div>
+                <div className="max-h-[50vh] overflow-y-auto">
+                  {(() => {
+                    // Group messages by client_id — show latest per conversation
+                    const convMap = new Map<string, { clientId: string; pseudo: string; lastMsg: MessageItem; unread: number }>();
+                    recentMessages.forEach(m => {
+                      const cid = m.client_id;
+                      if (!cid) return;
+                      const existing = convMap.get(cid);
+                      const isNewer = !existing || new Date(m.created_at).getTime() > new Date(existing.lastMsg.created_at).getTime();
+                      if (isNewer || !existing) {
+                        const cl = clients.find(c => c.id === cid);
+                        const pseudo = cl ? (cl.pseudo_snap || cl.pseudo_insta || cid.slice(0, 8)) : cid.slice(0, 10);
+                        convMap.set(cid, {
+                          clientId: cid,
+                          pseudo,
+                          lastMsg: m,
+                          unread: (existing?.unread || 0) + (!m.read && m.sender_type === "client" ? 1 : 0),
+                        });
+                      } else if (!m.read && m.sender_type === "client") {
+                        existing.unread++;
+                      }
+                    });
+                    // Also count unread for conversations already in map
+                    recentMessages.forEach(m => {
+                      if (!m.client_id || !m.read || m.sender_type !== "client") return;
+                      // already handled above
+                    });
+                    const conversations = Array.from(convMap.values())
+                      .sort((a, b) => new Date(b.lastMsg.created_at).getTime() - new Date(a.lastMsg.created_at).getTime());
+
+                    if (conversations.length === 0) {
+                      return <p className="text-[11px] text-center py-8" style={{ color: "var(--text-muted)" }}>Aucun message</p>;
+                    }
+
+                    return conversations.map(conv => (
+                      <button key={conv.clientId} onClick={() => openChat(conv.clientId, conv.pseudo)}
+                        className="flex items-start gap-2.5 px-4 py-3 w-full text-left cursor-pointer transition-colors hover:brightness-95"
+                        style={{ borderBottom: "1px solid var(--border)", background: conv.unread > 0 ? "rgba(230,51,41,0.04)" : "transparent", border: "none", borderBlockEnd: "1px solid var(--border)" }}>
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+                          style={{ background: conv.unread > 0 ? "rgba(230,51,41,0.12)" : "rgba(0,0,0,0.06)",
+                            color: conv.unread > 0 ? "var(--accent)" : "var(--text-muted)" }}>
+                          {conv.pseudo.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-bold truncate" style={{ color: "var(--text)" }}>@{conv.pseudo}</span>
+                            <span className="text-[10px] shrink-0 ml-auto" style={{ color: "var(--text-muted)" }}>
+                              {new Date(conv.lastMsg.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                          <p className="text-[11px] truncate mt-0.5" style={{ color: conv.unread > 0 ? "var(--text)" : "var(--text-muted)", fontWeight: conv.unread > 0 ? 600 : 400 }}>
+                            {conv.lastMsg.sender_type === "model" ? "Vous: " : ""}{conv.lastMsg.content}
+                          </p>
+                        </div>
+                        {conv.unread > 0 && (
+                          <span className="min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 shrink-0 mt-1"
+                            style={{ background: "var(--accent)", color: "#fff", fontSize: "10px", fontWeight: 700 }}>
+                            {conv.unread}
+                          </span>
+                        )}
+                      </button>
+                    ));
+                  })()}
+                </div>
+                <a href="/agence/clients" className="flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold no-underline"
+                  style={{ color: "var(--accent)", borderTop: "1px solid var(--border)" }}>
+                  Voir tout <ArrowRight className="w-3 h-3" />
+                </a>
+              </>)}
             </div>
           )}
         </div>
