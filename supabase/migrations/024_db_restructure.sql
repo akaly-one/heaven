@@ -65,7 +65,8 @@ CREATE INDEX IF NOT EXISTS idx_revenue_payment ON agence_revenue_log(payment_id)
 -- PART 2: MODEL REGISTRY VIEW (updated)
 -- ═══════════════════════════════════════
 
-CREATE OR REPLACE VIEW heaven_model_registry AS
+DROP VIEW IF EXISTS heaven_model_registry;
+CREATE VIEW heaven_model_registry AS
 SELECT
   m.id,
   m.slug,
