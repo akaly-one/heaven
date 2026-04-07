@@ -1781,25 +1781,24 @@ export default function ModelPage() {
             </div>
 
             {/* Right sidebar — recent photos (desktop only) */}
-            <div className="hidden lg:block w-[220px] shrink-0 sticky top-[100px] self-start space-y-3">
-              <span className="text-[10px] font-bold uppercase tracking-wider px-1" style={{ color: "var(--text-muted)" }}>
+            <div className="hidden lg:block w-[280px] xl:w-[320px] shrink-0 sticky top-[60px] self-start space-y-3" style={{ maxHeight: "calc(100vh - 80px)" }}>
+              <span className="text-[11px] font-bold uppercase tracking-wider px-1" style={{ color: "var(--text-muted)" }}>
                 Photos récentes
               </span>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="overflow-y-auto rounded-xl no-scrollbar" style={{ maxHeight: "calc(100vh - 120px)" }}>
+              <div className="grid grid-cols-2 gap-2">
                 {(() => {
-                  // Gather recent uploads + post media, show up to 8
+                  // Gather recent uploads + post media
                   const recentMedia: { url: string; tier: string; id: string }[] = [];
-                  // From uploads (gallery content)
-                  uploads.filter(u => u.dataUrl && u.type === "photo").slice(0, 6).forEach(u => {
+                  uploads.filter(u => u.dataUrl && u.type === "photo").slice(0, 12).forEach(u => {
                     recentMedia.push({ url: u.dataUrl, tier: normalizeTier(u.tier || "public"), id: u.id });
                   });
-                  // From posts with media
-                  posts.filter(p => p.media_url).slice(0, 4).forEach(p => {
+                  posts.filter(p => p.media_url).slice(0, 8).forEach(p => {
                     if (!recentMedia.find(m => m.url === p.media_url)) {
                       recentMedia.push({ url: p.media_url!, tier: normalizeTier(p.tier_required || "public"), id: p.id });
                     }
                   });
-                  const items = recentMedia.slice(0, 8);
+                  const items = recentMedia.slice(0, 20);
                   if (items.length === 0) return (
                     <div className="col-span-2 py-8 text-center">
                       <Camera className="w-5 h-5 mx-auto mb-1.5" style={{ color: "var(--text-muted)", opacity: 0.3 }} />
@@ -1810,7 +1809,7 @@ export default function ModelPage() {
                     const canView = item.tier === "p0" || item.tier === "promo" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, item.tier));
                     const hex = TIER_HEX[item.tier] || "#64748B";
                     return (
-                      <div key={item.id} className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group"
+                      <div key={item.id} className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group"
                         onClick={() => {
                           if (canView) setLightboxUrl(item.url);
                           else setGalleryTier(item.tier);
@@ -1822,9 +1821,9 @@ export default function ModelPage() {
                             transform: canView ? undefined : "scale(1.15)",
                           }} />
                         {!canView && (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
-                            <Lock className="w-3 h-3" style={{ color: hex }} />
-                            <span className="text-[8px] font-bold uppercase" style={{ color: hex }}>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+                            <Lock className="w-4 h-4" style={{ color: hex }} />
+                            <span className="text-[9px] font-bold uppercase" style={{ color: hex }}>
                               {TIER_META[item.tier]?.symbol} {TIER_META[item.tier]?.label}
                             </span>
                           </div>
@@ -1833,6 +1832,7 @@ export default function ModelPage() {
                     );
                   });
                 })()}
+              </div>
               </div>
             </div>
             </div>
