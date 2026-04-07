@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 import { getPayPalAccessToken, getPayPalBaseUrl, fulfillPayment } from "@/lib/payment-utils";
+import { normalizeTier } from "@/lib/tier-utils";
 
 export const runtime = "nodejs";
 
@@ -32,8 +33,9 @@ export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as CaptureBody;
     const {
-      orderID, model, pack_id, client_pseudo, client_platform, tier,
+      orderID, model, pack_id, client_pseudo, client_platform,
     } = body;
+    const tier = normalizeTier(body.tier);
     const duration = body.duration || 720; // 30 days default
     const packName = body.pack_name || pack_id;
     const amount = body.amount || 0;

@@ -37,7 +37,7 @@ function formatTimeLeft(expiresAt: string): string {
 }
 
 function tierIncludes(unlockedTier: string, contentTier: string): boolean {
-  const hierarchy = ["silver", "gold", "black", "platinum", "vip", "diamond"];
+  const hierarchy = ["silver", "gold", "feet", "black", "platinum"];
   const ui = hierarchy.indexOf(unlockedTier);
   const ci = hierarchy.indexOf(contentTier);
   if (ui === -1 || ci === -1) return false;

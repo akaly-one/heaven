@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { fulfillPayment } from "@/lib/payment-utils";
+import { normalizeTier } from "@/lib/tier-utils";
 
 export const runtime = "nodejs";
 
@@ -107,7 +108,7 @@ export async function POST(req: NextRequest) {
 
       await fulfillPayment({
         model,
-        tier: packId,
+        tier: normalizeTier(packId),
         duration: 720,
         clientPseudo,
         clientPlatform,
