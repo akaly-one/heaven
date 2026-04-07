@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Eye, Pencil, Image as ImageIcon, Heart, MessageCircle, Trash2, X, Newspaper, Camera } from "lucide-react";
+import { Eye, Pencil, Image as ImageIcon, Heart, MessageCircle, Trash2, X, Newspaper, Camera, Layers, Type, Droplets } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
@@ -77,6 +77,15 @@ export default function AgenceDashboard() {
 
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<{ text: string; type: "error" | "success" | "loading" } | null>(null);
+
+  // Story builder
+  const [storyBuilderOpen, setStoryBuilderOpen] = useState(false);
+  const [storyPackPhotos, setStoryPackPhotos] = useState<{ url: string; tier: string }[]>([]);
+  const [storyBgUrl, setStoryBgUrl] = useState<string | null>(null);
+  const [storyBlur, setStoryBlur] = useState(12);
+  const [storyFontSize, setStoryFontSize] = useState(28);
+  const [storyText, setStoryText] = useState("");
+  const [storyLoadingPhotos, setStoryLoadingPhotos] = useState(false);
   const [clientModal, setClientModal] = useState<{ pseudo: string } | null>(null);
   const [feedTab, setFeedTab] = useState<"feed" | "wall">("feed");
 
@@ -220,6 +229,36 @@ export default function AgenceDashboard() {
     } catch (err) { console.error("[Feed] create:", err); }
     finally { setPosting(false); }
   }, [newPostContent, newPostTier, newPostImage, newPostType, posting, modelSlug, authHeaders]);
+
+  // Fetch pack photos for story builder
+  const fetchPackPhotos = useCallback(async () => {
+    if (storyPackPhotos.length > 0) return; // already fetched
+    setStoryLoadingPhotos(true);
+    try {
+      const res = await fetch(`/api/uploads?model=${toModelId(modelSlug)}`, { headers: authHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        const photos = (data.uploads || data || [])
+          .filter((u: any) => u.type === "photo" && u.url)
+          .map((u: any) => ({ url: u.url, tier: u.tier || u.tier_required || "p0" }));
+        setStoryPackPhotos(photos);
+      }
+    } catch (err) { console.error("[Story] fetch photos:", err); }
+    finally { setStoryLoadingPhotos(false); }
+  }, [modelSlug, authHeaders, storyPackPhotos.length]);
+
+  const openStoryBuilder = useCallback(() => {
+    setStoryBuilderOpen(true);
+    setStoryText(newPostContent);
+    fetchPackPhotos();
+  }, [fetchPackPhotos, newPostContent]);
+
+  const confirmStory = useCallback(() => {
+    setNewPostType("story");
+    setNewPostContent(storyText);
+    if (storyBgUrl) setNewPostImage(storyBgUrl);
+    setStoryBuilderOpen(false);
+  }, [storyText, storyBgUrl]);
 
   const handleDeletePost = useCallback(async (postId: string) => {
     try {
@@ -437,21 +476,26 @@ export default function AgenceDashboard() {
                       {/* Row 1: Type toggle + Photo button */}
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <div className="flex items-center rounded-lg overflow-hidden shrink-0" style={{ border: "1px solid var(--border)" }}>
-                          {([
-                            { id: "feed" as const, label: "Feed", Icon: Newspaper },
-                            { id: "story" as const, label: "Story", Icon: Camera },
-                          ]).map(opt => (
-                            <button key={opt.id} onClick={() => setNewPostType(opt.id)}
-                              className="flex items-center gap-1 px-2 py-1.5 text-[11px] font-medium cursor-pointer transition-colors"
-                              style={{
-                                background: newPostType === opt.id ? "var(--accent)" : "transparent",
-                                color: newPostType === opt.id ? "#fff" : "var(--text-muted)",
-                                border: "none",
-                              }}>
-                              <opt.Icon className="w-3 h-3" />
-                              {opt.label}
-                            </button>
-                          ))}
+                          <button onClick={() => setNewPostType("feed")}
+                            className="flex items-center gap-1 px-2 py-1.5 text-[11px] font-medium cursor-pointer transition-colors"
+                            style={{
+                              background: newPostType === "feed" ? "var(--accent)" : "transparent",
+                              color: newPostType === "feed" ? "#fff" : "var(--text-muted)",
+                              border: "none",
+                            }}>
+                            <Newspaper className="w-3 h-3" />
+                            Feed
+                          </button>
+                          <button onClick={openStoryBuilder}
+                            className="flex items-center gap-1 px-2 py-1.5 text-[11px] font-medium cursor-pointer transition-colors"
+                            style={{
+                              background: newPostType === "story" ? "var(--accent)" : "transparent",
+                              color: newPostType === "story" ? "#fff" : "var(--text-muted)",
+                              border: "none",
+                            }}>
+                            <Camera className="w-3 h-3" />
+                            Story
+                          </button>
                         </div>
                         <label className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer shrink-0"
                           style={{ background: "rgba(0,0,0,0.04)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
@@ -652,6 +696,118 @@ export default function AgenceDashboard() {
             modelSlug={modelSlug}
             prefillClient={prefillClient}
           />
+
+          {/* ── Story Builder Modal ── */}
+          {storyBuilderOpen && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6"
+              style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+              onClick={() => setStoryBuilderOpen(false)}>
+              <div className="w-full max-w-lg rounded-2xl overflow-hidden flex flex-col"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)", maxHeight: "90vh" }}
+                onClick={e => e.stopPropagation()}>
+
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
+                  <h3 className="text-sm font-bold flex items-center gap-2" style={{ color: "var(--text)" }}>
+                    <Camera className="w-4 h-4" style={{ color: "var(--accent)" }} />
+                    Créer une Story
+                  </h3>
+                  <button onClick={() => setStoryBuilderOpen(false)} className="cursor-pointer" style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Preview — 9:16 ratio */}
+                <div className="relative mx-4 mt-4 rounded-xl overflow-hidden" style={{ aspectRatio: "9/16", maxHeight: "45vh", background: "#0a0a0a" }}>
+                  {storyBgUrl && (
+                    <img src={storyBgUrl} alt="" className="absolute inset-0 w-full h-full object-cover"
+                      style={{ filter: `blur(${storyBlur}px)`, transform: "scale(1.1)" }} />
+                  )}
+                  {/* Dark overlay for text readability */}
+                  <div className="absolute inset-0" style={{ background: storyBgUrl ? "rgba(0,0,0,0.3)" : "linear-gradient(135deg, #1a1a2e, #16213e)" }} />
+                  {/* Text overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center p-6">
+                    <textarea
+                      value={storyText}
+                      onChange={e => setStoryText(e.target.value)}
+                      placeholder="Texte de ta story..."
+                      className="w-full text-center bg-transparent outline-none resize-none text-white font-bold leading-tight"
+                      style={{ fontSize: `${storyFontSize}px`, textShadow: "0 2px 12px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.4)" }}
+                      rows={4}
+                    />
+                  </div>
+                  {/* Tier badge if selected */}
+                  {newPostTier !== "p0" && newPostTier !== "public" && (
+                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-[10px] font-bold"
+                      style={{ background: "rgba(0,0,0,0.5)", color: "#fff", backdropFilter: "blur(8px)" }}>
+                      {TIER_OPTIONS.find(t => t.id === newPostTier)?.label || newPostTier}
+                    </div>
+                  )}
+                </div>
+
+                {/* Controls */}
+                <div className="px-4 py-3 space-y-3 overflow-y-auto" style={{ borderTop: "1px solid var(--border)" }}>
+                  {/* Blur slider */}
+                  <div className="flex items-center gap-3">
+                    <Droplets className="w-4 h-4 shrink-0" style={{ color: "var(--text-muted)" }} />
+                    <span className="text-[11px] font-semibold shrink-0 w-10" style={{ color: "var(--text-muted)" }}>Flou</span>
+                    <input type="range" min={0} max={30} value={storyBlur} onChange={e => setStoryBlur(Number(e.target.value))}
+                      className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-red-500"
+                      style={{ background: "var(--border)" }} />
+                    <span className="text-[10px] font-mono w-6 text-right" style={{ color: "var(--text-muted)" }}>{storyBlur}</span>
+                  </div>
+                  {/* Font size slider */}
+                  <div className="flex items-center gap-3">
+                    <Type className="w-4 h-4 shrink-0" style={{ color: "var(--text-muted)" }} />
+                    <span className="text-[11px] font-semibold shrink-0 w-10" style={{ color: "var(--text-muted)" }}>Texte</span>
+                    <input type="range" min={16} max={48} value={storyFontSize} onChange={e => setStoryFontSize(Number(e.target.value))}
+                      className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-red-500"
+                      style={{ background: "var(--border)" }} />
+                    <span className="text-[10px] font-mono w-6 text-right" style={{ color: "var(--text-muted)" }}>{storyFontSize}</span>
+                  </div>
+
+                  {/* Photos from packs */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Layers className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                      <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Photos des packs</span>
+                    </div>
+                    {storyLoadingPhotos ? (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }} />
+                      </div>
+                    ) : storyPackPhotos.length === 0 ? (
+                      <p className="text-[11px] py-3 text-center" style={{ color: "var(--text-muted)" }}>Aucune photo dans les packs</p>
+                    ) : (
+                      <div className="grid grid-cols-5 sm:grid-cols-6 gap-1.5 max-h-[120px] overflow-y-auto rounded-lg">
+                        {storyPackPhotos.map((photo, i) => (
+                          <button key={i} onClick={() => setStoryBgUrl(photo.url === storyBgUrl ? null : photo.url)}
+                            className="aspect-square rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-105"
+                            style={{
+                              border: storyBgUrl === photo.url ? "2px solid var(--accent)" : "2px solid transparent",
+                              boxShadow: storyBgUrl === photo.url ? "0 0 8px rgba(230,51,41,0.4)" : "none",
+                              opacity: storyBgUrl && storyBgUrl !== photo.url ? 0.5 : 1,
+                            }}>
+                            <img src={photo.url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Confirm button */}
+                <div className="px-4 py-3" style={{ borderTop: "1px solid var(--border)" }}>
+                  <button onClick={confirmStory}
+                    disabled={!storyText.trim() && !storyBgUrl}
+                    className="w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-30"
+                    style={{ background: "var(--accent)", color: "#fff", border: "none" }}>
+                    Valider la story
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ── Client creation modal ── */}
           {clientModal && (
