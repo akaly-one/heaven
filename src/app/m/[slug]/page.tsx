@@ -1395,7 +1395,8 @@ export default function ModelPage() {
 
               {/* All posts merged + sorted by date (newest first) */}
               {(() => {
-                const visitorPosts = wallPosts.filter(w => !w.content?.includes("#post-")).map(w => ({ type: "wall" as const, id: w.id, created_at: w.created_at, data: w }));
+                // Filter out SYSTEM messages (orders) from public feed — model sees them in CP notifications
+                const visitorPosts = wallPosts.filter(w => !w.content?.includes("#post-") && w.pseudo !== "SYSTEM").map(w => ({ type: "wall" as const, id: w.id, created_at: w.created_at, data: w }));
                 // Unverified visitors only see public posts
                 const filteredModelPosts = contentUnlocked ? posts : posts.filter(p => !p.tier_required || p.tier_required === "public");
                 const modelPosts = filteredModelPosts.map(p => ({ type: "post" as const, id: p.id, created_at: p.created_at, data: p }));
