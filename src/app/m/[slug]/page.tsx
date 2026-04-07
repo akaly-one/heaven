@@ -24,7 +24,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useClientProfile } from "@/hooks/use-client-profile";
 import { ClientBadge } from "@/components/profile/client-badge";
 import { OrderHistoryPanel } from "@/components/profile/order-history-panel";
-import { StoriesBar } from "@/components/profile/stories-bar";
+// StoriesBar removed — stories now integrated into avatar ring
 import { PaymentCheckout } from "@/components/profile/payment-checkout";
 
 // ── Types & Constants (centralized) ──
@@ -215,6 +215,8 @@ export default function ModelPage() {
   const [shopToast, setShopToast] = useState<string | null>(null);
   const [orderHistoryOpen, setOrderHistoryOpen] = useState(false);
   const [codeSheetOpen, setCodeSheetOpen] = useState(false);
+  const [storyViewIdx, setStoryViewIdx] = useState<number | null>(null);
+  const activeStories = stories.filter(s => s.media_url);
 
   // ── Client Profile & Badges ──
   const { orders, newNotifications, clearNotifications } = useClientProfile({
@@ -1160,20 +1162,7 @@ export default function ModelPage() {
           </div>
         </div>
 
-        {/* Stories bar */}
-        <div className="max-w-6xl mx-auto px-3 sm:px-5 md:px-8" style={{
-          maxHeight: isTierView ? "0px" : "500px",
-          overflow: "hidden",
-          transition: "max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
-          opacity: isTierView ? 0 : 1,
-        }}>
-          <StoriesBar
-            stories={stories.filter(s => s.media_url).map(s => ({ id: s.id, media_url: s.media_url!, content: s.content ?? undefined, created_at: s.created_at, tier_required: s.tier_required }))}
-            modelName={displayModel?.display_name || ""}
-            modelAvatar={displayModel?.avatar ?? undefined}
-            isModelLoggedIn={isModelLoggedIn}
-          />
-        </div>
+        {/* Stories bar removed — stories now accessible via avatar ring in hero */}
 
         {/* ═══ HERO SECTION — Cinematic full-viewport banner ═══ */}
         <div className="relative" style={{
@@ -1215,21 +1204,31 @@ export default function ModelPage() {
                 {/* Hero content — positioned at bottom */}
                 <div className="absolute bottom-0 left-0 right-0 px-5 sm:px-8 md:px-12 pb-10 sm:pb-14 md:pb-16 max-w-6xl mx-auto">
                   <div className="flex items-end gap-5 sm:gap-6 md:gap-8">
-                    {/* Avatar — large, overlapping */}
+                    {/* Avatar — large, with story ring if stories exist */}
                     <div className="relative shrink-0 profile-stagger-1">
-                      <div className="w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-full overflow-hidden"
+                      <div
+                        className={`rounded-full p-[3px] ${activeStories.length > 0 ? "cursor-pointer" : ""}`}
                         style={{
-                          border: "3px solid var(--bg)",
-                          background: displayModel?.avatar ? "transparent" : "linear-gradient(135deg, var(--rose), var(--accent))",
-                          boxShadow: "0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08)",
-                        }}>
-                        {displayModel?.avatar ? (
-                          <img src={displayModel.avatar} alt={displayModel.display_name} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="flex items-center justify-center w-full h-full text-3xl sm:text-4xl font-light text-white" style={{ letterSpacing: "0.05em" }}>
-                            {displayModel?.display_name.charAt(0)}
-                          </span>
-                        )}
+                          background: activeStories.length > 0
+                            ? "linear-gradient(135deg, var(--accent), #F43F5E, #D946EF, #F59E0B)"
+                            : "var(--bg)",
+                        }}
+                        onClick={() => { if (activeStories.length > 0) setStoryViewIdx(0); }}
+                      >
+                        <div className="w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-full overflow-hidden"
+                          style={{
+                            border: "3px solid var(--bg)",
+                            background: displayModel?.avatar ? "transparent" : "linear-gradient(135deg, var(--rose), var(--accent))",
+                            boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
+                          }}>
+                          {displayModel?.avatar ? (
+                            <img src={displayModel.avatar} alt={displayModel.display_name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="flex items-center justify-center w-full h-full text-3xl sm:text-4xl font-light text-white" style={{ letterSpacing: "0.05em" }}>
+                              {displayModel?.display_name.charAt(0)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       {!isEditMode && displayModel?.online && (
                         <span className="absolute bottom-2 right-2 w-4 h-4 rounded-full"
@@ -2678,6 +2677,53 @@ export default function ModelPage() {
         )}
 
       </div>
+
+      {/* ── Fullscreen Story Viewer ── */}
+      {storyViewIdx !== null && activeStories[storyViewIdx] && (() => {
+        const story = activeStories[storyViewIdx];
+        return (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center" style={{ background: "#000" }}>
+            <div className="relative w-full h-full max-w-[430px] mx-auto flex items-center justify-center">
+              <img src={story.media_url!} alt="" className="w-full h-full object-cover" style={{ maxHeight: "100vh" }} />
+              {story.content && (
+                <div className="absolute bottom-20 left-4 right-4">
+                  <p className="text-sm font-medium text-white text-center px-4 py-2 rounded-xl"
+                    style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(8px)" }}>
+                    {story.content}
+                  </p>
+                </div>
+              )}
+              {/* Progress bar */}
+              <div className="absolute top-2 left-2 right-2 flex gap-1">
+                {activeStories.map((_, i) => (
+                  <div key={i} className="flex-1 h-[2px] rounded-full"
+                    style={{ background: i <= storyViewIdx ? "#fff" : "rgba(255,255,255,0.3)" }} />
+                ))}
+              </div>
+              {/* Model info */}
+              <div className="absolute top-6 left-4 flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full overflow-hidden" style={{ border: "1.5px solid rgba(255,255,255,0.5)" }}>
+                  {displayModel?.avatar ? <img src={displayModel.avatar} alt="" className="w-full h-full object-cover" /> :
+                    <div className="w-full h-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "var(--accent)" }}>{displayModel?.display_name.charAt(0)}</div>}
+                </div>
+                <span className="text-xs font-semibold text-white">{displayModel?.display_name}</span>
+                <span className="text-[10px] text-white/50">{new Date(story.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
+              </div>
+              {/* Close */}
+              <button onClick={() => setStoryViewIdx(null)}
+                className="absolute top-6 right-4 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer"
+                style={{ background: "rgba(255,255,255,0.1)", border: "none" }}>
+                <X className="w-4 h-4 text-white" />
+              </button>
+              {/* Nav — tap left/right halves */}
+              <div className="absolute inset-0 flex">
+                <div className="flex-1 cursor-pointer" onClick={(e) => { e.stopPropagation(); setStoryViewIdx(Math.max(0, storyViewIdx - 1)); }} />
+                <div className="flex-1 cursor-pointer" onClick={(e) => { e.stopPropagation(); setStoryViewIdx(storyViewIdx < activeStories.length - 1 ? storyViewIdx + 1 : null); }} />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Mobile Code Input Bottom Sheet ── */}
       {codeSheetOpen && (
