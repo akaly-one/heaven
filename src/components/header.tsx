@@ -103,6 +103,23 @@ export function Header() {
         body: JSON.stringify({ model: modelSlug, pseudo: "SYSTEM", content: confirmed }),
       });
       setPendingOrders(prev => prev.filter(o => o.id !== orderId));
+      // Increment orders_completed for the client
+      const handleMatch = content?.match(/@(\S+)/);
+      if (handleMatch?.[1]) {
+        fetch(`/api/clients?model=${modelSlug}&search=${encodeURIComponent(handleMatch[1])}`)
+          .then(r => r.json())
+          .then(d => {
+            const client = (d.clients || [])[0];
+            if (client?.id) {
+              fetch("/api/clients/visit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ model: modelSlug, client_id: client.id, action: "order_completed" }),
+              }).catch(() => {});
+            }
+          })
+          .catch(() => {});
+      }
     } catch (e) { console.error("[Header] accept order error:", e); }
     setProcessingOrderId(null);
   };

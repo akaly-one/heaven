@@ -19,7 +19,9 @@ import { WallTab } from "@/components/profile/wall-tab";
 import { GalleryTab } from "@/components/profile/gallery-tab";
 import { ShopTab } from "@/components/profile/shop-tab";
 import { ThemeToggle } from "@/components/theme-toggle";
-// PackTiles removed — packs are now in nav tabs, sidebar shows recent photos
+import { useClientProfile } from "@/hooks/use-client-profile";
+import { ClientBadge } from "@/components/profile/client-badge";
+import { OrderHistoryPanel } from "@/components/profile/order-history-panel";
 
 // ── Types & Constants (centralized) ──
 import type { ModelInfo, Post, PackConfig, UploadedContent, WallPost, AccessCode, VisitorPlatform } from "@/types/heaven";
@@ -180,6 +182,12 @@ export default function ModelPage() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [selectedPack, setSelectedPack] = useState<PackConfig | null>(null);
   const [shopToast, setShopToast] = useState<string | null>(null);
+  const [orderHistoryOpen, setOrderHistoryOpen] = useState(false);
+
+  // ── Client Profile & Badges ──
+  const { badgeGrade, orders, newNotifications, clearNotifications } = useClientProfile({
+    slug, clientId, visitorHandle, enabled: visitorRegistered && !isModelLoggedIn,
+  });
 
   // ── Edit Mode ──
   const isEditMode = searchParams.get("edit") === "true" && isModelLoggedIn;
@@ -992,11 +1000,24 @@ export default function ModelPage() {
           )}
           {(isModelLoggedIn || !visitorRegistered) && <div className="flex-1" />}
 
-          {/* Right — code input + actions */}
+          {/* Right — badge + orders + code input + actions */}
           <div className="flex items-center gap-2 shrink-0">
             {visitorRegistered && (
               <>
                 <span className="text-[10px] font-medium hidden sm:block" style={{ color: "var(--text-muted)" }}>@{visitorHandle}</span>
+                <ClientBadge grade={badgeGrade} tierColor={unlockedTier ? `var(--tier-${normalizeTier(unlockedTier)})` : undefined} />
+                {/* Order history button */}
+                <button onClick={() => { setOrderHistoryOpen(!orderHistoryOpen); clearNotifications(); }}
+                  className="relative w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
+                  style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}>
+                  <ShoppingBag className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                  {newNotifications > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full text-[9px] font-bold flex items-center justify-center px-0.5"
+                      style={{ background: "#10B981", color: "#fff", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }}>
+                      {newNotifications}
+                    </span>
+                  )}
+                </button>
                 {unlockedTier ? (
                   <CountdownBadge tier={unlockedTier} expiresAt={activeCode?.expiresAt || ""} />
                 ) : (
@@ -2286,6 +2307,11 @@ export default function ModelPage() {
               </div>
             )}
           </>
+        )}
+
+        {/* ═══ ORDER HISTORY PANEL ═══ */}
+        {orderHistoryOpen && !isModelLoggedIn && (
+          <OrderHistoryPanel orders={orders} onClose={() => setOrderHistoryOpen(false)} />
         )}
 
         {/* ═══ SHOP TOAST ═══ */}
