@@ -50,6 +50,8 @@ export async function POST(req: NextRequest) {
     const pseudo_insta = body.pseudo_insta ? body.pseudo_insta.trim().toLowerCase() : null;
     const phone = body.phone ? body.phone.trim() : null;
     const nickname = body.nickname ? body.nickname.trim().toLowerCase() : null;
+    const lead_source = body.lead_source || null;
+    const lead_hook = body.lead_hook || null;
 
     if (!model || !isValidModelSlug(model)) return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
     if (!pseudo_snap && !pseudo_insta && !phone && !nickname) {
@@ -145,6 +147,8 @@ export async function POST(req: NextRequest) {
     };
     if (phone) insertData.phone = phone;
     if (nickname) insertData.nickname = nickname;
+    if (lead_source) insertData.lead_source = lead_source;
+    if (lead_hook) insertData.lead_hook = lead_hook;
 
     try {
       const { data, error } = await supabase

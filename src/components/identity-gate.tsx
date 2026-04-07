@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 type Platform = "snap" | "insta" | "phone" | "pseudo";
 
@@ -12,6 +12,18 @@ interface IdentityGateProps {
   isLoading?: boolean;
 }
 
+// ── Rotating promo hooks — incentivize real handles ──
+const PROMO_HOOKS = [
+  { text: "Entre ton vrai pseudo pour etre ajoute aux stories privees 🔥", hook: "story_privee_fire" },
+  { text: "Acces exclusif aux stories privees — entre ton @ reel", hook: "story_privee_exclu" },
+  { text: "Les stories privees sont reservees aux vrais comptes verifes ✨", hook: "story_privee_verif" },
+  { text: "Ton pseudo = ton pass VIP pour les stories cachees 🔒", hook: "story_privee_vip" },
+  { text: "Rejoins la story privee — seuls les vrais pseudos sont acceptes", hook: "story_privee_vrais" },
+  { text: "Contenu exclusif en story privee pour les abonnes verifies 💎", hook: "story_privee_diamond" },
+  { text: "Entre ton @ pour debloquer les stories privees quotidiennes", hook: "story_privee_daily" },
+  { text: "Les membres verifies recoivent du contenu en story privee chaque jour 🎁", hook: "story_privee_gift" },
+];
+
 export function IdentityGate({ slug, modelName, onRegistered, onNeedShop }: IdentityGateProps) {
   const [platform, setPlatform] = useState<"snap" | "insta">("snap");
   const [handle, setHandle] = useState("");
@@ -19,6 +31,9 @@ export function IdentityGate({ slug, modelName, onRegistered, onNeedShop }: Iden
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"login" | "new">("login");
+
+  // Pick a random promo hook on mount (stable per session)
+  const promo = useMemo(() => PROMO_HOOKS[Math.floor(Math.random() * PROMO_HOOKS.length)], []);
 
   // Auto-dismiss returning visitors
   useEffect(() => {
@@ -42,8 +57,12 @@ export function IdentityGate({ slug, modelName, onRegistered, onNeedShop }: Iden
     setSubmitting(true);
     setError(null);
     try {
-      // Register/find client
-      const payload: Record<string, unknown> = { model: slug };
+      // Register/find client — include lead_source + lead_hook for tracking
+      const payload: Record<string, unknown> = {
+        model: slug,
+        lead_source: "private_story",
+        lead_hook: promo.hook,
+      };
       if (platform === "snap") payload.pseudo_snap = handle.trim().toLowerCase();
       else payload.pseudo_insta = handle.trim().toLowerCase();
 
@@ -97,7 +116,6 @@ export function IdentityGate({ slug, modelName, onRegistered, onNeedShop }: Iden
           if (codeRes.ok) {
             const codeData = await codeRes.json();
             if (codeData.code) {
-              // Auto-validate the trial code
               const validateRes = await fetch("/api/codes", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -125,7 +143,7 @@ export function IdentityGate({ slug, modelName, onRegistered, onNeedShop }: Iden
       setError("Erreur de connexion");
     }
     setSubmitting(false);
-  }, [handle, platform, code, slug, onRegistered]);
+  }, [handle, platform, code, slug, onRegistered, promo.hook, mode]);
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-5"
@@ -137,8 +155,20 @@ export function IdentityGate({ slug, modelName, onRegistered, onNeedShop }: Iden
         <h2 className="text-center text-xl sm:text-2xl font-light uppercase mb-1" style={{ color: "var(--text)", letterSpacing: "0.15em" }}>
           {modelName || "Heaven"}
         </h2>
-        <div className="w-10 h-[1px] mx-auto mb-5" style={{ background: "var(--accent)" }} />
-        <p className="text-center text-xs mb-6" style={{ color: "var(--text-muted)" }}>
+        <div className="w-10 h-[1px] mx-auto mb-4" style={{ background: "var(--accent)" }} />
+
+        {/* ── Promo hook — rotating incentive text ── */}
+        <div className="rounded-xl px-4 py-3 mb-5 text-center"
+          style={{ background: "linear-gradient(135deg, rgba(230,51,41,0.08), rgba(200,40,30,0.04))", border: "1px solid rgba(230,51,41,0.15)" }}>
+          <p className="text-[12px] font-medium leading-relaxed" style={{ color: "var(--text)" }}>
+            {promo.text}
+          </p>
+          <p className="text-[10px] mt-1.5 opacity-60" style={{ color: "var(--text-muted)" }}>
+            Utilise ton vrai compte — les faux pseudos sont exclus
+          </p>
+        </div>
+
+        <p className="text-center text-xs mb-5" style={{ color: "var(--text-muted)" }}>
           {mode === "login" ? "Connecte-toi avec ton pseudo" : "Creer un nouveau compte"}
         </p>
 
