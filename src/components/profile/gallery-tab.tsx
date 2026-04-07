@@ -566,17 +566,15 @@ export function GalleryTab({
           <p className="text-sm" style={{ color: "var(--text-muted)" }}>Pas de contenu</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1">
           {galleryItems.map((item, i) => {
             const hex = TIER_HEX[toSlot(item.tier)] || "#64748B";
             const isCreditItem = (item.tokenPrice || 0) > 0;
             const isCreditUnlocked = purchasedItems.has(item.id);
             const isUnlocked = item.visibility === "promo" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, item.tier)) || isCreditUnlocked;
             return (
-              <div key={item.id} className="relative aspect-[3/4] group cursor-pointer overflow-hidden rounded-xl"
-                style={{ animation: `slideUp 0.4s ease-out ${i * 30}ms both`, transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1.02)"; (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-xl)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}>
+              <div key={item.id} className="relative aspect-square group cursor-pointer overflow-hidden rounded-md"
+                style={{ animation: `slideUp 0.3s ease-out ${i * 20}ms both` }}>
                 {isUnlocked ? (
                   <div onClick={() => onImageClick?.(item.dataUrl)} className="w-full h-full">
                     <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">
