@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
-import { Eye, Pencil, Image as ImageIcon, Heart, MessageCircle, Trash2, X, Newspaper, Camera } from "lucide-react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { Eye, Pencil, Image as ImageIcon, Heart, MessageCircle, Trash2, X, Newspaper, Camera, RefreshCw } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { StatCards } from "@/components/cockpit/stat-cards";
@@ -86,6 +86,46 @@ export default function AgenceDashboard() {
   // Messages state (for handler compatibility)
   const [chatMessages, setChatMessages] = useState<{ id: string; client_id: string; content: string; created_at: string; sender_type: string; read?: boolean; model?: string }[]>([]);
 
+  // ── Pull-to-refresh ──
+  const [pullY, setPullY] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const touchStartY = useRef(0);
+  const pullThreshold = 80;
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    setDataLoaded(null);
+    setLoadRetries(0);
+    // dataLoaded reset triggers the fetch useEffect
+  }, []);
+
+  useEffect(() => {
+    const onTouchStart = (e: TouchEvent) => {
+      if (window.scrollY === 0) touchStartY.current = e.touches[0].clientY;
+      else touchStartY.current = 0;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (!touchStartY.current || refreshing) return;
+      const dy = e.touches[0].clientY - touchStartY.current;
+      if (dy > 0 && window.scrollY === 0) {
+        setPullY(Math.min(dy * 0.5, 120));
+      }
+    };
+    const onTouchEnd = () => {
+      if (pullY >= pullThreshold && !refreshing) handleRefresh();
+      setPullY(0);
+      touchStartY.current = 0;
+    };
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: true });
+    window.addEventListener("touchend", onTouchEnd);
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [pullY, refreshing, handleRefresh]);
+
   // ── Load data — single parallel fetch with auto-retry ──
   const [dataLoaded, setDataLoaded] = useState<string | null>(null);
   const [loadRetries, setLoadRetries] = useState(0);
@@ -111,8 +151,9 @@ export default function AgenceDashboard() {
       if (postsData?.posts) setFeedPosts(postsData.posts.slice(0, 5));
       if (wallData?.posts) setWallPosts(wallData.posts.slice(0, 20));
       setDataLoaded(modelSlug);
+      setRefreshing(false);
     }).catch(() => {
-      // Auto-retry up to 3 times with 2s delay
+      setRefreshing(false);
       if (loadRetries < 3) {
         setTimeout(() => setLoadRetries(r => r + 1), 2000);
       }
@@ -289,6 +330,16 @@ export default function AgenceDashboard() {
 
   return (
     <OsLayout cpId="agence">
+      {/* Pull-to-refresh indicator */}
+      {(pullY > 0 || refreshing) && (
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 flex items-center justify-center transition-all duration-200"
+          style={{ opacity: refreshing ? 1 : Math.min(pullY / pullThreshold, 1), transform: `translateX(-50%) translateY(${refreshing ? 8 : Math.min(pullY * 0.3, 24)}px)` }}>
+          <div className="rounded-full p-2 shadow-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
+              style={{ color: "var(--accent)", transform: refreshing ? "none" : `rotate(${Math.min(pullY / pullThreshold, 1) * 360}deg)` }} />
+          </div>
+        </div>
+      )}
       {/* Upload feedback toast */}
       {uploadMsg && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl text-xs font-medium shadow-lg animate-in fade-in slide-in-from-top-2 flex items-center gap-2"
