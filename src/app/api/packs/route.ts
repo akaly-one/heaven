@@ -75,12 +75,6 @@ export async function POST(req: NextRequest) {
 
     const supabase = requireSupabase();
 
-    const { error: delErr } = await supabase.from("agence_packs").delete().eq("model", model);
-    if (delErr) {
-      console.error("[API/packs] POST delete error:", delErr);
-      return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
-    }
-
     const rows = packs.map((p: Record<string, unknown>, i: number) => ({
       model, pack_id: p.id || `pack-${i}`, name: p.name || "", price: p.price || 0,
       code: p.code || `AG-P${Math.round(Number(p.price) || 0)}`,
@@ -89,10 +83,17 @@ export async function POST(req: NextRequest) {
       wise_url: p.wise_url || null, stripe_link: p.stripe_link || null, revolut_url: p.revolut_url || null,
     }));
 
-    const { error: insErr } = await supabase.from("agence_packs").insert(rows);
+    // Delete old packs then insert — with await between to avoid race
+    const { error: delErr } = await supabase.from("agence_packs").delete().eq("model", model);
+    if (delErr) {
+      console.error("[API/packs] POST delete error:", delErr);
+      // Try upsert as fallback
+    }
+
+    const { error: insErr } = await supabase.from("agence_packs").upsert(rows, { onConflict: "model,pack_id" });
     if (insErr) {
-      console.error("[API/packs] POST insert error:", insErr);
-      return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
+      console.error("[API/packs] POST upsert error:", insErr);
+      return NextResponse.json({ error: "Database error", detail: insErr.message }, { status: 502, headers: cors });
     }
 
     return NextResponse.json({ success: true, count: packs.length }, { headers: cors });
