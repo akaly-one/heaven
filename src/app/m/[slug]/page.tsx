@@ -19,7 +19,7 @@ import { WallTab } from "@/components/profile/wall-tab";
 import { GalleryTab } from "@/components/profile/gallery-tab";
 import { ShopTab } from "@/components/profile/shop-tab";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { PackTiles } from "@/components/profile/pack-tiles";
+// PackTiles removed — packs are now in nav tabs, sidebar shows recent photos
 
 // ── Types & Constants (centralized) ──
 import type { ModelInfo, Post, PackConfig, UploadedContent, WallPost, AccessCode, VisitorPlatform } from "@/types/heaven";
@@ -1233,37 +1233,51 @@ export default function ModelPage() {
                 <div className="flex items-center gap-0 overflow-x-auto scrollbar-hide" role="tablist" style={{ borderBottom: "1px solid var(--border)" }}>
                   {/* Feed — default landing, public content + wall */}
                   <button role="tab" aria-selected={galleryTier === "feed"} onClick={() => { setGalleryTier("feed"); setFocusPack(null); }}
-                    className="relative px-3 sm:px-4 py-3 sm:py-3.5 text-[10px] sm:text-xs font-semibold cursor-pointer shrink-0 transition-all uppercase flex items-center gap-1"
+                    className="relative px-3 sm:px-4 py-3 sm:py-3.5 text-[10px] sm:text-xs font-bold cursor-pointer shrink-0 transition-all uppercase flex items-center gap-1.5 group"
                     style={{ color: galleryTier === "feed" ? "var(--accent)" : "var(--text-muted)", letterSpacing: "0.06em" }}>
-                    <Newspaper className="w-2.5 h-2.5" />
+                    <Newspaper className="w-3 h-3 transition-transform group-hover:scale-110" />
                     Feed
-                    {galleryTier === "feed" && <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />}
+                    {galleryTier === "feed" && (
+                      <div className="absolute bottom-0 left-2 right-2 h-[2.5px] rounded-full"
+                        style={{ background: "var(--accent)", boxShadow: "0 0 8px rgba(var(--accent-rgb, 200,100,100), 0.4)" }} />
+                    )}
                   </button>
-                  {/* Pack tier tabs */}
+                  {/* Pack tier tabs — with symbols + premium glow */}
                   {packTiers.map(t => {
                     const tierHex = TIER_HEX[t] || "var(--text-muted)";
                     const tierLabel = TIER_META[t]?.label || t.toUpperCase();
+                    const tierSymbol = TIER_META[t]?.symbol || "";
                     const isLocked = !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, t));
                     const isActive = galleryTier === t;
                     const pack = activePacks.find(p => p.id === t);
                     return (
                       <button key={t} role="tab" aria-selected={isActive} onClick={() => { setGalleryTier(t); setFocusPack(null); }}
-                        className="relative px-3 sm:px-4 py-3 sm:py-3.5 text-[10px] sm:text-xs font-semibold cursor-pointer shrink-0 transition-all uppercase flex items-center gap-1"
-                        style={{ color: isActive ? tierHex : "var(--text-muted)", letterSpacing: "0.06em", opacity: isLocked && !isActive ? 0.55 : 1 }}>
-                        {isLocked && <Lock className="w-2.5 h-2.5" style={{ color: tierHex }} />}
+                        className="relative px-3 sm:px-4 py-3 sm:py-3.5 text-[10px] sm:text-xs font-bold cursor-pointer shrink-0 transition-all uppercase flex items-center gap-1.5 group"
+                        style={{ color: isActive ? tierHex : "var(--text-muted)", letterSpacing: "0.06em", opacity: isLocked && !isActive ? 0.5 : 1 }}>
+                        {/* Symbol or lock */}
+                        <span className="text-sm transition-transform group-hover:scale-110" style={{ color: tierHex, filter: isLocked && !isActive ? "grayscale(0.5)" : "none" }}>
+                          {isLocked ? "🔒" : tierSymbol}
+                        </span>
                         {tierLabel}
-                        {pack && !isActive && <span className="text-[8px] font-bold opacity-50">{pack.price}€</span>}
-                        {isActive && <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{ background: tierHex }} />}
+                        {/* Prix masqué dans la nav — visible uniquement au moment du paiement */}
+                        {/* Active indicator — glowing bar */}
+                        {isActive && (
+                          <div className="absolute bottom-0 left-2 right-2 h-[2.5px] rounded-full"
+                            style={{ background: tierHex, boxShadow: `0 0 8px ${tierHex}60` }} />
+                        )}
                       </button>
                     );
                   })}
                   {/* Custom — à la carte */}
                   <button role="tab" aria-selected={galleryTier === "custom"} onClick={() => { setGalleryTier("custom"); setFocusPack(null); }}
-                    className="relative px-3 sm:px-4 py-3 sm:py-3.5 text-[10px] sm:text-xs font-semibold cursor-pointer shrink-0 transition-all uppercase flex items-center gap-1 ml-auto"
+                    className="relative px-3 sm:px-4 py-3 sm:py-3.5 text-[10px] sm:text-xs font-bold cursor-pointer shrink-0 transition-all uppercase flex items-center gap-1.5 ml-auto group"
                     style={{ color: galleryTier === "custom" ? "var(--gold, #D4A017)" : "var(--text-muted)", letterSpacing: "0.06em" }}>
-                    <Sparkles className="w-2.5 h-2.5" />
+                    <Sparkles className="w-3 h-3 transition-transform group-hover:scale-110" />
                     Custom
-                    {galleryTier === "custom" && <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{ background: "var(--gold, #D4A017)" }} />}
+                    {galleryTier === "custom" && (
+                      <div className="absolute bottom-0 left-2 right-2 h-[2.5px] rounded-full"
+                        style={{ background: "var(--gold, #D4A017)", boxShadow: "0 0 8px rgba(212,160,23,0.4)" }} />
+                    )}
                   </button>
                 </div>
               </div>
@@ -1277,38 +1291,10 @@ export default function ModelPage() {
           {/* ── FEED — Magazine editorial ── */}
           {galleryTier === "feed" && (
             <div className="fade-up">
-            {/* Pack tiles above feed — collapsible */}
-            {!isModelLoggedIn && !hasPurchased && activePacks.length > 0 && (
-              <div className="max-w-4xl mx-auto">
-                <PackTiles
-                  packs={activePacks}
-                  uploads={uploads}
-                  unlockedTier={unlockedTier}
-                  isModelLoggedIn={isModelLoggedIn}
-                  tierIncludes={tierIncludes}
-                  onPackClick={(id) => { setGalleryTier(id); }}
-                  layout="horizontal"
-                />
-              </div>
-            )}
-            {/* 3-column: sidebar left + feed center + sidebar right on desktop */}
-            <div className={`${!hasPurchased && !isModelLoggedIn && activePacks.length > 0 ? "flex gap-5 max-w-5xl mx-auto" : "max-w-2xl mx-auto"}`}>
-            {/* Left sidebar — packs (desktop only) */}
-            {!hasPurchased && !isModelLoggedIn && activePacks.length > 0 && (
-              <div className="hidden lg:block w-[190px] shrink-0 sticky top-16 self-start">
-                <PackTiles
-                  packs={activePacks.slice(0, 2)}
-                  uploads={uploads}
-                  unlockedTier={unlockedTier}
-                  isModelLoggedIn={isModelLoggedIn}
-                  tierIncludes={tierIncludes}
-                  onPackClick={(id) => { setGalleryTier(id); }}
-                  layout="sidebar"
-                />
-              </div>
-            )}
+            {/* 2-column: feed center + recent photos sidebar on desktop */}
+            <div className="flex gap-5 max-w-5xl mx-auto">
             {/* Feed column */}
-            <div className="space-y-5 sm:space-y-6 flex-1 min-w-0">
+            <div className="space-y-5 sm:space-y-6 flex-1 min-w-0 max-w-2xl mx-auto">
               {/* Visitor post composer */}
               {!isModelLoggedIn && (
                 <div className="rounded-2xl p-5 sm:p-6" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
@@ -1439,7 +1425,6 @@ export default function ModelPage() {
                             onClick={() => {
                               if (purchasedItems.has(post.id)) { setLightboxUrl(post.media_url); return; }
                               setGalleryTier(postTier !== "public" ? postTier : "feed");
-                              setGalleryTier("feed");
                             }}>
                             <div className="w-full h-[300px] sm:h-[400px]" style={{
                               background: `linear-gradient(135deg, ${tierHex}20, rgba(0,0,0,0.6))`,
@@ -1549,20 +1534,61 @@ export default function ModelPage() {
               })()}
             </div>
 
-            {/* Right sidebar — packs (desktop only) */}
-            {!hasPurchased && !isModelLoggedIn && activePacks.length > 0 && (
-              <div className="hidden lg:block w-[190px] shrink-0 sticky top-16 self-start">
-                <PackTiles
-                  packs={activePacks.slice(2)}
-                  uploads={uploads}
-                  unlockedTier={unlockedTier}
-                  isModelLoggedIn={isModelLoggedIn}
-                  tierIncludes={tierIncludes}
-                  onPackClick={(id) => { setGalleryTier(id); }}
-                  layout="sidebar"
-                />
+            {/* Right sidebar — recent photos (desktop only) */}
+            <div className="hidden lg:block w-[220px] shrink-0 sticky top-[100px] self-start space-y-3">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-1" style={{ color: "var(--text-muted)" }}>
+                Photos récentes
+              </span>
+              <div className="grid grid-cols-2 gap-1.5">
+                {(() => {
+                  // Gather recent uploads + post media, show up to 8
+                  const recentMedia: { url: string; tier: string; id: string }[] = [];
+                  // From uploads (gallery content)
+                  uploads.filter(u => u.dataUrl && u.type === "photo").slice(0, 6).forEach(u => {
+                    recentMedia.push({ url: u.dataUrl, tier: u.tier || "public", id: u.id });
+                  });
+                  // From posts with media
+                  posts.filter(p => p.media_url).slice(0, 4).forEach(p => {
+                    if (!recentMedia.find(m => m.url === p.media_url)) {
+                      recentMedia.push({ url: p.media_url!, tier: p.tier_required || "public", id: p.id });
+                    }
+                  });
+                  const items = recentMedia.slice(0, 8);
+                  if (items.length === 0) return (
+                    <div className="col-span-2 py-8 text-center">
+                      <Camera className="w-5 h-5 mx-auto mb-1.5" style={{ color: "var(--text-muted)", opacity: 0.3 }} />
+                      <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Bientôt</span>
+                    </div>
+                  );
+                  return items.map(item => {
+                    const canView = item.tier === "public" || item.tier === "promo" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, item.tier));
+                    const hex = TIER_HEX[item.tier] || "#64748B";
+                    return (
+                      <div key={item.id} className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group"
+                        onClick={() => {
+                          if (canView) setLightboxUrl(item.url);
+                          else setGalleryTier(item.tier);
+                        }}>
+                        <img src={item.url} alt="" draggable={false}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          style={{
+                            filter: canView ? "none" : "blur(12px) brightness(0.4)",
+                            transform: canView ? undefined : "scale(1.15)",
+                          }} />
+                        {!canView && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
+                            <Lock className="w-3 h-3" style={{ color: hex }} />
+                            <span className="text-[8px] font-bold uppercase" style={{ color: hex }}>
+                              {TIER_META[item.tier]?.symbol} {TIER_META[item.tier]?.label}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
-            )}
+            </div>
             </div>
             </div>
           )}
@@ -2188,17 +2214,18 @@ export default function ModelPage() {
                 <Newspaper className="w-5 h-5" />
                 <span className="text-[9px] font-medium uppercase" style={{ letterSpacing: "0.06em" }}>Feed</span>
               </button>
-              {/* Pack tiers — show first 2 most relevant */}
+              {/* Pack tiers — symbols + label */}
               {activePacks.slice(0, 3).map(p => {
                 const hex = TIER_HEX[p.id] || p.color;
                 const isActive = galleryTier === p.id;
+                const isLocked = !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, p.id));
                 return (
                   <button key={p.id} onClick={() => setGalleryTier(p.id)}
                     className="relative flex flex-col items-center gap-0.5 px-2 py-1.5 cursor-pointer transition-all"
-                    style={{ color: isActive ? hex : "var(--text-muted)" }}>
-                    {isActive && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full" style={{ background: hex }} />}
-                    <span className="text-sm">{TIER_META[p.id]?.symbol}</span>
-                    <span className="text-[8px] font-bold uppercase" style={{ letterSpacing: "0.04em" }}>{p.price}€</span>
+                    style={{ color: isActive ? hex : "var(--text-muted)", opacity: isLocked && !isActive ? 0.5 : 1 }}>
+                    {isActive && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[2.5px] rounded-full" style={{ background: hex, boxShadow: `0 0 6px ${hex}60` }} />}
+                    <span className="text-base">{isLocked ? "🔒" : TIER_META[p.id]?.symbol}</span>
+                    <span className="text-[8px] font-bold uppercase" style={{ letterSpacing: "0.04em", color: hex }}>{TIER_META[p.id]?.label}</span>
                   </button>
                 );
               })}

@@ -72,7 +72,7 @@ export function PackTiles({ packs, uploads, unlockedTier, isModelLoggedIn, tierI
                     </div>
                     <div className="flex-1 min-w-0 text-left">
                       <span className="text-[11px] font-bold block truncate" style={{ color: "#fff" }}>{pack.name}</span>
-                      <span className="text-[10px] font-semibold" style={{ color: hex }}>{pack.price}€</span>
+                      {/* prix masqué — visible uniquement au paiement */}
                     </div>
                     <ChevronDown className="w-3.5 h-3.5 shrink-0 transition-transform duration-300"
                       style={{ color: "rgba(255,255,255,0.4)", transform: isExpanded ? "rotate(180deg)" : "rotate(0)" }} />
@@ -139,7 +139,7 @@ export function PackTiles({ packs, uploads, unlockedTier, isModelLoggedIn, tierI
                       {unlocked ? PACK_ICONS[pack.id] || <Sparkles className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
                     </div>
                     <span className="text-[10px] font-bold" style={{ color: "#fff" }}>{pack.name}</span>
-                    <span className="text-[9px] font-semibold" style={{ color: hex }}>{pack.price}€</span>
+                    {/* prix masqué — visible uniquement au paiement */}
                   </div>
                 </div>
               </button>
