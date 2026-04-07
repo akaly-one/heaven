@@ -92,38 +92,33 @@ export default function AgenceDashboard() {
   // Messages state (for handler compatibility)
   const [chatMessages, setChatMessages] = useState<{ id: string; client_id: string; content: string; created_at: string; sender_type: string; read?: boolean; model?: string }[]>([]);
 
-  // ── Load data ──
+  // ── Load data — single parallel fetch ──
+  const [dataLoaded, setDataLoaded] = useState<string | null>(null);
   useEffect(() => {
-    if (!modelSlug) return; // No model selected — skip fetches
-    const headers = authHeaders();
-    const safeFetch = (url: string) => fetch(url, { headers }).then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); });
+    if (!modelSlug) return;
+    // Skip if already loaded for this model
+    if (dataLoaded === modelSlug) return;
+    const mid = toModelId(modelSlug);
+    const headers = { "Content-Type": "application/json" };
+    const safeFetch = (url: string) => fetch(url, { headers }).then(r => r.ok ? r.json() : null).catch(() => null);
 
-    safeFetch(`/api/codes?model=${toModelId(_modelSlug)}`)
-      .then(d => setCodes(d.codes || []))
-      .catch(err => console.error("[Cockpit] codes:", err));
-
-    safeFetch(`/api/clients?model=${toModelId(_modelSlug)}`)
-      .then(d => setClients(d.clients || []))
-      .catch(err => console.error("[Cockpit] clients:", err));
-
-    safeFetch(`/api/packs?model=${toModelId(_modelSlug)}`)
-      .then(d => { if (d.packs?.length > 0) setPacks(d.packs); })
-      .catch(err => console.error("[Cockpit] packs:", err));
-
-    safeFetch(`/api/models/${toModelId(_modelSlug)}`)
-      .then(d => setModelInfo(d))
-      .catch(err => console.error("[Cockpit] model info:", err));
-
-    safeFetch(`/api/posts?model=${toModelId(_modelSlug)}`)
-      .then(d => setFeedPosts((d.posts || []).slice(0, 5)))
-      .catch(err => console.error("[Cockpit] posts:", err));
-
-    safeFetch(`/api/wall?model=${toModelId(_modelSlug)}`)
-      .then(d => setWallPosts((d.posts || []).slice(0, 20)))
-      .catch(err => console.error("[Cockpit] wall:", err));
-
-    // Messages polling handled by Header component
-  }, [modelSlug, authHeaders]);
+    Promise.all([
+      safeFetch(`/api/codes?model=${mid}`),
+      safeFetch(`/api/clients?model=${mid}`),
+      safeFetch(`/api/packs?model=${mid}`),
+      safeFetch(`/api/models/${mid}`),
+      safeFetch(`/api/posts?model=${mid}`),
+      safeFetch(`/api/wall?model=${mid}`),
+    ]).then(([codesData, clientsData, packsData, modelData, postsData, wallData]) => {
+      if (codesData?.codes) setCodes(codesData.codes);
+      if (clientsData?.clients) setClients(clientsData.clients);
+      if (packsData?.packs?.length > 0) setPacks(packsData.packs);
+      if (modelData) setModelInfo(modelData);
+      if (postsData?.posts) setFeedPosts(postsData.posts.slice(0, 5));
+      if (wallData?.posts) setWallPosts(wallData.posts.slice(0, 20));
+      setDataLoaded(modelSlug);
+    });
+  }, [modelSlug, dataLoaded]);
 
   // Messages & purchase notifications polling handled by Header component
 

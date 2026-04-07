@@ -78,12 +78,18 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
     [currentModel, auth?.model_slug]
   );
 
+  // Stable ref — never changes
   const authHeaders = useCallback(() => {
     return { "Content-Type": "application/json" };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    currentModel, modelId, setCurrentModel, auth, isRoot, models, authHeaders,
+  }), [currentModel, modelId, auth, isRoot, models, authHeaders]);
 
   return (
-    <ModelContext.Provider value={{ currentModel, modelId, setCurrentModel, auth, isRoot, models, authHeaders }}>
+    <ModelContext.Provider value={contextValue}>
       {children}
     </ModelContext.Provider>
   );
