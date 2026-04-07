@@ -158,7 +158,8 @@ export default function ModelPage() {
   const [chatMessages, setChatMessages] = useState<{ id: string; client_id: string; sender_type: string; content: string; created_at: string }[]>([]);
   const [chatInput, setChatInput] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const seenMsgIdsRef = useRef<Set<string>>(new Set());
+  const seenMsgIdsRef = useRef<Set<string>>(new Set());    // IDs known (for sound dedup)
+  const readMsgIdsRef = useRef<Set<string>>(new Set());    // IDs marked as read (for badge)
 
   // Unlock sheet
   const [showUnlock, setShowUnlock] = useState(false);
@@ -659,28 +660,34 @@ export default function ModelPage() {
     return null;
   }, [visitorPlatform, visitorHandle, slug]);
 
-  // ── iPhone notification sound (Web Audio API — tri-tone) ──
-  const playNotifSound = useCallback(() => {
+  // ── Chat sounds (Web Audio API) ──
+  const playSound = useCallback((type: "receive" | "send") => {
     try {
       const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      const playTone = (freq: number, startTime: number, duration: number) => {
+      const playTone = (freq: number, startTime: number, duration: number, vol = 0.25) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = "sine";
         osc.frequency.value = freq;
         gain.gain.setValueAtTime(0, startTime);
-        gain.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
+        gain.gain.linearRampToValueAtTime(vol, startTime + 0.015);
         gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(startTime);
         osc.stop(startTime + duration);
       };
-      // iPhone tri-tone pattern
       const t = ctx.currentTime;
-      playTone(1046.5, t, 0.12);       // C6
-      playTone(1318.5, t + 0.14, 0.12); // E6
-      playTone(1568,   t + 0.28, 0.18); // G6
+      if (type === "receive") {
+        // Messenger receive — ascending tri-tone
+        playTone(880, t, 0.1, 0.2);         // A5
+        playTone(1108.7, t + 0.1, 0.1, 0.25); // C#6
+        playTone(1318.5, t + 0.2, 0.15, 0.3); // E6
+      } else {
+        // Messenger send — quick ascending pop
+        playTone(1318.5, t, 0.08, 0.15);    // E6
+        playTone(1568, t + 0.07, 0.12, 0.2); // G6
+      }
     } catch { /* audio not available */ }
   }, []);
 
@@ -699,7 +706,7 @@ export default function ModelPage() {
               m => m.sender_type === "model" && !seenMsgIdsRef.current.has(m.id)
             );
             if (newModelMsgs.length > 0) {
-              playNotifSound();
+              playSound("receive");
             }
           }
           // Track all known message IDs
@@ -713,18 +720,19 @@ export default function ModelPage() {
     const interval = chatOpen ? 5000 : 15000;
     const iv = setInterval(fetchChat, interval);
     return () => clearInterval(iv);
-  }, [clientId, slug, chatOpen, playNotifSound]);
+  }, [clientId, slug, chatOpen, playSound]);
 
-  // ── Unread = model messages not yet "seen" by opening chat ──
+  // ── Unread = model messages not yet marked as read ──
   const chatUnread = useMemo(() => {
-    if (chatOpen) return 0; // chat is open → no unread
-    return chatMessages.filter(m => m.sender_type === "model").length;
-  }, [chatMessages, chatOpen]);
+    return chatMessages.filter(m => m.sender_type === "model" && !readMsgIdsRef.current.has(m.id)).length;
+  }, [chatMessages]);
 
-  // ── Mark model messages as "seen" when chat opens ──
+  // ── Mark all model messages as read when chat is open ──
   useEffect(() => {
     if (chatOpen) {
-      chatMessages.forEach(m => seenMsgIdsRef.current.add(m.id));
+      chatMessages.forEach(m => {
+        if (m.sender_type === "model") readMsgIdsRef.current.add(m.id);
+      });
     }
   }, [chatOpen, chatMessages]);
 
@@ -745,11 +753,12 @@ export default function ModelPage() {
       return;
     }
     setChatInput("");
+    playSound("send");
     // Mark all as seen since user just interacted
     const res = await fetch(`/api/messages?model=${slug}&client_id=${clientId}`);
     const d = await res.json();
     const msgs = ((d.messages || []) as typeof chatMessages).reverse();
-    msgs.forEach(m => seenMsgIdsRef.current.add(m.id));
+    msgs.forEach(m => { seenMsgIdsRef.current.add(m.id); if (m.sender_type === "model") readMsgIdsRef.current.add(m.id); });
     setChatMessages(msgs);
   };
 
@@ -918,7 +927,10 @@ export default function ModelPage() {
         @keyframes heroFadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes chevronBounce { 0%, 100% { transform: translateY(0); opacity: 0.4; } 50% { transform: translateY(6px); opacity: 0.8; } }
         @keyframes countUp { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
-        @keyframes notifPulse { 0%, 100% { box-shadow: 0 4px 20px rgba(230,51,41,0.4); } 50% { box-shadow: 0 4px 20px rgba(230,51,41,0.4), 0 0 20px rgba(16,185,129,0.5), 0 0 40px rgba(16,185,129,0.2); } }
+        @keyframes chatBubbleGlow {
+          0%, 100% { box-shadow: 0 0 8px rgba(230,51,41,0.5), 0 0 20px rgba(16,185,129,0.3), 0 0 40px rgba(16,185,129,0.1); transform: scale(1); }
+          50% { box-shadow: 0 0 12px rgba(230,51,41,0.6), 0 0 30px rgba(16,185,129,0.5), 0 0 60px rgba(16,185,129,0.2); transform: scale(1.06); }
+        }
         .profile-stagger-1 { animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
         .profile-stagger-2 { animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both; }
         .profile-stagger-3 { animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both; }
@@ -1140,28 +1152,6 @@ export default function ModelPage() {
                     </div>
                   </div>
 
-                  {/* CTA buttons — visible on ALL screens */}
-                  {!isEditMode && !unlockedTier && (
-                    <div className="flex items-center gap-3 mt-5 sm:mt-6 profile-stagger-4">
-                      <button onClick={() => setShowUnlock(true)}
-                        className="px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm font-semibold cursor-pointer transition-all hover:scale-105 active:scale-[0.98]"
-                        style={{ background: "var(--accent)", color: "#fff", boxShadow: "var(--shadow-accent)", letterSpacing: "0.05em" }}>
-                        Entrer un code
-                      </button>
-                      <button onClick={() => setTab("shop")}
-                        className="px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm font-medium cursor-pointer transition-all hover:scale-105 active:scale-[0.98]"
-                        style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)", border: "1px solid rgba(255,255,255,0.15)", backdropFilter: "blur(8px)" }}>
-                        Boutique
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Scroll indicator */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2" style={{ animation: "chevronBounce 2s ease-in-out infinite" }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
                 </div>
               </div>
             );
@@ -1636,16 +1626,20 @@ export default function ModelPage() {
                                 if (purchasedItems.has(post.id)) { setLightboxUrl(post.media_url); return; }
                                 setShowUnlock(true);
                               }}>
-                                {/* Dark gradient overlay instead of blur */}
+                                {/* Blurred image behind lock */}
+                                {post.media_url && (
+                                  <img src={post.media_url} alt="" className="absolute inset-0 w-full h-full object-cover"
+                                    style={{ filter: "blur(18px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" />
+                                )}
                                 <div className="absolute inset-0" style={{
-                                  background: `linear-gradient(160deg, ${tierHex}25 0%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.85) 100%)`,
+                                  background: `linear-gradient(160deg, ${tierHex}20 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.7) 100%)`,
                                 }} />
                                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                                  <Lock className="w-5 h-5" style={{ color: tierHex, opacity: 0.7 }} />
+                                  <Lock className="w-5 h-5" style={{ color: tierHex, opacity: 0.8 }} />
                                   <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: tierHex }}>
                                     Exclusive
                                   </span>
-                                  <span className="text-[9px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+                                  <span className="text-[9px]" style={{ color: "rgba(255,255,255,0.5)" }}>
                                     {TIER_META[tier]?.label || tier}
                                   </span>
                                 </div>
@@ -1917,18 +1911,18 @@ export default function ModelPage() {
             {/* Chat FAB — badge disappears on open */}
             {!chatOpen && (
               <button onClick={() => setChatOpen(true)}
-                className="fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full flex items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110 active:scale-95"
+                className="fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
                 style={{
                   background: "linear-gradient(135deg, var(--rose), var(--accent))",
                   boxShadow: chatUnread > 0
-                    ? "0 4px 20px rgba(230,51,41,0.4), 0 0 12px rgba(16,185,129,0.6)"
-                    : "0 4px 20px rgba(230,51,41,0.4)",
-                  animation: chatUnread > 0 ? "notifPulse 2s ease-in-out infinite" : "none",
+                    ? "0 0 8px rgba(230,51,41,0.5), 0 0 20px rgba(16,185,129,0.4), 0 0 40px rgba(16,185,129,0.15)"
+                    : "0 4px 16px rgba(230,51,41,0.35)",
+                  animation: chatUnread > 0 ? "chatBubbleGlow 1.5s ease-in-out infinite" : "none",
                 }}>
                 <MessageCircle className="w-6 h-6 text-white" />
                 {chatUnread > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center animate-bounce"
-                    style={{ background: "var(--success)", color: "#fff" }}>
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] rounded-full text-[11px] font-bold flex items-center justify-center px-1"
+                    style={{ background: "#10B981", color: "#fff", boxShadow: "0 0 8px rgba(16,185,129,0.6)" }}>
                     {chatUnread}
                   </span>
                 )}
