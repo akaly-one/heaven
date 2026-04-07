@@ -1045,6 +1045,27 @@ export default function ModelPage() {
                 {model.display_name}
               </span>
               {displayModel?.online && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }} />}
+              {/* BEACON chat bubble — next to model name */}
+              {!isModelLoggedIn && (
+                <button onClick={() => setChatOpen(!chatOpen)}
+                  className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
+                  style={{
+                    background: "linear-gradient(135deg, var(--rose), var(--accent))",
+                    border: "none",
+                    boxShadow: chatUnread > 0
+                      ? "0 0 6px rgba(230,51,41,0.5), 0 0 12px rgba(16,185,129,0.3)"
+                      : "0 2px 8px rgba(230,51,41,0.3)",
+                    animation: chatUnread > 0 ? "chatBubbleGlow 1.5s ease-in-out infinite" : "none",
+                  }}>
+                  <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                  {chatUnread > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full text-[9px] font-bold flex items-center justify-center"
+                      style={{ background: "#10B981", color: "#fff", boxShadow: "0 0 6px rgba(16,185,129,0.6)" }}>
+                      {chatUnread}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
 
             <div className="flex-1" />
@@ -2466,29 +2487,9 @@ export default function ModelPage() {
           </div>
         )}
 
-        {/* ═══ CHAT FLOATING BUBBLE ═══ */}
+        {/* ═══ CHAT PANEL ═══ */}
         {!isModelLoggedIn && model && (
           <>
-            {/* Chat FAB — badge disappears on open */}
-            {!chatOpen && (
-              <button onClick={() => setChatOpen(true)}
-                className="fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
-                style={{
-                  background: "linear-gradient(135deg, var(--rose), var(--accent))",
-                  boxShadow: chatUnread > 0
-                    ? "0 0 8px rgba(230,51,41,0.5), 0 0 20px rgba(16,185,129,0.4), 0 0 40px rgba(16,185,129,0.15)"
-                    : "0 4px 16px rgba(230,51,41,0.35)",
-                  animation: chatUnread > 0 ? "chatBubbleGlow 1.5s ease-in-out infinite" : "none",
-                }}>
-                <MessageCircle className="w-6 h-6 text-white" />
-                {chatUnread > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] rounded-full text-[11px] font-bold flex items-center justify-center px-1"
-                    style={{ background: "#10B981", color: "#fff", boxShadow: "0 0 8px rgba(16,185,129,0.6)" }}>
-                    {chatUnread}
-                  </span>
-                )}
-              </button>
-            )}
 
             {/* Chat panel — floating card */}
             {chatOpen && (
