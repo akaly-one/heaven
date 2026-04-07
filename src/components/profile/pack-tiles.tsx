@@ -6,11 +6,17 @@ import type { PackConfig, UploadedContent } from "@/types/heaven";
 import { TIER_HEX } from "@/constants/tiers";
 
 const PACK_ICONS: Record<string, React.ReactNode> = {
+  // Generic slot IDs
+  p1: <Star className="w-3.5 h-3.5" />,
+  p2: <Star className="w-3.5 h-3.5" />,
+  p3: <Heart className="w-3.5 h-3.5" />,
+  p4: <Diamond className="w-3.5 h-3.5" />,
+  p5: <Crown className="w-3.5 h-3.5" />,
+  // Legacy aliases
   silver: <Star className="w-3.5 h-3.5" />,
   gold: <Star className="w-3.5 h-3.5" />,
   black: <Diamond className="w-3.5 h-3.5" />,
   platinum: <Crown className="w-3.5 h-3.5" />,
-  // Legacy aliases
   vip: <Star className="w-3.5 h-3.5" />,
   diamond: <Diamond className="w-3.5 h-3.5" />,
 };

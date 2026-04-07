@@ -34,7 +34,7 @@ interface ModelAuth {
   role: string; model_slug?: string; display_name?: string; token?: string;
 }
 // No more TABS — the tier bar IS the main nav
-// galleryTier: "feed" (default) | "silver" | "gold" | "black" | "platinum" | "custom"
+// galleryTier: "feed" (default) | "p1" | "p2" | "p3" | "p4" | "p5" | "custom"
 
 
 // ── Platform icons for header ──
@@ -110,9 +110,16 @@ function useModelSession(slug: string): ModelAuth | null {
 }
 
 // ── Tier hierarchy: higher index = more access ──
-const TIER_HIERARCHY = ["silver", "gold", "feet", "black", "platinum"];
-const TIER_ALIASES: Record<string, string> = { vip: "silver", diamond: "black" };
-function normalizeTier(t: string): string { return TIER_ALIASES[t] || t; }
+const TIER_HIERARCHY = ["p1", "p2", "p3", "p4", "p5"];
+const TIER_ALIASES: Record<string, string> = {
+  vip: "p1", diamond: "p4",
+  silver: "p1", gold: "p2", feet: "p3", black: "p4", platinum: "p5",
+  public: "p0", free: "p0", promo: "p0",
+};
+function normalizeTier(t: string): string {
+  if (/^p\d$/.test(t)) return t;
+  return TIER_ALIASES[t?.toLowerCase()] || t;
+}
 function tierIncludes(unlockedTier: string, contentTier: string): boolean {
   const ui = TIER_HIERARCHY.indexOf(normalizeTier(unlockedTier));
   const ci = TIER_HIERARCHY.indexOf(normalizeTier(contentTier));
@@ -183,9 +190,8 @@ export default function ModelPage() {
   const [galleryTier, setGalleryTier] = useState(() => {
     if (typeof window !== "undefined") {
       const hash = window.location.hash.replace("#", "");
-      if (["feed", "silver", "gold", "feet", "black", "platinum", "custom"].includes(hash)) return hash;
-      if (hash === "vip") return "silver";
-      if (hash === "diamond") return "black";
+      if (["feed", "p1", "p2", "p3", "p4", "p5", "custom"].includes(hash)) return hash;
+      const mapped = TIER_ALIASES[hash]; if (mapped) return mapped;
       // Legacy compat
       if (hash === "all" || hash === "public" || hash === "gallery" || hash === "shootings") return "feed";
       if (hash === "shop") return "custom";
@@ -362,7 +368,7 @@ export default function ModelPage() {
     if (url) {
       const newUpload: UploadedContent = {
         id: `upl-${Date.now()}`,
-        tier: "silver",
+        tier: "p1",
         type: file.type.startsWith("video/") ? "video" : "photo",
         label: "",
         dataUrl: url,
@@ -677,7 +683,7 @@ export default function ModelPage() {
           }
         } else if (r.status === 410) {
           // Code expired — show renewal banner
-          setExpiredCodeInfo({ tier: data.tier || "silver", pack: data.pack || "silver" });
+          setExpiredCodeInfo({ tier: data.tier || "p1", pack: data.pack || "p1" });
         }
       })
       .catch(() => {});

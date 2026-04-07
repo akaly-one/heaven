@@ -11,6 +11,13 @@ export interface BadgeConfig {
 }
 
 const TIER_BADGES: Record<string, BadgeConfig> = {
+  // Generic slot IDs
+  p1:       { label: "Silver",       emoji: "✦", color: "#94A3B8", bg: "rgba(148,163,184,0.12)" },
+  p2:       { label: "Gold",         emoji: "★", color: "#D4AF37", bg: "rgba(212,175,55,0.12)" },
+  p3:       { label: "Feet",         emoji: "\uD83E\uDDB6", color: "#F472B6", bg: "rgba(244,114,182,0.12)" },
+  p4:       { label: "VIP Black",    emoji: "♠", color: "#111111", bg: "rgba(0,0,0,0.10)" },
+  p5:       { label: "Platinum",     emoji: "♛", color: "#A78BFA", bg: "rgba(167,139,250,0.12)" },
+  // Legacy aliases
   silver:   { label: "Silver",       emoji: "✦", color: "#94A3B8", bg: "rgba(148,163,184,0.12)" },
   gold:     { label: "Gold",         emoji: "★", color: "#D4AF37", bg: "rgba(212,175,55,0.12)" },
   feet:     { label: "Feet",         emoji: "\uD83E\uDDB6", color: "#F472B6", bg: "rgba(244,114,182,0.12)" },

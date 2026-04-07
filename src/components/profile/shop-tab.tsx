@@ -9,14 +9,14 @@ import { TIER_META, TIER_HEX } from "@/constants/tiers";
 
 // ── Pricing per tier (euros) ──
 const TIER_PRICING: Record<string, { photo: number; videoPerMin: number }> = {
-  silver: { photo: 5, videoPerMin: 10 },
-  gold: { photo: 10, videoPerMin: 25 },
-  feet: { photo: 8, videoPerMin: 15 },
-  black: { photo: 20, videoPerMin: 50 },
-  platinum: { photo: 35, videoPerMin: 80 },
+  p1: { photo: 5, videoPerMin: 10 },
+  p2: { photo: 10, videoPerMin: 25 },
+  p3: { photo: 8, videoPerMin: 15 },
+  p4: { photo: 20, videoPerMin: 50 },
+  p5: { photo: 35, videoPerMin: 80 },
 };
 
-const TIER_ORDER = ["silver", "gold", "feet", "black", "platinum"] as const;
+const TIER_ORDER = ["p1", "p2", "p3", "p4", "p5"] as const;
 
 interface CartItem {
   id: string;

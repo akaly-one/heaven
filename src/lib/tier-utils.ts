@@ -1,94 +1,163 @@
 // ══════════════════════════════════════════════
-//  Heaven OS — Tier Reference System (single source)
-//  Internal IDs are STABLE and NEVER change.
-//  Display labels are CONFIGURABLE and can be renamed freely.
-//  DB + Cloudinary always use internal IDs.
+//  Heaven OS — Generic Tier Reference System
+//
+//  IDs are POSITIONAL (p0–p9), NEVER semantic.
+//  The NUMBER = hierarchy level. p5 > p4 > p3 > p2 > p1 > p0.
+//  Display names are per-model aliases (configurable, renameable).
+//  DB, Cloudinary, payments ALWAYS use pN IDs.
 // ══════════════════════════════════════════════
 
-/** Canonical internal tier IDs — these NEVER change, even if display names change */
-export const TIER_IDS = ["silver", "gold", "feet", "black", "platinum"] as const;
-export type TierId = (typeof TIER_IDS)[number];
+/** Generic pack slot IDs — positional, never change */
+export const PACK_SLOTS = ["p0", "p1", "p2", "p3", "p4", "p5"] as const;
+export type PackSlot = (typeof PACK_SLOTS)[number];
 
-/** Special visibility tiers (not purchasable packs) */
-export const VISIBILITY_TIERS = ["public", "free", "promo"] as const;
-export type VisibilityTier = (typeof VISIBILITY_TIERS)[number];
+/** Maximum pack slots (expandable) */
+export const MAX_PACK_SLOTS = 9;
 
-/** All possible tier values in the system */
-export type AnyTier = TierId | VisibilityTier;
+/** p0 is always the free/public tier */
+export const FREE_SLOT: PackSlot = "p0";
 
-/** Legacy aliases → canonical mapping (for backward compat with old DB data) */
-const LEGACY_ALIASES: Record<string, TierId> = {
-  vip: "silver",
-  diamond: "black",
+/** Paid slots only (for pack configurator, grid, etc.) */
+export const PAID_SLOTS = ["p1", "p2", "p3", "p4", "p5"] as const;
+export type PaidSlot = (typeof PAID_SLOTS)[number];
+
+// ── Legacy → Generic mapping ──
+// Maps ALL old semantic tier IDs to their generic equivalent.
+// This is the ONLY place that knows about old names.
+const LEGACY_TO_SLOT: Record<string, PackSlot> = {
+  // Current canonical names (from previous system)
+  silver: "p1",
+  gold: "p2",
+  feet: "p3",
+  black: "p4",
+  platinum: "p5",
+  // Legacy aliases
+  vip: "p1",
+  diamond: "p4",
+  // Visibility/free tiers
+  public: "p0",
+  free: "p0",
+  promo: "p0",
+};
+
+// Reverse map: pN → old canonical name (for backward compat during migration)
+const SLOT_TO_LEGACY: Record<PackSlot, string> = {
+  p0: "public",
+  p1: "silver",
+  p2: "gold",
+  p3: "feet",
+  p4: "black",
+  p5: "platinum",
 };
 
 /**
- * Normalize any tier string to its canonical internal ID.
- * Handles legacy aliases (vip→silver, diamond→black).
- * Returns the input unchanged if already canonical or unknown.
+ * Normalize ANY tier/pack string to its generic slot ID.
+ * Handles: "silver"→"p1", "vip"→"p1", "diamond"→"p4", "p2"→"p2", null→"p1"
  */
-export function normalizeTier(tier: string | null | undefined): string {
-  if (!tier) return "silver"; // safe default
-  const lower = tier.toLowerCase().trim();
-  return LEGACY_ALIASES[lower] || lower;
+export function toSlot(tier: string | null | undefined): PackSlot {
+  if (!tier) return "p1"; // safe default = cheapest paid tier
+  const t = tier.toLowerCase().trim();
+  // Already a slot ID?
+  if (/^p\d$/.test(t) && parseInt(t[1]) <= MAX_PACK_SLOTS) return t as PackSlot;
+  // Legacy name?
+  return LEGACY_TO_SLOT[t] || "p1";
 }
 
 /**
- * Check if a tier string is a valid canonical tier ID.
- */
-export function isValidTierId(tier: string): tier is TierId {
-  return (TIER_IDS as readonly string[]).includes(tier);
-}
-
-/**
- * Check if a tier string is a visibility tier (not a pack).
- */
-export function isVisibilityTier(tier: string): tier is VisibilityTier {
-  return (VISIBILITY_TIERS as readonly string[]).includes(tier);
-}
-
-/**
- * Tier hierarchy for access control.
- * Index-based: higher index = more premium access.
- * "feet" is a special standalone tier (index 2).
- */
-export const TIER_HIERARCHY: TierId[] = ["silver", "gold", "feet", "black", "platinum"];
-
-/**
- * Check if unlockedTier grants access to contentTier.
- * Uses hierarchy: platinum > black > feet > gold > silver.
- * Special case: "feet" only includes silver and feet (not gold).
- */
-export function tierIncludes(unlockedTier: string, contentTier: string): boolean {
-  const u = normalizeTier(unlockedTier);
-  const c = normalizeTier(contentTier);
-  if (u === c) return true;
-  const ui = TIER_HIERARCHY.indexOf(u as TierId);
-  const ci = TIER_HIERARCHY.indexOf(c as TierId);
-  if (ui === -1 || ci === -1) return false;
-  return ui >= ci;
-}
-
-/**
- * Get a safe default tier for code generation, payments, etc.
- * Always returns a canonical tier ID, never a legacy alias.
- */
-export function safeDefaultTier(): TierId {
-  return "silver";
-}
-
-/**
- * Normalize tier value before writing to database.
- * Ensures legacy aliases are converted to canonical IDs.
+ * Normalize tier for DATABASE writes.
+ * Always outputs a pN slot ID.
  */
 export function tierForDb(tier: string | null | undefined): string {
-  return normalizeTier(tier);
+  return toSlot(tier);
 }
 
 /**
- * Normalize tier value read from database.
- * Converts legacy aliases to canonical IDs for consistent UI display.
+ * Normalize tier read from DATABASE.
+ * Converts legacy values to pN.
  */
-export function tierFromDb(tier: string | null | undefined): string {
-  return normalizeTier(tier);
+export function tierFromDb(tier: string | null | undefined): PackSlot {
+  return toSlot(tier);
 }
+
+/**
+ * Check if slot A grants access to slot B.
+ * Higher number = more access. p5 includes all below.
+ * Simple numeric comparison.
+ */
+export function slotIncludes(unlockedSlot: string, contentSlot: string): boolean {
+  const u = toSlot(unlockedSlot);
+  const c = toSlot(contentSlot);
+  const uLevel = parseInt(u[1]);
+  const cLevel = parseInt(c[1]);
+  return uLevel >= cLevel;
+}
+
+/**
+ * Get the numeric level of a slot (0-9).
+ * Useful for sorting, comparison, hierarchy display.
+ */
+export function slotLevel(slot: string): number {
+  const s = toSlot(slot);
+  return parseInt(s[1]);
+}
+
+/**
+ * Compare two slots for sorting. Returns negative if a < b, 0 if equal, positive if a > b.
+ */
+export function compareSlots(a: string, b: string): number {
+  return slotLevel(a) - slotLevel(b);
+}
+
+/**
+ * Check if a string is a valid slot ID.
+ */
+export function isValidSlot(s: string): s is PackSlot {
+  return /^p\d$/.test(s) && parseInt(s[1]) <= MAX_PACK_SLOTS;
+}
+
+/**
+ * Check if a slot is the free/public tier.
+ */
+export function isFreeSlot(s: string): boolean {
+  return toSlot(s) === "p0";
+}
+
+/**
+ * Get legacy name for a slot (backward compat for display during migration).
+ * Eventually this will be replaced by per-model pack config lookups.
+ */
+export function slotToLegacy(slot: string): string {
+  const s = toSlot(slot);
+  return SLOT_TO_LEGACY[s] || s;
+}
+
+// ── Backward compatibility exports ──
+// These maintain the old API surface so existing imports don't break.
+// They delegate to the new slot system internally.
+
+/** @deprecated Use toSlot() instead */
+export function normalizeTier(tier: string | null | undefined): string {
+  return toSlot(tier);
+}
+
+/** @deprecated Use slotIncludes() instead */
+export function tierIncludes(unlockedTier: string, contentTier: string): boolean {
+  return slotIncludes(unlockedTier, contentTier);
+}
+
+/** @deprecated Use toSlot() instead */
+export function tierFromDb_legacy(tier: string | null | undefined): string {
+  return toSlot(tier);
+}
+
+/** Safe default tier = p1 (cheapest paid) */
+export function safeDefaultTier(): PackSlot {
+  return "p1";
+}
+
+/** Canonical tier IDs for iteration */
+export const TIER_IDS = PACK_SLOTS;
+export type TierId = PackSlot;
+
+/** Hierarchy = paid slots in order */
+export const TIER_HIERARCHY = PAID_SLOTS;

@@ -8,7 +8,7 @@ import type { PackConfig } from "@/types/heaven";
 
 export const DEFAULT_PACKS: PackConfig[] = [
   {
-    id: "silver",
+    id: "p1",
     name: "Silver",
     code: "AG-SLV",
     price: 50,
@@ -26,7 +26,7 @@ export const DEFAULT_PACKS: PackConfig[] = [
     active: true,
   },
   {
-    id: "gold",
+    id: "p2",
     name: "Gold",
     code: "AG-GLD",
     price: 100,
@@ -44,7 +44,7 @@ export const DEFAULT_PACKS: PackConfig[] = [
     active: true,
   },
   {
-    id: "black",
+    id: "p4",
     name: "VIP Black",
     code: "AG-BLK",
     price: 200,
@@ -62,7 +62,7 @@ export const DEFAULT_PACKS: PackConfig[] = [
     active: true,
   },
   {
-    id: "platinum",
+    id: "p5",
     name: "VIP Platinum",
     code: "AG-PLT",
     price: 350,
