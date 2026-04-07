@@ -11,6 +11,7 @@ import { GenerateModal } from "@/components/cockpit/generate-modal";
 import type { PackConfig, AccessCode, ClientInfo, FeedPost, WallPost } from "@/types/heaven";
 import { DEFAULT_PACKS } from "@/constants/packs";
 import { toSlot, isFreeSlot } from "@/lib/tier-utils";
+import { toModelId } from "@/lib/model-utils";
 
 // ── Upload config ──
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -88,27 +89,27 @@ export default function AgenceDashboard() {
     const headers = authHeaders();
     const safeFetch = (url: string) => fetch(url, { headers }).then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); });
 
-    safeFetch(`/api/codes?model=${_modelSlug}`)
+    safeFetch(`/api/codes?model=${toModelId(_modelSlug)}`)
       .then(d => setCodes(d.codes || []))
       .catch(err => console.error("[Cockpit] codes:", err));
 
-    safeFetch(`/api/clients?model=${_modelSlug}`)
+    safeFetch(`/api/clients?model=${toModelId(_modelSlug)}`)
       .then(d => setClients(d.clients || []))
       .catch(err => console.error("[Cockpit] clients:", err));
 
-    safeFetch(`/api/packs?model=${_modelSlug}`)
+    safeFetch(`/api/packs?model=${toModelId(_modelSlug)}`)
       .then(d => { if (d.packs?.length > 0) setPacks(d.packs); })
       .catch(err => console.error("[Cockpit] packs:", err));
 
-    safeFetch(`/api/models/${_modelSlug}`)
+    safeFetch(`/api/models/${toModelId(_modelSlug)}`)
       .then(d => setModelInfo(d))
       .catch(err => console.error("[Cockpit] model info:", err));
 
-    safeFetch(`/api/posts?model=${_modelSlug}`)
+    safeFetch(`/api/posts?model=${toModelId(_modelSlug)}`)
       .then(d => setFeedPosts((d.posts || []).slice(0, 5)))
       .catch(err => console.error("[Cockpit] posts:", err));
 
-    safeFetch(`/api/wall?model=${_modelSlug}`)
+    safeFetch(`/api/wall?model=${toModelId(_modelSlug)}`)
       .then(d => setWallPosts((d.posts || []).slice(0, 20)))
       .catch(err => console.error("[Cockpit] wall:", err));
 
@@ -143,7 +144,7 @@ export default function AgenceDashboard() {
     const code = generateCodeString(modelSlug);
     const pack = packs.find(p => p.id === data.tier);
     const newCode: AccessCode = {
-      code, model: modelSlug, client: data.client, platform: data.platform,
+      code, model: toModelId(modelSlug), client: data.client, platform: data.platform,
       role: "client", tier: data.tier, pack: pack?.name || data.tier,
       type: data.type, duration: data.duration, expiresAt: new Date(Date.now() + data.duration * 3600000).toISOString(),
       created: new Date().toISOString(), used: false, active: true, revoked: false, isTrial: false, lastUsed: null,
@@ -159,7 +160,7 @@ export default function AgenceDashboard() {
     setStatusUpdating(true);
     const newStatus = !modelInfo?.online;
     try {
-      const res = await fetch(`/api/models/${modelSlug}`, {
+      const res = await fetch(`/api/models/${toModelId(modelSlug)}`, {
         method: "PUT",
         headers: authHeaders(),
         body: JSON.stringify({ online: newStatus }),
@@ -181,7 +182,7 @@ export default function AgenceDashboard() {
         const uploadRes = await fetch("/api/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ file: newPostImage, model: modelSlug, folder: `heaven/${modelSlug}/posts` }),
+          body: JSON.stringify({ file: newPostImage, model: toModelId(modelSlug), folder: `heaven/${toModelId(modelSlug)}/posts` }),
         });
         if (uploadRes.ok) {
           const uploadData = await uploadRes.json();
@@ -199,7 +200,7 @@ export default function AgenceDashboard() {
         method: "POST",
         headers: authHeaders(),
         body: JSON.stringify({
-          model: modelSlug,
+          model: toModelId(modelSlug),
           content: newPostContent || null,
           tier_required: newPostTier,
           media_url: mediaUrl,
@@ -221,7 +222,7 @@ export default function AgenceDashboard() {
 
   const handleDeletePost = useCallback(async (postId: string) => {
     try {
-      await fetch(`/api/posts?id=${postId}&model=${modelSlug}`, { method: "DELETE", headers: authHeaders() });
+      await fetch(`/api/posts?id=${postId}&model=${toModelId(modelSlug)}`, { method: "DELETE", headers: authHeaders() });
       setFeedPosts(prev => prev.filter(p => p.id !== postId));
     } catch (err) { console.error("[Feed] delete:", err); }
   }, [modelSlug, authHeaders]);
@@ -300,13 +301,13 @@ export default function AgenceDashboard() {
                       const upRes = await fetch("/api/upload", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ file: reader.result, model: modelSlug, folder: `heaven/${modelSlug}/avatar` }),
+                        body: JSON.stringify({ file: reader.result, model: toModelId(modelSlug), folder: `heaven/${toModelId(modelSlug)}/avatar` }),
                       });
                       if (upRes.ok) {
                         const { url } = await upRes.json();
                         if (url) {
                           setModelInfo(prev => prev ? { ...prev, avatar: url } : prev);
-                          fetch(`/api/models/${modelSlug}`, {
+                          fetch(`/api/models/${toModelId(modelSlug)}`, {
                             method: "PUT", headers: authHeaders(),
                             body: JSON.stringify({ avatar: url }),
                           });
@@ -344,7 +345,7 @@ export default function AgenceDashboard() {
                 onBlur={async (e) => {
                   const newStatus = e.target.value.trim();
                   try {
-                    await fetch(`/api/models/${modelSlug}`, {
+                    await fetch(`/api/models/${toModelId(modelSlug)}`, {
                       method: "PUT",
                       headers: authHeaders(),
                       body: JSON.stringify({ status: newStatus }),
@@ -614,7 +615,7 @@ export default function AgenceDashboard() {
                         </div>
                         <button onClick={async () => {
                           try {
-                            await fetch(`/api/wall?id=${w.id}&model=${modelSlug}`, { method: "DELETE", headers: authHeaders() });
+                            await fetch(`/api/wall?id=${w.id}&model=${toModelId(modelSlug)}`, { method: "DELETE", headers: authHeaders() });
                             setWallPosts(prev => prev.filter(p => p.id !== w.id));
                           } catch {}
                         }} className="opacity-0 group-hover:opacity-100 text-xs cursor-pointer hover:text-red-500 transition-all shrink-0"
@@ -666,7 +667,7 @@ export default function AgenceDashboard() {
                     const assignCode = (form.querySelector("[name=assign_code]") as HTMLInputElement).checked;
                     if (!pseudo) return;
                     try {
-                      const clientData: Record<string, unknown> = { model: modelSlug, last_active: new Date().toISOString() };
+                      const clientData: Record<string, unknown> = { model: toModelId(modelSlug), last_active: new Date().toISOString() };
                       if (plat === "snapchat") clientData.pseudo_snap = pseudo.toLowerCase();
                       else clientData.pseudo_insta = pseudo.toLowerCase();
                       await fetch("/api/clients", { method: "POST", headers: authHeaders(), body: JSON.stringify(clientData) });
@@ -675,7 +676,7 @@ export default function AgenceDashboard() {
                         await fetch("/api/codes", {
                           method: "POST",
                           headers: authHeaders(),
-                          body: JSON.stringify({ model: modelSlug, code: codeStr, client: pseudo.toLowerCase(), platform: plat, tier, duration: 720, type: "paid" }),
+                          body: JSON.stringify({ model: toModelId(modelSlug), code: codeStr, client: pseudo.toLowerCase(), platform: plat, tier, duration: 720, type: "paid" }),
                         });
                       }
                       setClientModal(null);

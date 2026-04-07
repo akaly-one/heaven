@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { getDeviceFingerprint } from "@/lib/device-fingerprint";
+import { toModelId } from "@/lib/model-utils";
 import { ContentProtection } from "@/components/content-protection";
 import { useScreenshotDetection } from "@/hooks/use-screenshot-detection";
 import { IdentityGate } from "@/components/identity-gate";
@@ -147,6 +148,8 @@ export default function ModelPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const slug = params.slug as string;
+  // Resolve slug → model_id for all internal API calls (DB always uses model_id)
+  const modelId = useMemo(() => toModelId(slug), [slug]);
   const modelAuth = useModelSession(slug);
   const isModelLoggedIn = !!modelAuth;
 
@@ -250,7 +253,7 @@ export default function ModelPage() {
   // Fetch active code for subscription status bar
   useEffect(() => {
     if (!clientId || !slug) return;
-    fetch(`/api/codes?model=${slug}&client_id=${clientId}&status=active`)
+    fetch(`/api/codes?model=${modelId}&client_id=${clientId}&status=active`)
       .then(r => r.json())
       .then(d => {
         const codes = d.codes || [];
@@ -382,7 +385,7 @@ export default function ModelPage() {
         const res = await fetch("/api/uploads", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...newUpload, model: slug }),
+          body: JSON.stringify({ ...newUpload, model: modelId }),
         });
         const data = await res.json();
         if (res.ok) {
@@ -408,7 +411,7 @@ export default function ModelPage() {
   // ── Edit mode: delete media ──
   const handleDeleteMedia = useCallback(async (id: string) => {
     try {
-      const res = await fetch(`/api/uploads?model=${slug}&id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/uploads?model=${modelId}&id=${id}`, { method: "DELETE" });
       if (res.ok) {
         setUploads(prev => prev.filter(u => u.id !== id));
         setEditToast("Média supprimé");
@@ -430,7 +433,7 @@ export default function ModelPage() {
       const res = await fetch("/api/uploads", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: slug, id, updates }),
+        body: JSON.stringify({ model: modelId, id, updates }),
       });
       if (res.ok) {
         setUploads(prev => prev.map(u => u.id === id ? { ...u, ...updates } : u));
@@ -508,7 +511,7 @@ export default function ModelPage() {
         const packsRes = await fetch("/api/packs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model: slug, packs: editPacks }),
+          body: JSON.stringify({ model: modelId, packs: editPacks }),
         });
         if (!packsRes.ok) {
           const err = await packsRes.json().catch(() => ({}));
@@ -545,7 +548,7 @@ export default function ModelPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         subscriberId: clientId,
-        modelId: slug,
+        modelId: modelId,
         timestamp: new Date().toISOString(),
         page: `profile/${galleryTier}`,
       }),
@@ -563,10 +566,10 @@ export default function ModelPage() {
     setLoading(true);
     Promise.all([
       fetch(`/api/models/${slug}`).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
-      fetch(`/api/posts?model=${slug}`).then(r => r.json()).catch(e => { console.error("[Profile] posts fetch failed:", e); return { posts: [] }; }),
-      fetch(`/api/packs?model=${slug}`).then(r => r.json()).catch(e => { console.error("[Profile] packs fetch failed:", e); return { packs: [] }; }),
-      fetch(`/api/uploads?model=${slug}`).then(r => r.json()).catch(e => { console.error("[Profile] uploads fetch failed:", e); return { uploads: [] }; }),
-      fetch(`/api/wall?model=${slug}`).then(r => r.json()).catch(e => { console.error("[Profile] wall fetch failed:", e); return { posts: [] }; }),
+      fetch(`/api/posts?model=${modelId}`).then(r => r.json()).catch(e => { console.error("[Profile] posts fetch failed:", e); return { posts: [] }; }),
+      fetch(`/api/packs?model=${modelId}`).then(r => r.json()).catch(e => { console.error("[Profile] packs fetch failed:", e); return { packs: [] }; }),
+      fetch(`/api/uploads?model=${modelId}`).then(r => r.json()).catch(e => { console.error("[Profile] uploads fetch failed:", e); return { uploads: [] }; }),
+      fetch(`/api/wall?model=${modelId}`).then(r => r.json()).catch(e => { console.error("[Profile] wall fetch failed:", e); return { posts: [] }; }),
     ]).then(([modelData, postsData, packsData, uploadsData, wallData]) => {
       setModel(modelData);
       if (modelData?.display_name) document.title = `${modelData.display_name} — Heaven`;
@@ -575,7 +578,7 @@ export default function ModelPage() {
       setUploads(uploadsData.uploads || []);
       setWallPosts(wallData.posts || []);
       // Fetch stories
-      fetch(`/api/posts?model=${slug}&type=story`).then(r => r.json()).then(d => {
+      fetch(`/api/posts?model=${modelId}&type=story`).then(r => r.json()).then(d => {
         setStories((d.posts || []).filter((p: Post) => p.media_url));
       }).catch(() => {});
     }).catch(() => setNotFound(true)).finally(() => setLoading(false));
@@ -601,7 +604,7 @@ export default function ModelPage() {
           fetch("/api/clients/visit", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ model: slug, client_id: client.id, action: "connection", fingerprint: fp }),
+            body: JSON.stringify({ model: modelId, client_id: client.id, action: "connection", fingerprint: fp }),
           }).catch(() => {});
         }
       }
@@ -631,7 +634,7 @@ export default function ModelPage() {
     fetch("/api/codes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "validate", code: accessToken, model: slug }),
+      body: JSON.stringify({ action: "validate", code: accessToken, model: modelId }),
     })
       .then(async r => {
         const data = await r.json();
@@ -660,7 +663,7 @@ export default function ModelPage() {
           // Auto-identify visitor from code's clientId
           if (data.code.clientId && !visitorRegistered) {
             try {
-              const clientRes = await fetch(`/api/clients/${data.code.clientId}?model=${slug}`);
+              const clientRes = await fetch(`/api/clients/${data.code.clientId}?model=${modelId}`);
               if (clientRes.ok) {
                 const clientData = await clientRes.json();
                 const client = clientData.client;
@@ -692,8 +695,8 @@ export default function ModelPage() {
   // Refresh on focus
   useEffect(() => {
     const onFocus = () => {
-      fetch(`/api/uploads?model=${slug}`).then(r => r.json()).then(d => { if (d.uploads) setUploads(d.uploads); }).catch(e => console.error("[Profile] refresh uploads failed:", e));
-      fetch(`/api/wall?model=${slug}`).then(r => r.json()).then(d => { if (d.posts) setWallPosts(d.posts); }).catch(e => console.error("[Profile] refresh wall failed:", e));
+      fetch(`/api/uploads?model=${modelId}`).then(r => r.json()).then(d => { if (d.uploads) setUploads(d.uploads); }).catch(e => console.error("[Profile] refresh uploads failed:", e));
+      fetch(`/api/wall?model=${modelId}`).then(r => r.json()).then(d => { if (d.posts) setWallPosts(d.posts); }).catch(e => console.error("[Profile] refresh wall failed:", e));
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
@@ -704,7 +707,7 @@ export default function ModelPage() {
     const p = platform || visitorPlatform;
     const h = handle || visitorHandle;
     if (!p || !h.trim()) return null;
-    const payload: Record<string, unknown> = { model: slug };
+    const payload: Record<string, unknown> = { model: modelId };
     if (p === "snap") payload.pseudo_snap = h.trim();
     else if (p === "insta") payload.pseudo_insta = h.trim();
     else if (p === "phone") payload.phone = h.trim();
@@ -764,7 +767,7 @@ export default function ModelPage() {
     if (!clientId) return;
     let isFirst = true;
     const fetchChat = () => {
-      fetch(`/api/messages?model=${slug}&client_id=${clientId}`)
+      fetch(`/api/messages?model=${modelId}&client_id=${clientId}`)
         .then(r => r.json())
         .then(d => {
           const msgs = ((d.messages || []) as typeof chatMessages).reverse();
@@ -814,7 +817,7 @@ export default function ModelPage() {
     const msgRes = await fetch("/api/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: slug, client_id: clientId, sender_type: "client", content: chatInput.trim() }),
+      body: JSON.stringify({ model: modelId, client_id: clientId, sender_type: "client", content: chatInput.trim() }),
     });
     if (!msgRes.ok) {
       console.error("[Chat] send failed:", await msgRes.text());
@@ -823,7 +826,7 @@ export default function ModelPage() {
     setChatInput("");
     playSound("send");
     // Mark all as seen since user just interacted
-    const res = await fetch(`/api/messages?model=${slug}&client_id=${clientId}`);
+    const res = await fetch(`/api/messages?model=${modelId}&client_id=${clientId}`);
     const d = await res.json();
     const msgs = ((d.messages || []) as typeof chatMessages).reverse();
     msgs.forEach(m => { seenMsgIdsRef.current.add(m.id); if (m.sender_type === "model") readMsgIdsRef.current.add(m.id); });
@@ -847,7 +850,7 @@ export default function ModelPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: slug,
+          model: modelId,
           pseudo: visitorHandle.trim(),
           content: wallContent.trim(),
           pseudo_snap: visitorPlatform === "snap" ? visitorHandle.trim() : null,
@@ -868,7 +871,7 @@ export default function ModelPage() {
       if (newPost) {
         setWallPosts(prev => [newPost, ...prev]);
       } else {
-        const res = await fetch(`/api/wall?model=${slug}`);
+        const res = await fetch(`/api/wall?model=${modelId}`);
         if (res.ok) { const d = await res.json(); setWallPosts(d.posts || []); }
       }
     } catch (err) { console.error("[Profile] wall post failed:", err); } finally {
@@ -944,7 +947,7 @@ export default function ModelPage() {
   useEffect(() => {
     if (!clientId || visitorVerified || isModelLoggedIn) return;
     const check = () => {
-      fetch(`/api/clients?model=${slug}&check_id=${clientId}`)
+      fetch(`/api/clients?model=${modelId}&check_id=${clientId}`)
         .then(r => r.json())
         .then(d => {
           const clients = d.clients || [];
@@ -1088,7 +1091,7 @@ export default function ModelPage() {
                         const res = await fetch("/api/codes", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ action: "validate", code, model: slug }),
+                          body: JSON.stringify({ action: "validate", code, model: modelId }),
                         });
                         const data = await res.json();
                         if (data.code?.tier) {
@@ -1504,7 +1507,7 @@ export default function ModelPage() {
                           const res = await fetch("/api/wall", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ model: slug, pseudo, content: wallContent.trim(), client_id: clientId }),
+                            body: JSON.stringify({ model: modelId, pseudo, content: wallContent.trim(), client_id: clientId }),
                           });
                           if (res.ok) {
                             const d = await res.json();
@@ -1522,7 +1525,7 @@ export default function ModelPage() {
                         const res = await fetch("/api/wall", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ model: slug, pseudo, content: wallContent.trim(), client_id: clientId }),
+                          body: JSON.stringify({ model: modelId, pseudo, content: wallContent.trim(), client_id: clientId }),
                         });
                         if (res.ok) {
                           const d = await res.json();
@@ -1648,7 +1651,7 @@ export default function ModelPage() {
                             await fetch(`/api/posts`, {
                               method: "PATCH",
                               headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ id: post.id, model: slug, action: "like" }),
+                              body: JSON.stringify({ id: post.id, model: modelId, action: "like" }),
                             });
                             setPosts(prev => prev.map(p => p.id === post.id ? { ...p, likes_count: (p.likes_count || 0) + 1 } : p));
                           } catch {}
@@ -1689,7 +1692,7 @@ export default function ModelPage() {
                                   method: "POST",
                                   headers: { "Content-Type": "application/json" },
                                   body: JSON.stringify({
-                                    model: slug,
+                                    model: modelId,
                                       pseudo: visitorHandle,
                                       content: `${text} #post-${post.id}`,
                                       pseudo_snap: visitorPlatform === "snap" ? visitorHandle : null,
@@ -1697,7 +1700,7 @@ export default function ModelPage() {
                                       client_id: clientId,
                                     }),
                                   });
-                                  const res = await fetch(`/api/wall?model=${slug}`);
+                                  const res = await fetch(`/api/wall?model=${modelId}`);
                                   const data = await res.json();
                                   setWallPosts(data.posts || []);
                                 } catch {}
@@ -1715,14 +1718,14 @@ export default function ModelPage() {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
-                                  model: slug, pseudo: visitorHandle,
+                                  model: modelId, pseudo: visitorHandle,
                                   content: `${text} #post-${post.id}`,
                                   pseudo_snap: visitorPlatform === "snap" ? visitorHandle : null,
                                   pseudo_insta: visitorPlatform === "insta" ? visitorHandle : null,
                                   client_id: clientId,
                                 }),
                               });
-                              const res = await fetch(`/api/wall?model=${slug}`);
+                              const res = await fetch(`/api/wall?model=${modelId}`);
                               const data = await res.json();
                               setWallPosts(data.posts || []);
                             } catch {}
@@ -2058,12 +2061,12 @@ export default function ModelPage() {
                                 <button onClick={async () => {
                                   if (item.type === "upload") {
                                     if (confirm("Supprimer ce contenu ?")) {
-                                      await fetch(`/api/uploads?model=${slug}&id=${item.id}`, { method: "DELETE" });
+                                      await fetch(`/api/uploads?model=${modelId}&id=${item.id}`, { method: "DELETE" });
                                       setUploads(prev => prev.filter(u => u.id !== item.id));
                                     }
                                   } else {
                                     if (confirm("Supprimer ce post ?")) {
-                                      await fetch(`/api/posts?id=${item.id}&model=${slug}`, { method: "DELETE" });
+                                      await fetch(`/api/posts?id=${item.id}&model=${modelId}`, { method: "DELETE" });
                                       setPosts(prev => prev.filter(p => p.id !== item.id));
                                     }
                                   }
@@ -2209,7 +2212,7 @@ export default function ModelPage() {
                       const res = await fetch("/api/codes", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ action: "validate", code, model: slug }),
+                        body: JSON.stringify({ action: "validate", code, model: modelId }),
                       });
                       const data = await res.json();
                       if (data.code?.tier) {

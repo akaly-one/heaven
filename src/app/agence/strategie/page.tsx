@@ -14,6 +14,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
+import { toModelId } from "@/lib/model-utils";
 import type { Goal } from "@/types/heaven";
 
 // ═══════════════════════════════════════════
@@ -401,7 +402,7 @@ export default function StrategiePage() {
   useEffect(() => {
     setGoalsLoading(true);
     const headers = authHeaders();
-    fetch(`/api/pipeline/goals?model=${modelSlug}`, { headers })
+    fetch(`/api/pipeline/goals?model=${toModelId(modelSlug)}`, { headers })
       .then((r) => r.json())
       .then((data) => setGoals(data.goals || []))
       .catch((err) => console.error("[Strategie] Goals fetch error:", err))
@@ -413,7 +414,7 @@ export default function StrategiePage() {
     if (!newGoal.title.trim()) return;
     const headers = authHeaders();
     const payload = {
-      model_slug: modelSlug,
+      model_slug: toModelId(modelSlug),
       title: newGoal.title.trim(),
       category: newGoal.category,
       target_value: newGoal.target_value ? parseFloat(newGoal.target_value) : 0,

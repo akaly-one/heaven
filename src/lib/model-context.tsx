@@ -1,10 +1,13 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import type { HeavenAuth } from "@/components/auth-guard";
+import { toModelId } from "@/lib/model-utils";
 
 interface ModelContextValue {
   currentModel: string | null;
+  /** Generic model ID (m1, m2...) derived from currentModel or auth.model_slug */
+  modelId: string;
   setCurrentModel: (slug: string | null) => void;
   auth: HeavenAuth | null;
   isRoot: boolean;
@@ -14,6 +17,7 @@ interface ModelContextValue {
 
 const ModelContext = createContext<ModelContextValue>({
   currentModel: null,
+  modelId: "m1",
   setCurrentModel: () => {},
   auth: null,
   isRoot: false,
@@ -68,12 +72,18 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
 
   const isRoot = auth?.role === "root";
 
+  // Generic model ID (m1, m2...) — always derived from slug or auth
+  const modelId = useMemo(
+    () => toModelId(currentModel || auth?.model_slug || ""),
+    [currentModel, auth?.model_slug]
+  );
+
   const authHeaders = useCallback(() => {
     return { "Content-Type": "application/json" };
   }, []);
 
   return (
-    <ModelContext.Provider value={{ currentModel, setCurrentModel, auth, isRoot, models, authHeaders }}>
+    <ModelContext.Provider value={{ currentModel, modelId, setCurrentModel, auth, isRoot, models, authHeaders }}>
       {children}
     </ModelContext.Provider>
   );

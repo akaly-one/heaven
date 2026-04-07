@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { MessageCircle, Users, Link2, ExternalLink, Globe, Instagram, X, KeyRound, Clock, Key, ArrowRight, CheckCircle, XCircle, ShieldAlert, ShoppingBag, Check, Ban, ImagePlus } from "lucide-react";
 import { StoryGenerator } from "@/components/profile/story-generator";
 import { useModel } from "@/lib/model-context";
+import { toModelId } from "@/lib/model-utils";
 import { toSlot } from "@/lib/tier-utils";
 
 // ── Page titles ──
@@ -84,7 +85,7 @@ export function Header() {
   // ── Fetch pending orders (wall posts from SYSTEM with ⏳) ──
   const fetchOrders = useCallback(() => {
     if (!modelSlug) return;
-    fetch(`/api/wall?model=${modelSlug}`, { headers: authHeaders() })
+    fetch(`/api/wall?model=${toModelId(modelSlug)}`, { headers: authHeaders() })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (!d) return;
@@ -108,13 +109,13 @@ export function Header() {
       const items = itemMatch?.[1]?.trim() || "";
 
       // Delete the pending post
-      await fetch(`/api/wall?id=${orderId}&model=${modelSlug}`, { method: "DELETE", headers: authHeaders() });
+      await fetch(`/api/wall?id=${orderId}&model=${toModelId(modelSlug)}`, { method: "DELETE", headers: authHeaders() });
 
       // Find the client
       let clientId: string | null = null;
       if (pseudo) {
         try {
-          const clientRes = await fetch(`/api/clients?model=${modelSlug}&search=${encodeURIComponent(pseudo)}`, { headers: authHeaders() });
+          const clientRes = await fetch(`/api/clients?model=${toModelId(modelSlug)}&search=${encodeURIComponent(pseudo)}`, { headers: authHeaders() });
           const clientData = await clientRes.json();
           clientId = (clientData.clients || [])[0]?.id || null;
         } catch { /* ignore */ }
@@ -130,7 +131,7 @@ export function Header() {
           method: "POST",
           headers: authHeaders(),
           body: JSON.stringify({
-            model: modelSlug,
+            model: toModelId(modelSlug),
             code: codeStr,
             client: pseudo.toLowerCase(),
             tier,
@@ -147,7 +148,7 @@ export function Header() {
       const confirmedContent = `✅ Paiement validé — @${pseudo} — ${items || `Pack ${tier}`} ${amount}€${generatedCode ? ` — Code envoyé ✓` : ""}`;
       await fetch("/api/wall", {
         method: "POST", headers: authHeaders(),
-        body: JSON.stringify({ model: modelSlug, pseudo: "SYSTEM", content: confirmedContent }),
+        body: JSON.stringify({ model: toModelId(modelSlug), pseudo: "SYSTEM", content: confirmedContent }),
       });
 
       // Send code to client via chat
@@ -156,7 +157,7 @@ export function Header() {
           method: "POST",
           headers: authHeaders(),
           body: JSON.stringify({
-            model: modelSlug,
+            model: toModelId(modelSlug),
             client_id: clientId,
             sender_type: "model",
             content: `✅ Paiement confirmé ! Voici ton code d'accès : ${generatedCode}\n\nEntre-le sur mon profil pour débloquer ton contenu. Le code est valable 30 jours.`,
@@ -171,7 +172,7 @@ export function Header() {
         fetch("/api/clients/visit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model: modelSlug, client_id: clientId, action: "order_completed" }),
+          body: JSON.stringify({ model: toModelId(modelSlug), client_id: clientId, action: "order_completed" }),
         }).catch(() => {});
       }
     } catch (e) { console.error("[Header] accept order error:", e); }
@@ -182,11 +183,11 @@ export function Header() {
   const handleRefuseOrder = async (orderId: string, content: string) => {
     setProcessingOrderId(orderId);
     try {
-      await fetch(`/api/wall?id=${orderId}&model=${modelSlug}`, { method: "DELETE", headers: authHeaders() });
+      await fetch(`/api/wall?id=${orderId}&model=${toModelId(modelSlug)}`, { method: "DELETE", headers: authHeaders() });
       const refused = content.replace("⏳", "❌").replace("en attente de validation", "REFUSÉE");
       await fetch("/api/wall", {
         method: "POST", headers: authHeaders(),
-        body: JSON.stringify({ model: modelSlug, pseudo: "SYSTEM", content: refused }),
+        body: JSON.stringify({ model: toModelId(modelSlug), pseudo: "SYSTEM", content: refused }),
       });
       setPendingOrders(prev => prev.filter(o => o.id !== orderId));
     } catch (e) { console.error("[Header] refuse order error:", e); }
@@ -213,7 +214,7 @@ export function Header() {
   // ── Fetch messages ──
   const fetchMessages = useCallback(() => {
     if (!modelSlug) return;
-    fetch(`/api/messages?model=${modelSlug}`, { headers: authHeaders() })
+    fetch(`/api/messages?model=${toModelId(modelSlug)}`, { headers: authHeaders() })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (!d) return;
@@ -227,8 +228,8 @@ export function Header() {
   const fetchClients = useCallback(() => {
     if (!modelSlug) return;
     Promise.all([
-      fetch(`/api/clients?model=${modelSlug}`, { headers: authHeaders() }).then(r => r.ok ? r.json() : null),
-      fetch(`/api/codes?model=${modelSlug}`, { headers: authHeaders() }).then(r => r.ok ? r.json() : null),
+      fetch(`/api/clients?model=${toModelId(modelSlug)}`, { headers: authHeaders() }).then(r => r.ok ? r.json() : null),
+      fetch(`/api/codes?model=${toModelId(modelSlug)}`, { headers: authHeaders() }).then(r => r.ok ? r.json() : null),
     ]).then(([cd, co]) => {
       if (cd) setClients(cd.clients || []);
       if (co) setCodes(co.codes || []);

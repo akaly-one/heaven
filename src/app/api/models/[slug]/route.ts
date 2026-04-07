@@ -28,19 +28,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       }, { headers: cors });
     }
 
-    // Try to find account in DB
+    // Try to find account in DB — accept both slug and model_id (mN)
     const { data: account } = await supabase
       .from("agence_accounts")
-      .select("display_name, model_slug, active")
-      .eq("model_slug", slug)
+      .select("display_name, model_slug, model_id, active")
+      .or(`model_slug.eq.${slug},model_id.eq.${slug}`)
       .eq("active", true)
       .maybeSingle();
 
-    // Fetch extended profile if exists
+    // Fetch extended profile if exists — accept both slug and model_id
+    const resolvedSlug = account?.model_slug || slug;
     const { data: modelInfo } = await supabase
       .from("agence_models")
       .select("*")
-      .eq("slug", slug)
+      .eq("slug", resolvedSlug)
       .maybeSingle();
 
     // Map DB columns to API response
@@ -49,7 +50,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     const config = modelInfo?.config as { banner?: string; paypal_handle?: string } | null;
 
     return NextResponse.json({
-      slug,
+      slug: account?.model_slug || slug,
+      model_id: account?.model_id || null,
       display_name: displayName,
       active: account?.active ?? true,
       bio: modelInfo?.bio || null,
