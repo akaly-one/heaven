@@ -6,9 +6,12 @@ import { OsLayout } from "@/components/os-layout";
 import {
   Search, ArrowLeft, Trash2, Check, X, MessageCircle, Key,
   Copy, Link2, Send, UserPlus, GitMerge, User, Clock,
-  ShieldCheck, ShieldX, ShieldAlert, Filter,
+  ShieldCheck, ShieldX, ShieldAlert, Filter, Package,
+  ChevronDown, ChevronRight, Tag, Settings, AlertTriangle,
+  Zap, Eye, MoreHorizontal,
 } from "lucide-react";
-import type { AccessCode, Message } from "@/types/heaven";
+import type { AccessCode, Message, PackConfig } from "@/types/heaven";
+import { isInactive, shouldPurge, formatBelgium, expiresIn, isExpired } from "@/lib/timezone";
 
 /* ── Types ── */
 
@@ -24,20 +27,29 @@ interface Client {
   lead_hook?: string | null;
 }
 
-type VerifyFilter = "all" | "pending" | "verified" | "rejected";
+type VerifyFilter = "all" | "pending" | "verified" | "rejected" | "inactive";
+type SortMode = "recent" | "unread" | "spending" | "name";
 
 const VERIFY_BADGE: Record<string, { bg: string; color: string; label: string }> = {
   pending: { bg: "rgba(245,158,11,0.12)", color: "#F59E0B", label: "EN ATTENTE" },
-  verified: { bg: "rgba(16,185,129,0.12)", color: "#10B981", label: "VERIFIE" },
-  rejected: { bg: "rgba(220,38,38,0.10)", color: "#DC2626", label: "REJETE" },
+  verified: { bg: "rgba(16,185,129,0.12)", color: "#10B981", label: "VÉRIFIÉ" },
+  rejected: { bg: "rgba(220,38,38,0.10)", color: "#DC2626", label: "REJETÉ" },
+};
+
+const TIER_COLORS: Record<string, string> = {
+  silver: "#C0C0C0", vip: "#E63329", gold: "#D4AF37",
+  diamond: "#4F46E5", black: "#1C1C1C", platinum: "#7C3AED",
 };
 
 interface ClientEnriched extends Client {
   unreadCount: number;
   lastMessage: Message | null;
   hasAdmin: boolean;
+  activeCodes: AccessCode[];
+  totalSpent: number;
+  isInactive48h: boolean;
+  shouldPurge7d: boolean;
 }
-
 
 /* ── Helpers ── */
 
@@ -55,15 +67,15 @@ const relativeTime = (iso: string) => {
 
 const codeTimeLeft = (expiresAt: string, revoked: boolean, active: boolean) => {
   if (revoked) return "rev";
-  if (!active) return "exp";
+  if (!active) return "off";
+  if (isExpired(expiresAt)) return "exp";
   const d = new Date(expiresAt).getTime() - Date.now();
-  if (d <= 0) return "exp";
   if (d > 86_400_000) return `${Math.floor(d / 86_400_000)}j`;
   return `${Math.floor(d / 3_600_000)}h`;
 };
 
 /* ══════════════════════════════════════════════ */
-/*  Clients CRM — Two-panel layout               */
+/*  Clients CRM — List-first layout               */
 /* ══════════════════════════════════════════════ */
 
 export default function ClientsCRMPage() {
@@ -75,16 +87,24 @@ export default function ClientsCRMPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [codes, setCodes] = useState<AccessCode[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [packs, setPacks] = useState<PackConfig[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [activeClient, setActiveClient] = useState<string | null>(null);
+  const [expandedClient, setExpandedClient] = useState<string | null>(null);
+  const [chatClient, setChatClient] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [addPseudo, setAddPseudo] = useState("");
   const [addPlatform, setAddPlatform] = useState<"snap" | "insta">("snap");
   const [verifyFilter, setVerifyFilter] = useState<VerifyFilter>("all");
+  const [sortMode, setSortMode] = useState<SortMode>("recent");
+  const [showGenerateFor, setShowGenerateFor] = useState<string | null>(null);
+  const [genTier, setGenTier] = useState("vip");
+  const [genDays, setGenDays] = useState(7);
+  const [genType, setGenType] = useState<"paid" | "promo" | "gift">("paid");
+  const [genPromoCode, setGenPromoCode] = useState("");
   const msgEndRef = useRef<HTMLDivElement>(null);
 
   /* ── Merge modal ── */
@@ -100,29 +120,30 @@ export default function ClientsCRMPage() {
       fetch(`/api/clients?model=${model}`, { headers: authHeaders() }).then(r => r.json()),
       fetch(`/api/codes?model=${model}`, { headers: authHeaders() }).then(r => r.json()),
       fetch(`/api/messages?model=${model}`, { headers: authHeaders() }).then(r => r.json()),
-    ]).then(([cd, co, mg]) => {
+      fetch(`/api/packs?model=${model}`, { headers: authHeaders() }).then(r => r.json()),
+    ]).then(([cd, co, mg, pk]) => {
       setClients(cd.clients || []);
       setCodes(co.codes || []);
       setMessages(mg.messages || []);
+      setPacks(pk.packs || pk || []);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [model, authHeaders]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Auto-refresh messages every 8s when a conversation is open
+  // Auto-refresh messages every 8s when a chat is open
   useEffect(() => {
-    if (!activeClient) return;
+    if (!chatClient) return;
     const iv = setInterval(() => {
       fetch(`/api/messages?model=${model}`, { headers: authHeaders() }).then(r => r.json())
         .then(mg => setMessages(mg.messages || [])).catch(() => {});
     }, 8000);
     return () => clearInterval(iv);
-  }, [activeClient, model, authHeaders]);
+  }, [chatClient, model, authHeaders]);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     msgEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, activeClient]);
+  }, [messages, chatClient]);
 
   /* ── Enriched client list ── */
   const enriched: ClientEnriched[] = useMemo(() => {
@@ -133,35 +154,51 @@ export default function ClientsCRMPage() {
     });
     return clients.map(c => {
       const cMsgs = (msgByClient[c.id] || []).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      const pseudo = pseudoOf(c);
+      const clientCodes = codes.filter(co => co.clientId === c.id || co.client === pseudo);
+      const activeCodes = clientCodes.filter(co => co.active && !co.revoked && !isExpired(co.expiresAt));
       return {
         ...c,
         unreadCount: cMsgs.filter(m => !m.read && m.sender_type === "client").length,
         lastMessage: cMsgs[0] || null,
         hasAdmin: cMsgs.some(m => m.sender_type === "admin"),
+        activeCodes,
+        totalSpent: c.total_tokens_spent || 0,
+        isInactive48h: isInactive(c.last_active, 48),
+        shouldPurge7d: (c.verified_status || "pending") === "pending" && shouldPurge(c.created_at, 7),
       };
     });
-  }, [clients, messages]);
+  }, [clients, messages, codes]);
 
-  // Sort: unread first, then by last message recency, then by created_at
+  // Sort
   const sorted = useMemo(() => {
     return [...enriched].sort((a, b) => {
+      // Always: admin messages first, then unread
       if (a.hasAdmin && !b.hasAdmin) return -1;
       if (b.hasAdmin && !a.hasAdmin) return 1;
       if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
       if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
-      const aTime = a.lastMessage ? new Date(a.lastMessage.created_at).getTime() : new Date(a.created_at).getTime();
-      const bTime = b.lastMessage ? new Date(b.lastMessage.created_at).getTime() : new Date(b.created_at).getTime();
-      return bTime - aTime;
+
+      switch (sortMode) {
+        case "spending": return b.totalSpent - a.totalSpent;
+        case "name": return pseudoOf(a).localeCompare(pseudoOf(b));
+        case "unread": return b.unreadCount - a.unreadCount;
+        default: {
+          const aTime = a.lastMessage ? new Date(a.lastMessage.created_at).getTime() : new Date(a.created_at).getTime();
+          const bTime = b.lastMessage ? new Date(b.lastMessage.created_at).getTime() : new Date(b.created_at).getTime();
+          return bTime - aTime;
+        }
+      }
     });
-  }, [enriched]);
+  }, [enriched, sortMode]);
 
   const filtered = useMemo(() => {
     let list = sorted;
-    // Verify filter
-    if (verifyFilter !== "all") {
+    if (verifyFilter === "inactive") {
+      list = list.filter(c => c.isInactive48h);
+    } else if (verifyFilter !== "all") {
       list = list.filter(c => (c.verified_status || "pending") === verifyFilter);
     }
-    // Search
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(c => (c.pseudo_snap || c.pseudo_insta || c.firstname || "").toLowerCase().includes(q));
@@ -171,8 +208,9 @@ export default function ClientsCRMPage() {
 
   const pendingCount = enriched.filter(c => (c.verified_status || "pending") === "pending").length;
   const verifiedCount = enriched.filter(c => c.verified_status === "verified").length;
-
+  const inactiveCount = enriched.filter(c => c.isInactive48h).length;
   const totalUnread = enriched.reduce((s, c) => s + c.unreadCount, 0);
+  const purgeable = enriched.filter(c => c.shouldPurge7d);
 
   /* ── Helpers ── */
   const handleCopy = (text: string, id: string) => { navigator.clipboard.writeText(text); setCopied(id); setTimeout(() => setCopied(null), 2000); };
@@ -180,28 +218,8 @@ export default function ClientsCRMPage() {
   const selectAll = () => setSelected(new Set(filtered.map(c => c.id)));
   const selectNone = () => setSelected(new Set());
 
-  const clientCodesFor = (id: string) => {
-    const c = clients.find(cl => cl.id === id);
-    if (!c) return [];
-    return codes.filter(co => co.clientId === id || co.client === pseudoOf(c));
-  };
-
   const clientMessagesFor = (id: string) =>
     messages.filter(m => m.client_id === id).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-
-  /* ── Select client ── */
-  const openClient = useCallback(async (clientId: string) => {
-    setActiveClient(clientId);
-    setReply("");
-    // Mark messages as read
-    try {
-      await fetch("/api/messages", {
-        method: "PATCH", headers: authHeaders(),
-        body: JSON.stringify({ model, client_id: clientId, action: "mark_read" }),
-      });
-      setMessages(prev => prev.map(m => m.client_id === clientId ? { ...m, read: true } : m));
-    } catch {}
-  }, [model, authHeaders]);
 
   /* ── Actions ── */
   const deleteSelected = async () => {
@@ -223,24 +241,45 @@ export default function ClientsCRMPage() {
 
   const verifyClient = async (clientId: string, action: "verify" | "reject") => {
     await fetch("/api/clients", {
-      method: "PUT",
-      headers: authHeaders(),
+      method: "PUT", headers: authHeaders(),
       body: JSON.stringify({ id: clientId, action, verified_by: model }),
     });
     fetchAll();
   };
 
   const runCleanup = async () => {
-    if (!confirm("Supprimer tous les pseudos non-verifies de plus de 7 jours ?")) return;
+    if (!confirm("Supprimer tous les pseudos non-vérifiés de plus de 7 jours ?")) return;
     await fetch(`/api/clients/cleanup?model=${model}`, { method: "DELETE", headers: authHeaders() });
     fetchAll();
   };
 
+  const purgeInactive48h = async () => {
+    const targets = enriched.filter(c => c.isInactive48h && (c.verified_status || "pending") === "pending");
+    if (targets.length === 0) return;
+    if (!confirm(`Purger ${targets.length} client(s) inactifs depuis +48h sans vérification ?`)) return;
+    for (const c of targets) {
+      await fetch(`/api/clients?id=${c.id}`, { method: "DELETE", headers: authHeaders() });
+    }
+    fetchAll();
+  };
+
+  const openChat = async (clientId: string) => {
+    setChatClient(clientId);
+    setReply("");
+    try {
+      await fetch("/api/messages", {
+        method: "PATCH", headers: authHeaders(),
+        body: JSON.stringify({ model, client_id: clientId, action: "mark_read" }),
+      });
+      setMessages(prev => prev.map(m => m.client_id === clientId ? { ...m, read: true } : m));
+    } catch {}
+  };
+
   const sendReply = async () => {
-    if (!reply.trim() || !activeClient) return;
+    if (!reply.trim() || !chatClient) return;
     await fetch("/api/messages", {
       method: "POST", headers: authHeaders(),
-      body: JSON.stringify({ model, client_id: activeClient, content: reply.trim(), sender_type: "model" }),
+      body: JSON.stringify({ model, client_id: chatClient, content: reply.trim(), sender_type: "model" }),
     });
     setReply(""); fetchAll();
   };
@@ -257,8 +296,9 @@ export default function ClientsCRMPage() {
     const codeStr = `${model.slice(0, 3).toUpperCase()}-${new Date().getFullYear()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
     await fetch("/api/codes", {
       method: "POST", headers: authHeaders(),
-      body: JSON.stringify({ model, code: codeStr, client: pseudo.toLowerCase(), platform: isSnap(c) ? "snapchat" : "instagram", tier: "vip", duration: 720, type: "paid" }),
+      body: JSON.stringify({ model, code: codeStr, client: pseudo.toLowerCase(), platform: isSnap(c) ? "snapchat" : "instagram", tier: genTier, duration: genDays * 24, type: genType }),
     });
+    setShowGenerateFor(null);
     fetchAll();
   };
 
@@ -293,13 +333,10 @@ export default function ClientsCRMPage() {
           if (chosenClient) updates[f] = chosenClient[f as keyof Client];
         }
       }
-      // 1. Update kept client with chosen fields
       if (Object.keys(updates).length > 0) {
-        const res = await fetch("/api/clients", { method: "PATCH", headers: authHeaders(),
+        await fetch("/api/clients", { method: "PATCH", headers: authHeaders(),
           body: JSON.stringify({ id: keepId, ...updates }) });
-        if (!res.ok) throw new Error(`PATCH client failed: ${res.status}`);
       }
-      // 2. Reassign messages in parallel batches (not N+1)
       const otherIds = mergeModal.slice(1).map(c => c.id);
       const msgPromises = otherIds.flatMap(otherId =>
         messages.filter(m => m.client_id === otherId).map(msg =>
@@ -307,12 +344,7 @@ export default function ClientsCRMPage() {
             body: JSON.stringify({ id: msg.id, client_id: keepId }) })
         )
       );
-      if (msgPromises.length > 0) {
-        const results = await Promise.allSettled(msgPromises);
-        const failed = results.filter(r => r.status === "rejected");
-        if (failed.length > 0) console.warn(`[Merge] ${failed.length}/${msgPromises.length} message reassignments failed`);
-      }
-      // 3. Reassign codes in parallel
+      if (msgPromises.length > 0) await Promise.allSettled(msgPromises);
       const keptPseudo = (updates.pseudo_snap || mergeModal[0].pseudo_snap || updates.pseudo_insta || mergeModal[0].pseudo_insta || "") as string;
       const codePromises = mergeModal.slice(1).flatMap(other => {
         const otherPseudo = other.pseudo_snap || other.pseudo_insta || "";
@@ -322,7 +354,6 @@ export default function ClientsCRMPage() {
         );
       });
       if (codePromises.length > 0) await Promise.allSettled(codePromises);
-      // 4. Delete merged clients
       await Promise.allSettled(otherIds.map(id =>
         fetch(`/api/clients?id=${id}`, { method: "DELETE", headers: authHeaders() })
       ));
@@ -330,12 +361,6 @@ export default function ClientsCRMPage() {
     } catch (err) { console.error("[Merge] error:", err); }
     setMerging(false);
   };
-
-  /* ── Active detail data ── */
-  const detailClient = enriched.find(c => c.id === activeClient);
-  const detailCodes = activeClient ? clientCodesFor(activeClient) : [];
-  const detailMessages = activeClient ? clientMessagesFor(activeClient) : [];
-  const activeCode = detailCodes.find(co => co.active && !co.revoked);
 
   /* ══════════════════════════════════════════════ */
   /*  Render                                        */
@@ -346,548 +371,555 @@ export default function ClientsCRMPage() {
       <OsLayout cpId="agence">
         <div className="flex items-center justify-center h-[60vh]">
           <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-            {isRoot ? "Selectionne un modele dans le header" : "Chargement..."}
+            {isRoot ? "Sélectionne un modèle dans le header" : "Chargement..."}
           </p>
         </div>
       </OsLayout>
     );
   }
 
+  const detailMessages = chatClient ? clientMessagesFor(chatClient) : [];
+  const chatClientData = chatClient ? enriched.find(c => c.id === chatClient) : null;
+
   return (
     <OsLayout cpId="agence">
       <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
 
-        {/* ── Two-panel container ── */}
-        <div className="flex flex-1 overflow-hidden relative" style={{ minHeight: "calc(100vh - 56px)" }}>
-
-          {/* ═══════════════════════════════ */}
-          {/*  LEFT PANEL — Client list       */}
-          {/* ═══════════════════════════════ */}
-          <div
-            className="flex flex-col border-r shrink-0 overflow-hidden w-full md:w-[380px] md:max-w-[380px]"
-            style={{
-              borderColor: "var(--border)",
-              background: "var(--bg)",
-            }}
-          >
-            {/* Header */}
-            <div className="flex items-center gap-2 px-4 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
-              <a href="/agence" className="p-1.5 rounded-lg no-underline hover:opacity-70" style={{ color: "var(--text-muted)" }}>
-                <ArrowLeft className="w-4 h-4" />
-              </a>
-              <h1 className="text-sm font-bold flex-1" style={{ color: "var(--text)" }}>
-                Clients
-                <span className="ml-1 text-[11px] font-normal" style={{ color: "var(--text-muted)" }}>({clients.length})</span>
-                {totalUnread > 0 && (
-                  <span className="ml-2 px-1.5 py-0.5 rounded-full text-[11px] font-bold" style={{ background: "rgba(244,63,94,0.12)", color: "#F43F5E" }}>
-                    {totalUnread}
-                  </span>
-                )}
-              </h1>
-              {selected.size > 0 ? (
-                <div className="flex items-center gap-1">
-                  <span className="text-[11px] font-bold" style={{ color: "var(--accent)" }}>{selected.size}</span>
-                  {selected.size >= 2 && (
-                    <button onClick={openMergeModal} className="px-2 py-1 rounded text-[11px] font-bold cursor-pointer"
-                      style={{ background: "rgba(139,92,246,0.1)", color: "#8B5CF6", border: "none" }}>
-                      <GitMerge className="w-3 h-3 inline mr-0.5" />Merge
-                    </button>
-                  )}
-                  <button onClick={deleteSelected} className="px-2 py-1 rounded text-[11px] font-bold cursor-pointer"
-                    style={{ background: "rgba(220,38,38,0.1)", color: "#DC2626", border: "none" }}>
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                  <button onClick={selectNone} className="p-1 cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ) : (
-                <button onClick={() => setShowAdd(true)} className="px-2 py-1 rounded text-[11px] font-bold cursor-pointer"
-                  style={{ background: "var(--accent)", color: "#fff", border: "none" }}>
-                  <UserPlus className="w-3 h-3 inline mr-0.5" />Ajouter
+        {/* ── Header bar ── */}
+        <div className="flex items-center gap-2 px-4 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
+          <a href="/agence" className="p-1.5 rounded-lg no-underline hover:opacity-70" style={{ color: "var(--text-muted)" }}>
+            <ArrowLeft className="w-4 h-4" />
+          </a>
+          <h1 className="text-sm font-bold" style={{ color: "var(--text)" }}>
+            Clients
+            <span className="ml-1 text-[11px] font-normal" style={{ color: "var(--text-muted)" }}>({clients.length})</span>
+          </h1>
+          {totalUnread > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[11px] font-bold" style={{ background: "rgba(244,63,94,0.12)", color: "#F43F5E" }}>
+              {totalUnread} msg
+            </span>
+          )}
+          <div className="flex-1" />
+          {selected.size > 0 ? (
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] font-bold" style={{ color: "var(--accent)" }}>{selected.size}</span>
+              {selected.size >= 2 && (
+                <button onClick={openMergeModal} className="px-2 py-1 rounded text-[11px] font-bold cursor-pointer"
+                  style={{ background: "rgba(139,92,246,0.1)", color: "#8B5CF6", border: "none" }}>
+                  <GitMerge className="w-3 h-3 inline mr-0.5" />Merge
                 </button>
               )}
-            </div>
-
-            {/* Add client inline */}
-            {showAdd && (
-              <div className="px-3 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[11px] font-bold flex-1" style={{ color: "var(--text)" }}>Nouveau client</span>
-                  <button onClick={() => setShowAdd(false)} className="cursor-pointer" style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setAddPlatform("snap")}
-                    className="w-10 h-10 rounded-full cursor-pointer shrink-0 flex items-center justify-center"
-                    style={{ background: addPlatform === "snap" ? "#997A00" : "rgba(153,122,0,0.15)", border: `2px solid ${addPlatform === "snap" ? "#997A00" : "transparent"}` }}>
-                    {addPlatform === "snap" && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
-                  </button>
-                  <button onClick={() => setAddPlatform("insta")}
-                    className="w-10 h-10 rounded-full cursor-pointer shrink-0 flex items-center justify-center"
-                    style={{ background: addPlatform === "insta" ? "#C13584" : "rgba(193,53,132,0.15)", border: `2px solid ${addPlatform === "insta" ? "#C13584" : "transparent"}` }}>
-                    {addPlatform === "insta" && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
-                  </button>
-                  <input value={addPseudo} onChange={e => setAddPseudo(e.target.value)}
-                    placeholder={addPlatform === "snap" ? "pseudo snap" : "pseudo insta"}
-                    className="flex-1 px-2.5 py-1.5 rounded-lg text-xs outline-none"
-                    style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
-                    onKeyDown={e => { if (e.key === "Enter") addClient(); }} />
-                  <button onClick={addClient} disabled={!addPseudo.trim()}
-                    className="px-3 py-2.5 rounded-lg text-[11px] font-bold cursor-pointer disabled:opacity-30"
-                    style={{ background: "var(--accent)", color: "#fff", border: "none" }}>
-                    OK
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Search + select all */}
-            <div className="flex gap-2 px-3 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3" style={{ color: "var(--text-muted)" }} />
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..."
-                  className="w-full pl-8 pr-2 py-2 rounded-lg text-xs outline-none"
-                  style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)" }} />
-              </div>
-              <button onClick={selected.size === filtered.length ? selectNone : selectAll}
-                className="px-2 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer shrink-0"
-                style={{ background: "var(--surface)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-                {selected.size === filtered.length && filtered.length > 0 ? "0" : "All"}
+              <button onClick={deleteSelected} className="px-2 py-1 rounded text-[11px] font-bold cursor-pointer"
+                style={{ background: "rgba(220,38,38,0.1)", color: "#DC2626", border: "none" }}>
+                <Trash2 className="w-3 h-3" />
+              </button>
+              <button onClick={selectNone} className="p-1 cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
+                <X className="w-3 h-3" />
               </button>
             </div>
-
-            {/* Verify filter bar */}
-            <div className="flex items-center gap-1.5 px-3 py-2 shrink-0 overflow-x-auto no-scrollbar" style={{ borderBottom: "1px solid var(--border)" }}>
-              {([
-                { key: "all" as VerifyFilter, label: "Tous", count: clients.length },
-                { key: "pending" as VerifyFilter, label: "En attente", count: pendingCount },
-                { key: "verified" as VerifyFilter, label: "Verifies", count: verifiedCount },
-              ]).map(f => (
-                <button key={f.key} onClick={() => setVerifyFilter(f.key)}
-                  className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer shrink-0 transition-all"
-                  style={{
-                    background: verifyFilter === f.key
-                      ? f.key === "pending" ? "rgba(245,158,11,0.15)" : f.key === "verified" ? "rgba(16,185,129,0.15)" : "var(--accent)"
-                      : "var(--bg)",
-                    color: verifyFilter === f.key
-                      ? f.key === "pending" ? "#F59E0B" : f.key === "verified" ? "#10B981" : "#fff"
-                      : "var(--text-muted)",
-                    border: `1px solid ${verifyFilter === f.key ? "transparent" : "var(--border)"}`,
-                  }}>
-                  {f.label} ({f.count})
+          ) : (
+            <div className="flex items-center gap-1.5">
+              {inactiveCount > 0 && (
+                <button onClick={purgeInactive48h} className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                  style={{ background: "rgba(245,158,11,0.08)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)" }}>
+                  <AlertTriangle className="w-3 h-3 inline mr-0.5" />Purge 48h ({inactiveCount})
                 </button>
-              ))}
-              <div className="flex-1" />
-              {pendingCount > 0 && (
-                <button onClick={runCleanup}
-                  className="px-2 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer shrink-0"
+              )}
+              {purgeable.length > 0 && (
+                <button onClick={runCleanup} className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
                   style={{ background: "rgba(220,38,38,0.06)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.12)" }}>
-                  Purger 7j+
+                  Purger 7j+ ({purgeable.length})
                 </button>
               )}
+              <button onClick={() => setShowAdd(true)} className="px-2 py-1 rounded text-[11px] font-bold cursor-pointer"
+                style={{ background: "var(--accent)", color: "#fff", border: "none" }}>
+                <UserPlus className="w-3 h-3 inline mr-0.5" />Ajouter
+              </button>
             </div>
+          )}
+        </div>
 
-            {/* Client list */}
-            <div className="flex-1 overflow-y-auto">
-              {loading && <p className="text-xs text-center py-8" style={{ color: "var(--text-muted)" }}>Chargement...</p>}
-              {!loading && filtered.length === 0 && (
-                <p className="text-xs text-center py-8" style={{ color: "var(--text-muted)" }}>Aucun client</p>
-              )}
-              {!loading && filtered.map(c => {
-                const pseudo = pseudoOf(c);
-                const isActive = activeClient === c.id;
-                const isSelected = selected.has(c.id);
-                const cActiveCode = codes.find(co => (co.clientId === c.id || co.client === pseudo) && co.active && !co.revoked);
+        {/* Add client inline */}
+        {showAdd && (
+          <div className="px-3 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[11px] font-bold flex-1" style={{ color: "var(--text)" }}>Nouveau client</span>
+              <button onClick={() => setShowAdd(false)} className="cursor-pointer" style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setAddPlatform("snap")}
+                className="w-10 h-10 rounded-full cursor-pointer shrink-0 flex items-center justify-center"
+                style={{ background: addPlatform === "snap" ? "#997A00" : "rgba(153,122,0,0.15)", border: `2px solid ${addPlatform === "snap" ? "#997A00" : "transparent"}` }}>
+                {addPlatform === "snap" && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+              </button>
+              <button onClick={() => setAddPlatform("insta")}
+                className="w-10 h-10 rounded-full cursor-pointer shrink-0 flex items-center justify-center"
+                style={{ background: addPlatform === "insta" ? "#C13584" : "rgba(193,53,132,0.15)", border: `2px solid ${addPlatform === "insta" ? "#C13584" : "transparent"}` }}>
+                {addPlatform === "insta" && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+              </button>
+              <input value={addPseudo} onChange={e => setAddPseudo(e.target.value)}
+                placeholder={addPlatform === "snap" ? "pseudo snap" : "pseudo insta"}
+                className="flex-1 px-2.5 py-1.5 rounded-lg text-xs outline-none"
+                style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
+                onKeyDown={e => { if (e.key === "Enter") addClient(); }} />
+              <button onClick={addClient} disabled={!addPseudo.trim()}
+                className="px-3 py-2.5 rounded-lg text-[11px] font-bold cursor-pointer disabled:opacity-30"
+                style={{ background: "var(--accent)", color: "#fff", border: "none" }}>
+                OK
+              </button>
+            </div>
+          </div>
+        )}
 
-                return (
-                  <div
-                    key={c.id}
-                    className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer transition-colors"
+        {/* Search + Sort + Filters */}
+        <div className="px-3 py-2 shrink-0 space-y-2" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3" style={{ color: "var(--text-muted)" }} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..."
+                className="w-full pl-8 pr-2 py-2 rounded-lg text-xs outline-none"
+                style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)" }} />
+            </div>
+            <select value={sortMode} onChange={e => setSortMode(e.target.value as SortMode)}
+              className="px-2 py-1.5 rounded-lg text-[11px] cursor-pointer outline-none"
+              style={{ background: "var(--surface)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+              <option value="recent">Récent</option>
+              <option value="unread">Non-lus</option>
+              <option value="spending">Dépenses</option>
+              <option value="name">Nom</option>
+            </select>
+            <button onClick={selected.size === filtered.length ? selectNone : selectAll}
+              className="px-2 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer shrink-0"
+              style={{ background: "var(--surface)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+              {selected.size === filtered.length && filtered.length > 0 ? "0" : "All"}
+            </button>
+          </div>
+          {/* Filter tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            {([
+              { key: "all" as VerifyFilter, label: "Tous", count: clients.length },
+              { key: "pending" as VerifyFilter, label: "En attente", count: pendingCount },
+              { key: "verified" as VerifyFilter, label: "Vérifiés", count: verifiedCount },
+              { key: "inactive" as VerifyFilter, label: "Inactifs 48h+", count: inactiveCount },
+            ]).map(f => (
+              <button key={f.key} onClick={() => setVerifyFilter(f.key)}
+                className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer shrink-0 transition-all"
+                style={{
+                  background: verifyFilter === f.key
+                    ? f.key === "pending" ? "rgba(245,158,11,0.15)" : f.key === "verified" ? "rgba(16,185,129,0.15)" : f.key === "inactive" ? "rgba(245,158,11,0.1)" : "var(--accent)"
+                    : "var(--bg)",
+                  color: verifyFilter === f.key
+                    ? f.key === "pending" ? "#F59E0B" : f.key === "verified" ? "#10B981" : f.key === "inactive" ? "#F59E0B" : "#fff"
+                    : "var(--text-muted)",
+                  border: `1px solid ${verifyFilter === f.key ? "transparent" : "var(--border)"}`,
+                }}>
+                {f.label} ({f.count})
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ═══════════════════════════════════ */}
+        {/*  CLIENT LIST — Main content         */}
+        {/* ═══════════════════════════════════ */}
+        <div className="flex-1 overflow-y-auto">
+          {loading && <p className="text-xs text-center py-8" style={{ color: "var(--text-muted)" }}>Chargement...</p>}
+          {!loading && filtered.length === 0 && (
+            <p className="text-xs text-center py-8" style={{ color: "var(--text-muted)" }}>Aucun client</p>
+          )}
+
+          {!loading && filtered.map(c => {
+            const pseudo = pseudoOf(c);
+            const isExpanded = expandedClient === c.id;
+            const isSelected = selected.has(c.id);
+            const tierColor = TIER_COLORS[c.activeCodes[0]?.tier || ""] || "var(--text-muted)";
+
+            return (
+              <div key={c.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                {/* ── Client row ── */}
+                <div
+                  className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer transition-colors hover:bg-white/[0.02]"
+                  style={{
+                    borderLeft: isExpanded ? "3px solid var(--accent)" : "3px solid transparent",
+                  }}
+                  onClick={() => setExpandedClient(isExpanded ? null : c.id)}
+                >
+                  {/* Checkbox */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleSelect(c.id); }}
+                    className="w-7 h-7 flex items-center justify-center shrink-0 cursor-pointer"
+                    style={{ background: "transparent", border: "none" }}>
+                    <span className="w-4 h-4 rounded flex items-center justify-center"
+                      style={{ background: isSelected ? "var(--accent)" : "var(--bg)", border: `1px solid ${isSelected ? "var(--accent)" : "var(--border)"}` }}>
+                      {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
+                    </span>
+                  </button>
+
+                  {/* Avatar */}
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 relative"
                     style={{
-                      background: isActive ? "var(--surface)" : "transparent",
-                      borderBottom: "1px solid var(--border)",
-                      borderLeft: isActive ? "3px solid var(--accent)" : "3px solid transparent",
-                    }}
-                    onClick={() => openClient(c.id)}
-                  >
-                    {/* Checkbox — 44px touch target */}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggleSelect(c.id); }}
-                      className="w-9 h-9 flex items-center justify-center shrink-0 cursor-pointer"
-                      style={{ background: "transparent", border: "none" }}
-                    >
-                      <span className="w-4 h-4 rounded flex items-center justify-center"
-                        style={{ background: isSelected ? "var(--accent)" : "var(--bg)", border: `1px solid ${isSelected ? "var(--accent)" : "var(--border)"}` }}>
-                        {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
-                      </span>
-                    </button>
+                      background: c.unreadCount > 0 ? `${platformColor(c)}18` : "rgba(255,255,255,0.04)",
+                      color: c.unreadCount > 0 ? platformColor(c) : "var(--text-muted)",
+                      border: c.isInactive48h ? "2px solid rgba(245,158,11,0.4)" : `2px solid ${platformColor(c)}30`,
+                    }}>
+                    {pseudo.charAt(0).toUpperCase()}
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2"
+                      style={{ background: platformColor(c), borderColor: "var(--bg)" }} />
+                  </div>
 
-                    {/* Avatar */}
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 relative"
-                      style={{
-                        background: c.unreadCount > 0 ? `${platformColor(c)}18` : "rgba(0,0,0,0.04)",
-                        color: c.unreadCount > 0 ? platformColor(c) : "var(--text-muted)",
-                        border: c.hasAdmin ? "2px solid #3B82F6" : `2px solid ${platformColor(c)}30`,
-                      }}>
-                      {pseudo.charAt(0).toUpperCase()}
-                      {/* Platform dot */}
-                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2"
-                        style={{ background: platformColor(c), borderColor: isActive ? "var(--surface)" : "var(--bg)" }} />
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold truncate" style={{ color: "var(--text)" }}>@{pseudo}</span>
+                      {/* Verification badge */}
+                      {(() => {
+                        const vs = c.verified_status || "pending";
+                        const badge = VERIFY_BADGE[vs];
+                        if (!badge) return null;
+                        return (
+                          <span className="text-[9px] font-bold px-1 py-0.5 rounded shrink-0"
+                            style={{ background: badge.bg, color: badge.color }}>
+                            {vs === "verified" ? "✓" : vs === "rejected" ? "✗" : "?"}
+                          </span>
+                        );
+                      })()}
+                      {c.activeCodes.length > 0 && (
+                        <span className="text-[10px] font-bold px-1 py-0.5 rounded shrink-0"
+                          style={{ background: `${tierColor}15`, color: tierColor }}>
+                          {c.activeCodes[0].tier?.toUpperCase()}
+                        </span>
+                      )}
+                      {c.isInactive48h && !c.activeCodes.length && (
+                        <span className="text-[9px] px-1 py-0.5 rounded shrink-0"
+                          style={{ background: "rgba(245,158,11,0.08)", color: "#F59E0B" }}>48h+</span>
+                      )}
                     </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold truncate" style={{ color: "var(--text)" }}>@{pseudo}</span>
-                        {/* Verification badge */}
-                        {(() => {
-                          const vs = c.verified_status || "pending";
-                          const badge = VERIFY_BADGE[vs];
-                          if (!badge) return null;
-                          return (
-                            <span className="text-[9px] font-bold px-1 py-0.5 rounded shrink-0"
-                              style={{ background: badge.bg, color: badge.color }}>
-                              {vs === "verified" ? "✓" : vs === "rejected" ? "✗" : "?"}
-                            </span>
-                          );
-                        })()}
-                        {cActiveCode && (
-                          <span className="text-[11px] font-bold px-1 py-0.5 rounded shrink-0"
-                            style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)" }}>
-                            {cActiveCode.tier?.toUpperCase()}
-                          </span>
-                        )}
-                        {c.hasAdmin && (
-                          <span className="text-[11px] font-bold px-1 py-0.5 rounded shrink-0"
-                            style={{ background: "rgba(59,130,246,0.12)", color: "#3B82F6" }}>
-                            ADM
-                          </span>
-                        )}
-                      </div>
+                    <div className="flex items-center gap-2 mt-0.5">
                       {c.lastMessage ? (
-                        <p className="text-[11px] truncate mt-0.5" style={{ color: c.unreadCount > 0 ? "var(--text)" : "var(--text-muted)" }}>
+                        <p className="text-[11px] truncate flex-1" style={{ color: c.unreadCount > 0 ? "var(--text)" : "var(--text-muted)" }}>
                           {c.lastMessage.sender_type === "admin" ? "Admin: " : c.lastMessage.sender_type === "model" ? "Toi: " : ""}
                           {c.lastMessage.content}
                         </p>
-                      ) : (c.verified_status || "pending") === "pending" ? (
-                        <p className="text-[10px] mt-0.5" style={{ color: "#F59E0B" }}>
-                          A verifier — {Math.max(0, 7 - Math.floor((Date.now() - new Date(c.created_at).getTime()) / 86400000))}j restants
-                        </p>
                       ) : (
-                        <p className="text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>Pas de messages</p>
+                        <p className="text-[11px] flex-1" style={{ color: "var(--text-muted)" }}>
+                          {(c.verified_status || "pending") === "pending"
+                            ? `À vérifier — ${Math.max(0, 7 - Math.floor((Date.now() - new Date(c.created_at).getTime()) / 86400000))}j`
+                            : "Pas de messages"}
+                        </p>
                       )}
-                    </div>
-
-                    {/* Right side: time + unread */}
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      {c.lastMessage && (
-                        <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                          {relativeTime(c.lastMessage.created_at)}
-                        </span>
-                      )}
-                      {c.unreadCount > 0 && (
-                        <span className="px-1.5 py-0.5 rounded-full text-[11px] font-bold min-w-[18px] text-center"
-                          style={{ background: c.hasAdmin ? "#3B82F6" : "var(--accent)", color: "#fff" }}>
-                          {c.unreadCount}
+                      {c.totalSpent > 0 && (
+                        <span className="text-[10px] font-bold shrink-0" style={{ color: "var(--success, #10B981)" }}>
+                          {c.totalSpent}€
                         </span>
                       )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
 
-          {/* ═══════════════════════════════ */}
-          {/*  RIGHT PANEL — Detail           */}
-          {/* ═══════════════════════════════ */}
-          <div
-            className={`crm-right-panel flex flex-col ${activeClient ? "crm-right-open" : ""}`}
-            style={{ background: "var(--bg)" }}
-          >
-            {!activeClient ? (
-              /* Empty state */
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center px-8">
-                  <MessageCircle className="w-10 h-10 mx-auto mb-3" style={{ color: "var(--border)" }} />
-                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>Selectionne un client pour voir ses details</p>
-                </div>
-              </div>
-            ) : detailClient ? (
-              <>
-                {/* Detail header */}
-                <div className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
-                  {/* Back button (mobile only via CSS) */}
-                  <button onClick={() => setActiveClient(null)} className="crm-back-btn p-1 cursor-pointer" style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
-                    <ArrowLeft className="w-4 h-4" />
-                  </button>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                    style={{ background: `${platformColor(detailClient)}18`, color: platformColor(detailClient), border: `2px solid ${platformColor(detailClient)}30` }}>
-                    {pseudoOf(detailClient).charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs font-bold" style={{ color: "var(--text)" }}>@{pseudoOf(detailClient)}</span>
-                    {activeCode && (
-                      <span className="ml-2 text-[11px] font-bold px-1 py-0.5 rounded"
-                        style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)" }}>
-                        {activeCode.tier?.toUpperCase()}
+                  {/* Right: time, unread, expand */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {c.unreadCount > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold min-w-[18px] text-center"
+                        style={{ background: c.hasAdmin ? "#3B82F6" : "var(--accent)", color: "#fff" }}>
+                        {c.unreadCount}
                       </span>
                     )}
-                  </div>
-                  {/* Quick actions */}
-                  <div className="flex items-center gap-1">
-                    {activeCode && (
-                      <>
-                        <button onClick={() => handleCopy(activeCode.code, "hdr-code")} className="p-1.5 rounded-lg cursor-pointer" style={{ background: "none", border: "none" }}>
-                          {copied === "hdr-code" ? <Check className="w-3.5 h-3.5" style={{ color: "var(--success)" }} /> : <Copy className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />}
-                        </button>
-                        <button onClick={() => handleCopy(`${origin}/m/${model}?access=${activeCode.code}`, "hdr-link")} className="p-1.5 rounded-lg cursor-pointer" style={{ background: "none", border: "none" }}>
-                          {copied === "hdr-link" ? <Check className="w-3.5 h-3.5" style={{ color: "var(--success)" }} /> : <Link2 className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />}
-                        </button>
-                      </>
+                    {c.lastMessage && (
+                      <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                        {relativeTime(c.lastMessage.created_at)}
+                      </span>
                     )}
+                    {isExpanded ? <ChevronDown className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} /> : <ChevronRight className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />}
                   </div>
                 </div>
 
-                {/* ═══ 3 panels displayed simultaneously ═══ */}
-                <div className="flex-1 overflow-y-auto">
-                  <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-0 xl:gap-0 h-full">
-
-                    {/* LEFT: Messages (conversation) */}
-                    <div className="flex flex-col min-h-[300px] xl:min-h-0 xl:h-full" style={{ borderRight: "1px solid var(--border)" }}>
-                      <div className="flex items-center gap-1.5 px-4 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
-                        <MessageCircle className="w-3 h-3" style={{ color: "var(--accent)" }} />
-                        <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Messages</span>
-                        {detailClient.unreadCount > 0 && (
-                          <span className="px-1 py-0.5 rounded-full text-[10px] font-bold" style={{ background: "var(--accent)", color: "#fff" }}>
-                            {detailClient.unreadCount}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                        {detailMessages.length === 0 && (
-                          <p className="text-[11px] text-center py-6" style={{ color: "var(--text-muted)" }}>Aucun message</p>
-                        )}
-                        {detailMessages.map(m => (
-                          <div key={m.id} className={`flex ${m.sender_type === "model" || m.sender_type === "admin" ? "justify-end" : "justify-start"}`}>
-                            <div className="max-w-[80%] px-3 py-2 rounded-2xl text-xs group relative"
-                              style={{
-                                background: m.sender_type === "admin" ? "#3B82F6" : m.sender_type === "model" ? "var(--accent)" : "var(--surface)",
-                                color: m.sender_type === "model" || m.sender_type === "admin" ? "#fff" : "var(--text)",
-                                border: m.sender_type === "client" ? "1px solid var(--border)" : "none",
-                              }}>
-                              {m.sender_type === "admin" && <span className="text-[11px] font-bold opacity-70 block mb-0.5">SQWENSY Admin</span>}
-                              {m.content}
-                              <span className="block text-[10px] mt-1 opacity-50">
-                                {new Date(m.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                              </span>
-                              <button onClick={() => deleteMessage(m.id)}
-                                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity hidden group-hover:flex"
-                                style={{ background: "var(--danger, #DC2626)", border: "none" }}>
-                                <Trash2 className="w-2.5 h-2.5 text-white" />
+                {/* ── Expanded detail panel ── */}
+                {isExpanded && (
+                  <div className="px-3 pb-3 space-y-3" style={{ background: "var(--surface)" }}>
+                    {/* Action bar */}
+                    <div className="flex items-center gap-2 pt-2">
+                      <button onClick={(e) => { e.stopPropagation(); openChat(c.id); }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer"
+                        style={{ background: "rgba(59,130,246,0.1)", color: "#3B82F6", border: "1px solid rgba(59,130,246,0.2)" }}>
+                        <MessageCircle className="w-3 h-3" />Chatter
+                        {c.unreadCount > 0 && <span className="px-1 py-0.5 rounded-full text-[9px] font-bold" style={{ background: "#3B82F6", color: "#fff" }}>{c.unreadCount}</span>}
+                      </button>
+                      <div className="relative">
+                        <button onClick={(e) => { e.stopPropagation(); setShowGenerateFor(showGenerateFor === c.id ? null : c.id); }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer"
+                          style={{ background: "rgba(16,185,129,0.1)", color: "#10B981", border: "1px solid rgba(16,185,129,0.2)" }}>
+                          <Key className="w-3 h-3" />Générer
+                        </button>
+                        {/* ── Generate popover ── */}
+                        {showGenerateFor === c.id && (
+                          <div className="absolute left-0 top-full mt-1 z-40 w-72 rounded-xl p-3 space-y-3"
+                            style={{ background: "var(--bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}
+                            onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Générer accès</span>
+                              <button onClick={() => setShowGenerateFor(null)} className="cursor-pointer" style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
+                                <X className="w-3 h-3" />
                               </button>
                             </div>
+                            {/* Pack selection */}
+                            <div>
+                              <p className="text-[10px] font-bold mb-1.5" style={{ color: "var(--text-muted)" }}>PACK</p>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {packs.filter(p => p.active).map(p => (
+                                  <button key={p.id} onClick={() => setGenTier(p.id)}
+                                    className="flex items-center gap-1.5 px-2 py-2 rounded-lg text-[10px] font-bold cursor-pointer transition-all"
+                                    style={{
+                                      background: genTier === p.id ? `${p.color}20` : "rgba(255,255,255,0.03)",
+                                      border: `1.5px solid ${genTier === p.id ? p.color : "var(--border)"}`,
+                                      color: genTier === p.id ? p.color : "var(--text-muted)",
+                                    }}>
+                                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color }} />
+                                    {p.name} · {p.price}€
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            {/* Duration */}
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>DURÉE</p>
+                                <span className="text-[11px] font-bold" style={{ color: "var(--accent)" }}>{genDays}j</span>
+                              </div>
+                              <input type="range" min={1} max={30} value={genDays} onChange={e => setGenDays(Number(e.target.value))}
+                                className="w-full h-1 rounded-full appearance-none cursor-pointer"
+                                style={{ background: `linear-gradient(to right, var(--accent) ${(genDays / 30) * 100}%, var(--border) ${(genDays / 30) * 100}%)` }} />
+                            </div>
+                            {/* Type */}
+                            <div>
+                              <p className="text-[10px] font-bold mb-1.5" style={{ color: "var(--text-muted)" }}>TYPE</p>
+                              <div className="flex gap-1.5">
+                                {(["paid", "promo", "gift"] as const).map(t => (
+                                  <button key={t} onClick={() => setGenType(t)}
+                                    className="flex-1 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer"
+                                    style={{
+                                      background: genType === t ? "var(--accent)" : "rgba(255,255,255,0.03)",
+                                      color: genType === t ? "#fff" : "var(--text-muted)",
+                                      border: `1px solid ${genType === t ? "var(--accent)" : "var(--border)"}`,
+                                    }}>
+                                    {t === "paid" ? "Payé" : t === "promo" ? "Promo" : "Cadeau"}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            {/* Promo code */}
+                            {genType === "promo" && (
+                              <div>
+                                <p className="text-[10px] font-bold mb-1" style={{ color: "var(--text-muted)" }}>CODE PROMO (optionnel)</p>
+                                <input value={genPromoCode} onChange={e => setGenPromoCode(e.target.value.toUpperCase())}
+                                  placeholder="Ex: SUMMER25"
+                                  className="w-full px-2 py-1.5 rounded-lg text-[11px] outline-none font-mono"
+                                  style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)" }} />
+                              </div>
+                            )}
+                            <button onClick={() => generateCode(c.id)}
+                              className="w-full py-2 rounded-lg text-[11px] font-bold cursor-pointer"
+                              style={{ background: "var(--accent)", color: "#fff", border: "none" }}>
+                              Générer le code
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      {(c.verified_status || "pending") === "pending" && (
+                        <>
+                          <button onClick={(e) => { e.stopPropagation(); verifyClient(c.id, "verify"); }}
+                            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer"
+                            style={{ background: "rgba(16,185,129,0.08)", color: "#10B981", border: "1px solid rgba(16,185,129,0.2)" }}>
+                            <ShieldCheck className="w-3 h-3" />Vérifier
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); verifyClient(c.id, "reject"); }}
+                            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer"
+                            style={{ background: "rgba(220,38,38,0.06)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.15)" }}>
+                            <ShieldX className="w-3 h-3" />Faux
+                          </button>
+                        </>
+                      )}
+                      <div className="flex-1" />
+                      <button onClick={async (e) => {
+                        e.stopPropagation();
+                        if (confirm(`Supprimer @${pseudo} ?`)) {
+                          await fetch(`/api/clients?id=${c.id}`, { method: "DELETE", headers: authHeaders() });
+                          setExpandedClient(null); fetchAll();
+                        }
+                      }} className="p-1.5 rounded-lg cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+
+                    {/* Client detail grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {/* Identity */}
+                      <div className="rounded-lg p-2.5 space-y-1" style={{ background: "var(--bg)" }}>
+                        <p className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>Identité</p>
+                        {c.pseudo_snap && (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full" style={{ background: "#997A00" }} />
+                            <span className="text-[11px]" style={{ color: "var(--text)" }}>@{c.pseudo_snap}</span>
+                          </div>
+                        )}
+                        {c.pseudo_insta && (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full" style={{ background: "#C13584" }} />
+                            <span className="text-[11px]" style={{ color: "var(--text)" }}>@{c.pseudo_insta}</span>
+                          </div>
+                        )}
+                        {c.firstname && <span className="text-[11px] block" style={{ color: "var(--text)" }}>{c.firstname}</span>}
+                      </div>
+                      {/* Stats */}
+                      <div className="rounded-lg p-2.5 space-y-1" style={{ background: "var(--bg)" }}>
+                        <p className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>Stats</p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Dépensé</span>
+                          <span className="text-[11px] font-bold" style={{ color: c.totalSpent > 0 ? "var(--success, #10B981)" : "var(--text-muted)" }}>{c.totalSpent}€</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Activité</span>
+                          <span className="text-[11px] font-bold" style={{ color: c.isInactive48h ? "#F59E0B" : "var(--text)" }}>
+                            {c.last_active ? relativeTime(c.last_active) : "-"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Créé</span>
+                          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{formatBelgium(c.created_at, "short")}</span>
+                        </div>
+                      </div>
+                      {/* Active codes */}
+                      <div className="rounded-lg p-2.5 space-y-1" style={{ background: "var(--bg)" }}>
+                        <p className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>Codes actifs</p>
+                        {c.activeCodes.length === 0 ? (
+                          <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Aucun</p>
+                        ) : c.activeCodes.map(code => (
+                          <div key={code.code} className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-mono font-bold" style={{ color: "var(--success, #10B981)" }}>{code.code}</span>
+                            <button onClick={(e) => { e.stopPropagation(); handleCopy(code.code, `c-${code.code}`); }} className="cursor-pointer" style={{ background: "none", border: "none" }}>
+                              {copied === `c-${code.code}` ? <Check className="w-2.5 h-2.5" style={{ color: "var(--success)" }} /> : <Copy className="w-2.5 h-2.5" style={{ color: "var(--text-muted)" }} />}
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); handleCopy(`${origin}/m/${model}?access=${code.code}`, `l-${code.code}`); }} className="cursor-pointer" style={{ background: "none", border: "none" }}>
+                              {copied === `l-${code.code}` ? <Check className="w-2.5 h-2.5" style={{ color: "var(--success)" }} /> : <Link2 className="w-2.5 h-2.5" style={{ color: "var(--text-muted)" }} />}
+                            </button>
+                            <span className="text-[9px] ml-auto" style={{ color: "var(--text-muted)" }}>
+                              {codeTimeLeft(code.expiresAt, code.revoked, code.active)}
+                            </span>
                           </div>
                         ))}
-                        <div ref={msgEndRef} />
                       </div>
-                      {/* Reply */}
-                      <div className="flex gap-2 px-3 py-2.5 shrink-0" style={{ borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
-                        <input value={reply} onChange={e => setReply(e.target.value)} placeholder="Repondre..."
-                          className="flex-1 px-3 py-2 rounded-xl text-xs outline-none"
-                          style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
-                          onKeyDown={e => { if (e.key === "Enter") sendReply(); }} />
-                        <button onClick={sendReply} disabled={!reply.trim()}
-                          className="px-3 py-2.5 rounded-xl cursor-pointer disabled:opacity-30" style={{ background: "var(--accent)", border: "none" }}>
-                          <Send className="w-3.5 h-3.5 text-white" />
-                        </button>
+                      {/* Notes */}
+                      <div className="rounded-lg p-2.5" style={{ background: "var(--bg)" }}>
+                        <p className="text-[10px] font-bold mb-1" style={{ color: "var(--text-muted)" }}>Notes</p>
+                        <textarea defaultValue={c.notes || ""} placeholder="Notes..."
+                          className="w-full text-[11px] bg-transparent outline-none resize-none" rows={3}
+                          style={{ color: "var(--text)" }}
+                          onClick={(e) => e.stopPropagation()}
+                          onBlur={async (e) => {
+                            await fetch("/api/clients", { method: "PATCH", headers: authHeaders(), body: JSON.stringify({ id: c.id, notes: e.target.value.trim() }) });
+                          }} />
                       </div>
                     </div>
 
-                    {/* RIGHT: Profil + Codes stacked */}
-                    <div className="overflow-y-auto">
-                      {/* ── Profil ── */}
-                      <div className="p-3 space-y-3" style={{ borderBottom: "1px solid var(--border)" }}>
-                        <div className="flex items-center gap-1.5">
-                          <User className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
-                          <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Profil</span>
-                        </div>
-                        {/* Identity */}
-                        <div className="space-y-1.5">
-                          {detailClient.pseudo_snap && (
-                            <div className="flex items-center gap-2">
-                              <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#997A00" }} />
-                              <span className="text-[11px]" style={{ color: "var(--text)" }}>@{detailClient.pseudo_snap}</span>
-                            </div>
-                          )}
-                          {detailClient.pseudo_insta && (
-                            <div className="flex items-center gap-2">
-                              <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#C13584" }} />
-                              <span className="text-[11px]" style={{ color: "var(--text)" }}>@{detailClient.pseudo_insta}</span>
-                            </div>
-                          )}
-                          {detailClient.firstname && (
-                            <span className="text-[11px] block" style={{ color: "var(--text)" }}>{detailClient.firstname}</span>
-                          )}
-                          {detailClient.phone && (
-                            <span className="text-[11px] block" style={{ color: "var(--text-muted)" }}>Tel: {detailClient.phone}</span>
-                          )}
-                        </div>
-                        {/* Stats compact */}
-                        <div className="grid grid-cols-2 gap-1.5">
-                          <div className="rounded-lg p-2" style={{ background: "var(--bg)" }}>
-                            <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Tier</p>
-                            <p className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{detailClient.tier || "-"}</p>
-                          </div>
-                          <div className="rounded-lg p-2" style={{ background: "var(--bg)" }}>
-                            <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Achats</p>
-                            <p className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{detailClient.total_tokens_bought || 0}</p>
-                          </div>
-                          <div className="rounded-lg p-2" style={{ background: "var(--bg)" }}>
-                            <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Depenses</p>
-                            <p className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{detailClient.total_tokens_spent || 0}</p>
-                          </div>
-                          <div className="rounded-lg p-2" style={{ background: "var(--bg)" }}>
-                            <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Activite</p>
-                            <p className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{detailClient.last_active ? relativeTime(detailClient.last_active) : "-"}</p>
-                          </div>
-                        </div>
-                        {/* Notes */}
-                        <textarea defaultValue={detailClient.notes || ""} placeholder="Notes..."
-                          className="w-full text-[11px] bg-transparent outline-none resize-none rounded-lg p-2" rows={2}
-                          style={{ color: "var(--text)", background: "var(--bg)", border: "1px solid var(--border)" }}
-                          onBlur={async (e) => {
-                            await fetch("/api/clients", { method: "PATCH", headers: authHeaders(), body: JSON.stringify({ id: detailClient.id, notes: e.target.value.trim() }) });
-                          }} />
-                        {/* ── Verification section ── */}
-                        <div className="rounded-xl p-2.5" style={{
-                          background: (detailClient.verified_status || "pending") === "pending" ? "rgba(245,158,11,0.06)" : (detailClient.verified_status === "verified" ? "rgba(16,185,129,0.06)" : "rgba(220,38,38,0.04)"),
-                          border: `1px solid ${(detailClient.verified_status || "pending") === "pending" ? "rgba(245,158,11,0.2)" : (detailClient.verified_status === "verified" ? "rgba(16,185,129,0.2)" : "rgba(220,38,38,0.12)")}`,
-                        }}>
-                          <div className="flex items-center gap-1.5 mb-2">
-                            {(detailClient.verified_status || "pending") === "pending" && <ShieldAlert className="w-3 h-3" style={{ color: "#F59E0B" }} />}
-                            {detailClient.verified_status === "verified" && <ShieldCheck className="w-3 h-3" style={{ color: "#10B981" }} />}
-                            {detailClient.verified_status === "rejected" && <ShieldX className="w-3 h-3" style={{ color: "#DC2626" }} />}
-                            <span className="text-[10px] font-bold" style={{ color: VERIFY_BADGE[detailClient.verified_status || "pending"]?.color }}>
-                              {VERIFY_BADGE[detailClient.verified_status || "pending"]?.label}
-                            </span>
-                            {detailClient.verified_at && (
-                              <span className="text-[10px] ml-auto" style={{ color: "var(--text-muted)" }}>
-                                {new Date(detailClient.verified_at).toLocaleDateString("fr-FR")}
-                              </span>
-                            )}
-                          </div>
-                          {(detailClient.verified_status || "pending") === "pending" && (
-                            <>
-                              <p className="text-[10px] mb-2" style={{ color: "var(--text-muted)" }}>
-                                Verifie ce pseudo dans tes followers. Supprime auto dans {(() => {
-                                  const days = Math.max(0, 7 - Math.floor((Date.now() - new Date(detailClient.created_at).getTime()) / 86400000));
-                                  return `${days}j`;
-                                })()}
-                              </p>
-                              <div className="flex gap-1.5">
-                                <button onClick={() => verifyClient(detailClient.id, "verify")}
-                                  className="flex-1 py-2 rounded-lg text-[10px] font-bold cursor-pointer flex items-center justify-center gap-1"
-                                  style={{ background: "#10B981", color: "#fff", border: "none" }}>
-                                  <ShieldCheck className="w-3 h-3" />Verifier
-                                </button>
-                                <button onClick={() => verifyClient(detailClient.id, "reject")}
-                                  className="flex-1 py-2 rounded-lg text-[10px] font-bold cursor-pointer flex items-center justify-center gap-1"
-                                  style={{ background: "rgba(220,38,38,0.1)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.2)" }}>
-                                  <ShieldX className="w-3 h-3" />Faux pseudo
-                                </button>
-                              </div>
-                            </>
-                          )}
-                          {detailClient.verified_status === "verified" && (
-                            <p className="text-[10px]" style={{ color: "#10B981" }}>
-                              Pseudo verifie — contact permanent
-                            </p>
-                          )}
-                          {detailClient.verified_status === "rejected" && (
-                            <p className="text-[10px]" style={{ color: "#DC2626" }}>
-                              Faux pseudo — sera supprime au prochain nettoyage
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Lead source info */}
-                        {detailClient.lead_source && (
-                          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg" style={{ background: "var(--bg)" }}>
-                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Source:</span>
-                            <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>
-                              {detailClient.lead_source === "private_story" ? "Story privee" : detailClient.lead_source}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Delete */}
-                        <button onClick={async () => {
-                          if (confirm(`Supprimer @${pseudoOf(detailClient)} ?`)) {
-                            await fetch(`/api/clients?id=${detailClient.id}`, { method: "DELETE", headers: authHeaders() });
-                            setActiveClient(null); fetchAll();
-                          }
-                        }} className="w-full py-1.5 rounded-lg text-[10px] font-bold cursor-pointer"
-                          style={{ background: "rgba(220,38,38,0.06)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.15)" }}>
-                          <Trash2 className="w-2.5 h-2.5 inline mr-1" />Supprimer
-                        </button>
+                    {/* Lead source */}
+                    {c.lead_source && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg" style={{ background: "var(--bg)" }}>
+                        <Zap className="w-3 h-3" style={{ color: "var(--accent)" }} />
+                        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Source:</span>
+                        <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>
+                          {c.lead_source === "private_story" ? "Story privée" : c.lead_source === "beacon" ? "BEACON" : c.lead_source}
+                        </span>
                       </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
 
-                      {/* ── Codes ── */}
-                      <div className="p-3 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <Key className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
-                            <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Codes</span>
-                          </div>
-                          <button onClick={() => generateCode(detailClient.id)}
-                            className="px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer"
-                            style={{ background: "var(--accent)", color: "#fff", border: "none" }}>
-                            + Generer
-                          </button>
-                        </div>
-                        {detailCodes.length === 0 && (
-                          <p className="text-[10px] text-center py-3" style={{ color: "var(--text-muted)" }}>Aucun code</p>
-                        )}
-                        {detailCodes.map(code => {
-                          const isActiveCode = code.active && !code.revoked;
-                          const tl = codeTimeLeft(code.expiresAt, code.revoked, code.active);
-                          return (
-                            <div key={code.code} className="rounded-lg p-2" style={{
-                              background: "var(--bg)",
-                              border: `1px solid ${isActiveCode ? "rgba(16,185,129,0.3)" : "var(--border)"}`,
-                            }}>
-                              <div className="flex items-center gap-1.5 mb-1">
-                                <span className="text-[11px] font-mono font-bold" style={{ color: isActiveCode ? "var(--success)" : "var(--text-muted)" }}>
-                                  {code.code}
-                                </span>
-                                <button onClick={() => handleCopy(code.code, `code-${code.code}`)} className="p-0.5 cursor-pointer" style={{ background: "none", border: "none" }}>
-                                  {copied === `code-${code.code}` ? <Check className="w-2.5 h-2.5" style={{ color: "var(--success)" }} /> : <Copy className="w-2.5 h-2.5" style={{ color: "var(--text-muted)" }} />}
-                                </button>
-                                <button onClick={() => handleCopy(`${origin}/m/${model}?access=${code.code}`, `link-${code.code}`)} className="p-0.5 cursor-pointer" style={{ background: "none", border: "none" }}>
-                                  {copied === `link-${code.code}` ? <Check className="w-2.5 h-2.5" style={{ color: "var(--success)" }} /> : <Link2 className="w-2.5 h-2.5" style={{ color: "var(--text-muted)" }} />}
-                                </button>
-                              </div>
-                              <div className="flex items-center gap-2 text-[10px]">
-                                <span className="uppercase font-bold" style={{ color: "var(--text-muted)" }}>{code.tier}</span>
-                                <span style={{ color: "var(--text-muted)" }}>{code.type}</span>
-                                <span className="flex items-center gap-0.5" style={{ color: isActiveCode ? "var(--success)" : "var(--text-muted)" }}>
-                                  <Clock className="w-2.5 h-2.5" />{tl}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+        {/* ═══════════════════════════════════ */}
+        {/*  CHAT DRAWER — slides from right    */}
+        {/* ═══════════════════════════════════ */}
+        {chatClient && chatClientData && (
+          <div className="fixed inset-0 z-50 flex" onClick={() => setChatClient(null)}>
+            {/* Backdrop */}
+            <div className="flex-1" style={{ background: "rgba(0,0,0,0.4)" }} />
+            {/* Chat panel */}
+            <div className="w-full max-w-md flex flex-col animate-slide-in-right"
+              style={{ background: "var(--bg)", borderLeft: "1px solid var(--border)" }}
+              onClick={(e) => e.stopPropagation()}>
+              {/* Chat header */}
+              <div className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
+                <button onClick={() => setChatClient(null)} className="p-1 cursor-pointer" style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+                  style={{ background: `${platformColor(chatClientData)}18`, color: platformColor(chatClientData) }}>
+                  {pseudoOf(chatClientData).charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-bold" style={{ color: "var(--text)" }}>@{pseudoOf(chatClientData)}</span>
+                  {chatClientData.activeCodes[0] && (
+                    <span className="ml-2 text-[10px] font-bold px-1 py-0.5 rounded"
+                      style={{ background: "rgba(16,185,129,0.1)", color: "var(--success, #10B981)" }}>
+                      {chatClientData.activeCodes[0].tier?.toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                {chatClientData.activeCodes[0] && (
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => handleCopy(chatClientData.activeCodes[0].code, "chat-code")} className="p-1 cursor-pointer" style={{ background: "none", border: "none" }}>
+                      {copied === "chat-code" ? <Check className="w-3 h-3" style={{ color: "var(--success)" }} /> : <Copy className="w-3 h-3" style={{ color: "var(--text-muted)" }} />}
+                    </button>
+                    <button onClick={() => handleCopy(`${origin}/m/${model}?access=${chatClientData.activeCodes[0].code}`, "chat-link")} className="p-1 cursor-pointer" style={{ background: "none", border: "none" }}>
+                      {copied === "chat-link" ? <Check className="w-3 h-3" style={{ color: "var(--success)" }} /> : <Link2 className="w-3 h-3" style={{ color: "var(--text-muted)" }} />}
+                    </button>
+                  </div>
+                )}
+              </div>
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                {detailMessages.length === 0 && (
+                  <p className="text-[11px] text-center py-6" style={{ color: "var(--text-muted)" }}>Aucun message</p>
+                )}
+                {detailMessages.map(m => (
+                  <div key={m.id} className={`flex ${m.sender_type === "model" || m.sender_type === "admin" ? "justify-end" : "justify-start"}`}>
+                    <div className="max-w-[80%] px-3 py-2 rounded-2xl text-xs group relative"
+                      style={{
+                        background: m.sender_type === "admin" ? "#3B82F6" : m.sender_type === "model" ? "var(--accent)" : "var(--surface)",
+                        color: m.sender_type === "model" || m.sender_type === "admin" ? "#fff" : "var(--text)",
+                        border: m.sender_type === "client" ? "1px solid var(--border)" : "none",
+                      }}>
+                      {m.sender_type === "admin" && <span className="text-[10px] font-bold opacity-70 block mb-0.5">SQWENSY Admin</span>}
+                      {m.content}
+                      <span className="block text-[10px] mt-1 opacity-50">
+                        {new Date(m.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                      <button onClick={() => deleteMessage(m.id)}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity hidden group-hover:flex"
+                        style={{ background: "var(--danger, #DC2626)", border: "none" }}>
+                        <Trash2 className="w-2.5 h-2.5 text-white" />
+                      </button>
                     </div>
                   </div>
-                </div>
-              </>
-            ) : null}
+                ))}
+                <div ref={msgEndRef} />
+              </div>
+              {/* Reply */}
+              <div className="flex gap-2 px-3 py-2.5 shrink-0" style={{ borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
+                <input value={reply} onChange={e => setReply(e.target.value)} placeholder="Répondre..."
+                  className="flex-1 px-3 py-2 rounded-xl text-xs outline-none"
+                  style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
+                  onKeyDown={e => { if (e.key === "Enter") sendReply(); }} />
+                <button onClick={sendReply} disabled={!reply.trim()}
+                  className="px-3 py-2.5 rounded-xl cursor-pointer disabled:opacity-30" style={{ background: "var(--accent)", border: "none" }}>
+                  <Send className="w-3.5 h-3.5 text-white" />
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ═══ MERGE MODAL ═══ */}
         {mergeModal && mergeModal.length >= 2 && (
@@ -908,15 +940,15 @@ export default function ClientsCRMPage() {
                 </div>
 
                 <p className="text-[11px] mb-3" style={{ color: "var(--text-muted)" }}>
-                  Choisis quelle info garder pour chaque champ. Les messages et codes seront fusionnes.
+                  Choisis quelle info garder pour chaque champ. Les messages et codes seront fusionnés.
                 </p>
 
                 <div className="space-y-3">
                   {([
                     { key: "pseudo_snap", label: "Snap" },
                     { key: "pseudo_insta", label: "Instagram" },
-                    { key: "phone", label: "Telephone" },
-                    { key: "firstname", label: "Prenom" },
+                    { key: "phone", label: "Téléphone" },
+                    { key: "firstname", label: "Prénom" },
                     { key: "notes", label: "Notes" },
                     { key: "tier", label: "Tier" },
                   ] as const).map(field => {
@@ -955,7 +987,7 @@ export default function ClientsCRMPage() {
                     if (allCodes.length <= 1) return null;
                     return (
                       <div>
-                        <p className="text-[11px] font-bold mb-1" style={{ color: "var(--text-muted)" }}>Code actif a garder</p>
+                        <p className="text-[11px] font-bold mb-1" style={{ color: "var(--text-muted)" }}>Code actif à garder</p>
                         <div className="flex flex-wrap gap-1.5">
                           {allCodes.map(co => {
                             const isChosen = mergeCodeChoice === co.code;
@@ -978,13 +1010,12 @@ export default function ClientsCRMPage() {
                     );
                   })()}
 
-                  {/* Summary */}
                   <div className="p-3 rounded-xl" style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)" }}>
-                    <p className="text-[11px] font-bold mb-1" style={{ color: "#8B5CF6" }}>Resume</p>
+                    <p className="text-[11px] font-bold mb-1" style={{ color: "#8B5CF6" }}>Résumé</p>
                     <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                      Messages de tous les contacts seront fusionnes.
-                      Tous les codes seront transferes.
-                      Contacts supprimes : {mergeModal.slice(1).map(c => `@${c.pseudo_snap || c.pseudo_insta || c.id.slice(0, 6)}`).join(", ")}
+                      Messages de tous les contacts seront fusionnés.
+                      Codes transférés.
+                      Supprimés : {mergeModal.slice(1).map(c => `@${c.pseudo_snap || c.pseudo_insta || c.id.slice(0, 6)}`).join(", ")}
                     </p>
                   </div>
                 </div>
@@ -998,7 +1029,7 @@ export default function ClientsCRMPage() {
                   <button onClick={executeMerge} disabled={merging}
                     className="flex-1 py-2.5 rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50"
                     style={{ background: "#8B5CF6", color: "#fff", border: "none" }}>
-                    {merging ? "Fusion..." : `Fusionner`}
+                    {merging ? "Fusion..." : "Fusionner"}
                   </button>
                 </div>
               </div>
@@ -1007,31 +1038,17 @@ export default function ClientsCRMPage() {
         )}
       </div>
 
-      {/* ── Responsive CSS ── */}
+      {/* ── CSS ── */}
       <style>{`
-        /* Desktop: side-by-side */
-        @media (min-width: 768px) {
-          .crm-right-panel {
-            flex: 1;
-            min-width: 0;
-          }
-          .crm-back-btn {
-            display: none !important;
-          }
+        @keyframes slideInRight {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
         }
-        /* Mobile: right panel overlays */
-        @media (max-width: 767px) {
-          .crm-right-panel {
-            position: absolute;
-            inset: 0;
-            z-index: 20;
-            transform: translateX(100%);
-            transition: transform 0.25s ease;
-          }
-          .crm-right-panel.crm-right-open {
-            transform: translateX(0);
-          }
+        .animate-slide-in-right {
+          animation: slideInRight 0.25s ease-out;
         }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
     </OsLayout>
   );

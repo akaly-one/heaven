@@ -4,7 +4,7 @@ import React, { useState, useCallback } from "react";
 import {
   Lock, Image, Coins, Eye, Camera, Video, Play, X,
   Plus, Upload, Pencil, Trash2, GripVertical, Crown,
-  Sparkles, Diamond, Star, Heart,
+  Sparkles, Diamond, Star, Heart, Check,
 } from "lucide-react";
 import { ContentProtection } from "@/components/content-protection";
 import type { UploadedContent, PackConfig } from "@/types/heaven";
@@ -90,6 +90,27 @@ export function GalleryTab({
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverTier, setDragOverTier] = useState<string | null>(null);
 
+  // ── Bulk selection for quick pack assignment ──
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+  const bulkAssignPack = useCallback((targetTier: string) => {
+    const isPublic = targetTier === "promo";
+    selectedIds.forEach(id => {
+      handleUpdateMedia(id, {
+        tier: isPublic ? "vip" : targetTier,
+        visibility: isPublic ? "promo" : "pack",
+      });
+    });
+    clearSelection();
+  }, [selectedIds, handleUpdateMedia, clearSelection]);
+
   const onDragStart = useCallback((e: React.DragEvent, id: string) => {
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", id);
@@ -140,9 +161,9 @@ export function GalleryTab({
     return (
       <div className="fade-up space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
-            {uploads.length} médias · <span style={{ color: "var(--text)" }}>Glisse-dépose pour classer</span>
+            {uploads.length} médias · <span style={{ color: "var(--text)" }}>Glisse-dépose ou survol pour classer</span>
           </p>
           <button onClick={() => mediaInputRef.current?.click()}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-semibold cursor-pointer transition-all hover:scale-[1.02]"
@@ -157,6 +178,34 @@ export function GalleryTab({
           </button>
           <input ref={mediaInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleAddMedia} />
         </div>
+
+        {/* Bulk selection bar — appears when items selected */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
+            style={{ background: "rgba(230,51,41,0.06)", border: "1px solid rgba(230,51,41,0.2)" }}>
+            <span className="text-[11px] font-bold" style={{ color: "var(--accent)" }}>
+              {selectedIds.size} sélectionné{selectedIds.size > 1 ? "s" : ""}
+            </span>
+            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>→ Placer dans :</span>
+            <div className="flex gap-1">
+              {DROP_ORDER.map(t => {
+                const r = PACK_RULES[t];
+                return (
+                  <button key={t} onClick={() => bulkAssignPack(t)}
+                    className="px-2 py-1 rounded-lg text-[9px] font-bold cursor-pointer transition-all hover:scale-105"
+                    style={{ background: `${r.color}15`, color: r.color, border: `1px solid ${r.color}30` }}>
+                    {r.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex-1" />
+            <button onClick={clearSelection} className="text-[10px] font-medium cursor-pointer"
+              style={{ color: "var(--text-muted)", background: "none", border: "none" }}>
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
 
         {/* Pack zones */}
         {DROP_ORDER.map(tierKey => {
@@ -215,6 +264,7 @@ export function GalleryTab({
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1.5 p-3">
                   {items.map(item => {
                     const isDragging = dragId === item.id;
+                    const isItemSelected = selectedIds.has(item.id);
                     return (
                       <div key={item.id}
                         draggable
@@ -224,12 +274,22 @@ export function GalleryTab({
                         style={{
                           opacity: isDragging ? 0.35 : 1,
                           transform: isDragging ? "scale(0.95)" : "scale(1)",
+                          outline: isItemSelected ? "2px solid var(--accent)" : "none",
+                          outlineOffset: "-2px",
                         }}>
                         <img src={item.dataUrl} alt={item.label} className="w-full h-full object-cover" draggable={false} />
-                        {/* Grip indicator */}
-                        <div className="absolute top-1 left-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                          <GripVertical className="w-3 h-3 text-white drop-shadow-md" />
-                        </div>
+
+                        {/* Selection checkbox — top left */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleSelected(item.id); }}
+                          className="absolute top-1 left-1 w-5 h-5 rounded flex items-center justify-center cursor-pointer z-10 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                          style={{
+                            background: isItemSelected ? "var(--accent)" : "rgba(0,0,0,0.5)",
+                            border: `1.5px solid ${isItemSelected ? "var(--accent)" : "rgba(255,255,255,0.4)"}`,
+                          }}>
+                          {isItemSelected && <Check className="w-3 h-3 text-white" />}
+                        </button>
+
                         {/* Type badge */}
                         {item.type !== "photo" && (
                           <div className="absolute top-1 right-1">
@@ -246,18 +306,49 @@ export function GalleryTab({
                             </span>
                           </div>
                         )}
-                        {/* Edit/delete overlay */}
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <button onClick={(e) => { e.stopPropagation(); setEditingUploadId(item.id); setEditUploadData({ tier: item.tier, label: item.label, visibility: item.visibility, tokenPrice: item.tokenPrice }); }}
-                            className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
-                            style={{ background: "rgba(255,255,255,0.2)" }}>
-                            <Pencil className="w-3 h-3 text-white" />
-                          </button>
-                          <button onClick={(e) => { e.stopPropagation(); handleDeleteMedia(item.id); }}
-                            className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
-                            style={{ background: "rgba(239,68,68,0.5)" }}>
-                            <Trash2 className="w-3 h-3 text-white" />
-                          </button>
+
+                        {/* Hover overlay — pack quick-assign bar + edit/delete */}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/item:opacity-100 transition-opacity flex flex-col">
+                          {/* Quick pack assign bar — horizontal at top */}
+                          <div className="flex items-center justify-center gap-0.5 px-1 pt-6 pb-1">
+                            {DROP_ORDER.map(t => {
+                              const r = PACK_RULES[t];
+                              const isCurrentPack = (item.visibility === "promo" && t === "promo") || (item.visibility !== "promo" && item.tier === t);
+                              return (
+                                <button key={t}
+                                  onClick={(e) => {
+                                    e.stopPropagation(); e.preventDefault();
+                                    const isPublic = t === "promo";
+                                    handleUpdateMedia(item.id, {
+                                      tier: isPublic ? (item.tier || "vip") : t,
+                                      visibility: isPublic ? "promo" : "pack",
+                                    });
+                                  }}
+                                  className="w-5 h-5 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-125"
+                                  title={r.label}
+                                  style={{
+                                    background: isCurrentPack ? r.color : `${r.color}40`,
+                                    border: `1.5px solid ${isCurrentPack ? "#fff" : r.color}`,
+                                    boxShadow: isCurrentPack ? `0 0 6px ${r.color}` : "none",
+                                  }}>
+                                  {isCurrentPack && <Check className="w-2.5 h-2.5 text-white" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {/* Edit/delete buttons — center */}
+                          <div className="flex-1 flex items-center justify-center gap-2">
+                            <button onClick={(e) => { e.stopPropagation(); setEditingUploadId(item.id); setEditUploadData({ tier: item.tier, label: item.label, visibility: item.visibility, tokenPrice: item.tokenPrice }); }}
+                              className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
+                              style={{ background: "rgba(255,255,255,0.2)" }}>
+                              <Pencil className="w-3 h-3 text-white" />
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); handleDeleteMedia(item.id); }}
+                              className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
+                              style={{ background: "rgba(239,68,68,0.5)" }}>
+                              <Trash2 className="w-3 h-3 text-white" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );

@@ -4,11 +4,16 @@ import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-/* ══════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
    /api/sqwensy — Bridge / Tunnel to SQWENSY OS
    Enables SQWENSY Agence module to pull Heaven data
    and push data back (client referrals, goals, etc.)
-   ══════════════════════════════════════════════ */
+
+   GET ?scope=all|models|payments|revenue|system|cms|security
+   POST actions: sync_client, update_goal, register_packs,
+     push_notification, sync_to_sqwensy, manage_codes,
+     toggle_payment_config
+   ══════════════════════════════════════════════════════════════ */
 
 const SQWENSY_OS_URL =
   process.env.SQWENSY_OS_API_URL || "https://sqwensy.com";
@@ -30,7 +35,23 @@ export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
+// ── Helper: safe count query ──
+async function safeCount(supabase: ReturnType<typeof getServerSupabase>, table: string, filters?: Record<string, unknown>): Promise<number> {
+  if (!supabase) return 0;
+  try {
+    let q = supabase.from(table).select("*", { count: "exact", head: true });
+    if (filters) {
+      for (const [k, v] of Object.entries(filters)) {
+        q = q.eq(k, v);
+      }
+    }
+    const { count } = await q;
+    return count ?? 0;
+  } catch { return 0; }
+}
+
 // ── GET: SQWENSY OS pulls aggregated Heaven data ──
+// ?scope=all (default) | models | payments | revenue | system | cms | security
 export async function GET(request: NextRequest) {
   const cors = getCorsHeaders(request);
   if (!validateTunnelKey(request)) {
@@ -42,131 +63,245 @@ export async function GET(request: NextRequest) {
 
   try {
     const supabase = requireSupabase();
+    const scope = request.nextUrl.searchParams.get("scope") || "all";
+    const modelFilter = request.nextUrl.searchParams.get("model") || null;
 
-    // Fetch all models' platform accounts
-    const { data: platformAccounts, error: paErr } = await supabase
-      .from("agence_platform_accounts")
-      .select("*")
-      .eq("status", "active");
+    const result: Record<string, unknown> = {
+      source: "heaven-os",
+      synced_at: new Date().toISOString(),
+      scope,
+    };
 
-    if (paErr) {
-      console.error("[API/sqwensy] platforms error:", paErr);
-      return NextResponse.json(
-        { error: "Database error" },
-        { status: 502, headers: cors }
-      );
+    // ── MODELS scope ──
+    if (scope === "all" || scope === "models") {
+      const { data: platformAccounts } = await supabase
+        .from("agence_platform_accounts")
+        .select("*")
+        .eq("status", "active");
+
+      const { data: contentItems } = await supabase
+        .from("agence_content_pipeline")
+        .select("model_slug, stage, revenue");
+
+      const { data: fans } = await supabase
+        .from("agence_fan_lifecycle")
+        .select("model_slug, stage, total_spent");
+
+      const { data: goals } = await supabase
+        .from("agence_goals")
+        .select("*")
+        .eq("status", "active");
+
+      const modelSlugs = [
+        ...new Set([
+          ...(platformAccounts || []).map((a) => a.model_slug),
+          ...(contentItems || []).map((c) => c.model_slug),
+          ...(fans || []).map((f) => f.model_slug),
+        ]),
+      ].filter((s) => !modelFilter || s === modelFilter);
+
+      result.models = modelSlugs.map((slug) => {
+        const accounts = (platformAccounts || []).filter((a) => a.model_slug === slug);
+        const content = (contentItems || []).filter((c) => c.model_slug === slug);
+        const modelFans = (fans || []).filter((f) => f.model_slug === slug);
+        const modelGoals = (goals || []).filter((g) => g.model_slug === slug);
+
+        return {
+          slug,
+          platform_accounts: accounts.map((a) => ({
+            platform: a.platform,
+            handle: a.handle,
+            subscribers: a.subscribers_count,
+            revenue: parseFloat(a.monthly_revenue || "0"),
+          })),
+          total_subscribers: accounts.reduce((s, a) => s + (a.subscribers_count || 0), 0),
+          monthly_revenue: accounts.reduce((s, a) => s + parseFloat(a.monthly_revenue || "0"), 0),
+          content_total: content.length,
+          content_published: content.filter((c) => c.stage === "published").length,
+          content_revenue: content.reduce((s, c) => s + parseFloat(c.revenue || "0"), 0),
+          active_fans: modelFans.filter((f) => f.stage !== "churned").length,
+          fan_revenue: modelFans.reduce((s, f) => s + parseFloat(f.total_spent || "0"), 0),
+          active_goals: modelGoals.length,
+        };
+      });
     }
 
-    // Fetch content pipeline counts per model
-    const { data: contentItems, error: ciErr } = await supabase
-      .from("agence_content_pipeline")
-      .select("model_slug, stage, revenue");
+    // ── PAYMENTS scope ──
+    if (scope === "all" || scope === "payments") {
+      let payQ = supabase.from("agence_pending_payments").select("id, model, amount, currency, status, payment_method, tier, pack_name, created_at, generated_code, code_sent");
+      if (modelFilter) payQ = payQ.eq("model", modelFilter);
 
-    if (ciErr) {
-      console.error("[API/sqwensy] content error:", ciErr);
-      return NextResponse.json(
-        { error: "Database error" },
-        { status: 502, headers: cors }
-      );
-    }
+      const { data: payments } = await payQ.order("created_at", { ascending: false }).limit(100);
 
-    // Fetch active fans per model
-    const { data: fans, error: fErr } = await supabase
-      .from("agence_fan_lifecycle")
-      .select("model_slug, stage, total_spent");
+      const completed = (payments || []).filter((p) => p.status === "completed");
+      const pending = (payments || []).filter((p) => p.status === "pending");
+      const failed = (payments || []).filter((p) => p.status === "failed");
 
-    if (fErr) {
-      console.error("[API/sqwensy] fans error:", fErr);
-      return NextResponse.json(
-        { error: "Database error" },
-        { status: 502, headers: cors }
-      );
-    }
+      const totalRevenue = completed.reduce((s, p) => s + parseFloat(p.amount || "0"), 0);
 
-    // Fetch active goals
-    const { data: goals, error: gErr } = await supabase
-      .from("agence_goals")
-      .select("*")
-      .eq("status", "active");
+      // Payment method breakdown
+      const byMethod: Record<string, { count: number; total: number }> = {};
+      for (const p of completed) {
+        const m = p.payment_method || "unknown";
+        if (!byMethod[m]) byMethod[m] = { count: 0, total: 0 };
+        byMethod[m].count++;
+        byMethod[m].total += parseFloat(p.amount || "0");
+      }
 
-    if (gErr) {
-      console.error("[API/sqwensy] goals error:", gErr);
-      return NextResponse.json(
-        { error: "Database error" },
-        { status: 502, headers: cors }
-      );
-    }
-
-    // Aggregate by model
-    const modelSlugs = [
-      ...new Set([
-        ...(platformAccounts || []).map((a) => a.model_slug),
-        ...(contentItems || []).map((c) => c.model_slug),
-        ...(fans || []).map((f) => f.model_slug),
-      ]),
-    ];
-
-    const models = modelSlugs.map((slug) => {
-      const accounts = (platformAccounts || []).filter(
-        (a) => a.model_slug === slug
-      );
-      const content = (contentItems || []).filter(
-        (c) => c.model_slug === slug
-      );
-      const modelFans = (fans || []).filter((f) => f.model_slug === slug);
-      const modelGoals = (goals || []).filter((g) => g.model_slug === slug);
-
-      const totalSubscribers = accounts.reduce(
-        (sum, a) => sum + (a.subscribers_count || 0),
-        0
-      );
-      const totalMonthlyRevenue = accounts.reduce(
-        (sum, a) => sum + parseFloat(a.monthly_revenue || "0"),
-        0
-      );
-      const contentRevenue = content.reduce(
-        (sum, c) => sum + parseFloat(c.revenue || "0"),
-        0
-      );
-      const publishedCount = content.filter(
-        (c) => c.stage === "published"
-      ).length;
-      const activeFans = modelFans.filter(
-        (f) => f.stage !== "churned"
-      ).length;
-      const fanRevenue = modelFans.reduce(
-        (sum, f) => sum + parseFloat(f.total_spent || "0"),
-        0
-      );
-
-      return {
-        slug,
-        platform_accounts: accounts.map((a) => ({
-          platform: a.platform,
-          handle: a.handle,
-          subscribers: a.subscribers_count,
-          revenue: parseFloat(a.monthly_revenue || "0"),
+      result.payments = {
+        completed: completed.length,
+        pending: pending.length,
+        failed: failed.length,
+        total_revenue: Math.round(totalRevenue * 100) / 100,
+        by_method: byMethod,
+        recent: (payments || []).slice(0, 20).map((p) => ({
+          id: p.id,
+          model: p.model,
+          amount: p.amount,
+          currency: p.currency,
+          status: p.status,
+          method: p.payment_method,
+          tier: p.tier,
+          pack: p.pack_name,
+          code_sent: p.code_sent,
+          created_at: p.created_at,
         })),
-        total_subscribers: totalSubscribers,
-        monthly_revenue: totalMonthlyRevenue,
-        content_total: content.length,
-        content_published: publishedCount,
-        content_revenue: contentRevenue,
-        active_fans: activeFans,
-        fan_revenue: fanRevenue,
-        active_goals: modelGoals.length,
       };
-    });
+    }
 
-    return NextResponse.json(
-      {
-        source: "heaven-os",
-        synced_at: new Date().toISOString(),
-        sqwensy_os_url: SQWENSY_OS_URL,
-        models,
-      },
-      { headers: cors }
-    );
+    // ── REVENUE scope ──
+    if (scope === "all" || scope === "revenue") {
+      let revQ = supabase.from("agence_revenue_log").select("*");
+      if (modelFilter) revQ = revQ.eq("model", modelFilter);
+
+      const { data: revenueLogs } = await revQ.order("created_at", { ascending: false }).limit(200);
+
+      const totalGross = (revenueLogs || []).reduce((s, r) => s + parseFloat(r.amount || "0"), 0);
+      const totalCommission = (revenueLogs || []).reduce((s, r) => s + parseFloat(r.commission_amount || "0"), 0);
+      const totalNet = (revenueLogs || []).reduce((s, r) => s + parseFloat(r.net_amount || "0"), 0);
+
+      // Monthly breakdown
+      const monthlyMap: Record<string, { gross: number; commission: number; net: number; count: number }> = {};
+      for (const r of revenueLogs || []) {
+        const month = (r.created_at || "").substring(0, 7); // YYYY-MM
+        if (!monthlyMap[month]) monthlyMap[month] = { gross: 0, commission: 0, net: 0, count: 0 };
+        monthlyMap[month].gross += parseFloat(r.amount || "0");
+        monthlyMap[month].commission += parseFloat(r.commission_amount || "0");
+        monthlyMap[month].net += parseFloat(r.net_amount || "0");
+        monthlyMap[month].count++;
+      }
+
+      result.revenue = {
+        total_gross: Math.round(totalGross * 100) / 100,
+        total_commission: Math.round(totalCommission * 100) / 100,
+        total_net: Math.round(totalNet * 100) / 100,
+        commission_rate: 0.25,
+        entries: (revenueLogs || []).length,
+        monthly: monthlyMap,
+        recent: (revenueLogs || []).slice(0, 20).map((r) => ({
+          id: r.id,
+          model: r.model,
+          amount: r.amount,
+          commission: r.commission_amount,
+          net: r.net_amount,
+          method: r.payment_method,
+          tier: r.tier,
+          created_at: r.created_at,
+        })),
+      };
+    }
+
+    // ── SYSTEM scope (health & infra) ──
+    if (scope === "all" || scope === "system") {
+      const [modelsTotal, modelsActive, clientsTotal, codesTotal, codesActive, postsCount, pagesCount, messagesCount] = await Promise.all([
+        safeCount(supabase, "agence_models"),
+        safeCount(supabase, "agence_models", { is_active: true }),
+        safeCount(supabase, "agence_clients"),
+        safeCount(supabase, "agence_codes"),
+        safeCount(supabase, "agence_codes", { active: true }),
+        safeCount(supabase, "agence_posts"),
+        safeCount(supabase, "agence_pages"),
+        safeCount(supabase, "agence_messages"),
+      ]);
+
+      result.system = {
+        models: { total: modelsTotal, active: modelsActive },
+        clients: clientsTotal,
+        codes: { total: codesTotal, active: codesActive },
+        posts: postsCount,
+        pages: pagesCount,
+        messages: messagesCount,
+        env: {
+          paypal_configured: !!process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
+          revolut_configured: !!process.env.REVOLUT_API_SECRET_KEY,
+          cloudinary_configured: !!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+          sqwensy_tunnel: !!process.env.SQWENSY_TUNNEL_KEY,
+          heaven_sync_secret: !!process.env.HEAVEN_SYNC_SECRET,
+        },
+        uptime: process.uptime(),
+      };
+    }
+
+    // ── CMS scope ──
+    if (scope === "all" || scope === "cms") {
+      let pagesQ = supabase.from("agence_pages").select("id, model, title, slug, status, created_at, updated_at");
+      if (modelFilter) pagesQ = pagesQ.eq("model", modelFilter);
+      const { data: pages } = await pagesQ.order("updated_at", { ascending: false });
+
+      let collabQ = supabase.from("agence_collaborators").select("id, model, name, role, active, created_at");
+      if (modelFilter) collabQ = collabQ.eq("model", modelFilter);
+      const { data: collaborators } = await collabQ;
+
+      result.cms = {
+        pages: (pages || []).map((p) => ({
+          id: p.id,
+          model: p.model,
+          title: p.title,
+          slug: p.slug,
+          status: p.status,
+          updated_at: p.updated_at,
+        })),
+        collaborators: (collaborators || []).map((c) => ({
+          id: c.id,
+          model: c.model,
+          name: c.name,
+          role: c.role,
+          active: c.active,
+        })),
+        pages_total: (pages || []).length,
+        collaborators_total: (collaborators || []).length,
+      };
+    }
+
+    // ── SECURITY scope ──
+    if (scope === "all" || scope === "security") {
+      let connQ = supabase.from("agence_client_connections").select("id, client_id, model, ip, user_agent, created_at");
+      if (modelFilter) connQ = connQ.eq("model", modelFilter);
+      const { data: connections } = await connQ.order("created_at", { ascending: false }).limit(50);
+
+      // Suspicious patterns: multiple IPs per client, rapid connections
+      const clientIps: Record<string, Set<string>> = {};
+      for (const c of connections || []) {
+        if (!clientIps[c.client_id]) clientIps[c.client_id] = new Set();
+        if (c.ip) clientIps[c.client_id].add(c.ip);
+      }
+      const suspiciousClients = Object.entries(clientIps)
+        .filter(([, ips]) => ips.size > 3)
+        .map(([clientId, ips]) => ({ client_id: clientId, unique_ips: ips.size }));
+
+      result.security = {
+        recent_connections: (connections || []).slice(0, 20).map((c) => ({
+          client_id: c.client_id,
+          model: c.model,
+          ip: c.ip,
+          created_at: c.created_at,
+        })),
+        total_connections: (connections || []).length,
+        suspicious_clients: suspiciousClients,
+      };
+    }
+
+    return NextResponse.json(result, { headers: cors });
   } catch (err) {
     console.error("[API/sqwensy] GET:", err);
     return NextResponse.json(
@@ -412,6 +547,99 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      case "manage_codes": {
+        // Manage access codes from SQWENSY OS (revoke, extend, bulk operations)
+        const codeAction = body.code_action as string; // revoke, extend, bulk_revoke
+        if (!codeAction) {
+          return NextResponse.json({ error: "code_action required (revoke|extend|bulk_revoke)" }, { status: 400, headers: cors });
+        }
+
+        if (codeAction === "revoke") {
+          if (!body.code_id) return NextResponse.json({ error: "code_id required" }, { status: 400, headers: cors });
+          const { data, error } = await supabase
+            .from("agence_codes")
+            .update({ active: false, revoked: true, revoked_at: new Date().toISOString(), revoked_by: "sqwensy-os" })
+            .eq("id", body.code_id)
+            .select()
+            .single();
+          if (error) return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
+          return NextResponse.json({ success: true, code: data }, { headers: cors });
+        }
+
+        if (codeAction === "extend") {
+          if (!body.code_id || !body.extend_hours) return NextResponse.json({ error: "code_id and extend_hours required" }, { status: 400, headers: cors });
+          const { data: existing } = await supabase.from("agence_codes").select("expires_at").eq("id", body.code_id).single();
+          if (!existing) return NextResponse.json({ error: "Code not found" }, { status: 404, headers: cors });
+          const newExpiry = new Date(new Date(existing.expires_at).getTime() + body.extend_hours * 3600000).toISOString();
+          const { data, error } = await supabase
+            .from("agence_codes")
+            .update({ expires_at: newExpiry })
+            .eq("id", body.code_id)
+            .select()
+            .single();
+          if (error) return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
+          return NextResponse.json({ success: true, code: data, new_expiry: newExpiry }, { headers: cors });
+        }
+
+        if (codeAction === "bulk_revoke") {
+          if (!body.model_slug) return NextResponse.json({ error: "model_slug required" }, { status: 400, headers: cors });
+          const { count, error } = await supabase
+            .from("agence_codes")
+            .update({ active: false, revoked: true, revoked_at: new Date().toISOString(), revoked_by: "sqwensy-os-bulk" })
+            .eq("model", body.model_slug)
+            .eq("active", true);
+          if (error) return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
+          return NextResponse.json({ success: true, revoked_count: count }, { headers: cors });
+        }
+
+        return NextResponse.json({ error: "Invalid code_action" }, { status: 400, headers: cors });
+      }
+
+      case "update_payment_status": {
+        // Update a pending payment status from SQWENSY OS (manual validation)
+        if (!body.payment_id || !body.status) {
+          return NextResponse.json({ error: "payment_id and status required" }, { status: 400, headers: cors });
+        }
+        const validStatuses = ["completed", "failed", "cancelled", "refunded"];
+        if (!validStatuses.includes(body.status)) {
+          return NextResponse.json({ error: `Invalid status. Valid: ${validStatuses.join(", ")}` }, { status: 400, headers: cors });
+        }
+
+        const updates: Record<string, unknown> = {
+          status: body.status,
+          updated_at: new Date().toISOString(),
+        };
+        if (body.notes) updates.notes = body.notes;
+
+        const { data, error } = await supabase
+          .from("agence_pending_payments")
+          .update(updates)
+          .eq("id", body.payment_id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error("[API/sqwensy] update_payment_status error:", error);
+          return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
+        }
+
+        return NextResponse.json({ success: true, payment: data }, { headers: cors });
+      }
+
+      case "get_model_registry": {
+        // Fetch aggregated model stats from the heaven_model_registry VIEW
+        const { data: registry, error } = await supabase
+          .from("heaven_model_registry")
+          .select("*");
+
+        if (error) {
+          console.error("[API/sqwensy] model_registry error:", error);
+          return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
+        }
+
+        return NextResponse.json({ success: true, registry }, { headers: cors });
+      }
+
       default:
         return NextResponse.json(
           {
@@ -422,6 +650,9 @@ export async function POST(request: NextRequest) {
               "register_packs",
               "push_notification",
               "sync_to_sqwensy",
+              "manage_codes",
+              "update_payment_status",
+              "get_model_registry",
             ],
           },
           { status: 400, headers: cors }

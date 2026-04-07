@@ -5,6 +5,9 @@ import { useModel } from "@/lib/model-context";
 import { OsLayout } from "@/components/os-layout";
 import { SecurityAlerts } from "@/components/cockpit/security-alerts";
 import { Settings, UserPlus, Trash2, Shield, ShieldCheck, Power, Lock, Users, Edit3, GitMerge, Zap, ChevronDown, ChevronUp, Database, Cloud, CreditCard, Server, CheckCircle, AlertCircle, Globe, Monitor, RefreshCw, Hash, UserCheck, Key, DollarSign, FileText } from "lucide-react";
+import { PackConfigurator } from "@/components/cockpit/pack-configurator";
+import type { PackConfig } from "@/types/heaven";
+import { DEFAULT_PACKS } from "@/constants/packs";
 
 // ── Types ──
 interface Account {
@@ -14,6 +17,7 @@ interface Account {
 const SECTIONS = [
   { id: "security" as const, label: "Sécurité", icon: Lock },
   { id: "accounts" as const, label: "Comptes", icon: Users },
+  { id: "packs" as const, label: "Packs", icon: CreditCard },
   { id: "mode" as const, label: "Mode", icon: Zap },
   { id: "devcenter" as const, label: "Dev Center", icon: Monitor, rootOnly: true },
 ];
@@ -22,7 +26,7 @@ export default function SettingsPage() {
   const { authHeaders, isRoot, auth, currentModel } = useModel();
   const modelSlug = currentModel || auth?.model_slug || "";
 
-  const [section, setSection] = useState<"security" | "accounts" | "mode" | "devcenter">("security");
+  const [section, setSection] = useState<"security" | "accounts" | "packs" | "mode" | "devcenter">("security");
   const [expandedGuide, setExpandedGuide] = useState<string | null>(null);
   const [purging, setPurging] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -45,6 +49,17 @@ export default function SettingsPage() {
   }
   const [sysStatus, setSysStatus] = useState<SystemStatus | null>(null);
   const [sysLoading, setSysLoading] = useState(false);
+
+  // ── Packs state ──
+  const [settingsPacks, setSettingsPacks] = useState<PackConfig[]>([]);
+  const fetchPacks = () => {
+    if (!modelSlug) return;
+    fetch(`/api/packs?model=${modelSlug}`, { headers: authHeaders() })
+      .then(r => r.json())
+      .then(d => setSettingsPacks(d.packs || d || DEFAULT_PACKS))
+      .catch(() => setSettingsPacks(DEFAULT_PACKS));
+  };
+  useEffect(() => { if (section === "packs") fetchPacks(); }, [section, modelSlug]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchSystemStatus = () => {
     setSysLoading(true);
@@ -305,6 +320,24 @@ export default function SettingsPage() {
                   </>)}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ═══ PACKS SECTION ═══ */}
+          {section === "packs" && (
+            <div className="space-y-4 fade-up-2">
+              <div className="card-premium p-5">
+                <h3 className="text-sm font-bold mb-1" style={{ color: "var(--text)" }}>Configuration des Packs</h3>
+                <p className="text-[11px] mb-4" style={{ color: "var(--text-muted)" }}>
+                  Modifie les prix, noms, contenus et options de chaque pack. Les changements sont synchronisés en temps réel avec le profil public.
+                </p>
+                <PackConfigurator
+                  packs={settingsPacks}
+                  model={modelSlug}
+                  onSave={(updated) => setSettingsPacks(updated)}
+                  authHeaders={authHeaders}
+                />
+              </div>
             </div>
           )}
 

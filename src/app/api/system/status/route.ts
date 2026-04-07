@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
           // Fallback: count major tables individually
           if (!statRows) {
             let totalRows = 0;
-            const tables = ["agence_clients", "agence_codes", "agence_posts", "agence_messages", "agence_models", "agence_payments", "agence_accounts"];
+            const tables = ["agence_clients", "agence_codes", "agence_posts", "agence_messages", "agence_models", "agence_pending_payments", "agence_accounts"];
             for (const t of tables) {
               try {
                 const { count } = await supabase.from(t).select("*", { count: "exact", head: true });
@@ -97,9 +97,9 @@ export async function GET(req: NextRequest) {
       // ── Payments stats ──
       (async () => {
         try {
-          const { count: completed } = await supabase.from("agence_payments").select("*", { count: "exact", head: true }).eq("status", "completed");
-          const { count: pending } = await supabase.from("agence_payments").select("*", { count: "exact", head: true }).eq("status", "pending");
-          const { data: revenueData } = await supabase.from("agence_payments").select("amount").eq("status", "completed");
+          const { count: completed } = await supabase.from("agence_pending_payments").select("*", { count: "exact", head: true }).eq("status", "completed");
+          const { count: pending } = await supabase.from("agence_pending_payments").select("*", { count: "exact", head: true }).eq("status", "pending");
+          const { data: revenueData } = await supabase.from("agence_pending_payments").select("amount").eq("status", "completed");
           const totalRevenue = (revenueData || []).reduce((sum: number, r: { amount: number }) => sum + (r.amount || 0), 0);
           return { completed: completed ?? 0, pending: pending ?? 0, total_revenue: Math.round(totalRevenue * 100) / 100 };
         } catch {
