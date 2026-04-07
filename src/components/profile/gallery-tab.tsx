@@ -9,45 +9,46 @@ import {
 import { ContentProtection } from "@/components/content-protection";
 import type { UploadedContent, PackConfig } from "@/types/heaven";
 import { TIER_META, TIER_HEX } from "@/constants/tiers";
+import { toSlot, isFreeSlot } from "@/lib/tier-utils";
 
 // ── Pack tier rules (canonical tiers from constants/tiers.ts) ──
 const PACK_RULES: Record<string, { icon: React.ReactNode; label: string; color: string; desc: string; access: string[] }> = {
-  promo: {
+  p0: {
     icon: <Eye className="w-3.5 h-3.5" />,
     label: "Public",
     color: "#64748B",
     desc: "Visible par tous les visiteurs",
     access: ["Gratuit", "Teasing / promo", "Aucun code requis"],
   },
-  silver: {
+  p1: {
     icon: <Sparkles className="w-3.5 h-3.5" />,
     label: "Silver",
     color: "#C0C0C0",
     desc: "♣ Photos, shootings, promos — sans nudité",
     access: ["Photos glamour", "Shootings pro", "Promos exclusives", "Sans nudité"],
   },
-  gold: {
+  p2: {
     icon: <Star className="w-3.5 h-3.5" />,
     label: "Gold",
     color: "#D4AF37",
     desc: "♦ Tenue dentelle, sensuel, poses suggestives",
     access: ["Tout du Silver inclus", "Lingerie dentelle", "Poses suggestives", "Contenu sensuel"],
   },
-  black: {
+  p3: {
     icon: <Diamond className="w-3.5 h-3.5" />,
     label: "VIP Black",
     color: "#1C1C1C",
     desc: "♠ Sextapes & nudes — visage caché",
     access: ["Tout du Gold inclus", "Nudes complets", "Sextapes", "Visage caché"],
   },
-  feet: {
+  p4: {
     icon: <Heart className="w-3.5 h-3.5" />,
     label: "Feet Lovers",
     color: "#E8A87C",
     desc: "🦶 Photos pieds glamour, accessoires, dédicaces",
     access: ["Photos pieds glamour", "Accessoires", "Dédicaces personnalisées", "Contenu exclusif"],
   },
-  platinum: {
+  p5: {
     icon: <Crown className="w-3.5 h-3.5" />,
     label: "VIP Platinum",
     color: "#B8860B",
@@ -56,7 +57,7 @@ const PACK_RULES: Record<string, { icon: React.ReactNode; label: string; color: 
   },
 };
 
-const DROP_ORDER = ["promo", "silver", "gold", "black", "feet", "platinum"] as const;
+const DROP_ORDER = ["p0", "p1", "p2", "p3", "p4", "p5"] as const;
 
 interface GalleryTabProps {
   isEditMode: boolean;
@@ -108,10 +109,10 @@ export function GalleryTab({
   }, []);
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
   const bulkAssignPack = useCallback((targetTier: string) => {
-    const isPublic = targetTier === "promo";
+    const isPublic = targetTier === "p0";
     selectedIds.forEach(id => {
       handleUpdateMedia(id, {
-        tier: isPublic ? "silver" : targetTier,
+        tier: isPublic ? "p1" : targetTier,
         visibility: isPublic ? "promo" : "pack",
       });
     });
@@ -138,9 +139,9 @@ export function GalleryTab({
     e.preventDefault();
     const id = e.dataTransfer.getData("text/plain");
     if (id) {
-      const isPublic = targetTier === "promo";
+      const isPublic = targetTier === "p0";
       handleUpdateMedia(id, {
-        tier: isPublic ? "silver" : targetTier,
+        tier: isPublic ? "p1" : targetTier,
         visibility: isPublic ? "promo" : "pack",
       });
     }
@@ -158,13 +159,11 @@ export function GalleryTab({
   // ══════════════════════════════════════
   if (isEditMode) {
     // Group uploads by effective tier (promo visibility → "promo" zone, otherwise by tier)
-    const grouped: Record<string, UploadedContent[]> = { promo: [], silver: [], gold: [], black: [], feet: [], platinum: [] };
+    const grouped: Record<string, UploadedContent[]> = { p0: [], p1: [], p2: [], p3: [], p4: [], p5: [] };
     uploads.forEach(u => {
-      const key = u.visibility === "promo" ? "promo" : (u.tier || "silver");
-      // Handle legacy tier names
-      const canonical = key === "vip" ? "silver" : key === "diamond" ? "black" : key;
-      if (grouped[canonical]) grouped[canonical].push(u);
-      else grouped.silver.push(u);
+      const key = u.visibility === "promo" ? "p0" : toSlot(u.tier);
+      if (grouped[key]) grouped[key].push(u);
+      else grouped.p1.push(u);
     });
 
     return (
@@ -323,14 +322,14 @@ export function GalleryTab({
                           <div className="flex items-center justify-center gap-0.5 px-1 pt-6 pb-1">
                             {DROP_ORDER.map(t => {
                               const r = PACK_RULES[t];
-                              const isCurrentPack = (item.visibility === "promo" && t === "promo") || (item.visibility !== "promo" && item.tier === t);
+                              const isCurrentPack = (item.visibility === "promo" && t === "p0") || (item.visibility !== "promo" && toSlot(item.tier) === t);
                               return (
                                 <button key={t}
                                   onClick={(e) => {
                                     e.stopPropagation(); e.preventDefault();
-                                    const isPublic = t === "promo";
+                                    const isPublic = t === "p0";
                                     handleUpdateMedia(item.id, {
-                                      tier: isPublic ? (item.tier || "silver") : t,
+                                      tier: isPublic ? (item.tier || "p1") : t,
                                       visibility: isPublic ? "promo" : "pack",
                                     });
                                   }}
@@ -476,7 +475,7 @@ export function GalleryTab({
   // ══════════════════════════════════════
 
   // Build pack preview data: last image per tier
-  const packPreviews = (["silver", "gold", "black", "feet", "platinum"] as const).map(tier => {
+  const packPreviews = (["p1", "p2", "p3", "p4", "p5"] as const).map(tier => {
     const tierItems = uploads.filter(u => u.visibility !== "promo" && u.tier === tier && u.dataUrl);
     const lastImage = tierItems[0] || null; // uploads already sorted newest first
     const count = tierItems.length;
@@ -549,7 +548,7 @@ export function GalleryTab({
             <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />
           )}
         </button>
-        {(["silver", "gold", "black", "feet", "platinum"] as const).filter(k => tierCounts[k]).map(tier => {
+        {(["p1", "p2", "p3", "p4", "p5"] as const).filter(k => tierCounts[k]).map(tier => {
           const hex = TIER_HEX[tier];
           return (
             <button key={tier} onClick={() => setGalleryTier(tier)}

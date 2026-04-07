@@ -5,7 +5,7 @@ import { calculateBadgeGrade } from "@/constants/badges";
 
 export const runtime = "nodejs";
 
-const TIER_HIERARCHY = ["silver", "gold", "feet", "black", "platinum"];
+const TIER_HIERARCHY = ["p1", "p2", "p3", "p4", "p5"];
 
 export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, { status: 204, headers: getCorsHeaders(req) });

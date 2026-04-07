@@ -7,20 +7,22 @@ import { useModel } from "@/lib/model-context";
 import { PackConfigurator } from "@/components/cockpit/pack-configurator";
 import type { FeedPost as Post, PackConfig } from "@/types/heaven";
 import { DEFAULT_PACKS } from "@/constants/packs";
+import { toSlot } from "@/lib/tier-utils";
+import { TIER_CONFIG } from "@/constants/tiers";
 
 // ── Constants ──
 
-const TIERS = ["all", "public", "silver", "gold", "black", "feet", "platinum"] as const;
+const TIERS = ["all", "p0", "p1", "p2", "p3", "p4", "p5"] as const;
 type TierFilter = (typeof TIERS)[number];
 
 const TIER_LABELS: Record<string, string> = {
   all: "Tout",
-  public: "Public",
-  silver: "♣ Silver",
-  gold: "♦ Gold",
-  black: "♠ VIP Black",
-  feet: "🦶 Feet",
-  platinum: "♥ Platinum",
+  p0: "Public",
+  p1: "♣ Silver",
+  p2: "♦ Gold",
+  p3: "🦶 Feet",
+  p4: "♠ VIP Black",
+  p5: "♥ Platinum",
 };
 
 // ── Component ──
@@ -65,8 +67,8 @@ export default function ContenuPage() {
 
   // ── Derived data ──
   const imagePosts = posts.filter((p) => p.media_url);
-  const filtered = filter === "all" ? imagePosts : imagePosts.filter((p) => (p.tier_required || "public") === filter);
-  const tierCount = (t: TierFilter) => (t === "all" ? imagePosts.length : imagePosts.filter((p) => (p.tier_required || "public") === t).length);
+  const filtered = filter === "all" ? imagePosts : imagePosts.filter((p) => toSlot(p.tier_required) === filter);
+  const tierCount = (t: TierFilter) => (t === "all" ? imagePosts.length : imagePosts.filter((p) => toSlot(p.tier_required) === t).length);
 
   // ── Selection ──
   const toggleSelect = (id: string) =>
@@ -296,7 +298,7 @@ export default function ContenuPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2">
                 {filtered.map((post) => {
                   const isSelected = selected.has(post.id);
-                  const tier = post.tier_required || "public";
+                  const tier = toSlot(post.tier_required);
                   return (
                     <div
                       key={post.id}
@@ -313,12 +315,12 @@ export default function ContenuPage() {
                           <Check className="w-3 h-3 text-white" />
                         </div>
                       )}
-                      {tier !== "public" && (
+                      {tier !== "p0" && (
                         <span
                           className="absolute bottom-1.5 right-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded-md uppercase"
                           style={{ background: "rgba(0,0,0,0.6)", color: "#fff", backdropFilter: "blur(4px)" }}
                         >
-                          {tier}
+                          {TIER_CONFIG[tier]?.label || tier}
                         </span>
                       )}
                       <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-1.5">
@@ -357,7 +359,7 @@ export default function ContenuPage() {
                         style={{ background: "var(--bg3)", border: "1px solid var(--border2)" }}
                       >
                         <p className="text-xs flex-1 truncate" style={{ color: "var(--text)" }}>{p.content}</p>
-                        <span className="text-[11px] uppercase" style={{ color: "var(--text-muted)" }}>{p.tier_required || "public"}</span>
+                        <span className="text-[11px] uppercase" style={{ color: "var(--text-muted)" }}>{TIER_CONFIG[toSlot(p.tier_required)]?.label || toSlot(p.tier_required)}</span>
                         <button
                           onClick={async () => {
                             await fetch(`/api/posts?id=${p.id}&model=${modelSlug}`, { method: "DELETE", headers: authHeaders() });
