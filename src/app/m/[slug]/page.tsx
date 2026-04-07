@@ -214,6 +214,7 @@ export default function ModelPage() {
   const [checkoutPack, setCheckoutPack] = useState<PackConfig | null>(null);
   const [shopToast, setShopToast] = useState<string | null>(null);
   const [orderHistoryOpen, setOrderHistoryOpen] = useState(false);
+  const [codeSheetOpen, setCodeSheetOpen] = useState(false);
 
   // ── Client Profile & Badges ──
   const { orders, newNotifications, clearNotifications } = useClientProfile({
@@ -1042,29 +1043,37 @@ export default function ModelPage() {
             {displayModel?.online && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }} />}
           </div>
 
-          {/* Center — verification status (visitor only) */}
-          {!isModelLoggedIn && visitorRegistered && (
-            <div className="flex-1 flex justify-center min-w-0">
-              {visitorVerified ? (
-                <span className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold" style={{ color: "#10B981" }}>
-                  <Check className="w-3 h-3 shrink-0" />
-                  <span className="truncate">Compte vérifié</span>
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold" style={{ color: "#EF4444" }}>
-                  <Lock className="w-3 h-3 shrink-0" />
-                  <span className="truncate">Non vérifié</span>
-                </span>
-              )}
-            </div>
-          )}
-          {(isModelLoggedIn || !visitorRegistered) && <div className="flex-1" />}
+          {/* Center spacer */}
+          <div className="flex-1" />
 
           {/* Right — badge + orders + code input + actions */}
           <div className="flex items-center gap-2 shrink-0">
             {visitorRegistered && (
               <>
-                <span className="text-[12px] font-semibold block truncate max-w-[100px] sm:max-w-[140px]" style={{ color: "var(--text)" }}>@{visitorHandle}</span>
+                <div className="flex items-center gap-1 shrink min-w-0">
+                  <span className="text-[12px] font-semibold truncate max-w-[80px] sm:max-w-[140px]" style={{ color: "var(--text)" }}>@{visitorHandle}</span>
+                  {/* Verified dot — tap for tooltip */}
+                  {!isModelLoggedIn && (
+                    <div className="relative group shrink-0">
+                      <div
+                        className="w-3.5 h-3.5 rounded-full flex items-center justify-center cursor-pointer"
+                        style={{ background: visitorVerified ? "#10B981" : "#EF4444" }}
+                      >
+                        {visitorVerified
+                          ? <Check className="w-2 h-2 text-white" />
+                          : <Lock className="w-2 h-2 text-white" />
+                        }
+                      </div>
+                      {/* Tooltip bubble on hover/tap */}
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto transition-opacity duration-200 z-50 whitespace-nowrap"
+                        style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }}>
+                        <span className="text-[10px] font-semibold" style={{ color: visitorVerified ? "#10B981" : "#EF4444" }}>
+                          {visitorVerified ? "Compte vérifié" : "Non vérifié"}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <ClientBadge tier={unlockedTier || null} />
                 {/* Order history button */}
                 <button onClick={() => { setOrderHistoryOpen(!orderHistoryOpen); clearNotifications(); }}
@@ -1081,7 +1090,9 @@ export default function ModelPage() {
                 {unlockedTier ? (
                   <CountdownBadge tier={unlockedTier} expiresAt={activeCode?.expiresAt || ""} />
                 ) : (
-                  <div className="relative group">
+                  <>
+                  {/* Desktop: inline code input */}
+                  <div className="relative group hidden sm:block">
                     <form onSubmit={async (e) => {
                       e.preventDefault();
                       const input = (e.target as HTMLFormElement).querySelector("input") as HTMLInputElement;
@@ -1100,7 +1111,6 @@ export default function ModelPage() {
                           const ad2 = JSON.stringify({ tier: data.code.tier, expiresAt: data.code.expiresAt, code: data.code.code });
                           sessionStorage.setItem(`heaven_access_${slug}`, ad2);
                           localStorage.setItem(`heaven_access_${slug}`, ad2);
-                          // Device security check
                           const fp = getDeviceFingerprint();
                           fetch("/api/codes/security", {
                             method: "POST",
@@ -1124,7 +1134,7 @@ export default function ModelPage() {
                       } catch { input.placeholder = "Erreur"; input.value = ""; }
                     }} className="flex items-center gap-1">
                       <input type="text" placeholder="CODE"
-                        className="w-[72px] sm:w-[90px] px-2 py-1 rounded-lg text-[10px] font-mono uppercase tracking-wider outline-none text-center"
+                        className="w-[90px] px-2 py-1 rounded-lg text-[10px] font-mono uppercase tracking-wider outline-none text-center"
                         style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
                       />
                       <button type="submit"
@@ -1133,15 +1143,15 @@ export default function ModelPage() {
                         <Key className="w-3 h-3 text-white" />
                       </button>
                     </form>
-                    {/* Tooltip on hover */}
-                    <div className="absolute top-full right-0 mt-2 w-56 p-3 rounded-xl opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-200 z-50"
-                      style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
-                      <p className="text-[11px] font-semibold mb-1" style={{ color: "var(--text)" }}>Code d'accès</p>
-                      <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                        Entre ton code pour débloquer le contenu exclusif. Tu recois ton code après l'achat d'un pack.
-                      </p>
-                    </div>
                   </div>
+                  {/* Mobile: key icon only — opens bottom sheet */}
+                  <button
+                    onClick={() => setCodeSheetOpen(true)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0 sm:hidden"
+                    style={{ background: "var(--accent)", border: "none" }}>
+                    <Key className="w-3.5 h-3.5 text-white" />
+                  </button>
+                  </>
                 )}
               </>
             )}
@@ -2660,6 +2670,82 @@ export default function ModelPage() {
         )}
 
       </div>
+
+      {/* ── Mobile Code Input Bottom Sheet ── */}
+      {codeSheetOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:hidden" onClick={() => setCodeSheetOpen(false)}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div
+            className="relative w-full rounded-t-2xl p-5 animate-slide-up"
+            style={{ background: "var(--surface)", border: "1px solid var(--border2)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-center mb-3">
+              <div className="w-10 h-1 rounded-full" style={{ background: "var(--border3)" }} />
+            </div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "var(--accent)" }}>
+                <Key className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-bold" style={{ color: "var(--text)" }}>Code d'accès</p>
+                <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Entre ton code pour débloquer le contenu exclusif</p>
+              </div>
+            </div>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              const input = (e.target as HTMLFormElement).querySelector("input") as HTMLInputElement;
+              const code = input?.value?.trim();
+              if (!code) return;
+              try {
+                const res = await fetch("/api/codes", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "validate", code, model: modelId }),
+                });
+                const data = await res.json();
+                if (data.code?.tier) {
+                  setUnlockedTier(data.code.tier);
+                  setActiveCode(data.code);
+                  const ad2 = JSON.stringify({ tier: data.code.tier, expiresAt: data.code.expiresAt, code: data.code.code });
+                  sessionStorage.setItem(`heaven_access_${slug}`, ad2);
+                  localStorage.setItem(`heaven_access_${slug}`, ad2);
+                  setCodeSheetOpen(false);
+                  const fp = getDeviceFingerprint();
+                  fetch("/api/codes/security", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ code_id: data.code.id, fingerprint: fp, user_agent: navigator.userAgent }),
+                  }).then(r2 => r2.json()).then(sec => {
+                    if (!sec.allowed) {
+                      setUnlockedTier(null);
+                      setActiveCode(null);
+                      sessionStorage.removeItem(`heaven_access_${slug}`);
+                      localStorage.removeItem(`heaven_access_${slug}`);
+                      alert(sec.message || "Code bloqué");
+                    }
+                  }).catch(() => {});
+                } else {
+                  input.style.borderColor = "#EF4444";
+                  input.placeholder = "Code invalide";
+                  input.value = "";
+                  setTimeout(() => { input.placeholder = "ENTRE TON CODE"; input.style.borderColor = ""; }, 2000);
+                }
+              } catch { input.placeholder = "Erreur"; input.value = ""; }
+            }} className="flex items-center gap-2">
+              <input type="text" placeholder="ENTRE TON CODE" autoFocus
+                className="flex-1 px-4 py-3 rounded-xl text-sm font-mono uppercase tracking-wider outline-none text-center"
+                style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
+              />
+              <button type="submit"
+                className="px-5 py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-105 active:scale-95 shrink-0"
+                style={{ background: "var(--accent)", color: "#fff", border: "none" }}>
+                Valider
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
