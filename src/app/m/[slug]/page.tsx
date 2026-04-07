@@ -1269,34 +1269,31 @@ export default function ModelPage() {
                         style={{
                           minWidth: "90px",
                           height: "72px",
+                          background: isActive ? `linear-gradient(135deg, ${tierHex}, ${tierHex}CC)` : "var(--surface)",
                           border: isActive ? `2px solid ${tierHex}` : "1px solid var(--border)",
-                          boxShadow: isActive ? `0 4px 20px ${tierHex}30` : "none",
+                          boxShadow: isActive ? `0 4px 20px ${tierHex}40` : "none",
                           opacity: isLocked && !isActive ? 0.7 : 1,
                         }}>
-                        {/* Background — preview image or gradient */}
+                        {/* Background — preview image or tier gradient */}
                         <div className="absolute inset-0">
-                          {previewImg ? (
+                          {previewImg && !isActive ? (
                             <img src={previewImg} alt="" draggable={false}
                               className="w-full h-full object-cover"
                               style={{ filter: isLocked ? "blur(8px) brightness(0.3)" : "brightness(0.35)", transform: isLocked ? "scale(1.1)" : "none" }} />
-                          ) : (
+                          ) : !isActive ? (
                             <div className="w-full h-full"
-                              style={{ background: `linear-gradient(135deg, ${tierHex}20, ${tierHex}08)` }} />
-                          )}
-                          {/* Active glow overlay */}
-                          {isActive && (
-                            <div className="absolute inset-0"
-                              style={{ background: `linear-gradient(135deg, ${tierHex}35, transparent)`, boxShadow: `inset 0 0 30px ${tierHex}20` }} />
-                          )}
+                              style={{ background: `linear-gradient(135deg, ${tierHex}12, ${tierHex}06)` }} />
+                          ) : null}
                         </div>
-                        {/* Content */}
+                        {/* Content — white by default, tier color on hover/active */}
                         <div className="relative flex flex-col items-center justify-center h-full gap-0.5 px-3">
-                          <span className="text-xl transition-transform group-hover:scale-110 relative">
+                          <span className="text-xl transition-all duration-200 group-hover:scale-110 relative"
+                            style={{ color: isActive ? "#fff" : "var(--text-muted)", filter: `drop-shadow(0 1px 2px rgba(0,0,0,0.15))` }}>
                             {tierSymbol}
                             {isLocked && <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-2" style={{ color: "#fff", opacity: 0.7 }} />}
                           </span>
-                          <span className="text-[10px] font-black uppercase tracking-wider"
-                            style={{ color: isActive ? "#fff" : tierHex, textShadow: previewImg ? "0 1px 4px rgba(0,0,0,0.5)" : "none" }}>
+                          <span className="text-[10px] font-black uppercase tracking-wider transition-colors duration-200"
+                            style={{ color: isActive ? "#fff" : "var(--text-muted)", textShadow: isActive || previewImg ? "0 1px 4px rgba(0,0,0,0.5)" : "none" }}>
                             {tierLabel}
                           </span>
                         </div>
