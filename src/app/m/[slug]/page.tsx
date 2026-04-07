@@ -29,7 +29,7 @@ interface ModelAuth {
   role: string; model_slug?: string; display_name?: string; token?: string;
 }
 // No more TABS — the tier bar IS the main nav
-// galleryTier drives everything: "all" | "public" | "vip" | "gold" | "diamond" | "platinum" | "custom" | "feed"
+// galleryTier: "feed" (default, public+wall) | "vip" | "gold" | "diamond" | "platinum" | "custom"
 
 
 // ── Platform icons for header ──
@@ -159,11 +159,12 @@ export default function ModelPage() {
   const [galleryTier, setGalleryTier] = useState(() => {
     if (typeof window !== "undefined") {
       const hash = window.location.hash.replace("#", "");
-      if (["all", "public", "vip", "gold", "diamond", "platinum", "custom", "feed"].includes(hash)) return hash;
-      if (hash === "gallery" || hash === "shootings") return "all";
+      if (["feed", "vip", "gold", "diamond", "platinum", "custom"].includes(hash)) return hash;
+      // Legacy compat
+      if (hash === "all" || hash === "public" || hash === "gallery" || hash === "shootings") return "feed";
       if (hash === "shop") return "custom";
     }
-    return "all";
+    return "feed";
   });
 
   // Purchases & shop
@@ -348,7 +349,7 @@ export default function ModelPage() {
           setUploads(prev => [data.upload || newUpload, ...prev]);
           setEditToast("Média ajouté");
           setTimeout(() => setEditToast(null), 2000);
-          setGalleryTier("all");
+          setGalleryTier("feed");
         } else {
           console.error("[EditMode] Upload save failed:", data);
           setEditToast("Erreur: " + (data.error || "upload échoué"));
@@ -584,7 +585,7 @@ export default function ModelPage() {
         if (data.code?.tier) {
           setUnlockedTier(data.code.tier);
           setActiveCode(data.code);
-          setGalleryTier("all");
+          setGalleryTier("feed");
           const accessData = JSON.stringify({ tier: data.code.tier, expiresAt: data.code.expiresAt, code: data.code.code });
           sessionStorage.setItem(`heaven_access_${slug}`, accessData);
           localStorage.setItem(`heaven_access_${slug}`, accessData);
@@ -917,7 +918,7 @@ export default function ModelPage() {
     <div className="min-h-screen pb-24 md:pb-8" style={{ background: "var(--bg)", userSelect: "none", WebkitUserSelect: "none" }}>
       {/* Identity Gate — blocks browsing until visitor identifies */}
       {!visitorRegistered && !isModelLoggedIn && model && (
-        <IdentityGate slug={slug} modelName={model.display_name} onRegistered={handleGateRegistered} onNeedShop={() => setGalleryTier("all")} />
+        <IdentityGate slug={slug} modelName={model.display_name} onRegistered={handleGateRegistered} onNeedShop={() => setGalleryTier("feed")} />
       )}
       <style>{`
         img { -webkit-touch-callout: none; -webkit-user-select: none; pointer-events: none; }
@@ -1212,7 +1213,7 @@ export default function ModelPage() {
                 <span>Ton code a expire</span>
               </div>
               <button
-                onClick={() => { setGalleryTier("all"); setExpiredCodeInfo(null); }}
+                onClick={() => { setGalleryTier("feed"); setExpiredCodeInfo(null); }}
                 className="px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all"
                 style={{ background: "var(--warning)", color: "#fff" }}
               >
@@ -1222,27 +1223,27 @@ export default function ModelPage() {
           </div>
         )}
 
-        {/* ═══ MAIN NAV — tier-colored tabs, sticky ═══ */}
+        {/* ═══ MAIN NAV — Feed + pack tiers + Custom, sticky ═══ */}
         {(() => {
-          const tierList = ["public", ...activePacks.map(p => p.id)];
-          const uniqueTiers = [...new Set(tierList)];
+          const packTiers = activePacks.map(p => p.id);
           return (
             <div className="sticky top-[40px] md:top-[44px] z-30"
               style={{ background: "color-mix(in srgb, var(--bg) 92%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
               <div className="max-w-6xl mx-auto px-3 sm:px-6 md:px-10">
                 <div className="flex items-center gap-0 overflow-x-auto scrollbar-hide" role="tablist" style={{ borderBottom: "1px solid var(--border)" }}>
-                  {/* Tout */}
-                  <button role="tab" aria-selected={galleryTier === "all"} onClick={() => { setGalleryTier("all"); setFocusPack(null); }}
-                    className="relative px-3 sm:px-4 py-3 sm:py-3.5 text-[10px] sm:text-xs font-semibold cursor-pointer shrink-0 transition-all uppercase"
-                    style={{ color: galleryTier === "all" ? "var(--text)" : "var(--text-muted)", letterSpacing: "0.06em" }}>
-                    Tout
-                    {galleryTier === "all" && <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />}
+                  {/* Feed — default landing, public content + wall */}
+                  <button role="tab" aria-selected={galleryTier === "feed"} onClick={() => { setGalleryTier("feed"); setFocusPack(null); }}
+                    className="relative px-3 sm:px-4 py-3 sm:py-3.5 text-[10px] sm:text-xs font-semibold cursor-pointer shrink-0 transition-all uppercase flex items-center gap-1"
+                    style={{ color: galleryTier === "feed" ? "var(--accent)" : "var(--text-muted)", letterSpacing: "0.06em" }}>
+                    <Newspaper className="w-2.5 h-2.5" />
+                    Feed
+                    {galleryTier === "feed" && <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />}
                   </button>
-                  {/* Tier tabs */}
-                  {uniqueTiers.map(t => {
-                    const tierHex = t === "public" ? "#64748B" : TIER_HEX[t] || "var(--text-muted)";
-                    const tierLabel = t === "public" ? "Public" : TIER_META[t]?.label || t.toUpperCase();
-                    const isLocked = t !== "public" && !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, t));
+                  {/* Pack tier tabs */}
+                  {packTiers.map(t => {
+                    const tierHex = TIER_HEX[t] || "var(--text-muted)";
+                    const tierLabel = TIER_META[t]?.label || t.toUpperCase();
+                    const isLocked = !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, t));
                     const isActive = galleryTier === t;
                     const pack = activePacks.find(p => p.id === t);
                     return (
@@ -1256,21 +1257,13 @@ export default function ModelPage() {
                       </button>
                     );
                   })}
-                  {/* Custom content */}
+                  {/* Custom — à la carte */}
                   <button role="tab" aria-selected={galleryTier === "custom"} onClick={() => { setGalleryTier("custom"); setFocusPack(null); }}
-                    className="relative px-3 sm:px-4 py-3 sm:py-3.5 text-[10px] sm:text-xs font-semibold cursor-pointer shrink-0 transition-all uppercase flex items-center gap-1"
+                    className="relative px-3 sm:px-4 py-3 sm:py-3.5 text-[10px] sm:text-xs font-semibold cursor-pointer shrink-0 transition-all uppercase flex items-center gap-1 ml-auto"
                     style={{ color: galleryTier === "custom" ? "var(--gold, #D4A017)" : "var(--text-muted)", letterSpacing: "0.06em" }}>
                     <Sparkles className="w-2.5 h-2.5" />
                     Custom
                     {galleryTier === "custom" && <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{ background: "var(--gold, #D4A017)" }} />}
-                  </button>
-                  {/* Feed — last tab */}
-                  <button role="tab" aria-selected={galleryTier === "feed"} onClick={() => { setGalleryTier("feed"); setFocusPack(null); }}
-                    className="relative px-3 sm:px-4 py-3 sm:py-3.5 text-[10px] sm:text-xs font-semibold cursor-pointer shrink-0 transition-all uppercase flex items-center gap-1 ml-auto"
-                    style={{ color: galleryTier === "feed" ? "var(--accent)" : "var(--text-muted)", letterSpacing: "0.06em" }}>
-                    <Newspaper className="w-2.5 h-2.5" />
-                    Feed
-                    {galleryTier === "feed" && <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />}
                   </button>
                 </div>
               </div>
@@ -1445,8 +1438,8 @@ export default function ModelPage() {
                           <div className="relative cursor-pointer mx-5 sm:mx-6 mb-4 rounded-xl overflow-hidden"
                             onClick={() => {
                               if (purchasedItems.has(post.id)) { setLightboxUrl(post.media_url); return; }
-                              setGalleryTier(postTier !== "public" ? postTier : "all");
-                              setGalleryTier("all");
+                              setGalleryTier(postTier !== "public" ? postTier : "feed");
+                              setGalleryTier("feed");
                             }}>
                             <div className="w-full h-[300px] sm:h-[400px]" style={{
                               background: `linear-gradient(135deg, ${tierHex}20, rgba(0,0,0,0.6))`,
@@ -1574,7 +1567,7 @@ export default function ModelPage() {
             </div>
           )}
 
-          {/* ── SHOOTINGS CONTENT — shows for all tier views (not feed/custom) ── */}
+          {/* ── TIER CONTENT — shows for pack tier views only ── */}
           {galleryTier !== "feed" && galleryTier !== "custom" && (() => {
             const allImagePosts = posts.filter(p => p.media_url);
 
@@ -1582,7 +1575,7 @@ export default function ModelPage() {
               <div className="fade-up">
 
               {/* ── Locked tier overlay — shows pack details + CTA ── */}
-              {galleryTier !== "all" && galleryTier !== "public" && galleryTier !== "custom" && !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, galleryTier)) && (() => {
+              {!isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, galleryTier)) && (() => {
                 const pack = activePacks.find(p => p.id === galleryTier);
                 const tierHex = TIER_HEX[galleryTier] || "#E63329";
                 const tierPosts = allImagePosts.filter(p => (p.tier_required || "public") === galleryTier);
@@ -1661,17 +1654,12 @@ export default function ModelPage() {
               })()}
 
               {/* ── Unlocked content grid ── */}
-              {galleryTier !== "custom" && (() => {
-                // Filter by selected tier
-                const filteredPosts = galleryTier === "all"
-                  ? (contentUnlocked ? allImagePosts : allImagePosts.filter(p => {
-                      const tier = p.tier_required || "public";
-                      return tier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, tier));
-                    }))
-                  : allImagePosts.filter(p => (p.tier_required || "public") === galleryTier);
+              {(() => {
+                // Filter posts for current tier
+                const filteredPosts = allImagePosts.filter(p => (p.tier_required || "public") === galleryTier);
 
                 // For locked tiers, don't show the grid (the overlay above handles it)
-                const isLockedTier = galleryTier !== "all" && galleryTier !== "public" && !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, galleryTier));
+                const isLockedTier = !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, galleryTier));
                 if (isLockedTier) return null;
 
                 if (filteredPosts.length === 0) return (
@@ -2187,40 +2175,40 @@ export default function ModelPage() {
           </div>
         )}
 
-        {/* ═══ MOBILE BOTTOM NAV — compact tier shortcuts ═══ */}
+        {/* ═══ MOBILE BOTTOM NAV ═══ */}
         {!(isEditMode && editDirty) && (
           <nav className="fixed bottom-0 left-0 right-0 z-30 md:hidden safe-area-bottom"
             style={{ background: "color-mix(in srgb, var(--bg) 90%, transparent)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: "1px solid var(--border)" }}>
             <div className="flex items-center justify-around py-2">
-              {/* All */}
-              <button onClick={() => setGalleryTier("all")}
-                className="relative flex flex-col items-center gap-0.5 px-2 py-1.5 cursor-pointer transition-all"
-                style={{ color: !["feed", "custom"].includes(galleryTier) && galleryTier !== "feed" ? "var(--accent)" : "var(--text-muted)" }}>
-                {!["feed", "custom"].includes(galleryTier) && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />
-                )}
-                <Camera className="w-5 h-5" />
-                <span className="text-[9px] font-medium uppercase" style={{ letterSpacing: "0.06em" }}>Shoots</span>
-              </button>
-              {/* Custom */}
-              <button onClick={() => setGalleryTier("custom")}
-                className="relative flex flex-col items-center gap-0.5 px-2 py-1.5 cursor-pointer transition-all"
-                style={{ color: galleryTier === "custom" ? "var(--gold, #D4A017)" : "var(--text-muted)" }}>
-                {galleryTier === "custom" && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full" style={{ background: "var(--gold, #D4A017)" }} />
-                )}
-                <Sparkles className="w-5 h-5" />
-                <span className="text-[9px] font-medium uppercase" style={{ letterSpacing: "0.06em" }}>Custom</span>
-              </button>
               {/* Feed */}
               <button onClick={() => setGalleryTier("feed")}
-                className="relative flex flex-col items-center gap-0.5 px-2 py-1.5 cursor-pointer transition-all"
+                className="relative flex flex-col items-center gap-0.5 px-3 py-1.5 cursor-pointer transition-all"
                 style={{ color: galleryTier === "feed" ? "var(--accent)" : "var(--text-muted)" }}>
-                {galleryTier === "feed" && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />
-                )}
+                {galleryTier === "feed" && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full" style={{ background: "var(--accent)" }} />}
                 <Newspaper className="w-5 h-5" />
                 <span className="text-[9px] font-medium uppercase" style={{ letterSpacing: "0.06em" }}>Feed</span>
+              </button>
+              {/* Pack tiers — show first 2 most relevant */}
+              {activePacks.slice(0, 3).map(p => {
+                const hex = TIER_HEX[p.id] || p.color;
+                const isActive = galleryTier === p.id;
+                return (
+                  <button key={p.id} onClick={() => setGalleryTier(p.id)}
+                    className="relative flex flex-col items-center gap-0.5 px-2 py-1.5 cursor-pointer transition-all"
+                    style={{ color: isActive ? hex : "var(--text-muted)" }}>
+                    {isActive && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full" style={{ background: hex }} />}
+                    <span className="text-sm">{TIER_META[p.id]?.symbol}</span>
+                    <span className="text-[8px] font-bold uppercase" style={{ letterSpacing: "0.04em" }}>{p.price}€</span>
+                  </button>
+                );
+              })}
+              {/* Custom */}
+              <button onClick={() => setGalleryTier("custom")}
+                className="relative flex flex-col items-center gap-0.5 px-3 py-1.5 cursor-pointer transition-all"
+                style={{ color: galleryTier === "custom" ? "var(--gold, #D4A017)" : "var(--text-muted)" }}>
+                {galleryTier === "custom" && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full" style={{ background: "var(--gold, #D4A017)" }} />}
+                <Sparkles className="w-5 h-5" />
+                <span className="text-[9px] font-medium uppercase" style={{ letterSpacing: "0.06em" }}>Custom</span>
               </button>
             </div>
           </nav>
