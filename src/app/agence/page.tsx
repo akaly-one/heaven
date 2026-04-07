@@ -308,7 +308,18 @@ export default function AgenceDashboard() {
     );
   }
 
-  // Context ready but no model selected
+  // Context ready but no model selected — auto-refresh safety net for model accounts
+  useEffect(() => {
+    if (ready && !modelSlug && !isRoot) {
+      const t = setTimeout(() => {
+        // Re-read sessionStorage one last time before reload
+        const raw = sessionStorage.getItem("heaven_auth");
+        if (raw) window.location.reload();
+      }, 1000);
+      return () => clearTimeout(t);
+    }
+  }, [ready, modelSlug, isRoot]);
+
   if (!modelSlug) {
     return (
       <OsLayout cpId="agence">

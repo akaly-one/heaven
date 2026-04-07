@@ -40,7 +40,8 @@ export default function LoginPage() {
           })
         );
         window.dispatchEvent(new Event("heaven:auth-changed"));
-        router.push(data.redirect || "/agence");
+        // Hard navigation ensures fresh mount reads sessionStorage
+        window.location.href = data.redirect || "/agence";
       } else {
         setError("Code invalide");
         setShake(true);
