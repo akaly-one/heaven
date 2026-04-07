@@ -107,10 +107,10 @@ export const TIER_META: Record<string, { color: string; symbol: string; label: s
   Object.entries(TIER_CONFIG).map(([k, v]) => [k, { color: v.color, symbol: v.symbol, label: v.label, description: v.description }])
 );
 
-/** Backward-compatible TIER_HEX */
+/** Canonical TIER_HEX (excludes public/free/promo and legacy aliases vip/diamond) */
 export const TIER_HEX: Record<string, string> = Object.fromEntries(
   Object.entries(TIER_CONFIG)
-    .filter(([k]) => !["public", "free", "promo"].includes(k))
+    .filter(([k]) => !["public", "free", "promo", "vip", "diamond"].includes(k))
     .map(([k, v]) => [k, v.hex])
 );
 
