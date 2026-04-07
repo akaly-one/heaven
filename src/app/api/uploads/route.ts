@@ -87,13 +87,13 @@ export async function POST(req: NextRequest) {
     // Single upload
     const newUpload: UploadRow = {
       id: body.id || `upl-${Date.now()}`,
-      tier: body.tier ? normalizeTier(body.tier) : "promo",
+      tier: body.tier ? normalizeTier(body.tier) : "p0",
       type: body.type || "photo",
       label: body.label || "",
       dataUrl: body.dataUrl || "",
       uploadedAt: body.uploadedAt || new Date().toISOString(),
       isNew: body.isNew ?? true,
-      visibility: body.visibility || "promo",
+      visibility: body.visibility || "p0",
       tokenPrice: body.tokenPrice ?? 0,
     };
 
@@ -197,9 +197,9 @@ function mapFromDb(row: any): UploadRow {
 }
 function mapToDb(u: any, model: string) {
   return {
-    id: u.id || undefined, model, tier: u.tier ? normalizeTier(u.tier) : "promo", type: u.type || "photo",
+    id: u.id || undefined, model, tier: u.tier ? normalizeTier(u.tier) : "p0", type: u.type || "photo",
     label: u.label || "", data_url: u.dataUrl || u.data_url || "",
-    visibility: u.visibility || "promo", token_price: u.tokenPrice ?? u.token_price ?? 0,
+    visibility: u.visibility || "p0", token_price: u.tokenPrice ?? u.token_price ?? 0,
     is_new: u.isNew ?? u.is_new ?? true,
   };
 }

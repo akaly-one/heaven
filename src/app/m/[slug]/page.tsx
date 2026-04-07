@@ -892,17 +892,17 @@ export default function ModelPage() {
     .filter(p => p.media_url)
     .map(p => ({
       id: `post-${p.id}`,
-      tier: (!p.tier_required || p.tier_required === "public") ? "promo" : p.tier_required,
+      tier: (!p.tier_required || normalizeTier(p.tier_required) === "p0") ? "promo" : normalizeTier(p.tier_required),
       type: (p.media_type === "video" ? "video" : "photo") as "photo" | "video" | "reel",
       label: p.content || "",
       dataUrl: p.media_url!,
       uploadedAt: p.created_at,
-      visibility: (!p.tier_required || p.tier_required === "public") ? "promo" as const : "pack" as const,
+      visibility: (!p.tier_required || normalizeTier(p.tier_required) === "p0") ? "promo" as const : "pack" as const,
       tokenPrice: 0,
     }));
   const allGalleryItems = [...uploads, ...postsAsGalleryItems];
-  const galleryItems = allGalleryItems.filter(u => galleryTier === "all" || u.tier === galleryTier || (galleryTier === "promo" && u.visibility === "promo"));
-  const tierCounts = allGalleryItems.reduce((acc, u) => { acc[u.tier] = (acc[u.tier] || 0) + 1; return acc; }, {} as Record<string, number>);
+  const galleryItems = allGalleryItems.filter(u => galleryTier === "all" || normalizeTier(u.tier) === galleryTier || (galleryTier === "promo" && u.visibility === "promo"));
+  const tierCounts = allGalleryItems.reduce((acc, u) => { const nt = normalizeTier(u.tier); acc[nt] = (acc[nt] || 0) + 1; return acc; }, {} as Record<string, number>);
   const isTierView = galleryTier !== "feed" && galleryTier !== "custom";
 
   // ── Loading / 404 ──
@@ -1388,7 +1388,7 @@ export default function ModelPage() {
                     const isLocked = !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, t));
                     const isActive = galleryTier === t;
                     // Try to find a preview image for the tile background
-                    const previewImg = uploads.find(u => u.tier === t && u.dataUrl && u.type === "photo")?.dataUrl;
+                    const previewImg = uploads.find(u => normalizeTier(u.tier) === t && u.dataUrl && u.type === "photo")?.dataUrl;
                     return (
                       <button key={t} role="tab" aria-selected={isActive} onClick={() => { setGalleryTier(t); setFocusPack(null); }}
                         className="relative shrink-0 rounded-xl cursor-pointer poker-tile group overflow-hidden"
@@ -1545,8 +1545,8 @@ export default function ModelPage() {
                 const visitorPosts = wallPosts.filter(w => !w.content?.includes("#post-") && w.pseudo !== "SYSTEM").map(w => ({ type: "wall" as const, id: w.id, created_at: w.created_at, data: w }));
                 // Unverified visitors only see public posts; code-unlocked visitors see posts matching their tier
                 const filteredModelPosts = contentUnlocked ? posts : posts.filter(p => {
-                  const tier = p.tier_required || "public";
-                  if (!tier || tier === "public") return true;
+                  const tier = normalizeTier(p.tier_required || "public");
+                  if (!tier || tier === "p0") return true;
                   if (unlockedTier && tierIncludes(unlockedTier, tier)) return true;
                   return false;
                 });
@@ -1582,8 +1582,8 @@ export default function ModelPage() {
                     );
                   }
                   const post = item.data as Post;
-                  const postTier = post.tier_required || "public";
-                  const mediaUnlocked = postTier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, postTier));
+                  const postTier = normalizeTier(post.tier_required || "public");
+                  const mediaUnlocked = postTier === "p0" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, postTier));
                   const tierHex = TIER_HEX[postTier] || "#64748B";
                   return (
                     <div key={post.id} className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)", animation: `slideUp 0.4s ease-out ${idx * 0.04}s both` }}>
@@ -1748,12 +1748,12 @@ export default function ModelPage() {
                   const recentMedia: { url: string; tier: string; id: string }[] = [];
                   // From uploads (gallery content)
                   uploads.filter(u => u.dataUrl && u.type === "photo").slice(0, 6).forEach(u => {
-                    recentMedia.push({ url: u.dataUrl, tier: u.tier || "public", id: u.id });
+                    recentMedia.push({ url: u.dataUrl, tier: normalizeTier(u.tier || "public"), id: u.id });
                   });
                   // From posts with media
                   posts.filter(p => p.media_url).slice(0, 4).forEach(p => {
                     if (!recentMedia.find(m => m.url === p.media_url)) {
-                      recentMedia.push({ url: p.media_url!, tier: p.tier_required || "public", id: p.id });
+                      recentMedia.push({ url: p.media_url!, tier: normalizeTier(p.tier_required || "public"), id: p.id });
                     }
                   });
                   const items = recentMedia.slice(0, 8);
@@ -1764,7 +1764,7 @@ export default function ModelPage() {
                     </div>
                   );
                   return items.map(item => {
-                    const canView = item.tier === "public" || item.tier === "promo" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, item.tier));
+                    const canView = item.tier === "p0" || item.tier === "promo" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, item.tier));
                     const hex = TIER_HEX[item.tier] || "#64748B";
                     return (
                       <div key={item.id} className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group"
@@ -1902,8 +1902,8 @@ export default function ModelPage() {
                 const pack = activePacks.find(p => p.id === galleryTier);
                 const tierHex = TIER_HEX[galleryTier] || "#E63329";
                 const tierSymbol = TIER_META[galleryTier]?.symbol || "";
-                const tierPosts = allImagePosts.filter(p => (p.tier_required || "public") === galleryTier);
-                const tierUploads = uploads.filter(u => u.tier === galleryTier && u.dataUrl);
+                const tierPosts = allImagePosts.filter(p => normalizeTier(p.tier_required || "public") === galleryTier);
+                const tierUploads = uploads.filter(u => normalizeTier(u.tier) === galleryTier && u.dataUrl);
                 const previewImages = [...tierPosts.map(p => p.media_url!), ...tierUploads.map(u => u.dataUrl)].filter(Boolean).slice(0, 6);
                 if (!pack) return null;
 
@@ -1983,8 +1983,8 @@ export default function ModelPage() {
               {/* ── Unlocked content grid (posts + uploads) ── */}
               {(() => {
                 // Filter posts AND uploads for current tier
-                const filteredPosts = allImagePosts.filter(p => (p.tier_required || "public") === galleryTier);
-                const filteredUploads = uploads.filter(u => u.tier === galleryTier && u.dataUrl);
+                const filteredPosts = allImagePosts.filter(p => normalizeTier(p.tier_required || "public") === galleryTier);
+                const filteredUploads = uploads.filter(u => normalizeTier(u.tier) === galleryTier && u.dataUrl);
 
                 // For locked tiers, don't show the grid (the overlay above handles it)
                 const isLockedTier = !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, galleryTier));
@@ -2001,7 +2001,7 @@ export default function ModelPage() {
                 // Merge & shuffle all media for masonry layout
                 const allMedia = dailyShuffle([
                   ...filteredUploads.map(u => ({ id: u.id, url: u.dataUrl, type: "upload" as const, tier: galleryTier, mediaType: u.type })),
-                  ...filteredPosts.map(p => ({ id: p.id, url: p.media_url!, type: "post" as const, tier: p.tier_required || "public", mediaType: "image" as string })),
+                  ...filteredPosts.map(p => ({ id: p.id, url: p.media_url!, type: "post" as const, tier: normalizeTier(p.tier_required || "public"), mediaType: "image" as string })),
                 ]);
 
                 return (
@@ -2010,7 +2010,7 @@ export default function ModelPage() {
                       {allMedia.map((item, i) => {
                         const aspect = getMasonryAspect(i);
                         const tierHex = TIER_HEX[item.tier] || "var(--text-muted)";
-                        const unlocked = item.tier === "public" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, item.tier));
+                        const unlocked = item.tier === "p0" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, item.tier));
 
                         return (
                           <div key={`${item.type}-${item.id}`}
@@ -2029,7 +2029,7 @@ export default function ModelPage() {
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                                   <Eye className="w-5 h-5 text-white" />
                                 </div>
-                                {item.tier !== "public" && (
+                                {item.tier !== "p0" && (
                                   <span className="absolute top-2.5 right-2.5 text-[9px] font-bold px-2 py-0.5 rounded-full"
                                     style={{ background: "rgba(0,0,0,0.5)", color: "#fff", backdropFilter: "blur(4px)" }}>
                                     {TIER_META[item.tier]?.label || item.tier.toUpperCase()}

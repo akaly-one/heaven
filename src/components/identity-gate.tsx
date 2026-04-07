@@ -107,7 +107,7 @@ export function IdentityGate({ slug, modelName, onRegistered, onNeedShop }: Iden
               code: trialCode,
               client: handle.trim().toLowerCase(),
               platform: platform === "snap" ? "snapchat" : "instagram",
-              tier: "silver",
+              tier: "p1",
               duration: 1, // 1 hour
               type: "promo",
               isTrial: true,

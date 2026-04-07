@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { X, Loader2, CheckCircle2, AlertCircle, Copy, RefreshCw } from "lucide-react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import { toSlot } from "@/lib/tier-utils";
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -278,15 +279,15 @@ export function PaymentCheckout({
               fontSize: "1.5rem",
             }}
           >
-            {tier === "silver"
+            {toSlot(tier) === "p1"
               ? "\u2663"
-              : tier === "gold"
+              : toSlot(tier) === "p2"
                 ? "\u2666"
-                : tier === "feet"
+                : toSlot(tier) === "p3"
                   ? "\uD83E\uDDB6"
-                  : tier === "black"
+                  : toSlot(tier) === "p4"
                     ? "\u2660"
-                    : tier === "platinum"
+                    : toSlot(tier) === "p5"
                       ? "\u2665"
                       : "\u2726"}
           </div>

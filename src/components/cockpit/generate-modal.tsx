@@ -18,10 +18,10 @@ interface GenerateModalProps {
 }
 
 const TIERS = [
-  { id: "vip", label: "VIP", symbol: "♥", color: "var(--tier-vip)" },
-  { id: "gold", label: "Gold", symbol: "★", color: "var(--tier-gold)" },
-  { id: "diamond", label: "Diamond", symbol: "♦", color: "var(--tier-diamond)" },
-  { id: "platinum", label: "Platinum", symbol: "♛", color: "var(--tier-platinum)" },
+  { id: "p1", label: "VIP", symbol: "♥", color: "var(--tier-vip)" },
+  { id: "p2", label: "Gold", symbol: "★", color: "var(--tier-gold)" },
+  { id: "p4", label: "Diamond", symbol: "♦", color: "var(--tier-diamond)" },
+  { id: "p5", label: "Platinum", symbol: "♛", color: "var(--tier-platinum)" },
 ];
 
 // Duration is now a slider 1-30 days
@@ -29,7 +29,7 @@ const TIERS = [
 export function GenerateModal({ open, onClose, onGenerate, modelSlug, prefillClient = "" }: GenerateModalProps) {
   const [client, setClient] = useState("");
   const [platform, setPlatform] = useState("snapchat");
-  const [tier, setTier] = useState("vip");
+  const [tier, setTier] = useState("p1");
   const [durationDays, setDurationDays] = useState(7);
   const [type, setType] = useState<"paid" | "promo" | "gift">("paid");
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
