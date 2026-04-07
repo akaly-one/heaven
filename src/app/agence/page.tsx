@@ -12,14 +12,26 @@ import type { PackConfig, AccessCode, ClientInfo, FeedPost, WallPost } from "@/t
 import { DEFAULT_PACKS } from "@/constants/packs";
 
 // ── Upload config ──
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const ACCEPTED_IMAGE_EXT = "JPG, PNG, WEBP, GIF";
+
 const UPLOAD_LIMITS = {
   avatar: { maxMB: 5, label: "Photo de profil" },
   post: { maxMB: 10, label: "Photo" },
 } as const;
 
-function validateFileSize(file: File, maxMB: number): { valid: boolean; sizeMB: string } {
+function validateFile(file: File, maxMB: number): { valid: boolean; error?: string } {
+  // Check format
+  if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+    const ext = file.name.split(".").pop()?.toUpperCase() || file.type;
+    return { valid: false, error: `Format "${ext}" non supporte. Formats acceptes : ${ACCEPTED_IMAGE_EXT}` };
+  }
+  // Check size
   const sizeMB = file.size / (1024 * 1024);
-  return { valid: sizeMB <= maxMB, sizeMB: sizeMB.toFixed(1) };
+  if (sizeMB > maxMB) {
+    return { valid: false, error: `Fichier trop lourd (${sizeMB.toFixed(1)}MB). Max ${maxMB}MB. Formats : ${ACCEPTED_IMAGE_EXT}` };
+  }
+  return { valid: true };
 }
 
 // ── Helpers ──
@@ -267,13 +279,13 @@ export default function AgenceDashboard() {
                     modelSlug.charAt(0).toUpperCase()
                   )}
                 </div>
-                <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" className="hidden" onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  const { valid, sizeMB } = validateFileSize(file, UPLOAD_LIMITS.avatar.maxMB);
+                  const { valid, error } = validateFile(file, UPLOAD_LIMITS.avatar.maxMB);
                   if (!valid) {
-                    setUploadMsg({ text: `${UPLOAD_LIMITS.avatar.label} trop lourde (${sizeMB}MB). Max ${UPLOAD_LIMITS.avatar.maxMB}MB.`, type: "error" });
-                    setTimeout(() => setUploadMsg(null), 4000);
+                    setUploadMsg({ text: error!, type: "error" });
+                    setTimeout(() => setUploadMsg(null), 5000);
                     e.target.value = "";
                     return;
                   }
@@ -420,12 +432,12 @@ export default function AgenceDashboard() {
                         <label className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium cursor-pointer shrink-0"
                           style={{ background: "rgba(0,0,0,0.04)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
                           <ImageIcon className="w-3.5 h-3.5" /> Photo
-                          <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                          <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" className="hidden" onChange={(e) => {
                             const file = e.target.files?.[0]; if (!file) return;
-                            const { valid, sizeMB } = validateFileSize(file, UPLOAD_LIMITS.post.maxMB);
+                            const { valid, error } = validateFile(file, UPLOAD_LIMITS.post.maxMB);
                             if (!valid) {
-                              setUploadMsg({ text: `${UPLOAD_LIMITS.post.label} trop lourde (${sizeMB}MB). Max ${UPLOAD_LIMITS.post.maxMB}MB.`, type: "error" });
-                              setTimeout(() => setUploadMsg(null), 4000);
+                              setUploadMsg({ text: error!, type: "error" });
+                              setTimeout(() => setUploadMsg(null), 5000);
                               e.target.value = ""; return;
                             }
                             const reader = new FileReader();
