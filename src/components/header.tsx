@@ -404,34 +404,52 @@ export function Header() {
                     </div>
                     {pendingClients.slice(0, 8).map(c => {
                       const pseudo = pseudoOf(c);
+                      const isSnap = !!c.pseudo_snap;
+                      const profileUrl = isSnap
+                        ? `https://snapchat.com/add/${c.pseudo_snap}`
+                        : c.pseudo_insta ? `https://instagram.com/${c.pseudo_insta}` : null;
+                      const platformLabel = isSnap ? "Snapchat" : "Instagram";
+                      const platformColor = isSnap ? "#C4A600" : "#C13584";
                       const isProcessing = verifyingId === c.id;
                       return (
-                        <div key={`pending-${c.id}`} className="flex items-center gap-2 px-4 py-2.5"
+                        <div key={`pending-${c.id}`} className="px-4 py-2.5"
                           style={{ borderBottom: "1px solid var(--border)", background: "rgba(245,158,11,0.03)" }}>
-                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                            style={{ background: "rgba(245,158,11,0.15)", color: "#F59E0B" }}>
-                            {pseudo.charAt(0).toUpperCase()}
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                              style={{ background: `${platformColor}20`, color: platformColor }}>
+                              {pseudo.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-[11px] font-bold truncate block" style={{ color: "var(--text)" }}>@{pseudo}</span>
+                              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                                {c.lead_source ? `via ${c.lead_source}` : platformLabel} · {new Date(c.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button onClick={() => handleVerify(c.id, "verify")} disabled={isProcessing}
+                                className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
+                                style={{ background: "rgba(16,185,129,0.15)", border: "none", opacity: isProcessing ? 0.5 : 1 }}
+                                title="Valider le profil">
+                                <CheckCircle className="w-3.5 h-3.5" style={{ color: "#10B981" }} />
+                              </button>
+                              <button onClick={() => handleVerify(c.id, "reject")} disabled={isProcessing}
+                                className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
+                                style={{ background: "rgba(239,68,68,0.15)", border: "none", opacity: isProcessing ? 0.5 : 1 }}
+                                title="Rejeter le profil">
+                                <XCircle className="w-3.5 h-3.5" style={{ color: "#EF4444" }} />
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="text-[11px] font-bold truncate block" style={{ color: "var(--text)" }}>@{pseudo}</span>
-                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                              {c.lead_source ? `via ${c.lead_source}` : "Nouveau"} · {new Date(c.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button onClick={() => handleVerify(c.id, "verify")} disabled={isProcessing}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
-                              style={{ background: "rgba(16,185,129,0.15)", border: "none", opacity: isProcessing ? 0.5 : 1 }}
-                              title="Valider">
-                              <CheckCircle className="w-3.5 h-3.5" style={{ color: "#10B981" }} />
-                            </button>
-                            <button onClick={() => handleVerify(c.id, "reject")} disabled={isProcessing}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
-                              style={{ background: "rgba(239,68,68,0.15)", border: "none", opacity: isProcessing ? 0.5 : 1 }}
-                              title="Rejeter">
-                              <XCircle className="w-3.5 h-3.5" style={{ color: "#EF4444" }} />
-                            </button>
-                          </div>
+                          {/* Direct link to social profile */}
+                          {profileUrl && (
+                            <a href={profileUrl} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 mt-1.5 ml-9 px-2.5 py-1.5 rounded-lg text-[10px] font-bold no-underline transition-all hover:scale-[1.02] active:scale-[0.97]"
+                              style={{ background: `${platformColor}12`, color: platformColor, border: `1px solid ${platformColor}25` }}>
+                              <ExternalLink className="w-3 h-3" />
+                              Voir profil {platformLabel}
+                              <span className="text-[9px] font-normal ml-auto" style={{ opacity: 0.7 }}>@{pseudo}</span>
+                            </a>
+                          )}
                         </div>
                       );
                     })}
@@ -512,17 +530,37 @@ export function Header() {
                   <p className="text-[11px] text-center py-8" style={{ color: "var(--text-muted)" }}>Aucun client</p>
                 ) : clients.filter(c => c.verified_status === "verified" || (c.verified_status && c.verified_status !== "pending")).slice(0, 15).map(c => {
                   const pseudo = pseudoOf(c);
+                  const isSnap = !!c.pseudo_snap;
+                  const profileUrl = isSnap
+                    ? `https://snapchat.com/add/${c.pseudo_snap}`
+                    : c.pseudo_insta ? `https://instagram.com/${c.pseudo_insta}` : null;
+                  const pColor = isSnap ? "#C4A600" : "#C13584";
                   const clientCodes = codes.filter(co => co.client?.toLowerCase() === pseudo.toLowerCase());
                   const activeCode = clientCodes.find(co => co.active && !co.revoked && new Date(co.expiresAt).getTime() > Date.now());
                   return (
                     <div key={c.id} className="flex items-center gap-2.5 px-4 py-2.5" style={{ borderBottom: "1px solid var(--border)" }}>
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                        style={{ background: c.pseudo_snap ? "rgba(153,122,0,0.12)" : "rgba(193,53,132,0.12)",
-                          color: c.pseudo_snap ? "#997A00" : "#C13584" }}>
-                        {pseudo.charAt(0).toUpperCase()}
-                      </div>
+                      {profileUrl ? (
+                        <a href={profileUrl} target="_blank" rel="noopener noreferrer"
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 no-underline transition-all hover:scale-110"
+                          style={{ background: `${pColor}18`, color: pColor }}
+                          title={`Voir profil ${isSnap ? "Snapchat" : "Instagram"}`}>
+                          {pseudo.charAt(0).toUpperCase()}
+                        </a>
+                      ) : (
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                          style={{ background: `${pColor}18`, color: pColor }}>
+                          {pseudo.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
-                        <span className="text-[11px] font-bold truncate block" style={{ color: "var(--text)" }}>@{pseudo}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[11px] font-bold truncate" style={{ color: "var(--text)" }}>@{pseudo}</span>
+                          {profileUrl && (
+                            <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 no-underline">
+                              <ExternalLink className="w-2.5 h-2.5" style={{ color: pColor, opacity: 0.6 }} />
+                            </a>
+                          )}
+                        </div>
                         {activeCode ? (
                           <span className="text-[10px]" style={{ color: "#10B981" }}>
                             <Key className="w-2.5 h-2.5 inline mr-0.5" />{activeCode.code} · {activeCode.tier?.toUpperCase()}

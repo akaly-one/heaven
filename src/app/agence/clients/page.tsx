@@ -39,7 +39,7 @@ const VERIFY_BADGE: Record<string, { bg: string; color: string; label: string }>
 
 const TIER_COLORS: Record<string, string> = {
   silver: "#C0C0C0", vip: "#E63329", gold: "#D4AF37",
-  diamond: "#4F46E5", black: "#1C1C1C", platinum: "#7C3AED",
+  diamond: "#4F46E5", black: "#8B5CF6", platinum: "#7C3AED",
 };
 
 interface ClientEnriched extends Client {
