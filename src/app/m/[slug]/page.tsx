@@ -1031,24 +1031,24 @@ export default function ModelPage() {
       <div className="relative z-10">
 
         {/* ═══ HEADER BAR — minimal sticky ═══ */}
-        <div className="sticky top-0 left-0 right-0 z-40 px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-2.5"
+        <div className="sticky top-0 left-0 right-0 z-40 px-3 sm:px-5 md:px-8 lg:px-12 py-2 sm:py-2.5 md:py-3"
           style={{ background: "color-mix(in srgb, var(--bg) 90%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderBottom: "1px solid var(--border)" }}>
 
           {/* Row 1 — model name + core actions */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-3 sm:gap-4 md:gap-5">
             {/* Left — model name */}
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-2 md:gap-3 min-w-0">
               {isModelLoggedIn && (
-                <a href="/agence" className="text-xs font-bold no-underline shrink-0" style={{ color: "var(--accent)" }}>&#8592;</a>
+                <a href="/agence" className="text-xs md:text-sm font-bold no-underline shrink-0" style={{ color: "var(--accent)" }}>&#8592;</a>
               )}
-              <span className="text-[11px] sm:text-xs font-semibold tracking-wide uppercase truncate" style={{ color: "var(--text)", letterSpacing: "0.1em" }}>
+              <span className="text-xs sm:text-sm md:text-base font-bold tracking-wide uppercase truncate" style={{ color: "var(--text)", letterSpacing: "0.08em" }}>
                 {model.display_name}
               </span>
-              {displayModel?.online && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }} />}
+              {displayModel?.online && <span className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full shrink-0" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }} />}
               {/* BEACON chat bubble — next to model name */}
               {!isModelLoggedIn && (
                 <button onClick={() => setChatOpen(!chatOpen)}
-                  className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
+                  className="relative w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
                   style={{
                     background: "linear-gradient(135deg, var(--rose), var(--accent))",
                     border: "none",
@@ -1057,9 +1057,9 @@ export default function ModelPage() {
                       : "0 2px 8px rgba(230,51,41,0.3)",
                     animation: chatUnread > 0 ? "chatBubbleGlow 1.5s ease-in-out infinite" : "none",
                   }}>
-                  <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                  <MessageCircle className="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5 text-white" />
                   {chatUnread > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full text-[9px] font-bold flex items-center justify-center"
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] md:min-w-[20px] md:h-[20px] rounded-full text-[9px] md:text-[10px] font-bold flex items-center justify-center"
                       style={{ background: "#10B981", color: "#fff", boxShadow: "0 0 6px rgba(16,185,129,0.6)" }}>
                       {chatUnread}
                     </span>
@@ -1071,39 +1071,39 @@ export default function ModelPage() {
             <div className="flex-1" />
 
             {/* Right — visitor actions */}
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4 shrink-0">
               {visitorRegistered && (
                 <>
                   {/* Handle + verified dot */}
-                  <div className="flex items-center gap-1 min-w-0">
-                    <span className="text-[10px] sm:text-[12px] font-semibold truncate max-w-[60px] sm:max-w-[140px]" style={{ color: "var(--text)" }}>@{visitorHandle}</span>
+                  <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+                    <span className="text-[11px] sm:text-xs md:text-sm font-semibold truncate max-w-[70px] sm:max-w-[160px] md:max-w-[200px]" style={{ color: "var(--text)" }}>@{visitorHandle}</span>
                     {!isModelLoggedIn && (
                       <div className="relative group shrink-0">
-                        <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full flex items-center justify-center cursor-pointer"
+                        <div className="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5 rounded-full flex items-center justify-center cursor-pointer"
                           style={{ background: visitorVerified ? "#10B981" : "#EF4444" }}>
                           {visitorVerified
-                            ? <Check className="w-1.5 h-1.5 sm:w-2 sm:h-2 text-white" />
-                            : <Lock className="w-1.5 h-1.5 sm:w-2 sm:h-2 text-white" />
+                            ? <Check className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 text-white" />
+                            : <Lock className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 text-white" />
                           }
                         </div>
-                        <div className="absolute top-full right-0 sm:left-1/2 sm:-translate-x-1/2 mt-2 px-2.5 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto transition-opacity duration-200 z-50 whitespace-nowrap"
+                        <div className="absolute top-full right-0 sm:left-1/2 sm:-translate-x-1/2 mt-2 px-3 py-2 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto transition-opacity duration-200 z-50 whitespace-nowrap"
                           style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }}>
-                          <span className="text-[10px] font-semibold" style={{ color: visitorVerified ? "#10B981" : "#EF4444" }}>
+                          <span className="text-[11px] md:text-xs font-semibold" style={{ color: visitorVerified ? "#10B981" : "#EF4444" }}>
                             {visitorVerified ? "Compte vérifié" : "Non vérifié"}
                           </span>
                         </div>
                       </div>
                     )}
                   </div>
-                  {/* Tier badge — hidden on very small screens */}
-                  <span className="hidden sm:inline"><ClientBadge tier={unlockedTier || null} /></span>
+                  {/* Tier badge */}
+                  <ClientBadge tier={unlockedTier || null} />
                   {/* Order history */}
                   <button onClick={() => { setOrderHistoryOpen(!orderHistoryOpen); clearNotifications(); }}
-                    className="relative w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
+                    className="relative w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
                     style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}>
-                    <ShoppingBag className="w-3 h-3 sm:w-3.5 sm:h-3.5" style={{ color: "var(--text-muted)" }} />
+                    <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5" style={{ color: "var(--text-muted)" }} />
                     {newNotifications > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] sm:min-w-[16px] sm:h-[16px] rounded-full text-[8px] sm:text-[9px] font-bold flex items-center justify-center"
+                      <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] sm:min-w-[18px] sm:h-[18px] rounded-full text-[9px] sm:text-[10px] font-bold flex items-center justify-center"
                         style={{ background: "#10B981", color: "#fff", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }}>
                         {newNotifications}
                       </span>
@@ -1155,24 +1155,24 @@ export default function ModelPage() {
                             setTimeout(() => { input.placeholder = "CODE"; input.style.borderColor = ""; }, 2000);
                           }
                         } catch { input.placeholder = "Erreur"; input.value = ""; }
-                      }} className="flex items-center gap-1">
+                      }} className="flex items-center gap-1.5">
                         <input type="text" placeholder="CODE"
-                          className="w-[90px] px-2 py-1 rounded-lg text-[10px] font-mono uppercase tracking-wider outline-none text-center"
+                          className="w-[100px] md:w-[120px] px-3 py-1.5 md:py-2 rounded-xl text-[11px] md:text-xs font-mono uppercase tracking-wider outline-none text-center"
                           style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}
                         />
                         <button type="submit"
-                          className="w-6 h-6 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
+                          className="w-7 h-7 md:w-8 md:h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
                           style={{ background: "var(--accent)", border: "none" }}>
-                          <Key className="w-3 h-3 text-white" />
+                          <Key className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
                         </button>
                       </form>
                     </div>
                     {/* Mobile: key icon only — opens bottom sheet */}
                     <button
                       onClick={() => setCodeSheetOpen(true)}
-                      className="w-6 h-6 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0 sm:hidden"
+                      className="w-7 h-7 rounded-xl flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0 sm:hidden"
                       style={{ background: "var(--accent)", border: "none" }}>
-                      <Key className="w-3 h-3 text-white" />
+                      <Key className="w-3.5 h-3.5 text-white" />
                     </button>
                     </>
                   )}
