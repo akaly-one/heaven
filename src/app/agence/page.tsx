@@ -406,15 +406,15 @@ export default function AgenceDashboard() {
 
             {/* ── TAB: Feed — composer + posts/media chronologically (synced with public profile) ── */}
             {feedTab === "feed" && (
-              <div className="max-w-3xl space-y-4 min-w-0">
+              <div className="space-y-4 min-w-0">
                 {/* Composer */}
-                <div className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--surface)", border: newPostType === "story" ? "1px solid var(--accent)" : "1px solid var(--border)", boxShadow: newPostType === "story" ? "0 0 0 1px rgba(230,51,41,0.15)" : "none" }}>
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                <div className="rounded-2xl p-3 sm:p-5" style={{ background: "var(--surface)", border: newPostType === "story" ? "1px solid var(--accent)" : "1px solid var(--border)", boxShadow: newPostType === "story" ? "0 0 0 1px rgba(230,51,41,0.15)" : "none" }}>
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold shrink-0"
                       style={{ background: "linear-gradient(135deg, #F43F5E, #E63329)", color: "#fff" }}>
                       {modelSlug.charAt(0).toUpperCase()}
                     </div>
-                    <div className="flex-1 space-y-2">
+                    <div className="flex-1 min-w-0 space-y-2">
                       <textarea value={newPostContent} onChange={e => setNewPostContent(e.target.value)}
                         placeholder="Quoi de neuf ?" rows={2}
                         className="w-full bg-transparent text-sm outline-none resize-none"
@@ -425,7 +425,7 @@ export default function AgenceDashboard() {
                         </div>
                       )}
                       {newPostImage && !posting && (
-                        <div className="relative w-full aspect-square rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)", maxHeight: 280 }}>
+                        <div className="relative w-full rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)", maxHeight: 200 }}>
                           <img src={newPostImage} alt="" className="w-full h-full object-cover" draggable={false} />
                           <button onClick={() => setNewPostImage(null)}
                             className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
@@ -434,15 +434,15 @@ export default function AgenceDashboard() {
                           </button>
                         </div>
                       )}
-                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                        {/* Post type toggle: Feed / Story */}
+                      {/* Row 1: Type toggle + Photo button */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <div className="flex items-center rounded-lg overflow-hidden shrink-0" style={{ border: "1px solid var(--border)" }}>
                           {([
                             { id: "feed" as const, label: "Feed", Icon: Newspaper },
                             { id: "story" as const, label: "Story", Icon: Camera },
                           ]).map(opt => (
                             <button key={opt.id} onClick={() => setNewPostType(opt.id)}
-                              className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium cursor-pointer transition-colors"
+                              className="flex items-center gap-1 px-2 py-1.5 text-[11px] font-medium cursor-pointer transition-colors"
                               style={{
                                 background: newPostType === opt.id ? "var(--accent)" : "transparent",
                                 color: newPostType === opt.id ? "#fff" : "var(--text-muted)",
@@ -453,8 +453,7 @@ export default function AgenceDashboard() {
                             </button>
                           ))}
                         </div>
-                        <div className="w-px h-4 shrink-0" style={{ background: "var(--border)" }} />
-                        <label className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium cursor-pointer shrink-0"
+                        <label className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer shrink-0"
                           style={{ background: "rgba(0,0,0,0.04)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
                           <ImageIcon className="w-3.5 h-3.5" /> Photo
                           <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" className="hidden" onChange={(e) => {
@@ -470,13 +469,16 @@ export default function AgenceDashboard() {
                             reader.readAsDataURL(file); e.target.value = "";
                           }} />
                         </label>
+                      </div>
+                      {/* Row 2: Tier selection — wraps on mobile */}
+                      <div className="flex items-center gap-1 flex-wrap">
                         {TIER_OPTIONS.map(t => (
                           <button key={t.id} onClick={() => setNewPostTier(t.id)}
-                            className="px-2.5 py-2 rounded-full text-[11px] font-bold cursor-pointer shrink-0"
+                            className="px-2.5 py-1.5 rounded-full text-[11px] font-bold cursor-pointer shrink-0"
                             style={{
                               background: newPostTier === t.id ? `${t.color}20` : "transparent",
                               color: newPostTier === t.id ? t.color : "var(--text-muted)",
-                              border: `1px solid ${newPostTier === t.id ? `${t.color}40` : "transparent"}`,
+                              border: `1px solid ${newPostTier === t.id ? `${t.color}40` : "var(--border)"}`,
                             }}>
                             {t.label}
                           </button>
