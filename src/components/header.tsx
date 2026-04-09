@@ -2,11 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import { MessageCircle, Users, Link2, ExternalLink, Globe, Instagram, X, KeyRound, Clock, Key, ArrowRight, CheckCircle, XCircle, ShieldAlert, ShoppingBag, Check, Ban, ImagePlus, Send, ArrowLeft } from "lucide-react";
+import { MessageCircle, Users, Link2, Globe, Instagram, KeyRound, ImagePlus } from "lucide-react";
 import { StoryGenerator } from "@/components/profile/story-generator";
 import { useModel } from "@/lib/model-context";
 import { toModelId } from "@/lib/model-utils";
 import { toSlot } from "@/lib/tier-utils";
+import { MessagesDropdown } from "@/components/header/messages-dropdown";
+import { ClientsDropdown } from "@/components/header/clients-dropdown";
+import { SocialsDropdown } from "@/components/header/socials-dropdown";
 
 // ── Page titles ──
 const PAGE_TITLES: Record<string, string> = {
@@ -375,144 +378,23 @@ export function Header() {
             )}
           </button>
           {openDropdown === "messages" && (
-            <div className={dropdownBox} style={{ ...dropdownStyle, overflow: "hidden" }}>
-              {/* ── Active Chat View ── */}
-              {activeChat ? (<>
-                <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
-                  <button onClick={() => setActiveChat(null)}
-                    className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer shrink-0"
-                    style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="text-xs font-bold truncate" style={{ color: "var(--text)" }}>@{activeChat.pseudo}</span>
-                  {(() => {
-                    const cl = clients.find(c => c.id === activeChat.clientId);
-                    if (!cl) return null;
-                    const isSnap = !!cl.pseudo_snap;
-                    const profileUrl = isSnap ? `https://snapchat.com/add/${cl.pseudo_snap}` : cl.pseudo_insta ? `https://instagram.com/${cl.pseudo_insta}` : null;
-                    return profileUrl ? (
-                      <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 no-underline ml-auto">
-                        <ExternalLink className="w-3 h-3" style={{ color: isSnap ? "#C4A600" : "#C13584" }} />
-                      </a>
-                    ) : null;
-                  })()}
-                  <button onClick={() => { setActiveChat(null); setOpenDropdown(null); }}
-                    className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer shrink-0 ml-auto"
-                    style={{ background: "none", border: "none", color: "var(--text-muted)" }}>
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <div className="overflow-y-auto px-3 py-3 space-y-2" style={{ maxHeight: "50vh", minHeight: 120 }}>
-                  {chatMessages.length === 0 && (
-                    <p className="text-[11px] text-center py-6" style={{ color: "var(--text-muted)" }}>Debut de la conversation</p>
-                  )}
-                  {chatMessages.map(m => (
-                    <div key={m.id} className={`flex ${m.sender_type === "model" ? "justify-end" : "justify-start"}`}>
-                      <div className="max-w-[80%] px-3 py-2 rounded-2xl" style={{
-                        background: m.sender_type === "model" ? "var(--accent)" : "var(--bg)",
-                        color: m.sender_type === "model" ? "#fff" : "var(--text)",
-                        border: m.sender_type === "model" ? "none" : "1px solid var(--border)",
-                        borderBottomRightRadius: m.sender_type === "model" ? 4 : 16,
-                        borderBottomLeftRadius: m.sender_type === "model" ? 16 : 4,
-                      }}>
-                        <p className="text-[11px] whitespace-pre-wrap break-words">{m.content}</p>
-                        <p className="text-[9px] mt-0.5" style={{ opacity: 0.6 }}>
-                          {new Date(m.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  <div ref={chatEndRef} />
-                </div>
-                <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderTop: "1px solid var(--border)" }}>
-                  <input ref={replyInputRef} value={replyText} onChange={e => setReplyText(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply(); } }}
-                    placeholder="Repondre..."
-                    className="flex-1 text-xs bg-transparent outline-none px-3 py-2 rounded-xl"
-                    style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }} />
-                  <button onClick={sendReply} disabled={!replyText.trim() || sending}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0 disabled:opacity-30"
-                    style={{ background: "var(--accent)", color: "#fff", border: "none" }}>
-                    <Send className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </>) : (<>
-                {/* ── Conversations List ── */}
-                <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
-                  <span className="text-xs font-bold" style={{ color: "var(--text)" }}>Messages</span>
-                  <button onClick={() => setOpenDropdown(null)} className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
-                    style={{ background: "none", border: "none", color: "var(--text-muted)" }}><X className="w-3.5 h-3.5" /></button>
-                </div>
-                <div className="max-h-[50vh] overflow-y-auto">
-                  {(() => {
-                    // Group messages by client_id — show latest per conversation
-                    const convMap = new Map<string, { clientId: string; pseudo: string; lastMsg: MessageItem; unread: number }>();
-                    recentMessages.forEach(m => {
-                      const cid = m.client_id;
-                      if (!cid) return;
-                      const existing = convMap.get(cid);
-                      const isNewer = !existing || new Date(m.created_at).getTime() > new Date(existing.lastMsg.created_at).getTime();
-                      if (isNewer || !existing) {
-                        const cl = clients.find(c => c.id === cid);
-                        const pseudo = cl ? (cl.pseudo_snap || cl.pseudo_insta || cid.slice(0, 8)) : cid.slice(0, 10);
-                        convMap.set(cid, {
-                          clientId: cid,
-                          pseudo,
-                          lastMsg: m,
-                          unread: (existing?.unread || 0) + (!m.read && m.sender_type === "client" ? 1 : 0),
-                        });
-                      } else if (!m.read && m.sender_type === "client") {
-                        existing.unread++;
-                      }
-                    });
-                    // Also count unread for conversations already in map
-                    recentMessages.forEach(m => {
-                      if (!m.client_id || !m.read || m.sender_type !== "client") return;
-                      // already handled above
-                    });
-                    const conversations = Array.from(convMap.values())
-                      .sort((a, b) => new Date(b.lastMsg.created_at).getTime() - new Date(a.lastMsg.created_at).getTime());
-
-                    if (conversations.length === 0) {
-                      return <p className="text-[11px] text-center py-8" style={{ color: "var(--text-muted)" }}>Aucun message</p>;
-                    }
-
-                    return conversations.map(conv => (
-                      <button key={conv.clientId} onClick={() => openChat(conv.clientId, conv.pseudo)}
-                        className="flex items-start gap-2.5 px-4 py-3 w-full text-left cursor-pointer transition-colors hover:brightness-95"
-                        style={{ borderBottom: "1px solid var(--border)", background: conv.unread > 0 ? "rgba(230,51,41,0.04)" : "transparent", border: "none", borderBlockEnd: "1px solid var(--border)" }}>
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                          style={{ background: conv.unread > 0 ? "rgba(230,51,41,0.12)" : "rgba(0,0,0,0.06)",
-                            color: conv.unread > 0 ? "var(--accent)" : "var(--text-muted)" }}>
-                          {conv.pseudo.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[11px] font-bold truncate" style={{ color: "var(--text)" }}>@{conv.pseudo}</span>
-                            <span className="text-[10px] shrink-0 ml-auto" style={{ color: "var(--text-muted)" }}>
-                              {new Date(conv.lastMsg.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                          </div>
-                          <p className="text-[11px] truncate mt-0.5" style={{ color: conv.unread > 0 ? "var(--text)" : "var(--text-muted)", fontWeight: conv.unread > 0 ? 600 : 400 }}>
-                            {conv.lastMsg.sender_type === "model" ? "Vous: " : ""}{conv.lastMsg.content}
-                          </p>
-                        </div>
-                        {conv.unread > 0 && (
-                          <span className="min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 shrink-0 mt-1"
-                            style={{ background: "var(--accent)", color: "#fff", fontSize: "10px", fontWeight: 700 }}>
-                            {conv.unread}
-                          </span>
-                        )}
-                      </button>
-                    ));
-                  })()}
-                </div>
-                <a href="/agence/clients" className="flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold no-underline"
-                  style={{ color: "var(--accent)", borderTop: "1px solid var(--border)" }}>
-                  Voir tout <ArrowRight className="w-3 h-3" />
-                </a>
-              </>)}
-            </div>
+            <MessagesDropdown
+              dropdownBox={dropdownBox}
+              dropdownStyle={dropdownStyle}
+              activeChat={activeChat}
+              chatMessages={chatMessages}
+              replyText={replyText}
+              sending={sending}
+              recentMessages={recentMessages}
+              clients={clients}
+              onSetActiveChat={setActiveChat}
+              onSetReplyText={setReplyText}
+              onSendReply={sendReply}
+              onOpenChat={openChat}
+              onClose={() => setOpenDropdown(null)}
+              chatEndRef={chatEndRef}
+              replyInputRef={replyInputRef}
+            />
           )}
         </div>
 
@@ -536,355 +418,22 @@ export function Header() {
             ) : null}
           </button>
           {openDropdown === "clients" && (
-            <div className={dropdownBox} style={dropdownStyle}>
-              <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
-                <span className="text-xs font-bold" style={{ color: "var(--text)" }}>
-                  Clients & Codes
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>
-                    {activeCodes.length} actif{activeCodes.length > 1 ? "s" : ""} / {clients.length} client{clients.length > 1 ? "s" : ""}
-                  </span>
-                  <button onClick={() => setOpenDropdown(null)} className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
-                    style={{ background: "none", border: "none", color: "var(--text-muted)" }}><X className="w-3.5 h-3.5" /></button>
-                </div>
-              </div>
-              <div className="max-h-[50vh] overflow-y-auto">
-                {/* ── Unified Client Pipeline ── */}
-                {(() => {
-                  // Build unified client list: pending first, then verified with orders, then active
-                  const ordersByPseudo = new Map<string, typeof pendingOrders[0]>();
-                  pendingOrders.forEach(o => {
-                    const m = o.content?.match(/@(\S+)/);
-                    if (m) ordersByPseudo.set(m[1].toLowerCase(), o);
-                  });
-
-                  // Orphan orders (no matching client record)
-                  const matchedOrderPseudos = new Set<string>();
-
-                  // 1. Pending clients (need verification first)
-                  const pendingItems = pendingClients.slice(0, 10).map(c => {
-                    const pseudo = pseudoOf(c);
-                    const order = ordersByPseudo.get(pseudo.toLowerCase());
-                    if (order) matchedOrderPseudos.add(pseudo.toLowerCase());
-                    return { type: "pending" as const, client: c, pseudo, order };
-                  });
-
-                  // 2. Verified clients with pending orders
-                  const verifiedWithOrder = clients
-                    .filter(c => c.verified_status === "verified")
-                    .map(c => {
-                      const pseudo = pseudoOf(c);
-                      const order = ordersByPseudo.get(pseudo.toLowerCase());
-                      if (order) matchedOrderPseudos.add(pseudo.toLowerCase());
-                      return { type: "verified_order" as const, client: c, pseudo, order };
-                    })
-                    .filter(x => x.order);
-
-                  // 3. Orphan orders (order exists but no client match)
-                  const orphanOrders = pendingOrders.filter(o => {
-                    const m = o.content?.match(/@(\S+)/);
-                    return m && !matchedOrderPseudos.has(m[1].toLowerCase());
-                  });
-
-                  // 4. Active clients (verified, no pending order)
-                  const activeClients = clients
-                    .filter(c => c.verified_status === "verified" || (c.verified_status && c.verified_status !== "pending" && c.verified_status !== "rejected"))
-                    .filter(c => !ordersByPseudo.has(pseudoOf(c).toLowerCase()))
-                    .slice(0, 15);
-
-                  const hasActions = pendingItems.length > 0 || verifiedWithOrder.length > 0 || orphanOrders.length > 0;
-
-                  return (<>
-                    {/* ── Section: Actions requises ── */}
-                    {hasActions && (
-                      <div className="flex items-center gap-1.5 px-4 py-2" style={{ background: "rgba(245,158,11,0.08)", borderBottom: "1px solid var(--border)" }}>
-                        <ShieldAlert className="w-3 h-3" style={{ color: "#F59E0B" }} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#F59E0B" }}>
-                          Actions requises ({pendingItems.length + verifiedWithOrder.length + orphanOrders.length})
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Pending clients — Step 1: verify profile */}
-                    {pendingItems.map(({ client: c, pseudo, order }) => {
-                      const isSnap = !!c.pseudo_snap;
-                      const profileUrl = isSnap
-                        ? `https://snapchat.com/add/${c.pseudo_snap}`
-                        : c.pseudo_insta ? `https://instagram.com/${c.pseudo_insta}` : null;
-                      const platformLabel = isSnap ? "Snapchat" : "Instagram";
-                      const pColor = isSnap ? "#C4A600" : "#C13584";
-                      const isProcessing = verifyingId === c.id;
-
-                      // Parse order info if exists
-                      const orderAmount = order?.content?.match(/\((\d+)€\)/)?.[1];
-                      const orderItem = order?.content?.match(/commande:\s*(.+?)\s*\(/)?.[1]?.trim();
-                      const orderPayment = order?.content?.match(/via\s+(\w+)/i)?.[1];
-
-                      return (
-                        <div key={`pipe-${c.id}`} className="px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
-                          {/* Client header */}
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                              style={{ background: `${pColor}20`, color: pColor }}>
-                              {pseudo.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-[11px] font-bold truncate block" style={{ color: "var(--text)" }}>@{pseudo}</span>
-                              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                                {c.lead_source ? `via ${c.lead_source}` : platformLabel} · {new Date(c.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Step 1: Verify profile */}
-                          <div className="ml-4 pl-4 space-y-2" style={{ borderLeft: "2px solid #F59E0B" }}>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-bold uppercase" style={{ color: "#F59E0B" }}>Etape 1</span>
-                              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Verifier le profil</span>
-                            </div>
-                            {profileUrl && (
-                              <a href={profileUrl} target="_blank" rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-[11px] font-bold no-underline transition-all hover:scale-[1.02] active:scale-[0.97]"
-                                style={{ background: `${pColor}10`, color: pColor, border: `1px solid ${pColor}30` }}>
-                                <ExternalLink className="w-3.5 h-3.5" />
-                                Ouvrir {platformLabel}
-                                <span className="text-[10px] font-normal ml-auto" style={{ opacity: 0.6 }}>@{pseudo}</span>
-                              </a>
-                            )}
-                            <div className="flex items-center gap-2">
-                              <button onClick={() => handleVerify(c.id, "verify")} disabled={isProcessing}
-                                className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.97]"
-                                style={{ background: "rgba(16,185,129,0.12)", color: "#10B981", border: "1px solid rgba(16,185,129,0.25)", opacity: isProcessing ? 0.5 : 1 }}>
-                                <CheckCircle className="w-3.5 h-3.5" /> Profil OK
-                              </button>
-                              <button onClick={() => handleVerify(c.id, "reject")} disabled={isProcessing}
-                                className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.97]"
-                                style={{ background: "rgba(239,68,68,0.08)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.2)", opacity: isProcessing ? 0.5 : 1 }}>
-                                <XCircle className="w-3.5 h-3.5" /> Rejeter
-                              </button>
-                            </div>
-
-                            {/* Step 2 preview: order waiting (greyed out until verified) */}
-                            {order && (
-                              <div className="mt-2 opacity-40">
-                                <div className="flex items-center gap-1.5 mb-1">
-                                  <span className="text-[10px] font-bold uppercase" style={{ color: "#A855F7" }}>Etape 2</span>
-                                  <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Confirmer paiement</span>
-                                </div>
-                                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.1)" }}>
-                                  <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{orderItem || "Pack"}</span>
-                                  {orderAmount && <span className="text-[10px] font-bold" style={{ color: "#10B981" }}>{orderAmount}€</span>}
-                                  {orderPayment && <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: "rgba(0,0,0,0.06)", color: "var(--text-muted)" }}>via {orderPayment}</span>}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {/* Verified clients with pending orders — Step 2: confirm payment */}
-                    {verifiedWithOrder.map(({ client: c, pseudo, order }) => {
-                      if (!order) return null;
-                      const isSnap = !!c.pseudo_snap;
-                      const pColor = isSnap ? "#C4A600" : "#C13584";
-                      const profileUrl = isSnap
-                        ? `https://snapchat.com/add/${c.pseudo_snap}`
-                        : c.pseudo_insta ? `https://instagram.com/${c.pseudo_insta}` : null;
-                      const orderAmount = order.content?.match(/\((\d+)€\)/)?.[1];
-                      const orderItem = order.content?.match(/commande:\s*(.+?)\s*\(/)?.[1]?.trim();
-                      const orderPayment = order.content?.match(/via\s+(\w+)/i)?.[1];
-                      const orderDesc = order.content?.match(/📝\s*"(.+?)"/)?.[1];
-                      const isProcessing = processingOrderId === order.id;
-
-                      return (
-                        <div key={`pipe-order-${c.id}`} className="px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
-                          <div className="flex items-center gap-2 mb-2">
-                            {profileUrl ? (
-                              <a href={profileUrl} target="_blank" rel="noopener noreferrer"
-                                className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 no-underline transition-all hover:scale-110"
-                                style={{ background: `${pColor}20`, color: pColor }}>
-                                {pseudo.charAt(0).toUpperCase()}
-                              </a>
-                            ) : (
-                              <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                                style={{ background: `${pColor}20`, color: pColor }}>
-                                {pseudo.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1">
-                                <span className="text-[11px] font-bold truncate" style={{ color: "var(--text)" }}>@{pseudo}</span>
-                                <CheckCircle className="w-3 h-3 shrink-0" style={{ color: "#10B981" }} />
-                              </div>
-                              <span className="text-[10px]" style={{ color: "#10B981" }}>Profil verifie</span>
-                            </div>
-                          </div>
-
-                          <div className="ml-4 pl-4 space-y-2" style={{ borderLeft: "2px solid #A855F7" }}>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-bold uppercase" style={{ color: "#A855F7" }}>Confirmer paiement</span>
-                            </div>
-                            <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg" style={{ background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.15)" }}>
-                              <ShoppingBag className="w-3.5 h-3.5 shrink-0" style={{ color: "#A855F7" }} />
-                              <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{orderItem || "Pack"}</span>
-                              {orderAmount && (
-                                <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md ml-auto" style={{ background: "rgba(16,185,129,0.12)", color: "#10B981" }}>
-                                  {orderAmount}€
-                                </span>
-                              )}
-                            </div>
-                            {orderPayment && (
-                              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg" style={{ background: "rgba(0,0,0,0.04)" }}>
-                                <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>Methode :</span>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{
-                                  background: orderPayment.toLowerCase() === "paypal" ? "rgba(0,123,255,0.1)" : "rgba(0,41,107,0.1)",
-                                  color: orderPayment.toLowerCase() === "paypal" ? "#007BFF" : "#00296B",
-                                }}>{orderPayment}</span>
-                              </div>
-                            )}
-                            {orderDesc && (
-                              <p className="text-[10px] leading-snug px-2.5 py-1.5 rounded-md" style={{ background: "rgba(0,0,0,0.04)", color: "var(--text-muted)" }}>
-                                &ldquo;{orderDesc}&rdquo;
-                              </p>
-                            )}
-                            <div className="flex items-center gap-2">
-                              <button onClick={() => handleAcceptOrder(order.id, order.content || "")} disabled={isProcessing}
-                                className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.97]"
-                                style={{ background: "rgba(16,185,129,0.12)", color: "#10B981", border: "1px solid rgba(16,185,129,0.25)", opacity: isProcessing ? 0.5 : 1 }}>
-                                <Check className="w-3.5 h-3.5" /> Valider paiement
-                              </button>
-                              <button onClick={() => handleRefuseOrder(order.id, order.content || "")} disabled={isProcessing}
-                                className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.97]"
-                                style={{ background: "rgba(239,68,68,0.08)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.2)", opacity: isProcessing ? 0.5 : 1 }}>
-                                <Ban className="w-3.5 h-3.5" /> Refuser
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {/* Orphan orders (no client record yet) */}
-                    {orphanOrders.map(order => {
-                      const pseudoMatch = order.content?.match(/@(\S+)/);
-                      const pseudo = pseudoMatch?.[1] || "?";
-                      const orderAmount = order.content?.match(/\((\d+)€\)/)?.[1];
-                      const orderItem = order.content?.match(/commande:\s*(.+?)\s*\(/)?.[1]?.trim();
-                      const orderPayment = order.content?.match(/via\s+(\w+)/i)?.[1];
-                      const isProcessing = processingOrderId === order.id;
-                      return (
-                        <div key={`orphan-${order.id}`} className="px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                              style={{ background: "rgba(168,85,247,0.15)", color: "#A855F7" }}>
-                              {pseudo.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-[11px] font-bold truncate block" style={{ color: "var(--text)" }}>@{pseudo}</span>
-                              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Nouveau · veut acheter</span>
-                            </div>
-                          </div>
-                          <div className="ml-4 pl-4 space-y-2" style={{ borderLeft: "2px solid #A855F7" }}>
-                            <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg" style={{ background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.15)" }}>
-                              <ShoppingBag className="w-3.5 h-3.5 shrink-0" style={{ color: "#A855F7" }} />
-                              <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{orderItem || "Pack"}</span>
-                              {orderAmount && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md ml-auto" style={{ background: "rgba(16,185,129,0.12)", color: "#10B981" }}>{orderAmount}€</span>}
-                            </div>
-                            {orderPayment && (
-                              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg" style={{ background: "rgba(0,0,0,0.04)" }}>
-                                <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>Methode :</span>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{
-                                  background: orderPayment.toLowerCase() === "paypal" ? "rgba(0,123,255,0.1)" : "rgba(0,41,107,0.1)",
-                                  color: orderPayment.toLowerCase() === "paypal" ? "#007BFF" : "#00296B",
-                                }}>{orderPayment}</span>
-                              </div>
-                            )}
-                            <div className="flex items-center gap-2">
-                              <button onClick={() => handleAcceptOrder(order.id, order.content || "")} disabled={isProcessing}
-                                className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.97]"
-                                style={{ background: "rgba(16,185,129,0.12)", color: "#10B981", border: "1px solid rgba(16,185,129,0.25)", opacity: isProcessing ? 0.5 : 1 }}>
-                                <Check className="w-3.5 h-3.5" /> Valider paiement
-                              </button>
-                              <button onClick={() => handleRefuseOrder(order.id, order.content || "")} disabled={isProcessing}
-                                className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.97]"
-                                style={{ background: "rgba(239,68,68,0.08)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.2)", opacity: isProcessing ? 0.5 : 1 }}>
-                                <Ban className="w-3.5 h-3.5" /> Refuser
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {/* ── Active clients (verified, no pending action) ── */}
-                    {activeClients.length > 0 && (
-                      <div className="flex items-center gap-1.5 px-4 py-2" style={{ background: "rgba(16,185,129,0.05)", borderBottom: "1px solid var(--border)" }}>
-                        <CheckCircle className="w-3 h-3" style={{ color: "#10B981" }} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#10B981" }}>
-                          Clients actifs ({activeClients.length})
-                        </span>
-                      </div>
-                    )}
-                    {activeClients.map(c => {
-                      const pseudo = pseudoOf(c);
-                      const isSnap = !!c.pseudo_snap;
-                      const profileUrl = isSnap
-                        ? `https://snapchat.com/add/${c.pseudo_snap}`
-                        : c.pseudo_insta ? `https://instagram.com/${c.pseudo_insta}` : null;
-                      const pColor = isSnap ? "#C4A600" : "#C13584";
-                      const clientCodes = codes.filter(co => co.client?.toLowerCase() === pseudo.toLowerCase());
-                      const activeCode = clientCodes.find(co => co.active && !co.revoked && new Date(co.expiresAt).getTime() > Date.now());
-                      return (
-                        <div key={c.id} className="flex items-center gap-2.5 px-4 py-2.5" style={{ borderBottom: "1px solid var(--border)" }}>
-                          {profileUrl ? (
-                            <a href={profileUrl} target="_blank" rel="noopener noreferrer"
-                              className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 no-underline transition-all hover:scale-110"
-                              style={{ background: `${pColor}18`, color: pColor }}
-                              title={`Voir profil ${isSnap ? "Snapchat" : "Instagram"}`}>
-                              {pseudo.charAt(0).toUpperCase()}
-                            </a>
-                          ) : (
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                              style={{ background: `${pColor}18`, color: pColor }}>
-                              {pseudo.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1">
-                              <span className="text-[11px] font-bold truncate" style={{ color: "var(--text)" }}>@{pseudo}</span>
-                              {profileUrl && (
-                                <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 no-underline">
-                                  <ExternalLink className="w-2.5 h-2.5" style={{ color: pColor, opacity: 0.6 }} />
-                                </a>
-                              )}
-                            </div>
-                            {activeCode ? (
-                              <span className="text-[10px]" style={{ color: "#10B981" }}>
-                                <Key className="w-2.5 h-2.5 inline mr-0.5" />{activeCode.code} · {activeCode.tier?.toUpperCase()}
-                              </span>
-                            ) : (
-                              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                                <Clock className="w-2.5 h-2.5 inline mr-0.5" />Pas de code actif
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {clients.length === 0 && pendingOrders.length === 0 && (
-                      <p className="text-[11px] text-center py-8" style={{ color: "var(--text-muted)" }}>Aucun client</p>
-                    )}
-                  </>);
-                })()}
-              </div>
-              <a href="/agence/clients" className="flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold no-underline"
-                style={{ color: "var(--accent)", borderTop: "1px solid var(--border)" }}>
-                Gestion complete <ArrowRight className="w-3 h-3" />
-              </a>
-            </div>
+            <ClientsDropdown
+              dropdownBox={dropdownBox}
+              dropdownStyle={dropdownStyle}
+              clients={clients}
+              codes={codes}
+              activeCodes={activeCodes}
+              pendingClients={pendingClients}
+              pendingOrders={pendingOrders}
+              verifyingId={verifyingId}
+              processingOrderId={processingOrderId}
+              pseudoOf={pseudoOf}
+              onVerify={handleVerify}
+              onAcceptOrder={handleAcceptOrder}
+              onRefuseOrder={handleRefuseOrder}
+              onClose={() => setOpenDropdown(null)}
+            />
           )}
         </div>
 
@@ -897,36 +446,14 @@ export function Header() {
             <Link2 className="w-[18px] h-[18px]" />
           </button>
           {openDropdown === "socials" && (
-            <div className={dropdownBox} style={dropdownStyle}>
-              <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
-                <span className="text-xs font-bold" style={{ color: "var(--text)" }}>Reseaux sociaux</span>
-                <button onClick={() => setOpenDropdown(null)} className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
-                  style={{ background: "none", border: "none", color: "var(--text-muted)" }}><X className="w-3.5 h-3.5" /></button>
-              </div>
-              <div className="p-3 space-y-1.5">
-                {PLATFORMS.map(p => {
-                  const handle = modelInfo?.platforms?.[p.id] || "";
-                  return (
-                    <div key={p.id} className="flex items-center gap-2.5 px-3 py-2 rounded-xl"
-                      style={{ background: "var(--bg)", border: "1px solid var(--border)" }}>
-                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color }} />
-                      <span className="text-[11px] font-medium shrink-0 w-16" style={{ color: "var(--text-muted)" }}>{p.label}</span>
-                      <input defaultValue={handle} placeholder="pseudo..."
-                        className="flex-1 text-[11px] bg-transparent outline-none min-w-0" style={{ color: "var(--text)" }}
-                        onBlur={e => handleSavePlatform(p.id, e.target.value.trim())}
-                        onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
-                      {handle && (
-                        <a href={handle.startsWith("http") ? handle : `${p.urlPrefix}${handle}`}
-                          target="_blank" rel="noopener noreferrer"
-                          className="shrink-0 flex items-center justify-center w-6 h-6 rounded-md no-underline" style={{ color: p.color }}>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <SocialsDropdown
+              dropdownBox={dropdownBox}
+              dropdownStyle={dropdownStyle}
+              platforms={PLATFORMS}
+              modelPlatforms={modelInfo?.platforms}
+              onSavePlatform={handleSavePlatform}
+              onClose={() => setOpenDropdown(null)}
+            />
           )}
         </div>
 
