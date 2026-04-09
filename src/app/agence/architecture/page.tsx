@@ -5,8 +5,8 @@ import {
   ChevronDown, ChevronRight, AlertTriangle, CheckCircle, XCircle,
   Zap, Database, Globe, Layout, Shield, ArrowRight, ExternalLink,
   Code, Users, MessageSquare, Camera, DollarSign, Settings, FileText,
-  Upload, Eye, Lock, CreditCard, Bell, Image, Send, Trash2, Edit,
-  Copy, Pause, Play, Ban, RefreshCw, Search, ShoppingBag
+  Upload, Lock, Send, Trash2, Edit,
+  Copy, Pause
 } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 

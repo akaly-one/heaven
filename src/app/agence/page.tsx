@@ -83,9 +83,6 @@ export default function AgenceDashboard() {
   const [clientModal, setClientModal] = useState<{ pseudo: string } | null>(null);
   const [feedTab, setFeedTab] = useState<"feed" | "wall">("feed");
 
-  // Messages state (for handler compatibility)
-  const [chatMessages, setChatMessages] = useState<{ id: string; client_id: string; content: string; created_at: string; sender_type: string; read?: boolean; model?: string }[]>([]);
-
   // ── Pull-to-refresh ──
   const [pullY, setPullY] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -188,7 +185,7 @@ export default function AgenceDashboard() {
   const pendingPurchases = useMemo(() => wallPosts.filter(p => p.pseudo === "SYSTEM" && p.content?.startsWith("⏳")), [wallPosts]);
 
   // ── Actions ──
-  const handleGenerate = useCallback((data: { client: string; platform: string; tier: string; duration: number; type: "paid" | "promo" | "gift" }) => {
+  const handleGenerate = useCallback(async (data: { client: string; platform: string; tier: string; duration: number; type: "paid" | "promo" | "gift" }) => {
     const code = generateCodeString(modelSlug);
     const pack = packs.find(p => p.id === data.tier);
     const newCode: AccessCode = {
@@ -198,7 +195,11 @@ export default function AgenceDashboard() {
       created: new Date().toISOString(), used: false, active: true, revoked: false, isTrial: false, lastUsed: null,
     };
     setCodes(prev => [...prev, newCode]);
-    fetch("/api/codes", { method: "POST", headers: authHeaders(), body: JSON.stringify(newCode) });
+    try {
+      await fetch("/api/codes", { method: "POST", headers: authHeaders(), body: JSON.stringify(newCode) });
+    } catch (err) {
+      console.error("[Agence] Failed to persist code:", err);
+    }
     return code;
   }, [packs, modelSlug, authHeaders]);
 
@@ -284,6 +285,18 @@ export default function AgenceDashboard() {
     { id: "p5", label: "VIP Platinum", color: "#B8860B" },
   ];
 
+  // Context ready but no model selected — auto-refresh safety net for model accounts
+  useEffect(() => {
+    if (ready && !modelSlug && !isRoot) {
+      const t = setTimeout(() => {
+        // Re-read sessionStorage one last time before reload
+        const raw = sessionStorage.getItem("heaven_auth");
+        if (raw) window.location.reload();
+      }, 1000);
+      return () => clearTimeout(t);
+    }
+  }, [ready, modelSlug, isRoot]);
+
   // ══════════ RENDER ══════════
 
   // Wait for context to initialize from sessionStorage
@@ -307,18 +320,6 @@ export default function AgenceDashboard() {
       </OsLayout>
     );
   }
-
-  // Context ready but no model selected — auto-refresh safety net for model accounts
-  useEffect(() => {
-    if (ready && !modelSlug && !isRoot) {
-      const t = setTimeout(() => {
-        // Re-read sessionStorage one last time before reload
-        const raw = sessionStorage.getItem("heaven_auth");
-        if (raw) window.location.reload();
-      }, 1000);
-      return () => clearTimeout(t);
-    }
-  }, [ready, modelSlug, isRoot]);
 
   if (!modelSlug) {
     return (

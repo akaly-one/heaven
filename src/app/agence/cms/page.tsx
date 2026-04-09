@@ -143,7 +143,7 @@ export default function AgenceCmsPage() {
   }, [selectedPage]);
 
   // ── Code helpers (codes tab uses existing /api/codes) ──
-  const generateNewCode = useCallback((label: string) => {
+  const generateNewCode = useCallback(async (label: string) => {
     const now = Date.now();
     const newCode: TempCode = {
       code: generateCode(),
@@ -152,7 +152,18 @@ export default function AgenceCmsPage() {
       label: label || "Acces temporaire",
       used: false,
     };
-    setCodes((prev) => [newCode, ...prev]);
+    try {
+      const res = await fetch("/api/codes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newCode),
+      });
+      if (res.ok) {
+        setCodes((prev) => [newCode, ...prev]);
+      }
+    } catch (err) {
+      console.error("[CMS] generate code error:", err);
+    }
   }, []);
 
   const copyCode = (code: string) => {
@@ -161,8 +172,19 @@ export default function AgenceCmsPage() {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  const deleteCode = (code: string) => {
-    setCodes((prev) => prev.filter((c) => c.code !== code));
+  const deleteCode = async (code: string) => {
+    try {
+      const res = await fetch("/api/codes", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      if (res.ok) {
+        setCodes((prev) => prev.filter((c) => c.code !== code));
+      }
+    } catch (err) {
+      console.error("[CMS] delete code error:", err);
+    }
   };
 
   // ── Collaborator CRUD ──

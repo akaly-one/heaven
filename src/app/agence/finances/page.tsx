@@ -27,15 +27,6 @@ interface Payment {
   created_at: string;
 }
 
-interface RevenueLogEntry {
-  id: string;
-  model: string;
-  amount: number;
-  currency: string;
-  source: string;
-  created_at: string;
-}
-
 interface Client {
   id: string;
   model: string;
@@ -106,7 +97,6 @@ function methodBadge(method: string) {
 export default function FinancesPage() {
   const { currentModel, authHeaders } = useModel();
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [revenueLog, setRevenueLog] = useState<RevenueLogEntry[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -117,7 +107,7 @@ export default function FinancesPage() {
       .then(r => r.json())
       .then(d => {
         if (d.payments) setPayments(d.payments);
-        if (d.revenue_log) setRevenueLog(d.revenue_log);
+
         if (d.clients) setClients(d.clients);
       })
       .catch(() => {})

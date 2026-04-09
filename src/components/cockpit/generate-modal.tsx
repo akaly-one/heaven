@@ -14,7 +14,7 @@ interface GenerateModalProps {
     tier: string;
     duration: number;
     type: "paid" | "promo" | "gift";
-  }) => string | null;
+  }) => string | null | Promise<string | null>;
 }
 
 const TIERS = [
@@ -45,8 +45,8 @@ export function GenerateModal({ open, onClose, onGenerate, modelSlug, prefillCli
     ? `${origin}/m/${modelSlug}?access=${encodeURIComponent(generatedCode)}`
     : "";
 
-  const handleGenerate = () => {
-    const code = onGenerate({ client, platform, tier, duration: durationDays * 24, type });
+  const handleGenerate = async () => {
+    const code = await onGenerate({ client, platform, tier, duration: durationDays * 24, type });
     if (code) setGeneratedCode(code);
   };
 

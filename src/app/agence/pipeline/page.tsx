@@ -27,7 +27,7 @@ const TIER_LABELS: Record<string, string> = {
 // ── Component ──
 
 export default function ContenuPage() {
-  const { currentModel, auth, authHeaders, isRoot } = useModel();
+  const { currentModel, auth, authHeaders } = useModel();
   const modelSlug = currentModel || auth?.model_slug || "";
 
   const [posts, setPosts] = useState<Post[]>([]);
