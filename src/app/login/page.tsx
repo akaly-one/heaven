@@ -4,8 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, ArrowRight, Crown } from "lucide-react";
 
-// SQWENSY OS API for code validation (source of truth)
-const SQWENSY_API = process.env.NEXT_PUBLIC_SQWENSY_URL || "https://sqwensy.com";
+// Auth API (proxied through local /api/auth/login which handles JWT)
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,7 +19,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const res = await fetch(`${SQWENSY_API}/api/agence/verify-code`, {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: code.trim() }),
