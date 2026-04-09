@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
+import { getAuthUser } from "@/lib/api-auth";
 
 /**
  * GET /api/models/media?model=yumi
@@ -12,6 +13,13 @@ import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 export async function GET(req: NextRequest) {
   const cors = getCorsHeaders(req);
   const model = req.nextUrl.searchParams.get("model");
+  // Model-scoping: model role can only access their own data
+  const user = await getAuthUser();
+  if (user && user.role === "model") {
+    if (model && model !== user.sub) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
+    }
+  }
 
   const supabase = getServerSupabase();
   if (!supabase) {
@@ -60,6 +68,13 @@ export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
     const { model_slug, ...updates } = body;
+    // Model-scoping: model role can only access their own data
+    const user = await getAuthUser();
+    if (user && user.role === "model") {
+      if (model_slug && model_slug !== user.sub) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
+      }
+    }
 
     if (!isValidModelSlug(model_slug)) {
       return NextResponse.json({ error: "model_slug requis" }, { status: 400, headers: cors });
@@ -112,6 +127,13 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { model_slug } = body;
+    // Model-scoping: model role can only access their own data
+    const user = await getAuthUser();
+    if (user && user.role === "model") {
+      if (model_slug && model_slug !== user.sub) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
+      }
+    }
 
     if (!isValidModelSlug(model_slug)) {
       return NextResponse.json({ error: "model_slug requis" }, { status: 400, headers: cors });

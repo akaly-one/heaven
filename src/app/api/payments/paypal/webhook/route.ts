@@ -13,7 +13,7 @@ export async function OPTIONS(req: NextRequest) {
 /* ══════════════════════════════════════════════
    POST /api/payments/paypal/webhook
    PayPal webhook handler (backup confirmation)
-   Always returns 200 — PayPal retries on non-200
+   Returns 200 on success — 401/500 on auth/config errors
    ══════════════════════════════════════════════ */
 
 export async function POST(req: NextRequest) {
@@ -25,17 +25,20 @@ export async function POST(req: NextRequest) {
 
     console.log("[PayPal/webhook] Received event:", eventType, "id:", resourceId);
 
-    // ── Verify webhook signature (optional — depends on PAYPAL_WEBHOOK_ID) ──
+    // ── Verify webhook signature (required in production) ──
     const webhookId = process.env.PAYPAL_WEBHOOK_ID;
-    if (webhookId) {
+    if (!webhookId) {
+      if (process.env.NODE_ENV === "production") {
+        console.error("[PayPal/webhook] PAYPAL_WEBHOOK_ID not configured in production");
+        return NextResponse.json({ error: "webhook_not_configured" }, { status: 500, headers: cors });
+      }
+      console.warn("[PayPal/webhook] PAYPAL_WEBHOOK_ID not set — skipping signature verification (dev)");
+    } else {
       const verified = await verifyWebhookSignature(req, body, webhookId);
       if (!verified) {
-        console.warn("[PayPal/webhook] Signature verification failed for event:", resourceId);
-        // Still return 200 to prevent retries, but don't process
-        return NextResponse.json({ received: true, verified: false }, { headers: cors });
+        console.error("[PayPal/webhook] Signature verification failed for event:", resourceId);
+        return NextResponse.json({ error: "invalid_signature" }, { status: 401, headers: cors });
       }
-    } else {
-      console.warn("[PayPal/webhook] PAYPAL_WEBHOOK_ID not set — skipping signature verification");
     }
 
     // ── Handle PAYMENT.CAPTURE.COMPLETED ──

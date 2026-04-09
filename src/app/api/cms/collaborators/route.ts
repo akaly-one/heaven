@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
+import { requireRoot } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -21,6 +22,9 @@ export async function OPTIONS(req: NextRequest) {
 // GET /api/cms/collaborators?model=xxx
 export async function GET(req: NextRequest) {
   const cors = getCorsHeaders(req);
+  try { await requireRoot(); } catch {
+    return NextResponse.json({ error: "Root access required" }, { status: 403, headers: cors });
+  }
   const model = req.nextUrl.searchParams.get("model");
   if (!isValidModelSlug(model)) {
     return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
@@ -47,6 +51,9 @@ export async function GET(req: NextRequest) {
 // POST /api/cms/collaborators — create collaborator
 export async function POST(req: NextRequest) {
   const cors = getCorsHeaders(req);
+  try { await requireRoot(); } catch {
+    return NextResponse.json({ error: "Root access required" }, { status: 403, headers: cors });
+  }
   try {
     const body = await req.json();
     const { model, name, role, email, phone, avatar_url } = body;
@@ -126,6 +133,9 @@ export async function PUT(req: NextRequest) {
 // DELETE /api/cms/collaborators?id=xxx
 export async function DELETE(req: NextRequest) {
   const cors = getCorsHeaders(req);
+  try { await requireRoot(); } catch {
+    return NextResponse.json({ error: "Root access required" }, { status: 403, headers: cors });
+  }
   const id = req.nextUrl.searchParams.get("id");
   if (!id) {
     return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });

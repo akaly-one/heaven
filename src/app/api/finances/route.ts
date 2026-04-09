@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
+import { requireRoot } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -19,6 +20,9 @@ export async function OPTIONS(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const cors = getCorsHeaders(req);
+  try { await requireRoot(); } catch {
+    return NextResponse.json({ error: "Root access required" }, { status: 403, headers: cors });
+  }
   try {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 import { sanitize } from "@/lib/api-utils";
+import { getAuthUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,13 @@ export async function GET(req: NextRequest) {
     // Require at least a model filter to prevent full table dump
     if (!isValidModelSlug(modelFilter)) {
       return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
+    }
+    // Model-scoping: model role can only access their own data
+    const user = await getAuthUser();
+    if (user && user.role === "model") {
+      if (modelFilter && modelFilter !== user.sub) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
+      }
     }
 
     let q = supabase
@@ -50,6 +58,13 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { model, client_id, sender_type, content } = body;
+    // Model-scoping: model role can only access their own data
+    const user = await getAuthUser();
+    if (user && user.role === "model") {
+      if (model && model !== user.sub) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
+      }
+    }
 
     if (!isValidModelSlug(model) || !client_id || !sender_type || !content) {
       return NextResponse.json({ error: "model, client_id, sender_type, content requis" }, { status: 400, headers: cors });
@@ -108,6 +123,13 @@ export async function DELETE(req: NextRequest) {
   const model = req.nextUrl.searchParams.get("model");
   if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
   if (!model || !isValidModelSlug(model)) return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
+  // Model-scoping: model role can only access their own data
+  const user = await getAuthUser();
+  if (user && user.role === "model") {
+    if (model !== user.sub) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
+    }
+  }
 
   try {
     const supabase = getServerSupabase();
@@ -129,6 +151,13 @@ export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
     const { id, client_id, model, action } = body;
+    // Model-scoping: model role can only access their own data
+    const user = await getAuthUser();
+    if (user && user.role === "model") {
+      if (model && model !== user.sub) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
+      }
+    }
 
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });

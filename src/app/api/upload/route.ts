@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 import { getServerSupabase } from "@/lib/supabase-server";
+import { getAuthUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -33,6 +34,13 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { file, model, folder, type } = body;
+    // Model-scoping: model role can only access their own data
+    const user = await getAuthUser();
+    if (user && user.role === "model") {
+      if (model && model !== user.sub) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
+      }
+    }
 
     if (!file) {
       return NextResponse.json({ error: "file required (base64 data URL)" }, { status: 400, headers: cors });
@@ -124,6 +132,13 @@ export async function DELETE(req: NextRequest) {
     const publicId = req.nextUrl.searchParams.get("public_id");
     const type = (req.nextUrl.searchParams.get("type") || "image") as "image" | "video";
     const model = req.nextUrl.searchParams.get("model");
+    // Model-scoping: model role can only access their own data
+    const user = await getAuthUser();
+    if (user && user.role === "model") {
+      if (model && model !== user.sub) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
+      }
+    }
 
     if (!publicId) {
       return NextResponse.json({ error: "public_id required" }, { status: 400, headers: cors });

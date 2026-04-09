@@ -36,24 +36,25 @@ function verifySignature(
 
 /* ── POST /api/payments/revolut/webhook ── */
 export async function POST(req: NextRequest) {
-  // Always return 200 — Revolut retries on non-200
+  // Always return 200 on processing errors — Revolut retries on non-200
   try {
     const rawBody = await req.text();
     const signatureHeader = req.headers.get("Revolut-Signature");
     const webhookSecret = process.env.REVOLUT_WEBHOOK_SECRET;
 
-    // ── Signature check ──
-    if (webhookSecret) {
+    // ── Signature check (required in production) ──
+    if (!webhookSecret) {
+      if (process.env.NODE_ENV === "production") {
+        console.error("[Revolut/webhook] REVOLUT_WEBHOOK_SECRET not configured in production");
+        return NextResponse.json({ error: "webhook_not_configured" }, { status: 500 });
+      }
+      console.warn("[Revolut/webhook] REVOLUT_WEBHOOK_SECRET not set — skipping signature verification (dev)");
+    } else {
       const valid = verifySignature(rawBody, signatureHeader, webhookSecret);
       if (!valid) {
         console.error("[Revolut/webhook] Invalid signature");
-        // Return 200 anyway to avoid retries on config issues
-        return NextResponse.json({ received: true, error: "invalid_signature" });
+        return NextResponse.json({ error: "invalid_signature" }, { status: 401 });
       }
-    } else {
-      console.warn(
-        "[Revolut/webhook] REVOLUT_WEBHOOK_SECRET not set — skipping signature verification (dev mode)",
-      );
     }
 
     const event = JSON.parse(rawBody) as {

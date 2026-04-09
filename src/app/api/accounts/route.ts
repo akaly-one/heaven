@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders } from "@/lib/auth";
+import { requireRoot } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -12,6 +13,9 @@ export async function OPTIONS(req: NextRequest) {
 // GET /api/accounts?model=slug — List accounts (filtered by model for non-root)
 export async function GET(_req: NextRequest) {
   const cors = getCorsHeaders(_req);
+  try { await requireRoot(); } catch {
+    return NextResponse.json({ error: "Root access required" }, { status: 403, headers: cors });
+  }
   try {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
@@ -40,6 +44,9 @@ export async function GET(_req: NextRequest) {
 // POST /api/accounts — Create account
 export async function POST(req: NextRequest) {
   const cors = getCorsHeaders(req);
+  try { await requireRoot(); } catch {
+    return NextResponse.json({ error: "Root access required" }, { status: 403, headers: cors });
+  }
   try {
     const body = await req.json();
     const { code, role, model_slug, display_name } = body;
@@ -75,6 +82,9 @@ export async function POST(req: NextRequest) {
 // PUT /api/accounts — Update account
 export async function PUT(req: NextRequest) {
   const cors = getCorsHeaders(req);
+  try { await requireRoot(); } catch {
+    return NextResponse.json({ error: "Root access required" }, { status: 403, headers: cors });
+  }
   try {
     const body = await req.json();
     const { id, ...updates } = body;
@@ -118,6 +128,9 @@ export async function PUT(req: NextRequest) {
 // DELETE /api/accounts?id=xxx — Delete account + cascade
 export async function DELETE(req: NextRequest) {
   const cors = getCorsHeaders(req);
+  try { await requireRoot(); } catch {
+    return NextResponse.json({ error: "Root access required" }, { status: 403, headers: cors });
+  }
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
 

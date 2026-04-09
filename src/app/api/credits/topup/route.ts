@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders } from "@/lib/auth";
+import { requireRoot } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -12,6 +13,9 @@ export async function OPTIONS(req: NextRequest) {
 /* /api/credits/topup — Add credits to a client account */
 export async function POST(req: NextRequest) {
   const cors = getCorsHeaders(req);
+  try { await requireRoot(); } catch {
+    return NextResponse.json({ error: "Root access required" }, { status: 403, headers: cors });
+  }
   try {
     const body = await req.json();
     const { client_id, credits, model, price } = body;

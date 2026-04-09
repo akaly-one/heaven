@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
+import { getAuthUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const model = _req.nextUrl.searchParams.get("model");
     if (!model || !isValidModelSlug(model)) {
       return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
+    }
+    // Model-scoping: model role can only access their own data
+    const user = await getAuthUser();
+    if (user && user.role === "model") {
+      if (model !== user.sub) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
+      }
     }
 
     const supabase = getServerSupabase();

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
+import { getAuthUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -24,6 +25,13 @@ export async function GET(req: NextRequest) {
   const model = req.nextUrl.searchParams.get("model");
   if (!isValidModelSlug(model)) {
     return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
+  }
+  // Model-scoping: model role can only access their own data
+  const user = await getAuthUser();
+  if (user && user.role === "model") {
+    if (model && model !== user.sub) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
+    }
   }
   try {
     const supabase = requireSupabase();
@@ -50,6 +58,13 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { model, title, slug, status, content, meta } = body;
+    // Model-scoping: model role can only access their own data
+    const user = await getAuthUser();
+    if (user && user.role === "model") {
+      if (model && model !== user.sub) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
+      }
+    }
     if (!isValidModelSlug(model)) {
       return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
     }
@@ -93,6 +108,15 @@ export async function PUT(req: NextRequest) {
     if (!id) {
       return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
     }
+    // Model-scoping: model role must own the page
+    const user = await getAuthUser();
+    if (user && user.role === "model") {
+      const sb = requireSupabase();
+      const { data: page } = await sb.from("agence_pages").select("model").eq("id", id).single();
+      if (page && page.model !== user.sub) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
+      }
+    }
     const supabase = requireSupabase();
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (title !== undefined) updates.title = title;
@@ -127,6 +151,15 @@ export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id");
   if (!id) {
     return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
+  }
+  // Model-scoping: model role must own the page
+  const user = await getAuthUser();
+  if (user && user.role === "model") {
+    const sb = requireSupabase();
+    const { data: page } = await sb.from("agence_pages").select("model").eq("id", id).single();
+    if (page && page.model !== user.sub) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
+    }
   }
   try {
     const supabase = requireSupabase();
