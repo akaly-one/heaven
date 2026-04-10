@@ -1037,9 +1037,6 @@ export default function AgenceDashboard() {
                     style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.15)" }}>
                     <Upload className="w-3 h-3 text-[#D4AF37]" />
                     <span className="text-[10px] font-semibold text-[#D4AF37]">Upload</span>
-                    {contentFolder && contentFolder !== "p0" && (
-                      <span className="text-[9px] text-white/30">→ {contentFolder === "custom" ? "Custom" : packs.find(p => p.id === contentFolder)?.name || contentFolder}</span>
-                    )}
                     <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" multiple className="hidden" onChange={(e) => {
                       const files = e.target.files;
                       if (!files?.length) return;
@@ -1406,6 +1403,132 @@ export default function AgenceDashboard() {
                                       <Plus className="w-3 h-3" /> Ajouter
                                     </button>
                                   )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* ── Inline Custom Config — when custom folder is selected ── */}
+                  {contentFolder === "custom" && (() => {
+                    const customHex = "#D4AF37";
+                    const customItems = allContent.filter(c => c.tier === "custom");
+                    const customSold = customItems.filter(c => c.clientId).length;
+                    const customRevenue = customItems.reduce((sum, c) => sum + ((c as any).tokenPrice || 0), 0);
+                    const isExpCustom = expandedPack === "cfg-custom";
+                    const previewImgs = customItems.slice(0, 4);
+
+                    return (
+                      <div className="rounded-xl overflow-hidden mb-3 transition-all"
+                        style={{ background: `color-mix(in srgb, ${customHex} 4%, #0f0f12)`, border: `1px solid ${customHex}20` }}>
+                        {/* Collapsed header */}
+                        <div className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-white/[0.02] transition-colors"
+                          onClick={() => setExpandedPack(isExpCustom ? null : "cfg-custom")}>
+                          <Sparkles className="w-4 h-4 shrink-0" style={{ color: customHex }} />
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="text-xs font-bold text-white">Custom</span>
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${customHex}15`, color: customHex }}>A l&apos;unite</span>
+                            <span className="text-[10px] tabular-nums text-white/30">{customItems.length} medias · {customSold} vendus</span>
+                          </div>
+                          <ChevronDown className="w-3.5 h-3.5 text-white/25 transition-transform" style={{ transform: isExpCustom ? "rotate(180deg)" : "rotate(0)" }} />
+                        </div>
+
+                        {/* Expanded config */}
+                        {isExpCustom && (
+                          <div className="border-t" style={{ borderColor: `${customHex}15` }}>
+                            <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-0">
+
+                              {/* LEFT: Preview */}
+                              <div className="relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${customHex}08, ${customHex}03)` }}>
+                                <div className="text-[8px] font-bold uppercase tracking-wider text-center py-1.5" style={{ background: `${customHex}15`, color: customHex }}>
+                                  Apercu Custom
+                                </div>
+                                <div className="relative" style={{ minHeight: "140px" }}>
+                                  {previewImgs.length > 0 ? (
+                                    <div className="grid grid-cols-2 gap-0.5 p-1.5">
+                                      {previewImgs.map((img, i) => (
+                                        <div key={i} className="aspect-[3/4] relative overflow-hidden rounded-lg">
+                                          <img src={img.url} alt="" className="w-full h-full object-cover" style={{ filter: "blur(14px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" />
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center justify-center h-full p-4">
+                                      <span className="text-[10px] text-white/20">Aucune photo custom</span>
+                                    </div>
+                                  )}
+                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ top: "20px" }}>
+                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center backdrop-blur-sm"
+                                      style={{ background: `${customHex}30`, border: `1px solid ${customHex}40` }}>
+                                      <Sparkles className="w-4 h-4" style={{ color: customHex }} />
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="px-3 py-2 text-center" style={{ borderTop: `1px solid ${customHex}10` }}>
+                                  <p className="text-[9px] text-white/30 leading-relaxed">
+                                    Vente a l&apos;unite · prix par photo
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* RIGHT: Config */}
+                              <div className="px-4 py-3 space-y-3">
+                                {/* Description */}
+                                <div className="space-y-1">
+                                  <span className="text-[9px] uppercase tracking-wider text-white/20 font-medium">Mode de vente</span>
+                                  <p className="text-[11px] text-white/50 leading-relaxed">
+                                    Photos vendues individuellement. Chaque photo a son propre prix.
+                                    Peut etre generique (revendu plusieurs fois) ou exclusive a un client.
+                                  </p>
+                                </div>
+
+                                {/* Stats */}
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div className="rounded-lg px-2.5 py-2 text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                    <div className="text-sm font-black tabular-nums text-white">{customItems.length}</div>
+                                    <div className="text-[8px] uppercase tracking-wider text-white/25">Photos</div>
+                                  </div>
+                                  <div className="rounded-lg px-2.5 py-2 text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                    <div className="text-sm font-black tabular-nums" style={{ color: customHex }}>{customSold}</div>
+                                    <div className="text-[8px] uppercase tracking-wider text-white/25">Vendues</div>
+                                  </div>
+                                  <div className="rounded-lg px-2.5 py-2 text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                    <div className="text-sm font-black tabular-nums text-emerald-400">{fmt.format(customRevenue)}</div>
+                                    <div className="text-[8px] uppercase tracking-wider text-white/25">Revenus</div>
+                                  </div>
+                                </div>
+
+                                {/* Classification rules */}
+                                <div className="space-y-1 pt-1 border-t border-white/[0.04]">
+                                  <span className="text-[9px] uppercase tracking-wider text-white/20 font-medium">Regles</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <Check className="w-3 h-3 shrink-0" style={{ color: customHex }} />
+                                    <span className="text-[11px] text-white/50">Photo generique : revendable a plusieurs clients</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Check className="w-3 h-3 shrink-0" style={{ color: customHex }} />
+                                    <span className="text-[11px] text-white/50">Photo exclusive : liee a un seul client</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Check className="w-3 h-3 shrink-0" style={{ color: customHex }} />
+                                    <span className="text-[11px] text-white/50">Prix individuel par photo (token_price)</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Check className="w-3 h-3 shrink-0" style={{ color: customHex }} />
+                                    <span className="text-[11px] text-white/50">Classees par client acheteur</span>
+                                  </div>
+                                </div>
+
+                                {/* Confidentiality */}
+                                <div className="space-y-1 pt-1 border-t border-white/[0.04]">
+                                  <span className="text-[9px] uppercase tracking-wider text-white/20 font-medium">Confidentialite</span>
+                                  <p className="text-[10px] text-white/35 leading-relaxed">
+                                    Les photos custom ne sont <span className="font-bold text-white/50">jamais visibles sur le profil public</span>.
+                                    Acces uniquement via lien ou code genere pour le client.
+                                  </p>
                                 </div>
                               </div>
                             </div>
