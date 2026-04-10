@@ -335,7 +335,7 @@ export default function AgenceDashboard() {
     return (
       <OsLayout cpId="agence">
         <div className="min-h-screen p-4 md:p-6" style={{ background: "#0f0f12" }}>
-          <div className="max-w-[1400px] mx-auto space-y-4">
+          <div className="max-w-[1400px] mx-auto space-y-5">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-8 w-2/3" />
             <Skeleton className="h-[300px] w-full" />
@@ -396,14 +396,14 @@ export default function AgenceDashboard() {
       )}
 
       <div className="min-h-screen p-3 sm:p-4 md:p-6 pb-24 md:pb-6" style={{ background: "#0f0f12" }}>
-        <div className="max-w-[1400px] mx-auto space-y-4">
+        <div className="max-w-[1400px] mx-auto space-y-5">
 
-          {/* ══ COMPACT HEADER ══ */}
-          <div className="flex items-center gap-3 py-2">
+          {/* ══ HEADER ══ */}
+          <div className="flex items-center gap-4 py-3">
             {/* Avatar */}
             <div className="relative shrink-0">
               <label className="cursor-pointer">
-                <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center text-xs font-black"
+                <div className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center text-base font-black"
                   style={{ background: modelInfo?.avatar ? "transparent" : "linear-gradient(135deg, #E63329, #E84393)", color: "#fff" }}>
                   {modelInfo?.avatar ? <img src={modelInfo.avatar} alt="" className="w-full h-full object-cover" /> : modelSlug.charAt(0).toUpperCase()}
                 </div>
@@ -432,74 +432,74 @@ export default function AgenceDashboard() {
                 }} />
               </label>
               <button onClick={handleToggleStatus} disabled={statusUpdating}
-                className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full cursor-pointer transition-all border-none p-0 disabled:opacity-50"
-                style={{ background: modelInfo?.online ? "#10B981" : "#6B7280", boxShadow: `0 0 0 2px #0f0f12` }} />
+                className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full cursor-pointer transition-all border-none p-0 disabled:opacity-50"
+                style={{ background: modelInfo?.online ? "#10B981" : "#6B7280", boxShadow: `0 0 0 2.5px #0f0f12` }} />
             </div>
 
             {/* Name inline */}
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <span className="text-sm font-semibold text-white truncate">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <span className="text-lg font-bold text-white truncate">
                 {modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase()}
               </span>
-              <span className="w-1 h-1 rounded-full shrink-0" style={{ background: modelInfo?.online ? "#10B981" : "#6B7280" }} />
-              <span className="text-[11px] text-white/30 shrink-0">{modelInfo?.online ? "en ligne" : "hors ligne"}</span>
+              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: modelInfo?.online ? "#10B981" : "#6B7280" }} />
+              <span className="text-xs text-white/30 shrink-0">{modelInfo?.online ? "en ligne" : "hors ligne"}</span>
             </div>
 
             {/* Actions */}
             <div className="flex items-center gap-1.5 shrink-0">
               <button onClick={() => setShowGenerator(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:brightness-110 active:scale-95 border-none"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold cursor-pointer transition-all hover:brightness-110 active:scale-95 border-none"
                 style={{ background: "#D4AF37", color: "#0f0f12" }}>
-                <Plus className="w-3 h-3" />
+                <Plus className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Generer</span>
               </button>
               <a href={`/m/${modelSlug}`} target="_blank"
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium no-underline text-white/40 hover:text-white/60 transition-colors border border-white/[0.06] bg-transparent">
-                <Eye className="w-3 h-3" />
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium no-underline text-white/40 hover:text-white/60 transition-colors border border-white/[0.06] bg-transparent">
+                <Eye className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Profil</span>
               </a>
               <a href={`/m/${modelSlug}?edit=true`}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium no-underline text-white/40 hover:text-white/60 transition-colors border border-white/[0.06] bg-transparent">
-                <Pencil className="w-3 h-3" />
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium no-underline text-white/40 hover:text-white/60 transition-colors border border-white/[0.06] bg-transparent">
+                <Pencil className="w-3.5 h-3.5" />
               </a>
             </div>
           </div>
 
-          {/* ══ KPI BAR — Inline stats ══ */}
-          <div className="flex items-center gap-0 text-sm border-b border-white/[0.06] pb-3 overflow-x-auto no-scrollbar">
-            <div className="flex items-center gap-1.5 pr-4">
-              <span className="text-[11px] text-white/30 uppercase tracking-wider font-medium">Revenue</span>
-              <span className="text-sm font-semibold text-[#D4AF37] tabular-nums">{fmt.format(revenue)}</span>
+          {/* ══ KPI BAR ══ */}
+          <div className="flex items-center gap-0 border-b border-white/[0.06] pb-4 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-2 pr-5">
+              <span className="text-xs text-white/30 uppercase tracking-wider font-medium">Revenue</span>
+              <span className="text-base font-bold text-[#D4AF37] tabular-nums">{fmt.format(revenue)}</span>
             </div>
-            <div className="w-px h-3.5 bg-white/[0.08] shrink-0" />
-            <div className="flex items-center gap-1.5 px-4">
-              <span className="text-[11px] text-white/30 uppercase tracking-wider font-medium">Abonnes</span>
-              <span className="text-sm font-semibold text-white tabular-nums">{fmtNum.format(uniqueClients)}</span>
+            <div className="w-px h-4 bg-white/[0.08] shrink-0" />
+            <div className="flex items-center gap-2 px-5">
+              <span className="text-xs text-white/30 uppercase tracking-wider font-medium">Abonnes</span>
+              <span className="text-base font-bold text-white tabular-nums">{fmtNum.format(uniqueClients)}</span>
             </div>
-            <div className="w-px h-3.5 bg-white/[0.08] shrink-0" />
-            <div className="flex items-center gap-1.5 px-4">
-              <span className="text-[11px] text-white/30 uppercase tracking-wider font-medium">Posts</span>
-              <span className="text-sm font-semibold text-white tabular-nums">{feedPosts.length}</span>
+            <div className="w-px h-4 bg-white/[0.08] shrink-0" />
+            <div className="flex items-center gap-2 px-5">
+              <span className="text-xs text-white/30 uppercase tracking-wider font-medium">Posts</span>
+              <span className="text-base font-bold text-white tabular-nums">{feedPosts.length}</span>
             </div>
-            <div className="w-px h-3.5 bg-white/[0.08] shrink-0" />
-            <div className="flex items-center gap-1.5 px-4">
-              <span className="text-[11px] text-white/30 uppercase tracking-wider font-medium">Retention</span>
-              <span className="text-sm font-semibold text-white tabular-nums">{retentionRate}%</span>
+            <div className="w-px h-4 bg-white/[0.08] shrink-0" />
+            <div className="flex items-center gap-2 px-5">
+              <span className="text-xs text-white/30 uppercase tracking-wider font-medium">Retention</span>
+              <span className="text-base font-bold text-white tabular-nums">{retentionRate}%</span>
             </div>
-            <div className="w-px h-3.5 bg-white/[0.08] shrink-0" />
-            <div className="flex items-center gap-1.5 pl-4">
-              <span className="text-[11px] text-white/30 uppercase tracking-wider font-medium">Codes</span>
-              <span className="text-sm font-semibold text-white tabular-nums">{activeCodes.length}/{modelCodes.length}</span>
+            <div className="w-px h-4 bg-white/[0.08] shrink-0" />
+            <div className="flex items-center gap-2 pl-5">
+              <span className="text-xs text-white/30 uppercase tracking-wider font-medium">Codes</span>
+              <span className="text-base font-bold text-white tabular-nums">{activeCodes.length}/{modelCodes.length}</span>
             </div>
           </div>
 
           {/* ══ UNDERLINE TABS ══ */}
-          <div className="flex items-center gap-6 border-b border-white/[0.06] overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-7 border-b border-white/[0.06] overflow-x-auto no-scrollbar">
             {TABS.map(tab => {
               const isActive = activeTab === tab.id;
               return (
                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  className="relative pb-2.5 text-[13px] font-medium cursor-pointer transition-colors whitespace-nowrap bg-transparent border-none px-0"
+                  className="relative pb-3 text-sm font-medium cursor-pointer transition-colors whitespace-nowrap bg-transparent border-none px-0"
                   style={{ color: isActive ? "#D4AF37" : "rgba(255,255,255,0.35)" }}>
                   {tab.label}
                   {isActive && <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ background: "#D4AF37" }} />}
@@ -510,13 +510,13 @@ export default function AgenceDashboard() {
 
           {/* ══════════ TAB: OVERVIEW ══════════ */}
           {activeTab === "overview" && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               {/* Two-column: Activity + Quick stats */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Recent Activity — table style */}
                 <div className="lg:col-span-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[11px] uppercase tracking-wider text-white/30 font-medium">Activite recente</span>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Activite recente</span>
                   </div>
                   {recentActivity.length === 0 ? (
                     <p className="text-xs text-white/20 py-4">Aucune activite recente</p>
@@ -525,22 +525,22 @@ export default function AgenceDashboard() {
                       <table className="w-full">
                         <thead>
                           <tr className="border-b border-white/[0.06]">
-                            <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Type</th>
-                            <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Detail</th>
-                            <th className="text-right text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Quand</th>
+                            <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Type</th>
+                            <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Detail</th>
+                            <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Quand</th>
                           </tr>
                         </thead>
                         <tbody>
                           {recentActivity.map((item, i) => (
                             <tr key={i} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors">
-                              <td className="px-3 py-2">
-                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{
+                              <td className="px-4 py-3">
+                                <span className="text-[11px] font-medium px-2 py-0.5 rounded" style={{
                                   background: item.type === "revenue" ? "rgba(212,175,55,0.1)" : item.type === "client" ? "rgba(16,185,129,0.1)" : "rgba(139,92,246,0.1)",
                                   color: item.type === "revenue" ? "#D4AF37" : item.type === "client" ? "#10B981" : "#8B5CF6",
                                 }}>{item.type === "revenue" ? "Paiement" : item.type === "client" ? "Client" : "Contenu"}</span>
                               </td>
-                              <td className="px-3 py-2 text-xs text-white/60 truncate max-w-[300px]">{item.text}</td>
-                              <td className="px-3 py-2 text-[11px] text-white/25 text-right tabular-nums whitespace-nowrap">{item.time ? relativeTime(item.time) : "-"}</td>
+                              <td className="px-4 py-3 text-sm text-white/60 truncate max-w-[400px]">{item.text}</td>
+                              <td className="px-4 py-3 text-xs text-white/25 text-right tabular-nums whitespace-nowrap">{item.time ? relativeTime(item.time) : "-"}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -551,8 +551,8 @@ export default function AgenceDashboard() {
 
                 {/* Quick Stats sidebar — compact list */}
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[11px] uppercase tracking-wider text-white/30 font-medium">Apercu</span>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Apercu</span>
                   </div>
                   <div className={`${surface} divide-y divide-white/[0.04]`}>
                     {[
@@ -562,9 +562,9 @@ export default function AgenceDashboard() {
                       { label: "Codes vendus", value: String(modelCodes.filter(c => c.type === "paid" && !c.revoked).length), color: "#D4AF37" },
                       { label: "Stories", value: String(stories.length), color: "#fff" },
                     ].map((row, i) => (
-                      <div key={i} className="flex items-center justify-between px-3 py-2">
-                        <span className="text-[11px] text-white/35">{row.label}</span>
-                        <span className="text-xs font-semibold tabular-nums" style={{ color: row.color }}>{row.value}</span>
+                      <div key={i} className="flex items-center justify-between px-4 py-3">
+                        <span className="text-sm text-white/40">{row.label}</span>
+                        <span className="text-sm font-bold tabular-nums" style={{ color: row.color }}>{row.value}</span>
                       </div>
                     ))}
                   </div>
@@ -740,18 +740,18 @@ export default function AgenceDashboard() {
                         <table className="w-full">
                           <thead>
                             <tr className="border-b border-white/[0.06]">
-                              <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Pseudo</th>
-                              <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Message</th>
-                              <th className="text-right text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Date</th>
+                              <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Pseudo</th>
+                              <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Message</th>
+                              <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Date</th>
                               <th className="w-8" />
                             </tr>
                           </thead>
                           <tbody>
                             {clientMessages.slice(0, 30).map(w => (
                               <tr key={w.id} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors group">
-                                <td className="px-3 py-2 text-xs font-semibold text-white whitespace-nowrap">@{w.pseudo}</td>
-                                <td className="px-3 py-2 text-xs text-white/50 truncate max-w-[400px]">{w.content}</td>
-                                <td className="px-3 py-2 text-[10px] text-white/25 text-right tabular-nums whitespace-nowrap">{relativeTime(w.created_at)}</td>
+                                <td className="px-4 py-3 text-sm font-semibold text-white whitespace-nowrap">@{w.pseudo}</td>
+                                <td className="px-4 py-3 text-sm text-white/50 truncate max-w-[400px]">{w.content}</td>
+                                <td className="px-4 py-3 text-xs text-white/25 text-right tabular-nums whitespace-nowrap">{relativeTime(w.created_at)}</td>
                                 <td className="px-2 py-2">
                                   <button onClick={async () => {
                                     try {
@@ -801,17 +801,17 @@ export default function AgenceDashboard() {
 
           {/* ══════════ TAB: CLIENTS ══════════ */}
           {activeTab === "clients" && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               {/* Search + header */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-white/20" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
                   <input value={clientSearch} onChange={e => setClientSearch(e.target.value)}
                     placeholder="Rechercher..."
-                    className="w-full pl-8 pr-3 py-1.5 rounded-lg text-xs bg-white/[0.03] border border-white/[0.06] text-white outline-none placeholder:text-white/20 focus:border-white/[0.12] transition-colors" />
+                    className="w-full pl-9 pr-3 py-2 rounded-lg text-sm bg-white/[0.03] border border-white/[0.06] text-white outline-none placeholder:text-white/20 focus:border-white/[0.12] transition-colors" />
                 </div>
-                <span className="text-[11px] text-white/30 shrink-0">{clients.length} clients · {fmt.format(clients.reduce((s, c) => s + (c.total_spent || 0), 0))}</span>
-                <a href="/agence/clients" className="text-[11px] font-medium text-[#D4AF37] no-underline hover:underline shrink-0">Gerer</a>
+                <span className="text-xs text-white/30 shrink-0">{clients.length} clients · {fmt.format(clients.reduce((s, c) => s + (c.total_spent || 0), 0))}</span>
+                <a href="/agence/clients" className="text-xs font-medium text-[#D4AF37] no-underline hover:underline shrink-0">Gerer</a>
               </div>
 
               {/* Client table */}
@@ -819,10 +819,10 @@ export default function AgenceDashboard() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-white/[0.06]">
-                      <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Handle</th>
-                      <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2 hidden sm:table-cell">Tier</th>
-                      <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2 hidden sm:table-cell">Derniere activite</th>
-                      <th className="text-right text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Depenses</th>
+                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Handle</th>
+                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5 hidden sm:table-cell">Tier</th>
+                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5 hidden sm:table-cell">Derniere activite</th>
+                      <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Depenses</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -834,17 +834,17 @@ export default function AgenceDashboard() {
                       const tierColor = TIER_OPTIONS.find(t => t.id === (c.tier || "p1"))?.color || "#C0C0C0";
                       return (
                         <tr key={c.id} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors">
-                          <td className="px-3 py-2">
-                            <span className="text-xs font-semibold text-white">@{handle}</span>
+                          <td className="px-4 py-3">
+                            <span className="text-sm font-semibold text-white">@{handle}</span>
                           </td>
-                          <td className="px-3 py-2 hidden sm:table-cell">
-                            <span className="text-[10px] font-semibold" style={{ color: tierColor }}>{tierLabel}</span>
+                          <td className="px-4 py-3 hidden sm:table-cell">
+                            <span className="text-xs font-semibold" style={{ color: tierColor }}>{tierLabel}</span>
                           </td>
-                          <td className="px-3 py-2 hidden sm:table-cell">
-                            <span className="text-[11px] text-white/30 tabular-nums">{c.last_active ? relativeTime(c.last_active) : "-"}</span>
+                          <td className="px-4 py-3 hidden sm:table-cell">
+                            <span className="text-xs text-white/30 tabular-nums">{c.last_active ? relativeTime(c.last_active) : "-"}</span>
                           </td>
-                          <td className="px-3 py-2 text-right">
-                            <span className="text-[11px] font-semibold text-white/50 tabular-nums">{c.total_spent ? fmt.format(c.total_spent) : "-"}</span>
+                          <td className="px-4 py-3 text-right">
+                            <span className="text-sm font-semibold text-white/50 tabular-nums">{c.total_spent ? fmt.format(c.total_spent) : "-"}</span>
                           </td>
                         </tr>
                       );
@@ -855,15 +855,15 @@ export default function AgenceDashboard() {
 
               {/* Access Codes */}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] uppercase tracking-wider text-white/30 font-medium">Codes d&apos;acces</span>
-                    <span className="text-[10px] text-white/20">{activeCodes.length} actifs / {modelCodes.length}</span>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Codes d&apos;acces</span>
+                    <span className="text-xs text-white/20">{activeCodes.length} actifs / {modelCodes.length}</span>
                   </div>
                   <button onClick={() => setShowGenerator(true)}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer transition-all hover:brightness-110 border-none"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold cursor-pointer transition-all hover:brightness-110 border-none"
                     style={{ background: "#D4AF37", color: "#0f0f12" }}>
-                    <Plus className="w-2.5 h-2.5" /> Generer
+                    <Plus className="w-3 h-3" /> Generer
                   </button>
                 </div>
 
@@ -874,11 +874,11 @@ export default function AgenceDashboard() {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-white/[0.06]">
-                          <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Code</th>
-                          <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Client</th>
-                          <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2 hidden sm:table-cell">Tier</th>
-                          <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2 hidden sm:table-cell">Date</th>
-                          <th className="text-right text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Status</th>
+                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Code</th>
+                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Client</th>
+                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5 hidden sm:table-cell">Tier</th>
+                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5 hidden sm:table-cell">Date</th>
+                          <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -889,22 +889,22 @@ export default function AgenceDashboard() {
                           const tierOption = TIER_OPTIONS.find(t => t.id === c.tier);
                           return (
                             <tr key={c.code} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors group">
-                              <td className="px-3 py-2">
+                              <td className="px-4 py-3">
                                 <div className="flex items-center gap-1.5">
-                                  <code className="text-[11px] font-mono font-semibold text-white">{c.code}</code>
+                                  <code className="text-xs font-mono font-semibold text-white">{c.code}</code>
                                   <button onClick={() => copyCode(c.code)}
                                     className="cursor-pointer bg-transparent border-none text-white/15 hover:text-white/40 transition-colors p-0 opacity-0 group-hover:opacity-100">
                                     {codeCopied === c.code ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
                                   </button>
                                 </div>
                               </td>
-                              <td className="px-3 py-2 text-[11px] text-white/50">@{c.client}</td>
-                              <td className="px-3 py-2 hidden sm:table-cell">
-                                {tierOption && <span className="text-[10px] font-semibold" style={{ color: tierOption.color }}>{tierOption.label}</span>}
+                              <td className="px-4 py-3 text-xs text-white/50">@{c.client}</td>
+                              <td className="px-4 py-3 hidden sm:table-cell">
+                                {tierOption && <span className="text-[11px] font-semibold" style={{ color: tierOption.color }}>{tierOption.label}</span>}
                               </td>
-                              <td className="px-3 py-2 hidden sm:table-cell text-[10px] text-white/25 tabular-nums">{relativeTime(c.created)}</td>
-                              <td className="px-3 py-2 text-right">
-                                <span className="text-[10px] font-semibold" style={{ color: statusColor }}>{status}</span>
+                              <td className="px-4 py-3 hidden sm:table-cell text-xs text-white/25 tabular-nums">{relativeTime(c.created)}</td>
+                              <td className="px-4 py-3 text-right">
+                                <span className="text-xs font-semibold" style={{ color: statusColor }}>{status}</span>
                               </td>
                             </tr>
                           );
@@ -919,36 +919,36 @@ export default function AgenceDashboard() {
 
           {/* ══════════ TAB: REVENUE ══════════ */}
           {activeTab === "revenue" && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               {/* Revenue summary — inline row */}
-              <div className="flex items-center gap-6 flex-wrap">
+              <div className="flex items-center gap-8 flex-wrap">
                 <div>
-                  <span className="text-[10px] uppercase tracking-wider text-white/25 font-medium">Revenus ce mois</span>
-                  <p className="text-sm font-semibold text-[#D4AF37] tabular-nums mt-0.5">{fmt.format(revenue)}</p>
+                  <span className="text-xs uppercase tracking-wider text-white/30 font-medium">Revenus ce mois</span>
+                  <p className="text-lg font-bold text-[#D4AF37] tabular-nums mt-1">{fmt.format(revenue)}</p>
                 </div>
-                <div className="w-px h-8 bg-white/[0.06]" />
+                <div className="w-px h-10 bg-white/[0.06]" />
                 <div>
-                  <span className="text-[10px] uppercase tracking-wider text-white/25 font-medium">Codes vendus</span>
-                  <p className="text-sm font-semibold text-white tabular-nums mt-0.5">{modelCodes.filter(c => c.type === "paid" && !c.revoked).length}</p>
+                  <span className="text-xs uppercase tracking-wider text-white/30 font-medium">Codes vendus</span>
+                  <p className="text-lg font-bold text-white tabular-nums mt-1">{modelCodes.filter(c => c.type === "paid" && !c.revoked).length}</p>
                 </div>
-                <div className="w-px h-8 bg-white/[0.06]" />
+                <div className="w-px h-10 bg-white/[0.06]" />
                 <div>
-                  <span className="text-[10px] uppercase tracking-wider text-white/25 font-medium">Moy. / client</span>
-                  <p className="text-sm font-semibold text-white tabular-nums mt-0.5">{uniqueClients > 0 ? fmt.format(Math.round(revenue / uniqueClients)) : fmt.format(0)}</p>
+                  <span className="text-xs uppercase tracking-wider text-white/30 font-medium">Moy. / client</span>
+                  <p className="text-lg font-bold text-white tabular-nums mt-1">{uniqueClients > 0 ? fmt.format(Math.round(revenue / uniqueClients)) : fmt.format(0)}</p>
                 </div>
               </div>
 
               {/* Tier breakdown — table */}
               <div>
-                <span className="text-[11px] uppercase tracking-wider text-white/30 font-medium">Revenus par niveau</span>
+                <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Revenus par niveau</span>
                 <div className={`${surface} mt-2 overflow-hidden`}>
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-white/[0.06]">
-                        <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Pack</th>
-                        <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Progression</th>
-                        <th className="text-right text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Revenus</th>
-                        <th className="text-right text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2 w-16">Qty</th>
+                        <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Pack</th>
+                        <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Progression</th>
+                        <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Revenus</th>
+                        <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5 w-16">Qty</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -958,20 +958,20 @@ export default function AgenceDashboard() {
                         const maxRevenue = Math.max(...packs.filter(p => p.active).map(p => modelCodes.filter(c => c.tier === p.id && c.type === "paid" && !c.revoked).length * p.price), 1);
                         return (
                           <tr key={pack.id} className="border-b border-white/[0.03] last:border-0">
-                            <td className="px-3 py-2">
+                            <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 rounded-full" style={{ background: pack.color }} />
-                                <span className="text-xs font-medium text-white">{pack.name}</span>
+                                <span className="text-sm font-medium text-white">{pack.name}</span>
                               </div>
                             </td>
-                            <td className="px-3 py-2">
-                              <div className="h-1.5 rounded-full bg-white/[0.04] overflow-hidden w-full max-w-[200px]">
+                            <td className="px-4 py-3">
+                              <div className="h-2 rounded-full bg-white/[0.04] overflow-hidden w-full max-w-[220px]">
                                 <div className="h-full rounded-full transition-all duration-700"
                                   style={{ width: `${Math.max((tierRevenue / maxRevenue) * 100, tierRevenue > 0 ? 4 : 0)}%`, background: pack.color }} />
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-right text-xs font-semibold tabular-nums" style={{ color: pack.color }}>{fmt.format(tierRevenue)}</td>
-                            <td className="px-3 py-2 text-right text-[11px] text-white/30 tabular-nums">{count}x</td>
+                            <td className="px-4 py-3 text-right text-sm font-semibold tabular-nums" style={{ color: pack.color }}>{fmt.format(tierRevenue)}</td>
+                            <td className="px-4 py-3 text-right text-xs text-white/30 tabular-nums">{count}x</td>
                           </tr>
                         );
                       })}
@@ -982,8 +982,8 @@ export default function AgenceDashboard() {
 
               {/* Revenue by type — inline */}
               <div>
-                <span className="text-[11px] uppercase tracking-wider text-white/30 font-medium">Repartition par type</span>
-                <div className="flex items-center gap-6 mt-2">
+                <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Repartition par type</span>
+                <div className="flex items-center gap-8 mt-3">
                   {[
                     { type: "paid", label: "Payants", color: "#D4AF37" },
                     { type: "promo", label: "Promo", color: "#8B5CF6" },
@@ -991,9 +991,9 @@ export default function AgenceDashboard() {
                   ].map(t => {
                     const count = modelCodes.filter(c => c.type === t.type && !c.revoked).length;
                     return (
-                      <div key={t.type} className="flex items-center gap-2">
-                        <span className="text-sm font-semibold tabular-nums" style={{ color: t.color }}>{count}</span>
-                        <span className="text-[11px] text-white/30">{t.label}</span>
+                      <div key={t.type} className="flex items-center gap-2.5">
+                        <span className="text-lg font-bold tabular-nums" style={{ color: t.color }}>{count}</span>
+                        <span className="text-sm text-white/35">{t.label}</span>
                       </div>
                     );
                   })}
@@ -1004,17 +1004,17 @@ export default function AgenceDashboard() {
 
           {/* ══════════ TAB: SETTINGS (Packs) ══════════ */}
           {activeTab === "settings" && (
-            <div className="space-y-3">
-              <span className="text-[11px] uppercase tracking-wider text-white/30 font-medium">Configuration des packs</span>
+            <div className="space-y-4">
+              <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Configuration des packs</span>
               <div className={`${surface} overflow-hidden`}>
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-white/[0.06]">
-                      <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Pack</th>
-                      <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Prix</th>
-                      <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2 hidden sm:table-cell">Status</th>
-                      <th className="text-right text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Vendus</th>
-                      <th className="text-right text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Revenus</th>
+                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Pack</th>
+                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Prix</th>
+                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5 hidden sm:table-cell">Status</th>
+                      <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Vendus</th>
+                      <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Revenus</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1023,20 +1023,20 @@ export default function AgenceDashboard() {
                       const packRevenue = soldCount * pack.price;
                       return (
                         <tr key={pack.id} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors">
-                          <td className="px-3 py-2.5">
+                          <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full" style={{ background: pack.color }} />
-                              <span className="text-xs font-semibold text-white">{pack.name}</span>
+                              <span className="text-sm font-semibold text-white">{pack.name}</span>
                             </div>
                           </td>
-                          <td className="px-3 py-2.5 text-xs font-semibold text-white tabular-nums">{fmt.format(pack.price)}</td>
-                          <td className="px-3 py-2.5 hidden sm:table-cell">
-                            <span className="text-[10px] font-medium" style={{ color: pack.active ? "#10B981" : "#6B7280" }}>
+                          <td className="px-4 py-3 text-sm font-semibold text-white tabular-nums">{fmt.format(pack.price)}</td>
+                          <td className="px-4 py-3 hidden sm:table-cell">
+                            <span className="text-xs font-medium" style={{ color: pack.active ? "#10B981" : "#6B7280" }}>
                               {pack.active ? "Actif" : "Inactif"}
                             </span>
                           </td>
-                          <td className="px-3 py-2.5 text-right text-xs font-semibold text-white tabular-nums">{soldCount}</td>
-                          <td className="px-3 py-2.5 text-right text-xs font-semibold tabular-nums" style={{ color: pack.color }}>{fmt.format(packRevenue)}</td>
+                          <td className="px-4 py-3 text-right text-sm font-semibold text-white tabular-nums">{soldCount}</td>
+                          <td className="px-4 py-3 text-right text-sm font-bold tabular-nums" style={{ color: pack.color }}>{fmt.format(packRevenue)}</td>
                         </tr>
                       );
                     })}
