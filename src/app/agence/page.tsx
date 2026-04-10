@@ -4,8 +4,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
   Eye, Pencil, Image as ImageIcon, Heart, MessageCircle, Trash2, X,
   Newspaper, Camera, RefreshCw, Users, Key, DollarSign, TrendingUp,
-  Copy, Check, Plus, Search, Shield, LayoutDashboard, Settings, BarChart3,
-  Clock, Zap,
+  Copy, Check, Plus, Search, Shield, BarChart3, Clock, Zap, Settings,
 } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
@@ -62,21 +61,20 @@ const TIER_OPTIONS = [
   { id: "p5", label: "VIP Platinum", color: "#B8860B" },
 ];
 
-// ── Glass primitives ──
-const glass = "bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl";
-const glassHover = "hover:border-white/[0.14] transition-all duration-300";
+// ── Clean surface primitives (no glassmorphism) ──
+const surface = "bg-white/[0.03] border border-white/[0.06] rounded-xl";
 
 function Skeleton({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
-  return <div className={`animate-pulse rounded-xl bg-white/[0.06] ${className}`} style={style} />;
+  return <div className={`animate-pulse rounded-lg bg-white/[0.06] ${className}`} style={style} />;
 }
 
 // ── Tab definitions ──
 const TABS = [
-  { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "content", label: "Contenu", icon: ImageIcon },
-  { id: "clients", label: "Clients", icon: Users },
-  { id: "revenue", label: "Revenus", icon: BarChart3 },
-  { id: "settings", label: "Packs", icon: Settings },
+  { id: "overview", label: "Overview" },
+  { id: "content", label: "Contenu" },
+  { id: "clients", label: "Clients" },
+  { id: "revenue", label: "Revenus" },
+  { id: "settings", label: "Packs" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -224,20 +222,17 @@ export default function AgenceDashboard() {
 
   // ── Recent activity (for overview) ──
   const recentActivity = useMemo(() => {
-    const items: { icon: typeof Users; text: string; time: string; color: string }[] = [];
-    // Recent clients
+    const items: { text: string; time: string; type: string }[] = [];
     clients.slice(0, 3).forEach(c => {
       const handle = c.pseudo_snap || c.pseudo_insta || c.nickname || "?";
-      items.push({ icon: Users, text: `Nouvel abonne: @${handle}`, time: c.last_active || "", color: "#10B981" });
+      items.push({ text: `Nouvel abonne @${handle}`, time: c.last_active || "", type: "client" });
     });
-    // Recent posts
     feedPosts.slice(0, 2).forEach(p => {
-      items.push({ icon: Newspaper, text: `Post publie: "${(p.content || "Media").slice(0, 30)}${(p.content || "").length > 30 ? "..." : ""}"`, time: p.created_at, color: "#8B5CF6" });
+      items.push({ text: `Post: "${(p.content || "Media").slice(0, 40)}${(p.content || "").length > 40 ? "..." : ""}"`, time: p.created_at, type: "post" });
     });
-    // Recent codes
     modelCodes.filter(c => c.type === "paid" && !c.revoked).slice(0, 2).forEach(c => {
       const pack = packs.find(p => p.id === c.tier);
-      items.push({ icon: DollarSign, text: `Paiement recu: ${fmt.format(pack?.price || 0)} (@${c.client})`, time: c.created, color: "#D4AF37" });
+      items.push({ text: `Paiement ${fmt.format(pack?.price || 0)} — @${c.client}`, time: c.created, type: "revenue" });
     });
     return items.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 8);
   }, [clients, feedPosts, modelCodes, packs]);
@@ -336,24 +331,14 @@ export default function AgenceDashboard() {
   }, [ready, modelSlug, isRoot]);
 
   // ══════════ LOADING STATES ══════════
-
-  const skeletonCards = (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      {[1, 2, 3, 4].map(i => (
-        <div key={i} className={`${glass} p-4 space-y-3`}>
-          <Skeleton className="h-3 w-16" />
-          <Skeleton className="h-7 w-20" />
-        </div>
-      ))}
-    </div>
-  );
-
   if (!ready) {
     return (
       <OsLayout cpId="agence">
-        <div className="min-h-screen p-5 md:p-8" style={{ background: "#0a0a12" }}>
-          <div className="max-w-[1400px] mx-auto space-y-6">
-            {skeletonCards}
+        <div className="min-h-screen p-4 md:p-6" style={{ background: "#0f0f12" }}>
+          <div className="max-w-[1400px] mx-auto space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-8 w-2/3" />
+            <Skeleton className="h-[300px] w-full" />
           </div>
         </div>
       </OsLayout>
@@ -364,7 +349,7 @@ export default function AgenceDashboard() {
     return (
       <OsLayout cpId="agence">
         <div className="flex items-center justify-center h-[60vh]">
-          <p className="text-sm text-white/40">{isRoot ? "Selectionne un modele dans le header" : "Chargement..."}</p>
+          <p className="text-xs text-white/40">{isRoot ? "Selectionne un modele dans le header" : "Chargement..."}</p>
         </div>
       </OsLayout>
     );
@@ -373,16 +358,11 @@ export default function AgenceDashboard() {
   if (dataLoaded !== modelSlug) {
     return (
       <OsLayout cpId="agence">
-        <div className="min-h-screen p-5 md:p-8" style={{ background: "#0a0a12" }}>
-          <div className="max-w-[1400px] mx-auto space-y-6">
-            <div className="flex items-center gap-4">
-              <Skeleton className="w-14 h-14 rounded-2xl" />
-              <div className="space-y-2 flex-1">
-                <Skeleton className="h-5 w-32" />
-                <Skeleton className="h-3 w-48" />
-              </div>
-            </div>
-            {skeletonCards}
+        <div className="min-h-screen p-4 md:p-6" style={{ background: "#0f0f12" }}>
+          <div className="max-w-[1400px] mx-auto space-y-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-[400px] w-full" />
           </div>
         </div>
       </OsLayout>
@@ -396,8 +376,8 @@ export default function AgenceDashboard() {
       {(pullY > 0 || refreshing) && (
         <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 transition-all duration-200"
           style={{ opacity: refreshing ? 1 : Math.min(pullY / pullThreshold, 1), transform: `translateX(-50%) translateY(${refreshing ? 8 : Math.min(pullY * 0.3, 24)}px)` }}>
-          <div className={`rounded-full p-2.5 shadow-2xl ${glass}`}>
-            <RefreshCw className={`w-4 h-4 text-[#C9A84C] ${refreshing ? "animate-spin" : ""}`}
+          <div className="rounded-full p-2 bg-[#141419] border border-white/[0.08]">
+            <RefreshCw className={`w-3.5 h-3.5 text-[#D4AF37] ${refreshing ? "animate-spin" : ""}`}
               style={{ transform: refreshing ? "none" : `rotate(${Math.min(pullY / pullThreshold, 1) * 360}deg)` }} />
           </div>
         </div>
@@ -405,125 +385,124 @@ export default function AgenceDashboard() {
 
       {/* Upload toast */}
       {uploadMsg && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl text-xs font-medium shadow-2xl flex items-center gap-2"
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-3 py-2 rounded-lg text-[11px] font-medium shadow-xl flex items-center gap-2"
           style={{
-            background: uploadMsg.type === "error" ? "#DC2626" : uploadMsg.type === "success" ? "#059669" : "rgba(26,26,46,0.95)",
-            color: "#fff", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(20px)",
+            background: uploadMsg.type === "error" ? "#DC2626" : uploadMsg.type === "success" ? "#059669" : "#141419",
+            color: "#fff", border: "1px solid rgba(255,255,255,0.08)",
           }}>
-          {uploadMsg.type === "loading" && <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(255,255,255,0.2)", borderTopColor: "#C9A84C" }} />}
+          {uploadMsg.type === "loading" && <div className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(255,255,255,0.15)", borderTopColor: "#D4AF37" }} />}
           {uploadMsg.text}
         </div>
       )}
 
-      <div className="min-h-screen p-4 sm:p-5 md:p-6 lg:p-8 pb-28 md:pb-8" style={{ background: "#0a0a12" }}>
-        <div className="max-w-[1400px] mx-auto space-y-5">
+      <div className="min-h-screen p-3 sm:p-4 md:p-6 pb-24 md:pb-6" style={{ background: "#0f0f12" }}>
+        <div className="max-w-[1400px] mx-auto space-y-4">
 
-          {/* ══ HEADER BAR ══ */}
-          <div className={`${glass} p-4 sm:p-5`}>
-            <div className="flex items-center gap-4">
-              {/* Avatar */}
-              <div className="relative group shrink-0">
-                <label className="cursor-pointer">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden flex items-center justify-center text-lg font-black ring-2 ring-white/[0.08] transition-all duration-300 group-hover:ring-[#C9A84C]/40"
-                    style={{ background: modelInfo?.avatar ? "transparent" : "linear-gradient(135deg, #E63329, #E84393)", color: "#fff" }}>
-                    {modelInfo?.avatar ? <img src={modelInfo.avatar} alt="" className="w-full h-full object-cover" /> : modelSlug.charAt(0).toUpperCase()}
-                  </div>
-                  <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" className="hidden" onChange={async (e) => {
-                    const file = e.target.files?.[0]; if (!file) return;
-                    const { valid, error } = validateFile(file, UPLOAD_LIMITS.avatar.maxMB);
-                    if (!valid) { setUploadMsg({ text: error!, type: "error" }); setTimeout(() => setUploadMsg(null), 5000); e.target.value = ""; return; }
-                    setUploadMsg({ text: "Upload en cours...", type: "loading" });
-                    const reader = new FileReader();
-                    reader.onload = async () => {
-                      try {
-                        const upRes = await fetch("/api/upload", { method: "POST", headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ file: reader.result, model: toModelId(modelSlug), folder: `heaven/${toModelId(modelSlug)}/avatar` }) });
-                        if (upRes.ok) {
-                          const { url } = await upRes.json();
-                          if (url) {
-                            setModelInfo(prev => prev ? { ...prev, avatar: url } : prev);
-                            fetch(`/api/models/${toModelId(modelSlug)}`, { method: "PUT", headers: authHeaders(), body: JSON.stringify({ avatar: url }) });
-                            setUploadMsg({ text: "Photo mise a jour", type: "success" });
-                          }
-                        } else { setUploadMsg({ text: "Erreur upload", type: "error" }); }
-                      } catch { setUploadMsg({ text: "Erreur reseau", type: "error" }); }
-                      setTimeout(() => setUploadMsg(null), 3000);
-                    };
-                    reader.readAsDataURL(file); e.target.value = "";
-                  }} />
-                </label>
-                <button onClick={handleToggleStatus} disabled={statusUpdating}
-                  className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-125 disabled:opacity-50"
-                  style={{ background: modelInfo?.online ? "#10B981" : "#6B7280", boxShadow: `0 0 0 2.5px rgba(10,10,18,1), 0 0 ${modelInfo?.online ? "8px" : "0"} ${modelInfo?.online ? "#10B981" : "transparent"}` }}>
-                  {modelInfo?.online && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-                </button>
-              </div>
-
-              {/* Name + meta */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2.5">
-                  <h1 className="text-base sm:text-lg font-bold text-white truncate">
-                    {modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase()}
-                  </h1>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
-                    style={{ background: modelInfo?.online ? "rgba(16,185,129,0.15)" : "rgba(107,114,128,0.15)", color: modelInfo?.online ? "#10B981" : "#6B7280" }}>
-                    {modelInfo?.online ? "En ligne" : "Hors ligne"}
-                  </span>
+          {/* ══ COMPACT HEADER ══ */}
+          <div className="flex items-center gap-3 py-2">
+            {/* Avatar */}
+            <div className="relative shrink-0">
+              <label className="cursor-pointer">
+                <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center text-xs font-black"
+                  style={{ background: modelInfo?.avatar ? "transparent" : "linear-gradient(135deg, #E63329, #E84393)", color: "#fff" }}>
+                  {modelInfo?.avatar ? <img src={modelInfo.avatar} alt="" className="w-full h-full object-cover" /> : modelSlug.charAt(0).toUpperCase()}
                 </div>
-                <div className="flex items-center gap-3 mt-0.5 text-[11px] text-white/40">
-                  <span>{fmtNum.format(uniqueClients)} abonnes</span>
-                  <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
-                  <span>{fmt.format(revenue)}</span>
-                  <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
-                  <span>{feedPosts.length} posts</span>
-                </div>
-                <input defaultValue={modelInfo?.status || ""} placeholder="Status..."
-                  className="text-xs bg-transparent outline-none w-full text-white/50 mt-0.5 placeholder:text-white/20"
-                  onBlur={async (e) => {
-                    const v = e.target.value.trim();
-                    try { await fetch(`/api/models/${toModelId(modelSlug)}`, { method: "PUT", headers: authHeaders(), body: JSON.stringify({ status: v }) }); } catch {}
-                  }}
-                  onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
-              </div>
+                <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" className="hidden" onChange={async (e) => {
+                  const file = e.target.files?.[0]; if (!file) return;
+                  const { valid, error } = validateFile(file, UPLOAD_LIMITS.avatar.maxMB);
+                  if (!valid) { setUploadMsg({ text: error!, type: "error" }); setTimeout(() => setUploadMsg(null), 5000); e.target.value = ""; return; }
+                  setUploadMsg({ text: "Upload en cours...", type: "loading" });
+                  const reader = new FileReader();
+                  reader.onload = async () => {
+                    try {
+                      const upRes = await fetch("/api/upload", { method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ file: reader.result, model: toModelId(modelSlug), folder: `heaven/${toModelId(modelSlug)}/avatar` }) });
+                      if (upRes.ok) {
+                        const { url } = await upRes.json();
+                        if (url) {
+                          setModelInfo(prev => prev ? { ...prev, avatar: url } : prev);
+                          fetch(`/api/models/${toModelId(modelSlug)}`, { method: "PUT", headers: authHeaders(), body: JSON.stringify({ avatar: url }) });
+                          setUploadMsg({ text: "Photo mise a jour", type: "success" });
+                        }
+                      } else { setUploadMsg({ text: "Erreur upload", type: "error" }); }
+                    } catch { setUploadMsg({ text: "Erreur reseau", type: "error" }); }
+                    setTimeout(() => setUploadMsg(null), 3000);
+                  };
+                  reader.readAsDataURL(file); e.target.value = "";
+                }} />
+              </label>
+              <button onClick={handleToggleStatus} disabled={statusUpdating}
+                className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full cursor-pointer transition-all border-none p-0 disabled:opacity-50"
+                style={{ background: modelInfo?.online ? "#10B981" : "#6B7280", boxShadow: `0 0 0 2px #0f0f12` }} />
+            </div>
 
-              {/* Quick actions */}
-              <div className="flex items-center gap-2 shrink-0">
-                <button onClick={() => setShowGenerator(true)}
-                  className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[11px] font-bold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 border-none"
-                  style={{ background: "linear-gradient(135deg, #C9A84C, #D4AF37)", color: "#0a0a12" }}>
-                  <Plus className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Generer</span>
-                </button>
-                <a href={`/m/${modelSlug}`} target="_blank"
-                  className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[11px] font-semibold no-underline transition-all duration-200 hover:scale-105 active:scale-95 ${glass}`}>
-                  <Eye className="w-3.5 h-3.5 text-white/50" />
-                  <span className="hidden sm:inline text-white/60">Profil</span>
-                </a>
-                <a href={`/m/${modelSlug}?edit=true`}
-                  className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[11px] font-semibold no-underline transition-all duration-200 hover:scale-105 active:scale-95"
-                  style={{ background: "rgba(230,51,41,0.12)", border: "1px solid rgba(230,51,41,0.25)" }}>
-                  <Pencil className="w-3.5 h-3.5 text-[#E63329]" />
-                  <span className="hidden sm:inline text-[#E63329]">Edit</span>
-                </a>
-              </div>
+            {/* Name inline */}
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <span className="text-sm font-semibold text-white truncate">
+                {modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase()}
+              </span>
+              <span className="w-1 h-1 rounded-full shrink-0" style={{ background: modelInfo?.online ? "#10B981" : "#6B7280" }} />
+              <span className="text-[11px] text-white/30 shrink-0">{modelInfo?.online ? "en ligne" : "hors ligne"}</span>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button onClick={() => setShowGenerator(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:brightness-110 active:scale-95 border-none"
+                style={{ background: "#D4AF37", color: "#0f0f12" }}>
+                <Plus className="w-3 h-3" />
+                <span className="hidden sm:inline">Generer</span>
+              </button>
+              <a href={`/m/${modelSlug}`} target="_blank"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium no-underline text-white/40 hover:text-white/60 transition-colors border border-white/[0.06] bg-transparent">
+                <Eye className="w-3 h-3" />
+                <span className="hidden sm:inline">Profil</span>
+              </a>
+              <a href={`/m/${modelSlug}?edit=true`}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium no-underline text-white/40 hover:text-white/60 transition-colors border border-white/[0.06] bg-transparent">
+                <Pencil className="w-3 h-3" />
+              </a>
             </div>
           </div>
 
-          {/* ══ TAB BAR ══ */}
-          <div className="flex items-center gap-1 p-1 rounded-2xl bg-white/[0.03] overflow-x-auto no-scrollbar">
+          {/* ══ KPI BAR — Inline stats ══ */}
+          <div className="flex items-center gap-0 text-sm border-b border-white/[0.06] pb-3 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-1.5 pr-4">
+              <span className="text-[11px] text-white/30 uppercase tracking-wider font-medium">Revenue</span>
+              <span className="text-sm font-semibold text-[#D4AF37] tabular-nums">{fmt.format(revenue)}</span>
+            </div>
+            <div className="w-px h-3.5 bg-white/[0.08] shrink-0" />
+            <div className="flex items-center gap-1.5 px-4">
+              <span className="text-[11px] text-white/30 uppercase tracking-wider font-medium">Abonnes</span>
+              <span className="text-sm font-semibold text-white tabular-nums">{fmtNum.format(uniqueClients)}</span>
+            </div>
+            <div className="w-px h-3.5 bg-white/[0.08] shrink-0" />
+            <div className="flex items-center gap-1.5 px-4">
+              <span className="text-[11px] text-white/30 uppercase tracking-wider font-medium">Posts</span>
+              <span className="text-sm font-semibold text-white tabular-nums">{feedPosts.length}</span>
+            </div>
+            <div className="w-px h-3.5 bg-white/[0.08] shrink-0" />
+            <div className="flex items-center gap-1.5 px-4">
+              <span className="text-[11px] text-white/30 uppercase tracking-wider font-medium">Retention</span>
+              <span className="text-sm font-semibold text-white tabular-nums">{retentionRate}%</span>
+            </div>
+            <div className="w-px h-3.5 bg-white/[0.08] shrink-0" />
+            <div className="flex items-center gap-1.5 pl-4">
+              <span className="text-[11px] text-white/30 uppercase tracking-wider font-medium">Codes</span>
+              <span className="text-sm font-semibold text-white tabular-nums">{activeCodes.length}/{modelCodes.length}</span>
+            </div>
+          </div>
+
+          {/* ══ UNDERLINE TABS ══ */}
+          <div className="flex items-center gap-6 border-b border-white/[0.06] overflow-x-auto no-scrollbar">
             {TABS.map(tab => {
               const isActive = activeTab === tab.id;
               return (
                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  className="flex items-center gap-2 px-4 sm:px-5 py-3 rounded-xl text-xs sm:text-[13px] font-semibold cursor-pointer transition-all duration-200 whitespace-nowrap shrink-0 border-none"
-                  style={{
-                    background: isActive ? "rgba(255,255,255,0.08)" : "transparent",
-                    color: isActive ? "#fff" : "rgba(255,255,255,0.35)",
-                    boxShadow: isActive ? "0 1px 12px rgba(0,0,0,0.3)" : "none",
-                    minHeight: 44,
-                  }}>
-                  <tab.icon className="w-4 h-4" />
+                  className="relative pb-2.5 text-[13px] font-medium cursor-pointer transition-colors whitespace-nowrap bg-transparent border-none px-0"
+                  style={{ color: isActive ? "#D4AF37" : "rgba(255,255,255,0.35)" }}>
                   {tab.label}
+                  {isActive && <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ background: "#D4AF37" }} />}
                 </button>
               );
             })}
@@ -531,79 +510,63 @@ export default function AgenceDashboard() {
 
           {/* ══════════ TAB: OVERVIEW ══════════ */}
           {activeTab === "overview" && (
-            <div className="space-y-5">
-              {/* KPI Row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                  { icon: DollarSign, value: fmt.format(revenue), label: "Revenus", accent: "#D4AF37" },
-                  { icon: Users, value: fmtNum.format(uniqueClients), label: "Abonnes actifs", accent: "#E63329" },
-                  { icon: Newspaper, value: String(feedPosts.length), label: "Contenus", accent: "#8B5CF6" },
-                  { icon: TrendingUp, value: `${retentionRate}%`, label: "Retention", accent: "#E84393" },
-                ].map((s, i) => (
-                  <div key={i} className={`${glass} ${glassHover} p-4 sm:p-5`}>
-                    <div className="flex items-center gap-2 mb-2.5">
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${s.accent}12` }}>
-                        <s.icon className="w-4.5 h-4.5" style={{ color: s.accent }} />
-                      </div>
-                    </div>
-                    <p className="text-2xl sm:text-3xl font-bold text-white tabular-nums tracking-tight">{s.value}</p>
-                    <p className="text-[11px] text-white/40 mt-1">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Two-column: Recent Activity + Quick Stats */}
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-                {/* Recent Activity */}
-                <div className={`${glass} p-5 lg:col-span-3`}>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Clock className="w-4 h-4 text-white/30" />
-                    <h2 className="text-sm font-semibold text-white">Activite recente</h2>
+            <div className="space-y-4">
+              {/* Two-column: Activity + Quick stats */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* Recent Activity — table style */}
+                <div className="lg:col-span-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[11px] uppercase tracking-wider text-white/30 font-medium">Activite recente</span>
                   </div>
                   {recentActivity.length === 0 ? (
-                    <p className="text-xs text-white/25 text-center py-6">Aucune activite recente</p>
+                    <p className="text-xs text-white/20 py-4">Aucune activite recente</p>
                   ) : (
-                    <div className="space-y-1">
-                      {recentActivity.map((item, i) => (
-                        <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[0.03] transition-colors">
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${item.color}12` }}>
-                            <item.icon className="w-3.5 h-3.5" style={{ color: item.color }} />
-                          </div>
-                          <span className="text-xs text-white/70 flex-1 min-w-0 truncate">{item.text}</span>
-                          <span className="text-[10px] text-white/25 shrink-0 tabular-nums">{item.time ? relativeTime(item.time) : ""}</span>
-                        </div>
-                      ))}
+                    <div className={`${surface} overflow-hidden`}>
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-white/[0.06]">
+                            <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Type</th>
+                            <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Detail</th>
+                            <th className="text-right text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Quand</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {recentActivity.map((item, i) => (
+                            <tr key={i} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors">
+                              <td className="px-3 py-2">
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{
+                                  background: item.type === "revenue" ? "rgba(212,175,55,0.1)" : item.type === "client" ? "rgba(16,185,129,0.1)" : "rgba(139,92,246,0.1)",
+                                  color: item.type === "revenue" ? "#D4AF37" : item.type === "client" ? "#10B981" : "#8B5CF6",
+                                }}>{item.type === "revenue" ? "Paiement" : item.type === "client" ? "Client" : "Contenu"}</span>
+                              </td>
+                              <td className="px-3 py-2 text-xs text-white/60 truncate max-w-[300px]">{item.text}</td>
+                              <td className="px-3 py-2 text-[11px] text-white/25 text-right tabular-nums whitespace-nowrap">{item.time ? relativeTime(item.time) : "-"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </div>
 
-                {/* Quick Stats sidebar */}
-                <div className={`${glass} p-5 lg:col-span-2`}>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Zap className="w-4 h-4 text-white/30" />
-                    <h2 className="text-sm font-semibold text-white">Apercu rapide</h2>
+                {/* Quick Stats sidebar — compact list */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[11px] uppercase tracking-wider text-white/30 font-medium">Apercu</span>
                   </div>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between py-2 border-b border-white/[0.05]">
-                      <span className="text-xs text-white/40">Codes actifs</span>
-                      <span className="text-sm font-bold text-emerald-400 tabular-nums">{activeCodes.length}</span>
-                    </div>
-                    <div className="flex items-center justify-between py-2 border-b border-white/[0.05]">
-                      <span className="text-xs text-white/40">Total codes</span>
-                      <span className="text-sm font-bold text-white tabular-nums">{modelCodes.length}</span>
-                    </div>
-                    <div className="flex items-center justify-between py-2 border-b border-white/[0.05]">
-                      <span className="text-xs text-white/40">Messages wall</span>
-                      <span className="text-sm font-bold text-white tabular-nums">{wallPosts.filter(w => w.pseudo !== "SYSTEM").length}</span>
-                    </div>
-                    <div className="flex items-center justify-between py-2 border-b border-white/[0.05]">
-                      <span className="text-xs text-white/40">Codes vendus</span>
-                      <span className="text-sm font-bold text-[#D4AF37] tabular-nums">{modelCodes.filter(c => c.type === "paid" && !c.revoked).length}</span>
-                    </div>
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-xs text-white/40">Stories</span>
-                      <span className="text-sm font-bold text-white tabular-nums">{stories.length}</span>
-                    </div>
+                  <div className={`${surface} divide-y divide-white/[0.04]`}>
+                    {[
+                      { label: "Codes actifs", value: String(activeCodes.length), color: "#10B981" },
+                      { label: "Total codes", value: String(modelCodes.length), color: "#fff" },
+                      { label: "Messages wall", value: String(wallPosts.filter(w => w.pseudo !== "SYSTEM").length), color: "#fff" },
+                      { label: "Codes vendus", value: String(modelCodes.filter(c => c.type === "paid" && !c.revoked).length), color: "#D4AF37" },
+                      { label: "Stories", value: String(stories.length), color: "#fff" },
+                    ].map((row, i) => (
+                      <div key={i} className="flex items-center justify-between px-3 py-2">
+                        <span className="text-[11px] text-white/35">{row.label}</span>
+                        <span className="text-xs font-semibold tabular-nums" style={{ color: row.color }}>{row.value}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -612,85 +575,74 @@ export default function AgenceDashboard() {
 
           {/* ══════════ TAB: CONTENT ══════════ */}
           {activeTab === "content" && (
-            <div className="space-y-5">
-              {/* Content sub-tabs */}
-              <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.03] w-fit">
+            <div className="space-y-4">
+              {/* Content sub-tabs — underline style */}
+              <div className="flex items-center gap-5">
                 {[
-                  { id: "feed" as const, label: "Feed", icon: ImageIcon },
-                  { id: "wall" as const, label: "Wall", icon: MessageCircle },
-                  { id: "stories" as const, label: "Stories", icon: Camera },
+                  { id: "feed" as const, label: "Feed" },
+                  { id: "wall" as const, label: "Wall" },
+                  { id: "stories" as const, label: `Stories${stories.length > 0 ? ` (${stories.length})` : ""}` },
                 ].map(tab => (
                   <button key={tab.id} onClick={() => setContentSubTab(tab.id)}
-                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-200 border-none"
-                    style={{
-                      background: contentSubTab === tab.id ? "rgba(255,255,255,0.08)" : "transparent",
-                      color: contentSubTab === tab.id ? "#fff" : "rgba(255,255,255,0.35)",
-                      boxShadow: contentSubTab === tab.id ? "0 1px 8px rgba(0,0,0,0.2)" : "none",
-                      minHeight: 44,
-                    }}>
-                    <tab.icon className="w-3.5 h-3.5" />
+                    className="relative pb-2 text-xs font-medium cursor-pointer transition-colors bg-transparent border-none px-0"
+                    style={{ color: contentSubTab === tab.id ? "#D4AF37" : "rgba(255,255,255,0.35)" }}>
                     {tab.label}
-                    {tab.id === "stories" && stories.length > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#E63329]/20 text-[#E63329]">{stories.length}</span>
-                    )}
+                    {contentSubTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ background: "#D4AF37" }} />}
                   </button>
                 ))}
               </div>
 
               {/* ── FEED SUB-TAB ── */}
               {contentSubTab === "feed" && (
-                <div className="space-y-4">
-                  {/* Composer */}
-                  <div className={`${glass} p-4 sm:p-5 transition-all duration-300`}
-                    style={{ borderColor: newPostType === "story" ? "rgba(230,51,41,0.3)" : undefined }}>
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                <div className="space-y-3">
+                  {/* Compact composer */}
+                  <div className={`${surface} p-3`}>
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0"
                         style={{ background: "linear-gradient(135deg, #E63329, #E84393)", color: "#fff" }}>
                         {modelSlug.charAt(0).toUpperCase()}
                       </div>
-                      <div className="flex-1 min-w-0 space-y-3">
+                      <div className="flex-1 min-w-0 space-y-2">
                         <textarea value={newPostContent} onChange={e => setNewPostContent(e.target.value)}
                           placeholder={newPostType === "story" ? "Texte de ta story..." : "Partager quelque chose..."}
-                          rows={newPostType === "story" ? 1 : 2}
-                          className="w-full bg-transparent text-sm outline-none resize-none text-white placeholder:text-white/20" />
+                          rows={1}
+                          className="w-full bg-transparent text-xs outline-none resize-none text-white placeholder:text-white/20" />
 
                         {newPostType === "story" && !newPostImage && (
-                          <p className="text-[11px] flex items-center gap-1.5 text-[#E63329]">
-                            <Camera className="w-3.5 h-3.5" /> Ajoute une photo pour ta story
-                          </p>
+                          <p className="text-[10px] flex items-center gap-1 text-[#E63329]"><Camera className="w-3 h-3" /> Ajoute une photo</p>
                         )}
 
                         {posting && newPostImage && (
-                          <div className="h-1 rounded-full overflow-hidden bg-white/[0.06]">
-                            <div className="h-full rounded-full bg-[#C9A84C]" style={{ animation: "uploadProg 2s ease-in-out infinite" }} />
+                          <div className="h-0.5 rounded-full overflow-hidden bg-white/[0.06]">
+                            <div className="h-full rounded-full bg-[#D4AF37]" style={{ animation: "uploadProg 2s ease-in-out infinite" }} />
                           </div>
                         )}
 
                         {newPostImage && !posting && (
-                          <div className="relative w-full rounded-xl overflow-hidden border border-white/[0.08]" style={{ maxHeight: 200 }}>
+                          <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-white/[0.06]">
                             <img src={newPostImage} alt="" className="w-full h-full object-cover" draggable={false} />
                             <button onClick={() => setNewPostImage(null)}
-                              className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform bg-black/70 text-white border-none">
-                              <X className="w-3.5 h-3.5" />
+                              className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center cursor-pointer bg-black/70 text-white border-none hover:scale-110 transition-transform">
+                              <X className="w-2.5 h-2.5" />
                             </button>
                           </div>
                         )}
 
                         {/* Controls row */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <div className="flex items-center rounded-lg overflow-hidden border border-white/[0.08]">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <div className="flex items-center rounded-md overflow-hidden border border-white/[0.06]">
                             {(["feed", "story"] as const).map(type => (
                               <button key={type} onClick={() => setNewPostType(type)}
-                                className="flex items-center gap-1 px-2.5 py-2 text-[11px] font-medium cursor-pointer transition-colors border-none"
-                                style={{ background: newPostType === type ? "#E63329" : "transparent", color: newPostType === type ? "#fff" : "rgba(255,255,255,0.4)", minHeight: 44 }}>
-                                {type === "feed" ? <Newspaper className="w-3 h-3" /> : <Camera className="w-3 h-3" />}
+                                className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium cursor-pointer transition-colors border-none"
+                                style={{ background: newPostType === type ? "rgba(230,51,41,0.2)" : "transparent", color: newPostType === type ? "#E63329" : "rgba(255,255,255,0.3)" }}>
+                                {type === "feed" ? <Newspaper className="w-2.5 h-2.5" /> : <Camera className="w-2.5 h-2.5" />}
                                 {type === "feed" ? "Feed" : "Story"}
                               </button>
                             ))}
                           </div>
 
-                          <label className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-[11px] font-medium cursor-pointer border border-white/[0.08] text-white/40 hover:text-white/60 hover:border-white/[0.14] transition-all" style={{ minHeight: 44 }}>
-                            <ImageIcon className="w-3.5 h-3.5" /> Photo
+                          <label className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer border border-white/[0.06] text-white/30 hover:text-white/50 transition-colors">
+                            <ImageIcon className="w-2.5 h-2.5" /> Photo
                             <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" className="hidden" onChange={(e) => {
                               const file = e.target.files?.[0]; if (!file) return;
                               const { valid, error } = validateFile(file, UPLOAD_LIMITS.post.maxMB);
@@ -701,114 +653,72 @@ export default function AgenceDashboard() {
                             }} />
                           </label>
 
-                          {newPostTier === "p0" && (
-                            <span className="text-[11px] font-semibold text-emerald-400 px-2">Public</span>
+                          {(newPostContent.trim() || newPostImage) && (
+                            <div className="flex items-center gap-1 ml-auto">
+                              {TIER_OPTIONS.filter(t => t.id !== "p0").map(t => {
+                                const selected = newPostTier === t.id;
+                                return (
+                                  <button key={t.id} onClick={() => setNewPostTier(selected ? "p0" : t.id)}
+                                    className="px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer shrink-0 transition-all border-none"
+                                    style={{
+                                      background: selected ? t.color : "transparent",
+                                      color: selected ? "#fff" : "rgba(255,255,255,0.3)",
+                                      outline: `1px solid ${selected ? t.color : "rgba(255,255,255,0.08)"}`,
+                                    }}>
+                                    {t.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           )}
+
+                          <button onClick={handleCreatePost} disabled={(!newPostContent.trim() && !newPostImage) || posting}
+                            className="ml-auto px-4 py-1.5 rounded-md text-[11px] font-bold cursor-pointer transition-all hover:brightness-110 disabled:opacity-20 border-none"
+                            style={{ background: "#D4AF37", color: "#0f0f12" }}>
+                            {posting ? "..." : "Publier"}
+                          </button>
                         </div>
-
-                        {/* Tier selector */}
-                        {(newPostContent.trim() || newPostImage) && (
-                          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                            {TIER_OPTIONS.filter(t => t.id !== "p0").map(t => {
-                              const selected = newPostTier === t.id;
-                              return (
-                                <button key={t.id} onClick={() => setNewPostTier(selected ? "p0" : t.id)}
-                                  className="px-3 py-1.5 rounded-full text-[11px] font-bold cursor-pointer shrink-0 transition-all duration-200 whitespace-nowrap border-none"
-                                  style={{
-                                    background: selected ? t.color : "transparent",
-                                    color: selected ? "#fff" : "rgba(255,255,255,0.5)",
-                                    boxShadow: selected ? `0 2px 12px ${t.color}40, inset 0 1px 0 rgba(255,255,255,0.15)` : "none",
-                                    outline: `1.5px solid ${selected ? t.color : "rgba(255,255,255,0.1)"}`,
-                                    minHeight: 44,
-                                  }}>
-                                  {t.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        <button onClick={handleCreatePost} disabled={(!newPostContent.trim() && !newPostImage) || posting}
-                          className="w-full py-3 rounded-xl text-xs font-bold cursor-pointer transition-all duration-200 hover:scale-[1.01] disabled:opacity-20 border-none"
-                          style={{ background: "linear-gradient(135deg, #C9A84C, #D4AF37)", color: "#0a0a12", minHeight: 44 }}>
-                          {posting ? "Publication..." : "Publier"}
-                        </button>
                       </div>
                     </div>
                   </div>
 
-                  {/* Post grid / list */}
+                  {/* Post grid — compact thumbnails */}
                   {feedPosts.length === 0 ? (
-                    <div className={`${glass} p-10 text-center`}>
-                      <Newspaper className="w-8 h-8 text-white/10 mx-auto mb-3" />
-                      <p className="text-sm text-white/30 mb-1">Aucun post pour le moment</p>
-                      <p className="text-xs text-white/20">Publie ton premier contenu ci-dessus</p>
-                    </div>
+                    <p className="text-xs text-white/20 py-6 text-center">Aucun post pour le moment</p>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {feedPosts.slice(0, 15).map((post) => (
-                        <div key={post.id} className={`${glass} ${glassHover} overflow-hidden group`}>
-                          {post.media_url && (
-                            <div className="relative aspect-[4/3]">
-                              <img src={post.media_url} alt="" className="w-full h-full object-cover" loading="lazy" />
-                              <div className="absolute bottom-0 left-0 right-0 p-3" style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.7))" }}>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-white/10 backdrop-blur-md text-white">
-                                    {modelSlug.charAt(0).toUpperCase()}
-                                  </div>
-                                  <span className="text-[11px] font-bold text-white">{modelInfo?.display_name || modelSlug}</span>
-                                  {!isFreeSlot(post.tier_required) && (
-                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/15 text-white">
-                                      {toSlot(post.tier_required).toUpperCase()}
-                                    </span>
-                                  )}
-                                  <span className="text-[10px] text-white/50 ml-auto">{relativeTime(post.created_at)}</span>
-                                </div>
-                              </div>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+                      {feedPosts.slice(0, 20).map((post) => (
+                        <div key={post.id} className="relative group rounded-lg overflow-hidden bg-white/[0.03] border border-white/[0.04] hover:border-white/[0.1] transition-all cursor-pointer"
+                          style={{ aspectRatio: "1" }}>
+                          {post.media_url ? (
+                            <img src={post.media_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center p-2">
+                              <p className="text-[10px] text-white/40 line-clamp-4 text-center leading-tight">{post.content}</p>
                             </div>
                           )}
-                          <div className="p-4">
-                            {!post.media_url && (
-                              <div className="flex items-center gap-2.5 mb-3">
-                                <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold"
-                                  style={{ background: "linear-gradient(135deg, #E63329, #E84393)", color: "#fff" }}>
-                                  {modelSlug.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <span className="text-xs font-bold text-white">{modelInfo?.display_name || modelSlug}</span>
-                                  <span className="text-[10px] text-white/30 ml-2">{relativeTime(post.created_at)}</span>
-                                </div>
-                                {!isFreeSlot(post.tier_required) && (
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                                    style={{
-                                      background: `${TIER_OPTIONS.find(t => t.id === toSlot(post.tier_required))?.color || "#64748B"}20`,
-                                      color: TIER_OPTIONS.find(t => t.id === toSlot(post.tier_required))?.color || "#64748B",
-                                    }}>{toSlot(post.tier_required).toUpperCase()}</span>
-                                )}
-                              </div>
-                            )}
-                            {post.content && <p className="text-sm text-white/80 whitespace-pre-wrap mb-3 line-clamp-3">{post.content}</p>}
-                            <div className="flex items-center gap-5 text-white/30">
-                              <span className="flex items-center gap-1.5 text-xs"><Heart className="w-3.5 h-3.5" /> {post.likes_count || 0}</span>
-                              <span className="flex items-center gap-1.5 text-xs"><MessageCircle className="w-3.5 h-3.5" /> {post.comments_count || 0}</span>
-                              {deleteConfirm === post.id ? (
-                                <div className="ml-auto flex items-center gap-2">
-                                  <button onClick={() => handleDeletePost(post.id)}
-                                    className="text-[11px] font-semibold text-red-400 cursor-pointer bg-transparent border-none hover:text-red-300 transition-colors px-2 py-1">
-                                    Confirmer
-                                  </button>
-                                  <button onClick={() => setDeleteConfirm(null)}
-                                    className="text-[11px] text-white/30 cursor-pointer bg-transparent border-none hover:text-white/50 transition-colors px-2 py-1">
-                                    Annuler
-                                  </button>
-                                </div>
-                              ) : (
-                                <button onClick={() => setDeleteConfirm(post.id)}
-                                  className="ml-auto opacity-0 group-hover:opacity-100 cursor-pointer hover:text-red-400 transition-all bg-transparent border-none text-white/20">
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
+                          {/* Overlay on hover */}
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
+                            <div className="flex items-center gap-3 text-white/80">
+                              <span className="flex items-center gap-1 text-[10px]"><Heart className="w-3 h-3" />{post.likes_count || 0}</span>
+                              <span className="flex items-center gap-1 text-[10px]"><MessageCircle className="w-3 h-3" />{post.comments_count || 0}</span>
                             </div>
+                            {!isFreeSlot(post.tier_required) && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/15 text-white mt-0.5">
+                                {toSlot(post.tier_required).toUpperCase()}
+                              </span>
+                            )}
+                            <span className="text-[9px] text-white/40">{relativeTime(post.created_at)}</span>
+                            {deleteConfirm === post.id ? (
+                              <div className="flex items-center gap-2 mt-1">
+                                <button onClick={() => handleDeletePost(post.id)} className="text-[10px] font-semibold text-red-400 cursor-pointer bg-transparent border-none">Suppr</button>
+                                <button onClick={() => setDeleteConfirm(null)} className="text-[10px] text-white/40 cursor-pointer bg-transparent border-none">Non</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => setDeleteConfirm(post.id)} className="mt-1 cursor-pointer bg-transparent border-none text-white/30 hover:text-red-400 transition-colors">
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -819,43 +729,47 @@ export default function AgenceDashboard() {
 
               {/* ── WALL SUB-TAB ── */}
               {contentSubTab === "wall" && (
-                <div className="space-y-3">
+                <div className="space-y-0">
                   {(() => {
                     const clientMessages = wallPosts.filter(w => !w.content?.includes("#post-") && w.pseudo !== "SYSTEM");
                     if (clientMessages.length === 0) return (
-                      <div className={`${glass} p-10 text-center`}>
-                        <MessageCircle className="w-8 h-8 text-white/10 mx-auto mb-3" />
-                        <p className="text-sm text-white/30">Aucun message pour le moment</p>
-                        <p className="text-xs text-white/20 mt-1">Les messages de tes abonnes apparaitront ici</p>
+                      <p className="text-xs text-white/20 py-6 text-center">Aucun message pour le moment</p>
+                    );
+                    return (
+                      <div className={`${surface} overflow-hidden`}>
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-white/[0.06]">
+                              <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Pseudo</th>
+                              <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Message</th>
+                              <th className="text-right text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Date</th>
+                              <th className="w-8" />
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {clientMessages.slice(0, 30).map(w => (
+                              <tr key={w.id} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors group">
+                                <td className="px-3 py-2 text-xs font-semibold text-white whitespace-nowrap">@{w.pseudo}</td>
+                                <td className="px-3 py-2 text-xs text-white/50 truncate max-w-[400px]">{w.content}</td>
+                                <td className="px-3 py-2 text-[10px] text-white/25 text-right tabular-nums whitespace-nowrap">{relativeTime(w.created_at)}</td>
+                                <td className="px-2 py-2">
+                                  <button onClick={async () => {
+                                    try {
+                                      await fetch(`/api/wall?id=${w.id}&model=${toModelId(modelSlug)}`, { method: "DELETE", headers: authHeaders() });
+                                      setWallPosts(prev => prev.filter(p => p.id !== w.id));
+                                    } catch {}
+                                  }} className="opacity-0 group-hover:opacity-100 cursor-pointer bg-transparent border-none text-white/20 hover:text-red-400 transition-all p-0.5">
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     );
-                    return clientMessages.slice(0, 30).map(w => (
-                      <div key={w.id} className={`${glass} ${glassHover} p-4 group`}>
-                        <div className="flex items-start gap-3">
-                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 bg-white/[0.06] text-white/40">
-                            {w.pseudo?.charAt(0)?.toUpperCase() || "?"}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-white">@{w.pseudo}</span>
-                              <span className="text-[10px] text-white/25">{relativeTime(w.created_at)}</span>
-                            </div>
-                            <p className="text-sm text-white/60 mt-1">{w.content}</p>
-                          </div>
-                          <button onClick={async () => {
-                            try {
-                              await fetch(`/api/wall?id=${w.id}&model=${toModelId(modelSlug)}`, { method: "DELETE", headers: authHeaders() });
-                              setWallPosts(prev => prev.filter(p => p.id !== w.id));
-                            } catch {}
-                          }} className="opacity-0 group-hover:opacity-100 cursor-pointer hover:text-red-400 transition-all bg-transparent border-none text-white/20 shrink-0 p-1">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ));
                   })()}
-                  <a href="/agence/clients"
-                    className={`block text-center py-3.5 rounded-xl text-xs font-semibold no-underline transition-all duration-200 hover:scale-[1.01] ${glass} text-[#C9A84C]`}>
+                  <a href="/agence/clients" className="block text-center py-2.5 text-[11px] font-medium text-[#D4AF37] no-underline hover:underline mt-2">
                     Voir tout dans Clients
                   </a>
                 </div>
@@ -863,22 +777,18 @@ export default function AgenceDashboard() {
 
               {/* ── STORIES SUB-TAB ── */}
               {contentSubTab === "stories" && (
-                <div className="space-y-4">
+                <div>
                   {stories.length === 0 ? (
-                    <div className={`${glass} p-10 text-center`}>
-                      <Camera className="w-8 h-8 text-white/10 mx-auto mb-3" />
-                      <p className="text-sm text-white/30">Aucune story active</p>
-                      <p className="text-xs text-white/20 mt-1">Change le type en &quot;Story&quot; dans le composer pour en creer</p>
-                    </div>
+                    <p className="text-xs text-white/20 py-6 text-center">Aucune story active. Change le type en &quot;Story&quot; dans le composer.</p>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
                       {stories.map(s => (
-                        <div key={s.id} className="relative rounded-2xl overflow-hidden aspect-[9/16] group cursor-pointer">
+                        <div key={s.id} className="relative rounded-lg overflow-hidden aspect-[9/16] group cursor-pointer border border-white/[0.04] hover:border-white/[0.1] transition-all">
                           {s.media_url && <img src={s.media_url} alt="" className="w-full h-full object-cover" loading="lazy" />}
                           <div className="absolute inset-0" style={{ background: "linear-gradient(transparent 50%, rgba(0,0,0,0.7))" }} />
-                          <div className="absolute bottom-3 left-3 right-3">
-                            {s.content && <p className="text-xs text-white font-medium line-clamp-2">{s.content}</p>}
-                            <p className="text-[10px] text-white/50 mt-1">{relativeTime(s.created_at)}</p>
+                          <div className="absolute bottom-2 left-2 right-2">
+                            {s.content && <p className="text-[10px] text-white font-medium line-clamp-2">{s.content}</p>}
+                            <p className="text-[9px] text-white/40 mt-0.5">{relativeTime(s.created_at)}</p>
                           </div>
                         </div>
                       ))}
@@ -891,126 +801,116 @@ export default function AgenceDashboard() {
 
           {/* ══════════ TAB: CLIENTS ══════════ */}
           {activeTab === "clients" && (
-            <div className="space-y-5">
-              {/* Client table */}
-              <div className={`${glass} p-5`}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-white/30" />
-                    <h2 className="text-sm font-semibold text-white">{fmtNum.format(clients.length)} clients</h2>
-                    <span className="text-[11px] text-white/30 ml-2">{fmt.format(clients.reduce((s, c) => s + (c.total_spent || 0), 0))} total</span>
-                  </div>
-                  <a href="/agence/clients"
-                    className="text-[11px] font-semibold text-[#C9A84C] no-underline hover:underline">
-                    Gerer
-                  </a>
-                </div>
-
-                {/* Search */}
-                <div className="relative mb-4">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20" />
+            <div className="space-y-4">
+              {/* Search + header */}
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-white/20" />
                   <input value={clientSearch} onChange={e => setClientSearch(e.target.value)}
-                    placeholder="Rechercher un client..."
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl text-xs bg-white/[0.04] border border-white/[0.06] text-white outline-none placeholder:text-white/20 focus:border-white/[0.14] transition-colors" style={{ minHeight: 44 }} />
+                    placeholder="Rechercher..."
+                    className="w-full pl-8 pr-3 py-1.5 rounded-lg text-xs bg-white/[0.03] border border-white/[0.06] text-white outline-none placeholder:text-white/20 focus:border-white/[0.12] transition-colors" />
                 </div>
+                <span className="text-[11px] text-white/30 shrink-0">{clients.length} clients · {fmt.format(clients.reduce((s, c) => s + (c.total_spent || 0), 0))}</span>
+                <a href="/agence/clients" className="text-[11px] font-medium text-[#D4AF37] no-underline hover:underline shrink-0">Gerer</a>
+              </div>
 
-                {/* Table header */}
-                <div className="hidden sm:grid grid-cols-12 gap-3 px-3 py-2 text-[10px] font-semibold text-white/25 uppercase tracking-wider border-b border-white/[0.05]">
-                  <span className="col-span-4">Client</span>
-                  <span className="col-span-2">Tier</span>
-                  <span className="col-span-3">Derniere activite</span>
-                  <span className="col-span-3 text-right">Depenses</span>
-                </div>
-
-                {/* Client rows */}
-                {filteredClients.length === 0 ? (
-                  <div className="py-8 text-center">
-                    <Users className="w-6 h-6 text-white/10 mx-auto mb-2" />
-                    <p className="text-xs text-white/25">{clientSearch ? "Aucun resultat" : "Aucun client enregistre"}</p>
-                  </div>
-                ) : (
-                  <div className="max-h-[400px] overflow-y-auto space-y-0.5 mt-1">
-                    {filteredClients.slice(0, 50).map(c => {
+              {/* Client table */}
+              <div className={`${surface} overflow-hidden`}>
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/[0.06]">
+                      <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Handle</th>
+                      <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2 hidden sm:table-cell">Tier</th>
+                      <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2 hidden sm:table-cell">Derniere activite</th>
+                      <th className="text-right text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Depenses</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredClients.length === 0 ? (
+                      <tr><td colSpan={4} className="text-center py-6 text-xs text-white/20">{clientSearch ? "Aucun resultat" : "Aucun client"}</td></tr>
+                    ) : filteredClients.slice(0, 50).map(c => {
                       const handle = c.pseudo_snap || c.pseudo_insta || c.nickname || "?";
                       const tierLabel = TIER_OPTIONS.find(t => t.id === (c.tier || "p1"))?.label || "Silver";
                       const tierColor = TIER_OPTIONS.find(t => t.id === (c.tier || "p1"))?.color || "#C0C0C0";
                       return (
-                        <div key={c.id} className="grid grid-cols-12 gap-3 items-center px-3 py-3 rounded-xl hover:bg-white/[0.03] transition-colors">
-                          <div className="col-span-12 sm:col-span-4 flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold bg-white/[0.06] text-white/40 shrink-0">
-                              {handle.charAt(0).toUpperCase()}
-                            </div>
-                            <span className="text-xs font-semibold text-white truncate">@{handle}</span>
-                          </div>
-                          <div className="hidden sm:block col-span-2">
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                              style={{ background: `${tierColor}15`, color: tierColor }}>{tierLabel}</span>
-                          </div>
-                          <div className="hidden sm:block col-span-3">
-                            <span className="text-[11px] text-white/30">{c.last_active ? relativeTime(c.last_active) : "-"}</span>
-                          </div>
-                          <div className="hidden sm:block col-span-3 text-right">
+                        <tr key={c.id} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors">
+                          <td className="px-3 py-2">
+                            <span className="text-xs font-semibold text-white">@{handle}</span>
+                          </td>
+                          <td className="px-3 py-2 hidden sm:table-cell">
+                            <span className="text-[10px] font-semibold" style={{ color: tierColor }}>{tierLabel}</span>
+                          </td>
+                          <td className="px-3 py-2 hidden sm:table-cell">
+                            <span className="text-[11px] text-white/30 tabular-nums">{c.last_active ? relativeTime(c.last_active) : "-"}</span>
+                          </td>
+                          <td className="px-3 py-2 text-right">
                             <span className="text-[11px] font-semibold text-white/50 tabular-nums">{c.total_spent ? fmt.format(c.total_spent) : "-"}</span>
-                          </div>
-                        </div>
+                          </td>
+                        </tr>
                       );
                     })}
-                  </div>
-                )}
+                  </tbody>
+                </table>
               </div>
 
               {/* Access Codes */}
-              <div className={`${glass} p-5`}>
-                <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <Key className="w-4 h-4 text-white/30" />
-                    <h2 className="text-sm font-semibold text-white">Codes d&apos;acces</h2>
-                    <span className="text-[11px] text-white/30 ml-1">{activeCodes.length} actifs sur {modelCodes.length}</span>
+                    <span className="text-[11px] uppercase tracking-wider text-white/30 font-medium">Codes d&apos;acces</span>
+                    <span className="text-[10px] text-white/20">{activeCodes.length} actifs / {modelCodes.length}</span>
                   </div>
                   <button onClick={() => setShowGenerator(true)}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-semibold cursor-pointer transition-all duration-200 hover:scale-105 border-none"
-                    style={{ background: "linear-gradient(135deg, #C9A84C, #D4AF37)", color: "#0a0a12", minHeight: 44 }}>
-                    <Plus className="w-3.5 h-3.5" /> Generer
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer transition-all hover:brightness-110 border-none"
+                    style={{ background: "#D4AF37", color: "#0f0f12" }}>
+                    <Plus className="w-2.5 h-2.5" /> Generer
                   </button>
                 </div>
 
                 {modelCodes.length === 0 ? (
-                  <div className="py-8 text-center">
-                    <Shield className="w-6 h-6 text-white/10 mx-auto mb-2" />
-                    <p className="text-xs text-white/25">Aucun code genere</p>
-                    <button onClick={() => setShowGenerator(true)}
-                      className="mt-2 text-[11px] font-semibold text-[#C9A84C] cursor-pointer bg-transparent border-none hover:underline">
-                      Creer le premier code
-                    </button>
-                  </div>
+                  <p className="text-xs text-white/20 py-4 text-center">Aucun code genere</p>
                 ) : (
-                  <div className="space-y-1.5 max-h-[350px] overflow-y-auto">
-                    {modelCodes.slice(0, 30).map(c => {
-                      const expired = isExpired(c.expiresAt);
-                      const status = c.revoked ? "Revoque" : expired ? "Expire" : c.active ? "Actif" : "Inactif";
-                      const statusColor = c.revoked ? "#EF4444" : expired ? "#6B7280" : c.active ? "#10B981" : "#F59E0B";
-                      const tierOption = TIER_OPTIONS.find(t => t.id === c.tier);
-                      return (
-                        <div key={c.code} className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/[0.03] transition-colors">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <code className="text-xs font-mono font-bold text-white">{c.code}</code>
-                              <button onClick={() => copyCode(c.code)}
-                                className="cursor-pointer bg-transparent border-none text-white/20 hover:text-white/50 transition-colors p-0.5">
-                                {codeCopied === c.code ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                              </button>
-                            </div>
-                            <p className="text-[10px] text-white/30 mt-0.5">@{c.client} · {relativeTime(c.created)}</p>
-                          </div>
-                          {tierOption && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
-                              style={{ background: `${tierOption.color}15`, color: tierOption.color }}>{tierOption.label}</span>
-                          )}
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
-                            style={{ background: `${statusColor}15`, color: statusColor }}>{status}</span>
-                        </div>
-                      );
-                    })}
+                  <div className={`${surface} overflow-hidden`}>
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-white/[0.06]">
+                          <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Code</th>
+                          <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Client</th>
+                          <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2 hidden sm:table-cell">Tier</th>
+                          <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2 hidden sm:table-cell">Date</th>
+                          <th className="text-right text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {modelCodes.slice(0, 30).map(c => {
+                          const expired = isExpired(c.expiresAt);
+                          const status = c.revoked ? "Revoque" : expired ? "Expire" : c.active ? "Actif" : "Inactif";
+                          const statusColor = c.revoked ? "#EF4444" : expired ? "#6B7280" : c.active ? "#10B981" : "#F59E0B";
+                          const tierOption = TIER_OPTIONS.find(t => t.id === c.tier);
+                          return (
+                            <tr key={c.code} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors group">
+                              <td className="px-3 py-2">
+                                <div className="flex items-center gap-1.5">
+                                  <code className="text-[11px] font-mono font-semibold text-white">{c.code}</code>
+                                  <button onClick={() => copyCode(c.code)}
+                                    className="cursor-pointer bg-transparent border-none text-white/15 hover:text-white/40 transition-colors p-0 opacity-0 group-hover:opacity-100">
+                                    {codeCopied === c.code ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="px-3 py-2 text-[11px] text-white/50">@{c.client}</td>
+                              <td className="px-3 py-2 hidden sm:table-cell">
+                                {tierOption && <span className="text-[10px] font-semibold" style={{ color: tierOption.color }}>{tierOption.label}</span>}
+                              </td>
+                              <td className="px-3 py-2 hidden sm:table-cell text-[10px] text-white/25 tabular-nums">{relativeTime(c.created)}</td>
+                              <td className="px-3 py-2 text-right">
+                                <span className="text-[10px] font-semibold" style={{ color: statusColor }}>{status}</span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
@@ -1019,55 +919,71 @@ export default function AgenceDashboard() {
 
           {/* ══════════ TAB: REVENUE ══════════ */}
           {activeTab === "revenue" && (
-            <div className="space-y-5">
-              {/* Revenue summary cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className={`${glass} p-5`}>
-                  <p className="text-[11px] text-white/30 mb-1.5">Revenus ce mois</p>
-                  <p className="text-3xl font-bold text-[#D4AF37] tabular-nums">{fmt.format(revenue)}</p>
+            <div className="space-y-4">
+              {/* Revenue summary — inline row */}
+              <div className="flex items-center gap-6 flex-wrap">
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider text-white/25 font-medium">Revenus ce mois</span>
+                  <p className="text-sm font-semibold text-[#D4AF37] tabular-nums mt-0.5">{fmt.format(revenue)}</p>
                 </div>
-                <div className={`${glass} p-5`}>
-                  <p className="text-[11px] text-white/30 mb-1.5">Codes vendus</p>
-                  <p className="text-3xl font-bold text-white tabular-nums">{modelCodes.filter(c => c.type === "paid" && !c.revoked).length}</p>
+                <div className="w-px h-8 bg-white/[0.06]" />
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider text-white/25 font-medium">Codes vendus</span>
+                  <p className="text-sm font-semibold text-white tabular-nums mt-0.5">{modelCodes.filter(c => c.type === "paid" && !c.revoked).length}</p>
                 </div>
-                <div className={`${glass} p-5 col-span-2 sm:col-span-1`}>
-                  <p className="text-[11px] text-white/30 mb-1.5">Revenu moyen / client</p>
-                  <p className="text-3xl font-bold text-white tabular-nums">
-                    {uniqueClients > 0 ? fmt.format(Math.round(revenue / uniqueClients)) : fmt.format(0)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Tier breakdown */}
-              <div className={`${glass} p-5`}>
-                <div className="flex items-center gap-2 mb-5">
-                  <BarChart3 className="w-4 h-4 text-white/30" />
-                  <h2 className="text-sm font-semibold text-white">Revenus par niveau</h2>
-                </div>
-                <div className="space-y-3">
-                  {packs.filter(p => p.active).map(pack => {
-                    const count = modelCodes.filter(c => c.tier === pack.id && c.type === "paid" && !c.revoked).length;
-                    const tierRevenue = count * pack.price;
-                    const maxRevenue = Math.max(...packs.filter(p => p.active).map(p => modelCodes.filter(c => c.tier === p.id && c.type === "paid" && !c.revoked).length * p.price), 1);
-                    return (
-                      <div key={pack.id} className="flex items-center gap-3">
-                        <span className="text-[11px] font-semibold w-24 text-white/50 truncate">{pack.name}</span>
-                        <div className="flex-1 h-3 rounded-full bg-white/[0.04] overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-700"
-                            style={{ width: `${Math.max((tierRevenue / maxRevenue) * 100, tierRevenue > 0 ? 4 : 0)}%`, background: pack.color }} />
-                        </div>
-                        <span className="text-[11px] font-semibold text-white/40 tabular-nums w-20 text-right">{fmt.format(tierRevenue)}</span>
-                        <span className="text-[10px] text-white/20 w-10 text-right tabular-nums">{count}x</span>
-                      </div>
-                    );
-                  })}
+                <div className="w-px h-8 bg-white/[0.06]" />
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider text-white/25 font-medium">Moy. / client</span>
+                  <p className="text-sm font-semibold text-white tabular-nums mt-0.5">{uniqueClients > 0 ? fmt.format(Math.round(revenue / uniqueClients)) : fmt.format(0)}</p>
                 </div>
               </div>
 
-              {/* Revenue by type */}
-              <div className={`${glass} p-5`}>
-                <h2 className="text-sm font-semibold text-white mb-4">Repartition par type</h2>
-                <div className="grid grid-cols-3 gap-3">
+              {/* Tier breakdown — table */}
+              <div>
+                <span className="text-[11px] uppercase tracking-wider text-white/30 font-medium">Revenus par niveau</span>
+                <div className={`${surface} mt-2 overflow-hidden`}>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/[0.06]">
+                        <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Pack</th>
+                        <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Progression</th>
+                        <th className="text-right text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Revenus</th>
+                        <th className="text-right text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2 w-16">Qty</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {packs.filter(p => p.active).map(pack => {
+                        const count = modelCodes.filter(c => c.tier === pack.id && c.type === "paid" && !c.revoked).length;
+                        const tierRevenue = count * pack.price;
+                        const maxRevenue = Math.max(...packs.filter(p => p.active).map(p => modelCodes.filter(c => c.tier === p.id && c.type === "paid" && !c.revoked).length * p.price), 1);
+                        return (
+                          <tr key={pack.id} className="border-b border-white/[0.03] last:border-0">
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full" style={{ background: pack.color }} />
+                                <span className="text-xs font-medium text-white">{pack.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2">
+                              <div className="h-1.5 rounded-full bg-white/[0.04] overflow-hidden w-full max-w-[200px]">
+                                <div className="h-full rounded-full transition-all duration-700"
+                                  style={{ width: `${Math.max((tierRevenue / maxRevenue) * 100, tierRevenue > 0 ? 4 : 0)}%`, background: pack.color }} />
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-right text-xs font-semibold tabular-nums" style={{ color: pack.color }}>{fmt.format(tierRevenue)}</td>
+                            <td className="px-3 py-2 text-right text-[11px] text-white/30 tabular-nums">{count}x</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Revenue by type — inline */}
+              <div>
+                <span className="text-[11px] uppercase tracking-wider text-white/30 font-medium">Repartition par type</span>
+                <div className="flex items-center gap-6 mt-2">
                   {[
                     { type: "paid", label: "Payants", color: "#D4AF37" },
                     { type: "promo", label: "Promo", color: "#8B5CF6" },
@@ -1075,9 +991,9 @@ export default function AgenceDashboard() {
                   ].map(t => {
                     const count = modelCodes.filter(c => c.type === t.type && !c.revoked).length;
                     return (
-                      <div key={t.type} className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] text-center">
-                        <p className="text-2xl font-bold tabular-nums" style={{ color: t.color }}>{count}</p>
-                        <p className="text-[10px] text-white/30 mt-1">{t.label}</p>
+                      <div key={t.type} className="flex items-center gap-2">
+                        <span className="text-sm font-semibold tabular-nums" style={{ color: t.color }}>{count}</span>
+                        <span className="text-[11px] text-white/30">{t.label}</span>
                       </div>
                     );
                   })}
@@ -1088,52 +1004,44 @@ export default function AgenceDashboard() {
 
           {/* ══════════ TAB: SETTINGS (Packs) ══════════ */}
           {activeTab === "settings" && (
-            <div className="space-y-5">
-              <div className={`${glass} p-5`}>
-                <div className="flex items-center gap-2 mb-5">
-                  <Settings className="w-4 h-4 text-white/30" />
-                  <h2 className="text-sm font-semibold text-white">Configuration des packs</h2>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {packs.map(pack => {
-                    const tierOption = TIER_OPTIONS.find(t => t.id === pack.id);
-                    return (
-                      <div key={pack.id} className={`${glass} ${glassHover} p-5 relative overflow-hidden`}>
-                        {/* Accent bar */}
-                        <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style={{ background: pack.color }} />
-
-                        <div className="flex items-center justify-between mb-3 mt-1">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ background: pack.color }} />
-                            <span className="text-sm font-bold text-white">{pack.name}</span>
-                          </div>
-                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${pack.active ? "bg-emerald-500/15 text-emerald-400" : "bg-white/[0.06] text-white/30"}`}>
-                            {pack.active ? "Actif" : "Inactif"}
-                          </span>
-                        </div>
-
-                        <p className="text-2xl font-bold text-white tabular-nums mb-1">{fmt.format(pack.price)}</p>
-                        <p className="text-[11px] text-white/30">
-                          {tierOption?.label || pack.id} · {pack.active ? "Actif" : "Inactif"}
-                        </p>
-
-                        {/* Stats for this pack */}
-                        <div className="flex items-center gap-4 mt-4 pt-3 border-t border-white/[0.05]">
-                          <div>
-                            <span className="text-[10px] text-white/25">Vendus</span>
-                            <p className="text-sm font-bold text-white tabular-nums">{modelCodes.filter(c => c.tier === pack.id && c.type === "paid" && !c.revoked).length}</p>
-                          </div>
-                          <div>
-                            <span className="text-[10px] text-white/25">Revenus</span>
-                            <p className="text-sm font-bold tabular-nums" style={{ color: pack.color }}>
-                              {fmt.format(modelCodes.filter(c => c.tier === pack.id && c.type === "paid" && !c.revoked).length * pack.price)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+            <div className="space-y-3">
+              <span className="text-[11px] uppercase tracking-wider text-white/30 font-medium">Configuration des packs</span>
+              <div className={`${surface} overflow-hidden`}>
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/[0.06]">
+                      <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Pack</th>
+                      <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Prix</th>
+                      <th className="text-left text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2 hidden sm:table-cell">Status</th>
+                      <th className="text-right text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Vendus</th>
+                      <th className="text-right text-[10px] uppercase tracking-wider text-white/25 font-medium px-3 py-2">Revenus</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {packs.map(pack => {
+                      const soldCount = modelCodes.filter(c => c.tier === pack.id && c.type === "paid" && !c.revoked).length;
+                      const packRevenue = soldCount * pack.price;
+                      return (
+                        <tr key={pack.id} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors">
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full" style={{ background: pack.color }} />
+                              <span className="text-xs font-semibold text-white">{pack.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5 text-xs font-semibold text-white tabular-nums">{fmt.format(pack.price)}</td>
+                          <td className="px-3 py-2.5 hidden sm:table-cell">
+                            <span className="text-[10px] font-medium" style={{ color: pack.active ? "#10B981" : "#6B7280" }}>
+                              {pack.active ? "Actif" : "Inactif"}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-right text-xs font-semibold text-white tabular-nums">{soldCount}</td>
+                          <td className="px-3 py-2.5 text-right text-xs font-semibold tabular-nums" style={{ color: pack.color }}>{fmt.format(packRevenue)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
