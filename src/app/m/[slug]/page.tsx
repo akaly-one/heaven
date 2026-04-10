@@ -700,29 +700,26 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, vi
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {visitorRegistered && (
             <>
-              <div className="flex items-center gap-1.5 min-w-0">
-                {visitorPlatform && (
-                  <div className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center shrink-0">
-                    {visitorPlatform === "snap" ? <Ghost className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: "#FFFC00" }} /> : <Instagram className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: "#C13584" }} />}
-                  </div>
-                )}
-                <span className="text-[11px] sm:text-xs font-semibold truncate max-w-[50px] sm:max-w-[120px] md:max-w-[180px]" style={{ color: "var(--text)" }}>@{visitorHandle}</span>
-                {!isModelLoggedIn && (
-                  <div className="relative group shrink-0">
-                    <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full flex items-center justify-center cursor-pointer"
-                      style={{ background: visitorVerified ? "#10B981" : "#EF4444" }}>
-                      {visitorVerified ? <Check className="w-2 h-2 text-white" /> : <Lock className="w-2 h-2 text-white" />}
+              {/* Unified identity badge: @pseudo + status */}
+              {!isModelLoggedIn && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg min-w-0"
+                  style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}>
+                  {visitorPlatform && (
+                    <div className="w-3.5 h-3.5 flex items-center justify-center shrink-0">
+                      {visitorPlatform === "snap" ? <Ghost className="w-3 h-3" style={{ color: "#FFFC00" }} /> : <Instagram className="w-3 h-3" style={{ color: "#C13584" }} />}
                     </div>
-                    <div className="absolute top-full right-0 mt-2 px-2.5 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-200 z-50 whitespace-nowrap"
-                      style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }}>
-                      <span className="text-[10px] font-semibold" style={{ color: visitorVerified ? "#10B981" : "#EF4444" }}>
-                        {visitorVerified ? "Compte verifie" : "Non verifie"}
-                      </span>
-                    </div>
+                  )}
+                  <span className="text-[10px] sm:text-[11px] font-semibold truncate max-w-[60px] sm:max-w-[100px]" style={{ color: "var(--text)" }}>@{visitorHandle}</span>
+                  <div className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0"
+                    style={{ background: visitorVerified ? "#10B981" : "#EF4444" }}>
+                    {visitorVerified ? <Check className="w-2 h-2 text-white" /> : <Lock className="w-2 h-2 text-white" />}
                   </div>
-                )}
-              </div>
-              <ClientBadge tier={unlockedTier || null} size="md" />
+                  <span className="text-[9px] font-bold uppercase tracking-wide shrink-0 hidden sm:inline"
+                    style={{ color: visitorVerified ? "#10B981" : "var(--text-muted)" }}>
+                    {unlockedTier ? (TIER_META[unlockedTier]?.label || "VIP") : (visitorVerified ? "Verifie" : "Visiteur")}
+                  </span>
+                </div>
+              )}
               <button onClick={() => { setOrderHistoryOpen(!orderHistoryOpen); clearNotifications(); }}
                 className="relative w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
                 style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}>
