@@ -1,10 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
-import {
-  Target, Globe, DollarSign, Zap,
-  Shield, BarChart3,
-} from "lucide-react";
+import { Target, Globe, BarChart3 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
@@ -13,7 +10,7 @@ import type { Goal } from "@/types/heaven";
 import { PLATFORMS } from "@/constants/strategie-platforms";
 import { GLOBAL_CHECKLIST } from "@/constants/strategie-onboarding";
 import {
-  CONTENT_LEVELS, CHANNELS, PIPELINE_STEPS,
+  CONTENT_LEVELS, PIPELINE_STEPS,
   loadSimState, saveSimState,
   type SalesChannel, type SimState,
 } from "@/constants/strategie-simulator";
@@ -30,7 +27,7 @@ export default function StrategiePage() {
   const { currentModel, authHeaders, isRoot } = useModel();
   const modelSlug = currentModel || "";
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>("plateformes");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("objectifs");
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
 
   // Onboarding state
@@ -238,18 +235,16 @@ export default function StrategiePage() {
   }, [simState.activeLevels, simState.activeChannels, simState.experience]);
 
   const TABS: { id: ActiveTab; label: string; icon: LucideIcon }[] = [
+    { id: "objectifs", label: "Objectifs", icon: Target },
     { id: "plateformes", label: "Plateformes", icon: Globe },
     { id: "simulateur", label: "Simulateur", icon: BarChart3 },
-    { id: "onboarding", label: "Onboarding", icon: Shield },
-    { id: "tactique", label: "Tactique", icon: Zap },
-    { id: "objectifs", label: "Objectifs", icon: Target },
   ];
 
   if (!modelSlug) {
     return (
       <OsLayout cpId="agence">
         <div className="flex items-center justify-center h-[60vh]">
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+          <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
             {isRoot ? "Selectionne un modele dans le header" : "Chargement..."}
           </p>
         </div>
@@ -259,64 +254,121 @@ export default function StrategiePage() {
 
   return (
     <OsLayout cpId="agence">
-      <div className="min-h-screen pb-24">
+      <div className="min-h-screen pb-24" style={{ background: "#0f0f12" }}>
 
         {/* Header */}
-        <div className="p-4 sm:p-6 max-w-5xl mx-auto">
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, var(--accent), #7C3AED)", boxShadow: "0 0 20px rgba(224,64,251,0.15)" }}>
-              <Target className="w-4.5 h-4.5 text-white" />
-            </div>
-            <div className="flex-1">
-              <h1 className="text-base font-bold" style={{ color: "var(--text)" }}>Strategie & Simulateur</h1>
-              <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                Plateformes, simulateur de revenus, onboarding et planification.
-              </p>
-            </div>
-            {/* Goal badge from simulator */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl"
-              style={{
-                background: goalReached ? "rgba(16,185,129,0.1)" : "rgba(245,158,11,0.1)",
-                border: `1px solid ${goalReached ? "rgba(16,185,129,0.2)" : "rgba(245,158,11,0.2)"}`,
-              }}>
-              <DollarSign className="w-3.5 h-3.5" style={{ color: goalReached ? "#10B981" : "#F59E0B" }} />
-              <span className="text-[11px] font-bold" style={{ color: goalReached ? "#10B981" : "#F59E0B" }}>
-                {totalProjectedRevenue.toLocaleString()}€ / {simState.monthlyGoal.toLocaleString()}€
-              </span>
-            </div>
+        <div className="px-4 sm:px-6 pt-5 pb-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-sm font-semibold tracking-widest uppercase" style={{ color: "rgba(255,255,255,1)" }}>
+              Strategie
+            </h1>
+            <span
+              className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+              style={{ background: "rgba(212,175,55,0.12)", color: "#D4AF37" }}
+            >
+              {goals.length} objectif{goals.length !== 1 ? "s" : ""}
+            </span>
           </div>
         </div>
 
-        {/* Sticky Tab bar */}
-        <div className="sticky top-0 z-30" style={{ background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
-          <div className="max-w-5xl mx-auto px-4 sm:px-6">
-            <div className="flex gap-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-              {TABS.map(tab => {
-                const isActive = activeTab === tab.id;
-                return (
-                  <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                    className="flex items-center gap-1.5 px-4 py-3 text-xs font-semibold whitespace-nowrap cursor-pointer transition-all shrink-0"
-                    style={{
-                      color: isActive ? "var(--accent)" : "var(--text-muted)",
-                      borderBottom: isActive ? "2px solid var(--accent)" : "2px solid transparent",
-                    }}>
-                    <tab.icon className="w-3.5 h-3.5" />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
+        {/* Tab bar */}
+        <div
+          className="sticky top-0 z-30 px-4 sm:px-6"
+          style={{ background: "#0f0f12", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <div className="flex gap-6">
+            {TABS.map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className="relative pb-2.5 pt-1 text-xs font-medium cursor-pointer transition-colors"
+                  style={{
+                    color: isActive ? "#D4AF37" : "rgba(255,255,255,0.4)",
+                  }}
+                >
+                  {tab.label}
+                  {isActive && (
+                    <span
+                      className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full"
+                      style={{ background: "#D4AF37" }}
+                    />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        <div className="p-4 sm:p-6 max-w-5xl mx-auto">
+        {/* Content */}
+        <div className="px-4 sm:px-6 pt-5">
+
+          {activeTab === "objectifs" && (
+            <div className="space-y-8">
+              <TabObjectifs
+                goals={goals}
+                goalsLoading={goalsLoading}
+                handleDeleteGoal={handleDeleteGoal}
+                onAddGoal={() => setShowAddGoal(true)}
+              />
+
+              {/* Tactique section below goals */}
+              <div>
+                <div
+                  className="rounded-xl p-4 mb-4"
+                  style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
+                >
+                  <h2 className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: "rgba(255,255,255,1)" }}>
+                    Tactique hebdomadaire
+                  </h2>
+                  <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+                    Taches par plateforme pour la semaine en cours.
+                  </p>
+                </div>
+                <TabTactique
+                  activePlatforms={activePlatforms}
+                  checklist={checklist}
+                  expandedPlatform={expandedPlatform}
+                  setExpandedPlatform={setExpandedPlatform}
+                  togglePlatform={togglePlatform}
+                  toggleTask={toggleTask}
+                  setChecklist={setChecklist}
+                  doneTasks={doneTasks}
+                  totalTasks={totalTasks}
+                  progress={progress}
+                />
+              </div>
+            </div>
+          )}
 
           {activeTab === "plateformes" && (
-            <TabPlateformes
-              expandedPlatform={expandedPlatform}
-              setExpandedPlatform={setExpandedPlatform}
-            />
+            <div className="space-y-8">
+              <TabPlateformes
+                expandedPlatform={expandedPlatform}
+                setExpandedPlatform={setExpandedPlatform}
+              />
+
+              {/* Onboarding section below platforms */}
+              <div>
+                <div
+                  className="rounded-xl p-4 mb-4"
+                  style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
+                >
+                  <h2 className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: "rgba(255,255,255,1)" }}>
+                    Onboarding
+                  </h2>
+                  <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+                    Checklist de lancement par plateforme.
+                  </p>
+                </div>
+                <TabOnboarding
+                  onboardingChecked={onboardingChecked}
+                  toggleOnboarding={toggleOnboarding}
+                  onboardingDone={onboardingDone}
+                />
+              </div>
+            </div>
           )}
 
           {activeTab === "simulateur" && (
@@ -337,38 +389,6 @@ export default function StrategiePage() {
               pipelineProgress={pipelineProgress}
               visibleSteps={visibleSteps}
               recommendedPrices={recommendedPrices}
-            />
-          )}
-
-          {activeTab === "onboarding" && (
-            <TabOnboarding
-              onboardingChecked={onboardingChecked}
-              toggleOnboarding={toggleOnboarding}
-              onboardingDone={onboardingDone}
-            />
-          )}
-
-          {activeTab === "tactique" && (
-            <TabTactique
-              activePlatforms={activePlatforms}
-              checklist={checklist}
-              expandedPlatform={expandedPlatform}
-              setExpandedPlatform={setExpandedPlatform}
-              togglePlatform={togglePlatform}
-              toggleTask={toggleTask}
-              setChecklist={setChecklist}
-              doneTasks={doneTasks}
-              totalTasks={totalTasks}
-              progress={progress}
-            />
-          )}
-
-          {activeTab === "objectifs" && (
-            <TabObjectifs
-              goals={goals}
-              goalsLoading={goalsLoading}
-              handleDeleteGoal={handleDeleteGoal}
-              onAddGoal={() => setShowAddGoal(true)}
             />
           )}
 
