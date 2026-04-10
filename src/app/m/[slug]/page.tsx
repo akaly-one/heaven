@@ -346,6 +346,7 @@ export default function ModelPage() {
           newNotifications={newNotifications} orderHistoryOpen={orderHistoryOpen} setOrderHistoryOpen={setOrderHistoryOpen} clearNotifications={clearNotifications}
           codeSheetOpen={codeSheetOpen} setCodeSheetOpen={setCodeSheetOpen}
           handleCodeValidation={handleCodeValidation} modelId={modelId} slug={slug}
+          galleryTier={galleryTier} setGalleryTier={setGalleryTier}
         />
 
         {/* ═══ HERO SECTION ═══ */}
@@ -656,7 +657,7 @@ export default function ModelPage() {
 // ═══════════════════════════════════════════
 
 // ── Header Bar ──
-function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, visitorPlatform, visitorHandle, visitorVerified, unlockedTier, activeCode, chatOpen, setChatOpen, chatUnread, newNotifications, orderHistoryOpen, setOrderHistoryOpen, clearNotifications, codeSheetOpen, setCodeSheetOpen, handleCodeValidation, modelId, slug }: {
+function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, visitorPlatform, visitorHandle, visitorVerified, unlockedTier, activeCode, chatOpen, setChatOpen, chatUnread, newNotifications, orderHistoryOpen, setOrderHistoryOpen, clearNotifications, codeSheetOpen, setCodeSheetOpen, handleCodeValidation, modelId, slug, galleryTier, setGalleryTier }: {
   model: ModelInfo; displayModel: ModelInfo | null; isModelLoggedIn: boolean;
   visitorRegistered: boolean; visitorPlatform: VisitorPlatform | null; visitorHandle: string; visitorVerified: boolean;
   unlockedTier: string | null; activeCode: AccessCode | null;
@@ -665,16 +666,30 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, vi
   codeSheetOpen: boolean; setCodeSheetOpen: (v: boolean) => void;
   handleCodeValidation: (code: string, input?: HTMLInputElement) => Promise<boolean>;
   modelId: string; slug: string;
+  galleryTier: string; setGalleryTier: (v: string) => void;
 }) {
   return (
     <div className="sticky top-0 left-0 right-0 z-40 px-3 sm:px-5 md:px-8 lg:px-12 py-2"
       style={{ background: "color-mix(in srgb, var(--bg) 90%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderBottom: "1px solid var(--border)" }}>
       <div className="flex items-center">
-        {/* LEFT: Model name */}
+        {/* LEFT: Back + Model name */}
         <div className="flex items-center gap-2 min-w-0 shrink-0">
           {isModelLoggedIn && <a href="/agence" className="text-sm font-bold no-underline shrink-0" style={{ color: "var(--accent)" }}>&#8592;</a>}
-          <span className="text-xs sm:text-sm font-bold tracking-wide uppercase truncate" style={{ color: "var(--text)", letterSpacing: "0.08em" }}>{model.display_name}</span>
+          {galleryTier !== "feed" && (
+            <button onClick={() => setGalleryTier("feed")}
+              className="text-sm font-bold shrink-0 cursor-pointer bg-transparent border-none transition-all hover:scale-105 active:scale-95"
+              style={{ color: "var(--accent)" }}>&#8592;</button>
+          )}
+          <button onClick={() => setGalleryTier("feed")}
+            className="text-xs sm:text-sm font-bold tracking-wide uppercase truncate bg-transparent border-none cursor-pointer transition-all hover:opacity-80 active:scale-95 p-0"
+            style={{ color: "var(--text)", letterSpacing: "0.08em" }}>{model.display_name}</button>
           {displayModel?.online && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }} />}
+          {galleryTier !== "feed" && (
+            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md shrink-0"
+              style={{ background: `${TIER_HEX[galleryTier] || "var(--accent)"}20`, color: TIER_HEX[galleryTier] || "var(--accent)" }}>
+              {TIER_META[galleryTier]?.symbol} {TIER_META[galleryTier]?.label || galleryTier}
+            </span>
+          )}
         </div>
         {/* CENTER: spacer */}
         <div className="flex-1" />
