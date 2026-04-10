@@ -143,22 +143,8 @@ export function OverviewSimulator({
   return (
     <div className="space-y-3">
 
-      {/* ═══ ROW 1: KPIs inline chips + quick actions ═══ */}
+      {/* ═══ Quick actions — single compact row ═══ */}
       <div className="flex flex-wrap items-center gap-1.5">
-        {[
-          { icon: DollarSign, color: "#10B981", val: fmt.format(revenue), lbl: "rev" },
-          { icon: Users, color: "#D4AF37", val: String(activeCodes.length), lbl: "abo" },
-          { icon: TrendingUp, color: "#8B5CF6", val: `${retentionRate}%`, lbl: "ret" },
-          { icon: AlertTriangle, color: "#F59E0B", val: String(expiringCodes.length), lbl: "exp" },
-        ].map((k, i) => (
-          <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded-md"
-            style={{ background: `${k.color}0A`, border: `1px solid ${k.color}15` }}>
-            <k.icon className="w-3 h-3" style={{ color: k.color }} />
-            <span className="text-xs font-black" style={{ color: k.color }}>{k.val}</span>
-            <span className="text-[9px] font-bold uppercase" style={{ color: "var(--text-muted)" }}>{k.lbl}</span>
-          </div>
-        ))}
-        <div className="w-px h-4 mx-1" style={{ background: "var(--border)" }} />
         {[
           { href: `/m/${modelSlug}`, icon: Eye, color: "#E63329", label: "Profil", onClick: undefined as (() => void) | undefined },
           { href: `/m/${modelSlug}?edit=true`, icon: Pencil, color: "#D4AF37", label: "Edit", onClick: undefined },
@@ -181,47 +167,47 @@ export function OverviewSimulator({
         })}
       </div>
 
-      {/* ═══ ROW 2: 3-column kanban — Ventes | Finances | Activite ═══ */}
+      {/* ═══ 3-column kanban — all data integrated ═══ */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
 
-        {/* COL 1: Ventes par pack */}
+        {/* COL 1: Ventes — packs + revenue + KPIs intégrés */}
         <div className="rounded-xl p-3" style={cardStyle}>
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Ventes</span>
-            <span className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>{paidCodes.length}</span>
+            <span className="text-sm font-black" style={{ color: "#10B981" }}>{fmt.format(revenue)}</span>
           </div>
-          <div className="space-y-1.5">
-            {revenueByPack.map(p => (
-              <div key={p.id} className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full shrink-0" style={{ background: p.hex }} />
-                <span className="text-[10px] font-bold truncate flex-1" style={{ color: "var(--text)" }}>{p.name}</span>
-                <span className="text-[10px] font-black tabular-nums" style={{ color: p.hex }}>{p.count}</span>
-              </div>
-            ))}
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{paidCodes.length} ventes · {activeCodes.length} abo · {fmt.format(avgPerClient)}/client</span>
           </div>
-          {bestPack && bestPack.rev > 0 && (
-            <div className="mt-2 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
-              <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>
-                Top: {bestPack.name} → {fmt.format(bestPack.rev)}
-              </span>
-            </div>
-          )}
+          <div className="space-y-1">
+            {revenueByPack.map(p => {
+              const maxCount = Math.max(...Object.values(salesByTier), 1);
+              const pct = (p.count / maxCount) * 100;
+              return (
+                <div key={p.id} className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: p.hex }} />
+                  <span className="text-[10px] font-bold truncate w-14 shrink-0" style={{ color: "var(--text)" }}>{p.name}</span>
+                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
+                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: p.hex }} />
+                  </div>
+                  <span className="text-[10px] font-black tabular-nums w-4 text-right shrink-0" style={{ color: p.hex }}>{p.count}</span>
+                  <span className="text-[9px] tabular-nums w-10 text-right shrink-0" style={{ color: "var(--text-muted)" }}>{fmt.format(p.rev)}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* COL 2: Finances */}
+        {/* COL 2: Codes & Finances */}
         <div className="rounded-xl p-3" style={cardStyle}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Finances</span>
-            <span className="text-[10px] font-black" style={{ color: "#10B981" }}>{fmt.format(revenue)}</span>
+            <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Codes</span>
+            <span className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>{activeCodes.length}/{totalCodes}</span>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Moy. / client</span>
-              <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>{fmt.format(avgPerClient)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Codes actifs</span>
-              <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>{activeCodes.length} / {totalCodes}</span>
+              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Payes</span>
+              <span className="text-[10px] font-bold" style={{ color: "#10B981" }}>{paidCodes.length}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Gratuits</span>
@@ -231,12 +217,28 @@ export function OverviewSimulator({
               <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Revoques</span>
               <span className="text-[10px] font-bold" style={{ color: "#EF4444" }}>{revokedCodes}</span>
             </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Retention</span>
+              <span className="text-[10px] font-bold" style={{ color: "#8B5CF6" }}>{retentionRate}%</span>
+            </div>
           </div>
           {expiringCodes.length > 0 && (
-            <div className="mt-2 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
-              <span className="text-[9px]" style={{ color: "#F59E0B" }}>
-                {expiringCodes.length} a renouveler bientot
-              </span>
+            <div className="mt-2 pt-1.5 space-y-0.5" style={{ borderTop: "1px solid var(--border)" }}>
+              <span className="text-[9px] font-bold" style={{ color: "#F59E0B" }}>{expiringCodes.length} expirent bientot</span>
+              {expiringCodes.slice(0, 3).map(code => {
+                const cl = clients.find(c => c.pseudo_snap === code.client || c.pseudo_insta === code.client || c.nickname === code.client);
+                const name = cl?.pseudo_snap || cl?.pseudo_insta || code.client;
+                const timeLeft = new Date(code.expiresAt).getTime() - Date.now();
+                const h = Math.floor(timeLeft / 3_600_000);
+                const d = Math.floor(timeLeft / 86_400_000);
+                const urgency = h < 24 ? "#F87171" : h < 72 ? "#FBBF24" : "#10B981";
+                return (
+                  <div key={code.code} className="flex items-center justify-between">
+                    <span className="text-[9px] truncate" style={{ color: "var(--text-muted)" }}>@{name}</span>
+                    <span className="text-[9px] font-bold" style={{ color: urgency }}>{d > 0 ? `${d}j` : `${h}h`}</span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -247,7 +249,7 @@ export function OverviewSimulator({
             <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Activite</span>
             <span className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>{clients.length} clients</span>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <div className="flex items-center gap-1.5">
               <ShieldCheck className="w-3 h-3 shrink-0" style={{ color: "#10B981" }} />
               <span className="text-[10px] flex-1" style={{ color: "var(--text-muted)" }}>Verifies</span>
@@ -269,42 +271,15 @@ export function OverviewSimulator({
               <span className="text-[10px] font-bold" style={{ color: "#8B5CF6" }}>{stories.length}</span>
             </div>
           </div>
-          <div className="mt-2 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
+          <div className="mt-2 pt-1.5" style={{ borderTop: "1px solid var(--border)" }}>
             <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>
-              Retention {retentionRate}% · {uniqueClients} uniques
+              {uniqueClients} uniques · {activeCodes.length} abonnes
             </span>
           </div>
         </div>
       </div>
 
-      {/* ═══ ROW 3: Expiring codes (if any) — compact single row ═══ */}
-      {expiringCodes.length > 0 && (
-        <div className="rounded-xl px-3 py-2" style={cardStyle}>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Clock className="w-3 h-3 shrink-0" style={{ color: "#F59E0B" }} />
-            <span className="text-[10px] font-bold shrink-0" style={{ color: "var(--text)" }}>Expirent:</span>
-            {expiringCodes.map(code => {
-              const client = clients.find(cl => cl.pseudo_snap === code.client || cl.pseudo_insta === code.client || cl.nickname === code.client);
-              const name = client?.pseudo_snap || client?.pseudo_insta || code.client;
-              const pack = packs.find(p => p.id === code.tier);
-              const hex = TIER_HEX[code.tier] || pack?.color || "#888";
-              const timeLeft = new Date(code.expiresAt).getTime() - Date.now();
-              const hoursLeft = Math.floor(timeLeft / 3_600_000);
-              const daysLeft = Math.floor(timeLeft / 86_400_000);
-              const urgency = hoursLeft < 24 ? "#F87171" : hoursLeft < 72 ? "#FBBF24" : "#10B981";
-              const timeStr = daysLeft > 0 ? `${daysLeft}j` : `${hoursLeft}h`;
-              return (
-                <div key={code.code} className="flex items-center gap-1 px-1.5 py-0.5 rounded" style={{ background: `${hex}0A` }}>
-                  <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>@{name}</span>
-                  <span className="text-[9px] font-bold" style={{ color: urgency }}>{timeStr}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ═══ ROW 4: Simulator toggle + panel ═══ */}
+      {/* ═══ Simulator toggle ═══ */}
       <button onClick={() => setSimMode(!simMode)}
         className="inline-flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
         style={{
