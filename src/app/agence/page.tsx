@@ -6,7 +6,7 @@ import {
   Newspaper, Camera, RefreshCw, Users, Key, DollarSign, TrendingUp,
   Copy, Check, Plus, Search, Shield, BarChart3, Clock, Zap, Settings,
   ChevronDown, Lock, EyeOff, Send, Pin, FolderOpen, Upload, ArrowRight, Grid3x3, GripVertical, Columns, Sparkles,
-  UserPlus, Ban,
+  UserPlus, Ban, AlertTriangle, List,
 } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
@@ -56,6 +56,15 @@ function relativeTime(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
 }
 
+function remainingTime(expiresAt: string): string {
+  const diff = new Date(expiresAt).getTime() - Date.now();
+  if (diff <= 0) return "Expiré";
+  const hours = Math.floor(diff / 3600000);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}j`;
+}
+
 const TIER_OPTIONS = [
   { id: "p0", label: "Public", color: "#64748B" },
   { id: "p1", label: "Silver", color: "#C0C0C0" },
@@ -76,7 +85,6 @@ const TABS = [
   { id: "overview", label: "Overview" },
   { id: "feed", label: "Feed" },
   { id: "contenu", label: "Contenu" },
-  { id: "revenue", label: "Revenus" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -653,13 +661,31 @@ export default function AgenceDashboard() {
                 style={{ background: modelInfo?.online ? "#10B981" : "#6B7280", boxShadow: `0 0 0 2.5px #0f0f12` }} />
             </div>
 
-            {/* Name inline */}
-            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-              <span className="text-lg font-bold text-white truncate">
+            {/* Name + inline stats */}
+            <div className="flex items-center gap-2.5 min-w-0 shrink-0">
+              <span className="text-lg font-bold text-white">
                 {modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase()}
               </span>
               <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: modelInfo?.online ? "#10B981" : "#6B7280" }} />
-              <span className="text-xs text-white/30 shrink-0">{modelInfo?.online ? "en ligne" : "hors ligne"}</span>
+              <span className="text-xs text-white/30 shrink-0 hidden sm:inline">{modelInfo?.online ? "en ligne" : "hors ligne"}</span>
+            </div>
+
+            <div className="flex-1" />
+            {/* KPI inline stats — right side of header */}
+            <div className="hidden md:flex items-center gap-0 overflow-x-auto no-scrollbar shrink-0">
+              {[
+                { label: "Rev", value: fmt.format(revenue), color: "#D4AF37" },
+                { label: "Abo", value: String(uniqueClients), color: "#fff" },
+                { label: "Posts", value: String(feedPosts.length), color: "#fff" },
+                { label: "Ret", value: `${retentionRate}%`, color: "#fff" },
+                { label: "Codes", value: `${activeCodes.length}/${modelCodes.length}`, color: "#fff" },
+              ].map((kpi, i) => (
+                <div key={i} className="flex items-center gap-1.5 px-2.5">
+                  {i > 0 && <div className="w-px h-3.5 bg-white/[0.06] mr-1.5" />}
+                  <span className="text-[10px] text-white/25 uppercase tracking-wider font-medium">{kpi.label}</span>
+                  <span className="text-xs font-bold tabular-nums" style={{ color: kpi.color }}>{kpi.value}</span>
+                </div>
+              ))}
             </div>
 
             {/* Toggle online/offline */}
@@ -670,8 +696,8 @@ export default function AgenceDashboard() {
             </button>
           </div>
 
-          {/* ══ KPI BAR ══ */}
-          <div className="flex items-center gap-0 border-b border-white/[0.06] pb-4 overflow-x-auto no-scrollbar">
+          {/* KPI BAR — mobile only */}
+          <div className="flex md:hidden items-center gap-0 border-b border-white/[0.06] pb-4 overflow-x-auto no-scrollbar">
             <div className="flex items-center gap-2 pr-5">
               <span className="text-xs text-white/30 uppercase tracking-wider font-medium">Revenue</span>
               <span className="text-base font-bold text-[#D4AF37] tabular-nums">{fmt.format(revenue)}</span>
@@ -683,16 +709,6 @@ export default function AgenceDashboard() {
             </div>
             <div className="w-px h-4 bg-white/[0.08] shrink-0" />
             <div className="flex items-center gap-2 px-5">
-              <span className="text-xs text-white/30 uppercase tracking-wider font-medium">Posts</span>
-              <span className="text-base font-bold text-white tabular-nums">{feedPosts.length}</span>
-            </div>
-            <div className="w-px h-4 bg-white/[0.08] shrink-0" />
-            <div className="flex items-center gap-2 px-5">
-              <span className="text-xs text-white/30 uppercase tracking-wider font-medium">Retention</span>
-              <span className="text-base font-bold text-white tabular-nums">{retentionRate}%</span>
-            </div>
-            <div className="w-px h-4 bg-white/[0.08] shrink-0" />
-            <div className="flex items-center gap-2 pl-5">
               <span className="text-xs text-white/30 uppercase tracking-wider font-medium">Codes</span>
               <span className="text-base font-bold text-white tabular-nums">{activeCodes.length}/{modelCodes.length}</span>
             </div>
@@ -714,7 +730,15 @@ export default function AgenceDashboard() {
           </div>
 
           {/* ══════════ TAB: OVERVIEW ══════════ */}
-          {activeTab === "overview" && (
+          {activeTab === "overview" && (() => {
+            // Expiring subscriptions: active codes sorted by expiry, soonest first
+            const expiringCodes = modelCodes
+              .filter(c => c.active && !c.revoked && c.expiresAt && !isExpired(c.expiresAt))
+              .sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime())
+              .slice(0, 10);
+            const paidCodesCount = modelCodes.filter(c => c.type === "paid" && !c.revoked).length;
+            const avgPerClient = uniqueClients > 0 ? Math.round(revenue / uniqueClients) : 0;
+            return (
             <div className="space-y-5">
               {/* Quick Actions — CP ↔ Profile workflow */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -812,8 +836,9 @@ export default function AgenceDashboard() {
                       { label: "Codes actifs", value: String(activeCodes.length), color: "#10B981" },
                       { label: "Total codes", value: String(modelCodes.length), color: "#fff" },
                       { label: "Messages wall", value: String(wallPosts.filter(w => w.pseudo !== "SYSTEM").length), color: "#fff" },
-                      { label: "Codes vendus", value: String(modelCodes.filter(c => c.type === "paid" && !c.revoked).length), color: "#D4AF37" },
+                      { label: "Codes vendus", value: String(paidCodesCount), color: "#D4AF37" },
                       { label: "Stories", value: String(stories.length), color: "#fff" },
+                      { label: "Moy. / client", value: fmt.format(avgPerClient), color: "#D4AF37" },
                     ].map((row, i) => (
                       <div key={i} className="flex items-center justify-between px-4 py-3">
                         <span className="text-sm text-white/40">{row.label}</span>
@@ -823,8 +848,131 @@ export default function AgenceDashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* ── Expiring Subscriptions — retention box ── */}
+              {expiringCodes.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400/60" />
+                    <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Abonnements a renouveler</span>
+                    <span className="text-[10px] text-white/15 ml-auto">10 prochains</span>
+                  </div>
+                  <div className={`${surface} overflow-hidden`}>
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-white/[0.06]">
+                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Client</th>
+                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Pack</th>
+                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Code</th>
+                          <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Reste</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {expiringCodes.map((code) => {
+                          const remaining = remainingTime(code.expiresAt);
+                          const hoursLeft = (new Date(code.expiresAt).getTime() - Date.now()) / 3600000;
+                          const urgencyColor = hoursLeft < 24 ? "#F87171" : hoursLeft < 72 ? "#FBBF24" : "#10B981";
+                          const tierMeta = TIER_META[code.tier];
+                          const tierHex = TIER_HEX[code.tier] || "#64748B";
+                          const client = clients.find(c => c.id === code.clientId || c.pseudo_snap === code.client);
+                          const displayName = client?.nickname || client?.pseudo_snap || code.client || "—";
+                          return (
+                            <tr key={code.id || code.code} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors">
+                              <td className="px-4 py-2.5">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                                    style={{ background: `${tierHex}15`, color: tierHex }}>
+                                    {displayName.charAt(0).toUpperCase()}
+                                  </div>
+                                  <span className="text-xs font-medium text-white/70 truncate">{displayName}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${tierHex}15`, color: tierHex }}>
+                                  {tierMeta?.label || code.tier}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <span className="text-[10px] text-white/30 font-mono">{code.code}</span>
+                              </td>
+                              <td className="px-4 py-2.5 text-right">
+                                <span className="text-xs font-bold tabular-nums" style={{ color: urgencyColor }}>{remaining}</span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Revenue Breakdown (merged from Revenus tab) ── */}
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4">
+                {/* Tier breakdown — table */}
+                <div>
+                  <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Revenus par niveau</span>
+                  <div className={`${surface} mt-2 overflow-hidden`}>
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-white/[0.06]">
+                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2">Pack</th>
+                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2">Prog</th>
+                          <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2">Rev</th>
+                          <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2 w-12">Qty</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {packs.filter(p => p.active).map(pack => {
+                          const count = modelCodes.filter(c => c.tier === pack.id && c.type === "paid" && !c.revoked).length;
+                          const tierRevenue = count * pack.price;
+                          const maxRevenue = Math.max(...packs.filter(p => p.active).map(p => modelCodes.filter(c => c.tier === p.id && c.type === "paid" && !c.revoked).length * p.price), 1);
+                          return (
+                            <tr key={pack.id} className="border-b border-white/[0.03] last:border-0">
+                              <td className="px-4 py-2.5">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full" style={{ background: pack.color }} />
+                                  <span className="text-xs font-medium text-white">{pack.name}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <div className="h-1.5 rounded-full bg-white/[0.04] overflow-hidden w-full max-w-[140px]">
+                                  <div className="h-full rounded-full transition-all duration-700"
+                                    style={{ width: `${Math.max((tierRevenue / maxRevenue) * 100, tierRevenue > 0 ? 4 : 0)}%`, background: pack.color }} />
+                                </div>
+                              </td>
+                              <td className="px-4 py-2.5 text-right text-xs font-semibold tabular-nums" style={{ color: pack.color }}>{fmt.format(tierRevenue)}</td>
+                              <td className="px-4 py-2.5 text-right text-[11px] text-white/30 tabular-nums">{count}x</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Revenue by type */}
+                <div>
+                  <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Repartition par type</span>
+                  <div className={`${surface} mt-2 divide-y divide-white/[0.04]`}>
+                    {[
+                      { type: "paid", label: "Payants", color: "#D4AF37" },
+                      { type: "trial", label: "Trial", color: "#3B82F6" },
+                    ].map(t => {
+                      const count = modelCodes.filter(c => c.type === t.type && !c.revoked).length;
+                      return (
+                        <div key={t.type} className="flex items-center justify-between px-4 py-3">
+                          <span className="text-sm text-white/40">{t.label}</span>
+                          <span className="text-sm font-bold tabular-nums" style={{ color: t.color }}>{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ══════════ TAB: FEED — Facebook-style timeline ══════════ */}
           {activeTab === "feed" && (
@@ -1640,6 +1788,66 @@ export default function AgenceDashboard() {
                                 <p className="text-sm text-white/25 mb-1">Aucune photo custom</p>
                                 <p className="text-xs text-white/15">Upload des photos ou deplace-en depuis un autre dossier</p>
                               </div>
+                            ) : contentViewMode === "list" ? (
+                              /* ── Custom List View ── */
+                              <div className={`${surface} overflow-hidden`}>
+                                <table className="w-full">
+                                  <thead>
+                                    <tr className="border-b border-white/[0.06]">
+                                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2">Photo</th>
+                                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2">Source</th>
+                                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2">Clients</th>
+                                      <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2">Revenue</th>
+                                      <th className="text-center text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2">Actions</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {filteredCustomPhotos.map(item => {
+                                      const photoAccess = activeAccesses.filter(a => a.upload_id === item.id);
+                                      const clientCount = new Set(photoAccess.map((a: any) => a.client_id)).size;
+                                      const photoRev = photoAccess.reduce((s: number, a: any) => s + (a.price || 0), 0);
+                                      const isFromOtherTier = item.tier !== "custom";
+                                      const tierMeta = TIER_META[item.tier];
+                                      const hex = TIER_HEX[item.tier] || "#D4AF37";
+                                      const clientNames = photoAccess.map(a => {
+                                        const cl = clients.find(c => c.id === a.client_id);
+                                        return cl?.nickname || cl?.pseudo_snap || "—";
+                                      }).join(", ");
+                                      return (
+                                        <tr key={item.id} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors">
+                                          <td className="px-4 py-2">
+                                            <div className="flex items-center gap-2.5">
+                                              <img src={item.url} alt="" className="w-10 h-12 object-cover rounded-lg shrink-0 cursor-pointer" onClick={() => setZoomUrl(item.url)} />
+                                              <div className="min-w-0">
+                                                <div className="text-[10px] text-white/30 truncate">{item.id.substring(0, 8)}...</div>
+                                              </div>
+                                            </div>
+                                          </td>
+                                          <td className="px-4 py-2">
+                                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${hex}15`, color: hex }}>
+                                              {isFromOtherTier ? tierMeta?.label || item.tier : "Custom"}
+                                            </span>
+                                          </td>
+                                          <td className="px-4 py-2">
+                                            <span className="text-xs text-white/60">{clientCount === 0 ? "—" : clientNames}</span>
+                                            {clientCount > 0 && <span className="text-[9px] text-white/25 ml-1">({clientCount})</span>}
+                                          </td>
+                                          <td className="px-4 py-2 text-right">
+                                            <span className="text-xs font-bold tabular-nums" style={{ color: photoRev > 0 ? "#D4AF37" : "rgba(255,255,255,0.2)" }}>{fmt.format(photoRev)}</span>
+                                          </td>
+                                          <td className="px-4 py-2 text-center">
+                                            <button onClick={() => { setAssigningPhoto(assigningPhoto === item.id ? null : item.id); setAssignPrice(""); setClientSearch(""); }}
+                                              className="text-[10px] font-medium px-2 py-1 rounded-lg cursor-pointer border-none transition-all hover:bg-white/[0.06]"
+                                              style={{ background: assigningPhoto === item.id ? "rgba(212,175,55,0.15)" : "transparent", color: assigningPhoto === item.id ? "#D4AF37" : "rgba(255,255,255,0.4)" }}>
+                                              <UserPlus className="w-3 h-3 inline mr-1" style={{ verticalAlign: "middle" }} />Assigner
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
                             ) : (
                               <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
                                 {filteredCustomPhotos.map(item => {
@@ -2147,90 +2355,7 @@ export default function AgenceDashboard() {
             );
           })()}
 
-          {/* ══════════ TAB: REVENUE ══════════ */}
-          {activeTab === "revenue" && (
-            <div className="space-y-5">
-              {/* Revenue summary — inline row */}
-              <div className="flex items-center gap-8 flex-wrap">
-                <div>
-                  <span className="text-xs uppercase tracking-wider text-white/30 font-medium">Revenus ce mois</span>
-                  <p className="text-lg font-bold text-[#D4AF37] tabular-nums mt-1">{fmt.format(revenue)}</p>
-                </div>
-                <div className="w-px h-10 bg-white/[0.06]" />
-                <div>
-                  <span className="text-xs uppercase tracking-wider text-white/30 font-medium">Codes vendus</span>
-                  <p className="text-lg font-bold text-white tabular-nums mt-1">{modelCodes.filter(c => c.type === "paid" && !c.revoked).length}</p>
-                </div>
-                <div className="w-px h-10 bg-white/[0.06]" />
-                <div>
-                  <span className="text-xs uppercase tracking-wider text-white/30 font-medium">Moy. / client</span>
-                  <p className="text-lg font-bold text-white tabular-nums mt-1">{uniqueClients > 0 ? fmt.format(Math.round(revenue / uniqueClients)) : fmt.format(0)}</p>
-                </div>
-              </div>
-
-              {/* Tier breakdown — table */}
-              <div>
-                <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Revenus par niveau</span>
-                <div className={`${surface} mt-2 overflow-hidden`}>
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-white/[0.06]">
-                        <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Pack</th>
-                        <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Progression</th>
-                        <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Revenus</th>
-                        <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5 w-16">Qty</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {packs.filter(p => p.active).map(pack => {
-                        const count = modelCodes.filter(c => c.tier === pack.id && c.type === "paid" && !c.revoked).length;
-                        const tierRevenue = count * pack.price;
-                        const maxRevenue = Math.max(...packs.filter(p => p.active).map(p => modelCodes.filter(c => c.tier === p.id && c.type === "paid" && !c.revoked).length * p.price), 1);
-                        return (
-                          <tr key={pack.id} className="border-b border-white/[0.03] last:border-0">
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ background: pack.color }} />
-                                <span className="text-sm font-medium text-white">{pack.name}</span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="h-2 rounded-full bg-white/[0.04] overflow-hidden w-full max-w-[220px]">
-                                <div className="h-full rounded-full transition-all duration-700"
-                                  style={{ width: `${Math.max((tierRevenue / maxRevenue) * 100, tierRevenue > 0 ? 4 : 0)}%`, background: pack.color }} />
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-right text-sm font-semibold tabular-nums" style={{ color: pack.color }}>{fmt.format(tierRevenue)}</td>
-                            <td className="px-4 py-3 text-right text-xs text-white/30 tabular-nums">{count}x</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Revenue by type — inline */}
-              <div>
-                <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Repartition par type</span>
-                <div className="flex items-center gap-8 mt-3">
-                  {[
-                    { type: "paid", label: "Payants", color: "#D4AF37" },
-                    { type: "promo", label: "Promo", color: "#8B5CF6" },
-                    { type: "gift", label: "Cadeaux", color: "#E84393" },
-                  ].map(t => {
-                    const count = modelCodes.filter(c => c.type === t.type && !c.revoked).length;
-                    return (
-                      <div key={t.type} className="flex items-center gap-2.5">
-                        <span className="text-lg font-bold tabular-nums" style={{ color: t.color }}>{count}</span>
-                        <span className="text-sm text-white/35">{t.label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Revenue tab removed — merged into Overview */}
 
 
           {/* ── Generate Modal ── */}

@@ -44,9 +44,11 @@ export interface PackConfig {
 // ── Codes ──
 
 export interface AccessCode {
+  id?: string;
   code: string;
   model: string;
   client: string;
+  client_id?: string;
   platform: string;
   role?: "client" | "admin";
   tier: string;
@@ -225,9 +227,11 @@ export interface Goal {
 // ── API (server-side mapper shape) ──
 
 export interface CodeRow {
+  id?: string;
   code: string;
   model: string;
   client: string;
+  client_id?: string;
   platform: string;
   role: string;
   tier: string;

@@ -372,8 +372,8 @@ export async function PATCH(req: NextRequest) {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function mapFromDb(row: any): CodeRow {
   return {
-    code: row.code, model: row.model, client: row.client, platform: row.platform,
-    role: row.role, tier: normalizeTier(row.tier), pack: normalizeTier(row.pack), type: row.type,
+    id: row.id, code: row.code, model: row.model, client: row.client, client_id: row.client_id || undefined,
+    platform: row.platform, role: row.role, tier: normalizeTier(row.tier), pack: normalizeTier(row.pack), type: row.type,
     duration: row.duration, expiresAt: row.expires_at || row.expiresAt,
     created: row.created_at || row.created, used: row.used, active: row.active,
     revoked: row.revoked, isTrial: row.is_trial ?? row.isTrial, lastUsed: row.last_used ?? row.lastUsed,
