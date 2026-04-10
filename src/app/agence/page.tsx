@@ -1031,22 +1031,40 @@ export default function AgenceDashboard() {
                   <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Contenu</span>
                   <span className="text-[10px] text-white/20">{allContent.length} fichiers</span>
                 </div>
-                <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <button onClick={() => { setContentLayout("folders"); setContentViewMode("grid"); }}
-                    className="px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer border-none transition-all"
-                    style={{ background: contentLayout === "folders" && contentViewMode === "grid" ? "rgba(212,175,55,0.15)" : "transparent", color: contentLayout === "folders" && contentViewMode === "grid" ? "#D4AF37" : "rgba(255,255,255,0.3)" }}>
-                    <Grid3x3 className="w-3 h-3 inline mr-0.5" />Dossiers
-                  </button>
-                  <button onClick={() => setContentLayout("columns")}
-                    className="px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer border-none transition-all"
-                    style={{ background: contentLayout === "columns" ? "rgba(212,175,55,0.15)" : "transparent", color: contentLayout === "columns" ? "#D4AF37" : "rgba(255,255,255,0.3)" }}>
-                    <Columns className="w-3 h-3 inline mr-0.5" />Colonnes
-                  </button>
-                  <button onClick={() => { setContentLayout("folders"); setContentViewMode("list"); }}
-                    className="px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer border-none transition-all"
-                    style={{ background: contentLayout === "folders" && contentViewMode === "list" ? "rgba(212,175,55,0.15)" : "transparent", color: contentLayout === "folders" && contentViewMode === "list" ? "#D4AF37" : "rgba(255,255,255,0.3)" }}>
-                    Liste
-                  </button>
+                <div className="flex items-center gap-2">
+                  {/* Upload button — targets current folder */}
+                  <label className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg cursor-pointer transition-all hover:bg-[#D4AF37]/10"
+                    style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.15)" }}>
+                    <Upload className="w-3 h-3 text-[#D4AF37]" />
+                    <span className="text-[10px] font-semibold text-[#D4AF37]">Upload</span>
+                    {contentFolder && contentFolder !== "p0" && (
+                      <span className="text-[9px] text-white/30">→ {contentFolder === "custom" ? "Custom" : packs.find(p => p.id === contentFolder)?.name || contentFolder}</span>
+                    )}
+                    <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" multiple className="hidden" onChange={(e) => {
+                      const files = e.target.files;
+                      if (!files?.length) return;
+                      const tier = contentFolder || "p0";
+                      Array.from(files).forEach(f => handleUploadToTier(f, tier));
+                      e.target.value = "";
+                    }} />
+                  </label>
+                  <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <button onClick={() => { setContentLayout("folders"); setContentViewMode("grid"); }}
+                      className="px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer border-none transition-all"
+                      style={{ background: contentLayout === "folders" && contentViewMode === "grid" ? "rgba(212,175,55,0.15)" : "transparent", color: contentLayout === "folders" && contentViewMode === "grid" ? "#D4AF37" : "rgba(255,255,255,0.3)" }}>
+                      <Grid3x3 className="w-3 h-3 inline mr-0.5" />Dossiers
+                    </button>
+                    <button onClick={() => setContentLayout("columns")}
+                      className="px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer border-none transition-all"
+                      style={{ background: contentLayout === "columns" ? "rgba(212,175,55,0.15)" : "transparent", color: contentLayout === "columns" ? "#D4AF37" : "rgba(255,255,255,0.3)" }}>
+                      <Columns className="w-3 h-3 inline mr-0.5" />Colonnes
+                    </button>
+                    <button onClick={() => { setContentLayout("folders"); setContentViewMode("list"); }}
+                      className="px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer border-none transition-all"
+                      style={{ background: contentLayout === "folders" && contentViewMode === "list" ? "rgba(212,175,55,0.15)" : "transparent", color: contentLayout === "folders" && contentViewMode === "list" ? "#D4AF37" : "rgba(255,255,255,0.3)" }}>
+                      Liste
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1187,28 +1205,6 @@ export default function AgenceDashboard() {
                     </div>
                   </div>
 
-                  {/* Upload button */}
-                  <div className="pt-3 mt-2 border-t border-white/[0.06]">
-                    <label className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl cursor-pointer transition-all border border-dashed border-white/[0.1] hover:border-[#D4AF37]/30 hover:bg-[#D4AF37]/[0.03]">
-                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(212,175,55,0.08)" }}>
-                        <Upload className="w-4 h-4 text-[#D4AF37]" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-semibold text-[#D4AF37]">Ajouter du contenu</div>
-                        <div className="text-[10px] text-white/25">JPG, PNG, WEBP · Max 10MB</div>
-                      </div>
-                      <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" multiple className="hidden" onChange={(e) => {
-                        const files = e.target.files;
-                        if (!files?.length) return;
-                        const tier = contentFolder || "p0";
-                        Array.from(files).forEach(f => handleUploadToTier(f, tier));
-                        e.target.value = "";
-                      }} />
-                    </label>
-                    {contentFolder && contentFolder !== "p0" && (
-                      <p className="text-[9px] text-white/20 mt-1.5 px-1">↑ Upload directement dans « {packs.find(p => p.id === contentFolder)?.name || contentFolder} »</p>
-                    )}
-                  </div>
                 </div>
 
                 {/* RIGHT: Content grid */}
