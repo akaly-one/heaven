@@ -899,10 +899,10 @@ function DesktopTierNav({ galleryTier, setGalleryTier, setFocusPack, activePacks
           {/* Feed */}
           <button role="tab" aria-selected={galleryTier === "feed"} onClick={() => { setGalleryTier(galleryTier === "feed" ? "home" : "feed"); setFocusPack(null); }}
             className="relative flex-1 rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] group overflow-hidden"
-            style={{ minWidth: "70px", padding: "12px 16px", background: galleryTier === "feed" ? "linear-gradient(135deg, var(--accent), #F43F5E)" : "var(--surface)", border: galleryTier === "feed" ? "none" : "1px solid var(--border)", boxShadow: galleryTier === "feed" ? "0 4px 16px rgba(230,51,41,0.25)" : "none" }}>
+            style={{ minWidth: "70px", padding: "12px 16px", background: galleryTier === "feed" ? "linear-gradient(135deg, var(--accent), #F43F5E)" : "var(--surface)", border: galleryTier === "feed" ? "2px solid var(--accent)" : "1px solid var(--border)", boxShadow: galleryTier === "feed" ? "0 4px 16px rgba(230,51,41,0.25)" : "none" }}>
             <div className="flex flex-col items-center gap-1">
-              <Newspaper className="w-4 h-4" style={{ color: galleryTier === "feed" ? "#fff" : "var(--text-muted)" }} />
-              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: galleryTier === "feed" ? "#fff" : "var(--text-muted)" }}>Feed</span>
+              <Newspaper className="w-4 h-4" style={{ color: galleryTier === "feed" ? "#fff" : "var(--accent)" }} />
+              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: galleryTier === "feed" ? "#fff" : "var(--text)" }}>Feed</span>
             </div>
           </button>
           {/* Pack tiers */}
@@ -924,10 +924,10 @@ function DesktopTierNav({ galleryTier, setGalleryTier, setFocusPack, activePacks
                 <div className="relative flex flex-col items-center justify-center h-full gap-0.5 px-3">
                   <span className="absolute top-1 left-1.5 text-[8px] font-bold opacity-0 group-hover:opacity-60 transition-opacity" style={{ color: isActive ? "#fff" : tierHex }}>{tierSymbol}</span>
                   <span className="absolute bottom-1 right-1.5 text-[8px] font-bold opacity-0 group-hover:opacity-60 transition-opacity rotate-180" style={{ color: isActive ? "#fff" : tierHex }}>{tierSymbol}</span>
-                  <span className="text-xl transition-all duration-200 group-hover:scale-110 relative" style={{ color: isActive ? "#fff" : "var(--text-muted)", filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))" }}>
-                    {tierSymbol}{isLocked && <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-2" style={{ color: "#fff", opacity: 0.7 }} />}
+                  <span className="text-xl transition-all duration-200 group-hover:scale-110 relative" style={{ color: isActive ? "#fff" : tierHex, filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))" }}>
+                    {tierSymbol}{isLocked && <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-2" style={{ color: isActive ? "#fff" : tierHex, opacity: 0.7 }} />}
                   </span>
-                  <span className="text-[10px] font-black uppercase tracking-wider transition-colors duration-200" style={{ color: isActive ? "#fff" : "var(--text-muted)", textShadow: isActive || previewImg ? "0 1px 4px rgba(0,0,0,0.5)" : "none" }}>{tierLabel}</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider transition-colors duration-200" style={{ color: isActive ? "#fff" : "var(--text)", textShadow: isActive || previewImg ? "0 1px 4px rgba(0,0,0,0.5)" : "none" }}>{tierLabel}</span>
                 </div>
                 {isActive && <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ background: tierHex, boxShadow: `0 0 10px ${tierHex}` }} />}
               </button>
@@ -938,8 +938,8 @@ function DesktopTierNav({ galleryTier, setGalleryTier, setFocusPack, activePacks
             className="relative flex-1 rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] group overflow-hidden"
             style={{ minWidth: "70px", padding: "12px 16px", background: galleryTier === "custom" ? "linear-gradient(135deg, #D4AF37, #B8860B)" : "var(--surface)", border: galleryTier === "custom" ? "none" : "1px solid var(--border)", boxShadow: galleryTier === "custom" ? "0 4px 16px rgba(184,134,11,0.25)" : "none" }}>
             <div className="flex flex-col items-center gap-1">
-              <Sparkles className="w-4 h-4" style={{ color: galleryTier === "custom" ? "#fff" : "var(--text-muted)" }} />
-              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: galleryTier === "custom" ? "#fff" : "var(--text-muted)" }}>Custom</span>
+              <Sparkles className="w-4 h-4" style={{ color: galleryTier === "custom" ? "#fff" : "#B8860B" }} />
+              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: galleryTier === "custom" ? "#fff" : "var(--text)" }}>Custom</span>
             </div>
           </button>
         </div>
@@ -959,7 +959,7 @@ function MobileBottomNav({ galleryTier, setGalleryTier, setFocusPack, activePack
       <div className="flex items-center overflow-x-auto no-scrollbar px-2 py-2.5 gap-1">
         <button onClick={() => { setGalleryTier(galleryTier === "feed" ? "home" : "feed"); setFocusPack(null); }}
           className="relative flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl cursor-pointer transition-all shrink-0"
-          style={{ color: galleryTier === "feed" ? "#fff" : "var(--text-muted)", background: galleryTier === "feed" ? "var(--accent)" : "transparent" }}>
+          style={{ color: galleryTier === "feed" ? "#fff" : "var(--accent)", background: galleryTier === "feed" ? "var(--accent)" : `rgba(230,51,41,0.08)` }}>
           <Newspaper className="w-5 h-5" /><span className="text-[10px] font-bold uppercase" style={{ letterSpacing: "0.05em" }}>Feed</span>
         </button>
         {activePacks.map(p => {
@@ -969,7 +969,7 @@ function MobileBottomNav({ galleryTier, setGalleryTier, setFocusPack, activePack
           return (
             <button key={p.id} onClick={() => { setGalleryTier(isActive ? "home" : p.id); setFocusPack(null); }}
               className="relative flex flex-col items-center gap-1 px-3.5 py-1.5 rounded-xl cursor-pointer transition-all shrink-0"
-              style={{ color: isActive ? "#fff" : hex, background: isActive ? hex : "transparent", opacity: isLocked && !isActive ? 0.5 : 1 }}>
+              style={{ color: isActive ? "#fff" : hex, background: isActive ? hex : `${hex}12`, opacity: isLocked && !isActive ? 0.5 : 1 }}>
               <span className="text-lg relative leading-none">{TIER_META[p.id]?.symbol}{isLocked && <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-2" style={{ color: isActive ? "#fff" : hex, opacity: 0.7 }} />}</span>
               <span className="text-[10px] font-bold uppercase" style={{ letterSpacing: "0.04em" }}>{TIER_META[p.id]?.label}</span>
             </button>
@@ -977,7 +977,7 @@ function MobileBottomNav({ galleryTier, setGalleryTier, setFocusPack, activePack
         })}
         <button onClick={() => { setGalleryTier(galleryTier === "custom" ? "home" : "custom"); setFocusPack(null); }}
           className="relative flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl cursor-pointer transition-all shrink-0"
-          style={{ color: galleryTier === "custom" ? "#fff" : "var(--text-muted)", background: galleryTier === "custom" ? "var(--gold, #D4A017)" : "transparent" }}>
+          style={{ color: galleryTier === "custom" ? "#fff" : "#B8860B", background: galleryTier === "custom" ? "var(--gold, #D4A017)" : "rgba(184,134,11,0.08)" }}>
           <Sparkles className="w-5 h-5" /><span className="text-[10px] font-bold uppercase" style={{ letterSpacing: "0.05em" }}>Custom</span>
         </button>
       </div>

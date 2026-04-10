@@ -25,10 +25,10 @@ export const TIER_CONFIG: Record<string, TierConfig> = {
   },
   p1: {
     color: "var(--tier-silver)",
-    hex: "#C0C0C0",
+    hex: "#7A8A8E",
     symbol: "♣",
     label: "Silver",
-    bg: "rgba(192,192,192,0.10)",
+    bg: "rgba(122,138,142,0.10)",
     description: "Photos, shootings, promos — sans nudité",
   },
   p2: {
@@ -90,10 +90,10 @@ export const TIER_CONFIG: Record<string, TierConfig> = {
   },
   silver: {
     color: "var(--tier-silver)",
-    hex: "#C0C0C0",
+    hex: "#7A8A8E",
     symbol: "♣",
     label: "Silver",
-    bg: "rgba(192,192,192,0.10)",
+    bg: "rgba(122,138,142,0.10)",
     description: "Photos, shootings, promos — sans nudité",
   },
   gold: {
@@ -130,10 +130,10 @@ export const TIER_CONFIG: Record<string, TierConfig> = {
   },
   vip: {
     color: "var(--tier-silver)",
-    hex: "#C0C0C0",
+    hex: "#7A8A8E",
     symbol: "♣",
     label: "Silver",
-    bg: "rgba(192,192,192,0.10)",
+    bg: "rgba(122,138,142,0.10)",
     description: "Photos, shootings, promos — sans nudité",
   },
   diamond: {
