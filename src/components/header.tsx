@@ -334,12 +334,6 @@ export function Header() {
           <span className="text-xs font-bold truncate" style={{ color: "var(--text)" }}>
             {modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase() || "HEAVEN"}
           </span>
-          <button onClick={() => toggle("messages")}
-            className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-colors shrink-0"
-            style={{ background: "transparent", border: "none", color: "var(--text-muted)" }}
-            title="Messages">
-            <MessageCircle className="w-4 h-4" />
-          </button>
         </div>
         {pageTitle && <>
           <span className="text-[10px]" style={{ color: "var(--text-muted)", opacity: 0.4 }}>/</span>

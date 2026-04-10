@@ -5,16 +5,16 @@ import {
   Eye, Pencil, Image as ImageIcon, Heart, MessageCircle, Trash2, X,
   Newspaper, Camera, RefreshCw, Users, Key, DollarSign, TrendingUp,
   Copy, Check, Plus, Search, Shield, BarChart3, Clock, Zap, Settings,
-  ChevronDown,
+  ChevronDown, Lock, EyeOff,
 } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { GenerateModal } from "@/components/cockpit/generate-modal";
-import type { PackConfig, AccessCode, ClientInfo, FeedPost, WallPost } from "@/types/heaven";
+import type { PackConfig, AccessCode, ClientInfo, FeedPost, WallPost, UploadedContent } from "@/types/heaven";
 import { DEFAULT_PACKS } from "@/constants/packs";
 import { toSlot, isFreeSlot } from "@/lib/tier-utils";
 import { toModelId } from "@/lib/model-utils";
-import { TIER_META } from "@/constants/tiers";
+import { TIER_META, TIER_HEX } from "@/constants/tiers";
 
 // ── Upload config ──
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -98,6 +98,8 @@ export default function AgenceDashboard() {
   const [, setTick] = useState(0);
   const [feedPosts, setFeedPosts] = useState<FeedPost[]>([]);
   const [wallPosts, setWallPosts] = useState<WallPost[]>([]);
+  const [uploads, setUploads] = useState<UploadedContent[]>([]);
+  const [togglingBlur, setTogglingBlur] = useState<string | null>(null);
 
   // Feed composer
   const [newPostContent, setNewPostContent] = useState("");
@@ -172,13 +174,15 @@ export default function AgenceDashboard() {
       safeFetch(`/api/models/${mid}`),
       safeFetch(`/api/posts?model=${mid}`),
       safeFetch(`/api/wall?model=${mid}`),
-    ]).then(([codesData, clientsData, packsData, modelData, postsData, wallData]) => {
+      safeFetch(`/api/uploads?model=${mid}`),
+    ]).then(([codesData, clientsData, packsData, modelData, postsData, wallData, uploadsData]) => {
       if (codesData?.codes) setCodes(codesData.codes);
       if (clientsData?.clients) setClients(clientsData.clients);
       if (packsData?.packs?.length > 0) setPacks(packsData.packs);
       if (modelData) setModelInfo(modelData);
       if (postsData?.posts) setFeedPosts(postsData.posts.slice(0, 5));
       if (wallData?.posts) setWallPosts(wallData.posts.slice(0, 20));
+      if (uploadsData?.uploads) setUploads(uploadsData.uploads);
       setDataLoaded(modelSlug);
       setRefreshing(false);
     }).catch(() => {
@@ -325,6 +329,23 @@ export default function AgenceDashboard() {
   const updatePack = useCallback((packId: string, field: string, value: number | boolean | string | string[]) => {
     setPacks(prev => prev.map(p => p.id === packId ? { ...p, [field]: value } : p));
   }, []);
+
+  // Toggle blur on a specific upload (promo = unblurred, pack = blurred)
+  const handleToggleBlur = useCallback(async (uploadId: string, currentVisibility: string) => {
+    setTogglingBlur(uploadId);
+    const newVisibility = currentVisibility === "promo" ? "pack" : "promo";
+    try {
+      const res = await fetch("/api/uploads", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ model: toModelId(modelSlug), id: uploadId, updates: { visibility: newVisibility } }),
+      });
+      if (res.ok) {
+        setUploads(prev => prev.map(u => u.id === uploadId ? { ...u, visibility: newVisibility } : u));
+      }
+    } catch (err) { console.error("[Packs] toggle blur:", err); }
+    setTogglingBlur(null);
+  }, [modelSlug, authHeaders]);
 
   const handleSavePacks = useCallback(async () => {
     setSavingPacks(true);
@@ -554,7 +575,7 @@ export default function AgenceDashboard() {
                     <div className="text-[10px] text-white/30">Acces client</div>
                   </div>
                 </button>
-                <button onClick={() => setActiveTab("packs")}
+                <button onClick={() => setActiveTab("settings")}
                   className="group flex items-center gap-2.5 px-3.5 py-3 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-left"
                   style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.12)" }}>
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
@@ -1058,11 +1079,12 @@ export default function AgenceDashboard() {
             </div>
           )}
 
-          {/* ══════════ TAB: SETTINGS (Packs) ══════════ */}
+          {/* ══════════ TAB: PACKS — Profile-mirrored editor ══════════ */}
           {activeTab === "settings" && (
-            <div className="space-y-4">
+            <div className="space-y-5">
+              {/* Header bar */}
               <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Configuration des packs</span>
+                <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Packs — tel que vu sur le profil</span>
                 <div className="flex items-center gap-2">
                   {editingPacks ? (
                     <>
@@ -1079,132 +1101,218 @@ export default function AgenceDashboard() {
                   ) : (
                     <button onClick={() => setEditingPacks(true)}
                       className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors border border-white/[0.06] bg-transparent text-white/40 hover:text-white/60">
-                      <Settings className="w-3.5 h-3.5 inline mr-1" />Modifier
+                      <Pencil className="w-3.5 h-3.5 inline mr-1" />Modifier
                     </button>
                   )}
                 </div>
               </div>
-              <div className="space-y-3">
-                {packs.map(pack => {
-                  const soldCount = modelCodes.filter(c => c.tier === pack.id && c.type === "paid" && !c.revoked).length;
-                  const packRevenue = soldCount * pack.price;
-                  const isExpanded = expandedPack === pack.id;
-                  const tierMeta = TIER_META[pack.id];
-                  return (
-                    <div key={pack.id} className={`${surface} overflow-hidden transition-all`}
-                      style={{ borderLeft: `3px solid ${pack.color}`, opacity: pack.active ? 1 : 0.5 }}>
-                      {/* Header row — always visible */}
-                      <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.02] transition-colors"
-                        onClick={() => setExpandedPack(isExpanded ? null : pack.id)}>
-                        <span className="text-lg" style={{ color: pack.color }}>{tierMeta?.symbol}</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-white">{pack.name}</span>
-                            {pack.badge && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: `${pack.color}20`, color: pack.color }}>{pack.badge}</span>}
-                          </div>
-                          <div className="flex items-center gap-3 mt-0.5">
-                            <span className="text-xs text-white/40">{fmt.format(pack.price)}</span>
-                            <span className="text-[10px]" style={{ color: pack.active ? "#10B981" : "#6B7280" }}>{pack.active ? "● Actif" : "○ Inactif"}</span>
-                            <span className="text-[10px] text-white/30">{soldCount} vendus</span>
-                            <span className="text-[10px] font-semibold" style={{ color: pack.color }}>{fmt.format(packRevenue)}</span>
-                          </div>
-                        </div>
-                        <ChevronDown className="w-4 h-4 text-white/30 transition-transform" style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0)" }} />
+
+              {/* Pack cards — mirrors profile TierView layout */}
+              {packs.map(pack => {
+                const hex = TIER_HEX[pack.id] || pack.color;
+                const tierMeta = TIER_META[pack.id];
+                const soldCount = modelCodes.filter(c => c.tier === pack.id && c.type === "paid" && !c.revoked).length;
+                const packRevenue = soldCount * pack.price;
+                const isExpanded = expandedPack === pack.id;
+                // Get uploads for this tier
+                const tierUploads = uploads.filter(u => u.tier === pack.id);
+                const tierPosts = feedPosts.filter(p => p.tier_required === pack.id && p.media_url);
+                const previewImages = [...tierUploads.map(u => ({ id: u.id, url: u.dataUrl, isPromo: u.visibility === "promo", source: "upload" as const })),
+                  ...tierPosts.map(p => ({ id: p.id, url: p.media_url!, isPromo: false, source: "post" as const }))].filter(img => img.url);
+
+                return (
+                  <div key={pack.id} className="rounded-2xl overflow-hidden transition-all"
+                    style={{ background: `color-mix(in srgb, ${hex} 4%, #0f0f12)`, border: `1px solid ${hex}20`, opacity: pack.active ? 1 : 0.5 }}>
+
+                    {/* ── Pack Header — click to expand ── */}
+                    <div className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-white/[0.02] transition-colors"
+                      onClick={() => setExpandedPack(isExpanded ? null : pack.id)}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: `${hex}18`, border: `1px solid ${hex}30` }}>
+                        <span className="text-xl">{tierMeta?.symbol}</span>
                       </div>
-                      {/* Expanded details */}
-                      {isExpanded && (
-                        <div className="px-4 pb-4 pt-1 border-t border-white/[0.06] space-y-3">
-                          <div className="grid grid-cols-2 gap-3">
-                            {/* Name */}
-                            <div>
-                              <label className="text-[10px] uppercase tracking-wider text-white/30 font-medium mb-1 block">Nom</label>
-                              {editingPacks ? (
-                                <input value={pack.name} onChange={e => updatePack(pack.id, "name", e.target.value)}
-                                  className="w-full px-2.5 py-1.5 rounded-lg text-sm font-semibold bg-white/[0.05] border border-white/[0.1] text-white outline-none focus:border-[#D4AF37] transition-colors" />
-                              ) : <span className="text-sm text-white font-semibold">{pack.name}</span>}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-white">{pack.name}</span>
+                          {pack.badge && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: `${hex}20`, color: hex }}>{pack.badge}</span>}
+                          <span className="text-sm font-black tabular-nums ml-auto mr-2" style={{ color: hex }}>{pack.price}€</span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          <span className="text-[10px]" style={{ color: pack.active ? "#10B981" : "#6B7280" }}>{pack.active ? "● Actif" : "○ Inactif"}</span>
+                          <span className="text-[10px] text-white/30">{soldCount} vendus</span>
+                          <span className="text-[10px] text-white/30">{previewImages.length} medias</span>
+                          <span className="text-[10px] font-semibold" style={{ color: hex }}>{fmt.format(packRevenue)}</span>
+                        </div>
+                      </div>
+                      <ChevronDown className="w-4 h-4 text-white/30 transition-transform" style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0)" }} />
+                    </div>
+
+                    {/* ── Expanded: profile-mirrored layout ── */}
+                    {isExpanded && (
+                      <div className="border-t" style={{ borderColor: `${hex}15` }}>
+                        {/* Preview grid + Info — mirrors TierView locked overlay */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+                          {/* LEFT: Photo preview grid with blur controls */}
+                          <div className="relative p-4">
+                            <div className="flex items-center justify-between mb-2.5">
+                              <span className="text-[10px] uppercase tracking-wider text-white/30 font-medium">Apercu photos</span>
+                              <span className="text-[10px] text-white/20">{previewImages.filter(i => i.isPromo).length} promo / {previewImages.length} total</span>
                             </div>
-                            {/* Price */}
-                            <div>
-                              <label className="text-[10px] uppercase tracking-wider text-white/30 font-medium mb-1 block">Prix (€)</label>
-                              {editingPacks ? (
-                                <input type="number" value={pack.price} onChange={e => updatePack(pack.id, "price", Number(e.target.value))}
-                                  className="w-full px-2.5 py-1.5 rounded-lg text-sm font-semibold tabular-nums bg-white/[0.05] border border-white/[0.1] text-white outline-none focus:border-[#D4AF37] transition-colors" />
-                              ) : <span className="text-sm text-white font-semibold tabular-nums">{fmt.format(pack.price)}</span>}
-                            </div>
-                          </div>
-                          {/* Status toggle */}
-                          <div>
-                            <label className="text-[10px] uppercase tracking-wider text-white/30 font-medium mb-1 block">Statut</label>
-                            {editingPacks ? (
-                              <button onClick={() => updatePack(pack.id, "active", !pack.active)}
-                                className="px-4 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all border-none"
-                                style={{ background: pack.active ? "rgba(16,185,129,0.15)" : "rgba(107,114,128,0.15)", color: pack.active ? "#10B981" : "#6B7280" }}>
-                                {pack.active ? "✓ Actif — visible sur le profil" : "✕ Inactif — masqué du profil"}
-                              </button>
-                            ) : <span className="text-xs font-medium" style={{ color: pack.active ? "#10B981" : "#6B7280" }}>{pack.active ? "Actif" : "Inactif"}</span>}
-                          </div>
-                          {/* Features */}
-                          <div>
-                            <label className="text-[10px] uppercase tracking-wider text-white/30 font-medium mb-1 block">Contenu inclus</label>
-                            <div className="space-y-1.5">
-                              {(pack.features || []).map((feat, i) => (
-                                <div key={i} className="flex items-center gap-2">
-                                  <span className="text-xs" style={{ color: pack.color }}>✓</span>
-                                  {editingPacks ? (
-                                    <div className="flex items-center gap-1 flex-1">
-                                      <input value={feat} onChange={e => {
-                                        const newFeats = [...(pack.features || [])];
-                                        newFeats[i] = e.target.value;
-                                        updatePack(pack.id, "features", newFeats);
-                                      }}
-                                        className="flex-1 px-2 py-1 rounded text-xs bg-white/[0.05] border border-white/[0.08] text-white outline-none focus:border-[#D4AF37] transition-colors" />
-                                      <button onClick={() => {
-                                        const newFeats = (pack.features || []).filter((_, j) => j !== i);
-                                        updatePack(pack.id, "features", newFeats);
-                                      }} className="text-white/20 hover:text-red-400 cursor-pointer bg-transparent border-none text-xs transition-colors">✕</button>
+                            {previewImages.length > 0 ? (
+                              <div className="grid grid-cols-3 gap-1.5 rounded-xl overflow-hidden">
+                                {previewImages.slice(0, 9).map((img) => (
+                                  <div key={img.id} className="aspect-[3/4] relative overflow-hidden rounded-lg group">
+                                    <img src={img.url} alt="" className="w-full h-full object-cover transition-all"
+                                      style={{ filter: img.isPromo ? "brightness(0.85)" : "blur(14px) brightness(0.4)", transform: img.isPromo ? "none" : "scale(1.15)" }} />
+                                    {/* Blur/promo badge */}
+                                    <div className="absolute top-1.5 left-1.5">
+                                      <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{
+                                        background: img.isPromo ? "rgba(16,185,129,0.8)" : "rgba(0,0,0,0.6)",
+                                        color: "#fff", backdropFilter: "blur(4px)"
+                                      }}>{img.isPromo ? "Visible" : "Flou"}</span>
                                     </div>
-                                  ) : <span className="text-xs text-white/70">{feat}</span>}
+                                    {/* Toggle blur button — on hover or touch */}
+                                    {img.source === "upload" && (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleToggleBlur(img.id, img.isPromo ? "promo" : "pack"); }}
+                                        disabled={togglingBlur === img.id}
+                                        className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border-none"
+                                        style={{ WebkitTapHighlightColor: "transparent" }}>
+                                        <div className="flex flex-col items-center gap-1 text-white">
+                                          {togglingBlur === img.id ? (
+                                            <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                          ) : img.isPromo ? (
+                                            <><EyeOff className="w-4 h-4" /><span className="text-[9px] font-bold">Flouter</span></>
+                                          ) : (
+                                            <><Eye className="w-4 h-4" /><span className="text-[9px] font-bold">Deflouter</span></>
+                                          )}
+                                        </div>
+                                      </button>
+                                    )}
+                                    {/* Lock icon for blurred */}
+                                    {!img.isPromo && (
+                                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${hex}30`, backdropFilter: "blur(4px)" }}>
+                                          <Lock className="w-3.5 h-3.5 text-white/80" />
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="aspect-video rounded-xl flex items-center justify-center" style={{ background: `${hex}08`, border: `1px dashed ${hex}25` }}>
+                                <div className="text-center">
+                                  <Lock className="w-6 h-6 mx-auto mb-2" style={{ color: `${hex}40` }} />
+                                  <p className="text-[11px] text-white/25">Aucun media dans ce pack</p>
+                                  <a href={`/m/${modelSlug}?edit=true`} target="_blank" rel="noopener"
+                                    className="text-[10px] mt-1 inline-block no-underline transition-colors" style={{ color: hex }}>
+                                    Ajouter via le profil →
+                                  </a>
                                 </div>
-                              ))}
-                              {editingPacks && (
-                                <button onClick={() => updatePack(pack.id, "features", [...(pack.features || []), ""])}
-                                  className="text-[10px] text-white/30 hover:text-white/50 cursor-pointer bg-transparent border-none transition-colors mt-1">
-                                  + Ajouter un avantage
-                                </button>
-                              )}
-                            </div>
+                              </div>
+                            )}
                           </div>
-                          {/* Badge */}
-                          {editingPacks && (
+
+                          {/* RIGHT: Pack info + settings */}
+                          <div className="p-4 space-y-4" style={{ borderLeft: "1px solid rgba(255,255,255,0.04)" }}>
+                            {/* Name + Price */}
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-[10px] uppercase tracking-wider text-white/30 font-medium mb-1 block">Nom</label>
+                                {editingPacks ? (
+                                  <input value={pack.name} onChange={e => updatePack(pack.id, "name", e.target.value)}
+                                    className="w-full px-2.5 py-1.5 rounded-lg text-sm font-semibold bg-white/[0.05] border border-white/[0.1] text-white outline-none focus:border-[#D4AF37] transition-colors" />
+                                ) : <span className="text-sm text-white font-semibold">{pack.name}</span>}
+                              </div>
+                              <div>
+                                <label className="text-[10px] uppercase tracking-wider text-white/30 font-medium mb-1 block">Prix (€)</label>
+                                {editingPacks ? (
+                                  <input type="number" value={pack.price} onChange={e => updatePack(pack.id, "price", Number(e.target.value))}
+                                    className="w-full px-2.5 py-1.5 rounded-lg text-sm font-semibold tabular-nums bg-white/[0.05] border border-white/[0.1] text-white outline-none focus:border-[#D4AF37] transition-colors" />
+                                ) : <span className="text-2xl font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>}
+                              </div>
+                            </div>
+
+                            {/* Status + Badge */}
+                            <div className="flex items-center gap-3">
+                              {editingPacks ? (
+                                <button onClick={() => updatePack(pack.id, "active", !pack.active)}
+                                  className="px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all border-none"
+                                  style={{ background: pack.active ? "rgba(16,185,129,0.15)" : "rgba(107,114,128,0.15)", color: pack.active ? "#10B981" : "#6B7280" }}>
+                                  {pack.active ? "✓ Actif" : "✕ Inactif"}
+                                </button>
+                              ) : (
+                                <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg" style={{
+                                  background: pack.active ? "rgba(16,185,129,0.1)" : "rgba(107,114,128,0.1)",
+                                  color: pack.active ? "#10B981" : "#6B7280" }}>
+                                  {pack.active ? "● Visible sur le profil" : "○ Masqué"}
+                                </span>
+                              )}
+                              {editingPacks ? (
+                                <input value={pack.badge || ""} onChange={e => updatePack(pack.id, "badge", e.target.value || null as unknown as string)}
+                                  placeholder="Badge..."
+                                  className="flex-1 px-2 py-1 rounded-lg text-[11px] bg-white/[0.05] border border-white/[0.08] text-white outline-none focus:border-[#D4AF37] transition-colors placeholder:text-white/20" />
+                              ) : pack.badge ? (
+                                <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded" style={{ background: `${hex}15`, color: hex }}>{pack.badge}</span>
+                              ) : null}
+                            </div>
+
+                            {/* Features — like profile pack detail */}
                             <div>
-                              <label className="text-[10px] uppercase tracking-wider text-white/30 font-medium mb-1 block">Badge (optionnel)</label>
-                              <input value={pack.badge || ""} onChange={e => updatePack(pack.id, "badge", e.target.value || null as unknown as string)}
-                                placeholder="Ex: Populaire, Ultimate..."
-                                className="w-full px-2.5 py-1.5 rounded-lg text-xs bg-white/[0.05] border border-white/[0.08] text-white outline-none focus:border-[#D4AF37] transition-colors placeholder:text-white/20" />
+                              <label className="text-[10px] uppercase tracking-wider text-white/30 font-medium mb-2 block">Contenu inclus</label>
+                              <div className="space-y-2">
+                                {(pack.features || []).map((feat, i) => (
+                                  <div key={i} className="flex items-start gap-2.5">
+                                    <Check className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: hex }} />
+                                    {editingPacks ? (
+                                      <div className="flex items-center gap-1 flex-1">
+                                        <input value={feat} onChange={e => {
+                                          const newFeats = [...(pack.features || [])];
+                                          newFeats[i] = e.target.value;
+                                          updatePack(pack.id, "features", newFeats);
+                                        }}
+                                          className="flex-1 px-2 py-1 rounded text-xs bg-white/[0.05] border border-white/[0.08] text-white outline-none focus:border-[#D4AF37] transition-colors" />
+                                        <button onClick={() => {
+                                          const newFeats = (pack.features || []).filter((_, j) => j !== i);
+                                          updatePack(pack.id, "features", newFeats);
+                                        }} className="text-white/20 hover:text-red-400 cursor-pointer bg-transparent border-none text-xs transition-colors">✕</button>
+                                      </div>
+                                    ) : <span className="text-xs text-white/70">{feat}</span>}
+                                  </div>
+                                ))}
+                                {editingPacks && (
+                                  <button onClick={() => updatePack(pack.id, "features", [...(pack.features || []), ""])}
+                                    className="text-[10px] text-white/30 hover:text-white/50 cursor-pointer bg-transparent border-none transition-colors flex items-center gap-1 mt-1">
+                                    <Plus className="w-3 h-3" /> Ajouter un avantage
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          )}
-                          {/* Stats */}
-                          <div className="flex items-center gap-4 pt-2 border-t border-white/[0.04]">
-                            <div className="text-center">
-                              <div className="text-lg font-bold text-white tabular-nums">{soldCount}</div>
-                              <div className="text-[10px] text-white/30">Vendus</div>
+
+                            {/* Stats bar */}
+                            <div className="flex items-center gap-5 pt-3 border-t border-white/[0.06]">
+                              <div className="text-center">
+                                <div className="text-lg font-bold text-white tabular-nums">{soldCount}</div>
+                                <div className="text-[10px] text-white/30">Vendus</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-lg font-bold tabular-nums" style={{ color: hex }}>{fmt.format(packRevenue)}</div>
+                                <div className="text-[10px] text-white/30">Revenus</div>
+                              </div>
+                              <div className="flex-1" />
+                              <a href={`/m/${modelSlug}#${pack.id}`} target="_blank" rel="noopener"
+                                className="text-[10px] font-medium no-underline transition-colors flex items-center gap-1" style={{ color: hex }}>
+                                <Eye className="w-3 h-3" /> Voir sur le profil
+                              </a>
                             </div>
-                            <div className="text-center">
-                              <div className="text-lg font-bold tabular-nums" style={{ color: pack.color }}>{fmt.format(packRevenue)}</div>
-                              <div className="text-[10px] text-white/30">Revenus</div>
-                            </div>
-                            <div className="flex-1" />
-                            <a href={`/m/${modelSlug}#${pack.id}`} target="_blank" rel="noopener"
-                              className="text-[10px] text-white/30 hover:text-white/60 no-underline transition-colors">
-                              Voir sur le profil →
-                            </a>
                           </div>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
