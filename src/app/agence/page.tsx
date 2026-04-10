@@ -6,6 +6,7 @@ import {
   Newspaper, Camera, RefreshCw, Users, Key, DollarSign, TrendingUp,
   Copy, Check, Plus, Search, Shield, BarChart3, Clock, Zap, Settings,
   ChevronDown, Lock, EyeOff, Send, Pin, FolderOpen, Upload, ArrowRight, Grid3x3, GripVertical, Columns, Sparkles,
+  UserPlus, Ban,
 } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
@@ -129,6 +130,14 @@ export default function AgenceDashboard() {
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
   const [deletingUpload, setDeletingUpload] = useState<string | null>(null);
 
+  // Custom folder management
+  const [photoAccesses, setPhotoAccesses] = useState<any[]>([]);
+  const [accessLoading, setAccessLoading] = useState(false);
+  const [assigningPhoto, setAssigningPhoto] = useState<string | null>(null);
+  const [customClientFilter, setCustomClientFilter] = useState<string | null>(null);
+  const [assignPrice, setAssignPrice] = useState("");
+  const [expandedPhotoHistory, setExpandedPhotoHistory] = useState<string | null>(null);
+
   // ── Pull-to-refresh ──
   const [pullY, setPullY] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -210,6 +219,18 @@ export default function AgenceDashboard() {
   }, []);
 
   useEffect(() => { const iv = setInterval(() => setTick(t => t + 1), 60000); return () => clearInterval(iv); }, []);
+
+  // ── Fetch photo accesses for custom folder ──
+  useEffect(() => {
+    if (contentFolder !== "custom" || !modelSlug) return;
+    setAccessLoading(true);
+    const headers = authHeaders();
+    fetch(`/api/uploads/access?model=${toModelId(modelSlug)}`, { headers })
+      .then(r => r.json())
+      .then(data => setPhotoAccesses(data.accesses || []))
+      .catch(() => {})
+      .finally(() => setAccessLoading(false));
+  }, [contentFolder, modelSlug, authHeaders]);
 
   // ── Computed ──
   const modelId = toModelId(modelSlug);
@@ -483,6 +504,33 @@ export default function AgenceDashboard() {
     } catch (err) { console.error("[Packs] save:", err); }
     finally { setSavingPacks(false); }
   }, [packs, modelSlug, authHeaders]);
+
+  // ── Custom photo assignment handlers ──
+  const handleAssignToClient = useCallback(async (uploadId: string, clientId: string, price: number, sourceTier: string) => {
+    try {
+      const headers = authHeaders();
+      const res = await fetch("/api/uploads/access", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ model: toModelId(modelSlug), upload_id: uploadId, client_id: clientId, source_tier: sourceTier, price }),
+      });
+      const data = await res.json();
+      if (data.access) {
+        setPhotoAccesses(prev => [...prev, data.access]);
+        setAssigningPhoto(null);
+        setClientSearch("");
+        setAssignPrice("");
+      }
+    } catch {}
+  }, [modelSlug, authHeaders]);
+
+  const handleRevokeAccess = useCallback(async (accessId: string) => {
+    try {
+      const headers = authHeaders();
+      await fetch(`/api/uploads/access?model=${toModelId(modelSlug)}&id=${accessId}`, { method: "DELETE", headers });
+      setPhotoAccesses(prev => prev.map(a => a.id === accessId ? { ...a, revoked_at: new Date().toISOString() } : a));
+    } catch {}
+  }, [modelSlug, authHeaders]);
 
   // Auto-refresh safety net for model accounts
   useEffect(() => {
@@ -1538,8 +1586,263 @@ export default function AgenceDashboard() {
                     );
                   })()}
 
-                  {/* Content grid */}
-                  {(() => {
+                  {/* Content grid — Custom folder: full management UI */}
+                  {contentFolder === "custom" && (() => {
+                    const customItems = allContent.filter(c => c.tier === "custom");
+                    const accessedUploadIds = [...new Set(photoAccesses.map(a => a.upload_id))];
+                    const crossTierItems = allContent.filter(c => c.tier !== "custom" && accessedUploadIds.includes(c.id));
+                    const allCustomPhotos = [...customItems, ...crossTierItems];
+                    const activeAccesses = photoAccesses.filter(a => !a.revoked_at);
+                    const soldCount = new Set(activeAccesses.map(a => a.upload_id)).size;
+                    const uniqueClients2 = new Set(activeAccesses.map(a => a.client_id)).size;
+                    const totalRevenue = activeAccesses.reduce((s: number, a: any) => s + (a.price || 0), 0);
+
+                    const filteredCustomPhotos = customClientFilter
+                      ? allCustomPhotos.filter(p => activeAccesses.some(a => a.upload_id === p.id && a.client_id === customClientFilter))
+                      : allCustomPhotos;
+
+                    const filteredClients = clients.filter(c =>
+                      !clientSearch || (c.id || "").toLowerCase().includes(clientSearch.toLowerCase()) || (c.nickname || c.pseudo_snap || "").toLowerCase().includes(clientSearch.toLowerCase())
+                    );
+
+                    return (
+                      <div className="space-y-3">
+                        {/* Stats bar */}
+                        <div className="grid grid-cols-4 gap-2">
+                          {[
+                            { label: "Photos custom", value: allCustomPhotos.length, color: "#D4AF37" },
+                            { label: "Vendues", value: soldCount, color: "#8B5CF6" },
+                            { label: "Clients uniques", value: uniqueClients2, color: "#3B82F6" },
+                            { label: "Revenus", value: fmt.format(totalRevenue), color: "#10B981" },
+                          ].map((s, i) => (
+                            <div key={i} className="rounded-xl px-3 py-2.5 text-center" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <div className="text-sm font-black tabular-nums" style={{ color: s.color }}>{s.value}</div>
+                              <div className="text-[8px] uppercase tracking-wider text-white/25 mt-0.5">{s.label}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* 2-column layout: photo grid + client sidebar */}
+                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-3">
+                          {/* LEFT: Photo grid */}
+                          <div className="space-y-2">
+                            {accessLoading ? (
+                              <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+                                {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="aspect-[3/4]" />)}
+                              </div>
+                            ) : filteredCustomPhotos.length === 0 ? (
+                              <div className="flex flex-col items-center justify-center py-16 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.06)" }}>
+                                <Sparkles className="w-10 h-10 mb-3 text-white/10" />
+                                <p className="text-sm text-white/25 mb-1">Aucune photo custom</p>
+                                <p className="text-xs text-white/15">Upload des photos ou deplace-en depuis un autre dossier</p>
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+                                {filteredCustomPhotos.map(item => {
+                                  const photoAccess = activeAccesses.filter(a => a.upload_id === item.id);
+                                  const clientCount = new Set(photoAccess.map((a: any) => a.client_id)).size;
+                                  const isFromOtherTier = item.tier !== "custom";
+                                  const tierMeta = TIER_META[item.tier];
+                                  const hex = TIER_HEX[item.tier] || "#D4AF37";
+
+                                  return (
+                                    <div key={item.id} className="relative">
+                                      <div className="aspect-[3/4] relative overflow-hidden rounded-xl group cursor-pointer"
+                                        style={{ border: `1px solid ${isFromOtherTier ? hex + "30" : "rgba(212,175,55,0.2)"}` }}>
+                                        {/* Image — no blur in CP mode */}
+                                        <img src={item.url} alt="" className="w-full h-full object-cover" style={{ filter: "brightness(0.9)" }}
+                                          onClick={() => setZoomUrl(item.url)} />
+
+                                        {/* Source tier badge */}
+                                        <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
+                                          {isFromOtherTier ? (
+                                            <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${hex}cc`, color: "#fff" }}>
+                                              {tierMeta?.symbol} {tierMeta?.label}
+                                            </span>
+                                          ) : (
+                                            <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(212,175,55,0.85)", color: "#fff" }}>
+                                              <Sparkles className="w-2.5 h-2.5 inline mr-0.5" style={{ verticalAlign: "middle" }} />Custom
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {/* Client count badge */}
+                                        <div className="absolute top-1.5 right-1.5">
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); setExpandedPhotoHistory(expandedPhotoHistory === item.id ? null : item.id); }}
+                                            className="text-[8px] font-bold px-1.5 py-0.5 rounded-full cursor-pointer border-none transition-all"
+                                            style={{
+                                              background: clientCount > 0 ? (clientCount === 1 ? "rgba(139,92,246,0.85)" : "rgba(59,130,246,0.85)") : "rgba(255,255,255,0.15)",
+                                              color: "#fff",
+                                            }}>
+                                            {clientCount === 0 ? "0 client" : clientCount === 1 ? "Exclusive" : `${clientCount} clients`}
+                                          </button>
+                                        </div>
+
+                                        {/* Hover: assign button */}
+                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                          <button onClick={(e) => { e.stopPropagation(); setAssigningPhoto(assigningPhoto === item.id ? null : item.id); setAssignPrice(""); setClientSearch(""); }}
+                                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-bold cursor-pointer border-none transition-all"
+                                            style={{ background: "rgba(212,175,55,0.9)", color: "#fff" }}>
+                                            <UserPlus className="w-3.5 h-3.5" /> Assigner
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      {/* Assignment panel — inline below photo */}
+                                      {assigningPhoto === item.id && (
+                                        <div className="mt-1.5 rounded-xl p-3 space-y-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)" }}>
+                                          <div className="flex items-center justify-between mb-1">
+                                            <span className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-wider">Assigner a un client</span>
+                                            <button onClick={() => setAssigningPhoto(null)} className="p-0.5 cursor-pointer border-none bg-transparent text-white/30 hover:text-white/60">
+                                              <X className="w-3 h-3" />
+                                            </button>
+                                          </div>
+                                          <input
+                                            type="text"
+                                            placeholder="Rechercher un client..."
+                                            value={clientSearch}
+                                            onChange={e => setClientSearch(e.target.value)}
+                                            className="w-full px-2.5 py-1.5 rounded-lg text-[11px] text-white placeholder:text-white/25 outline-none"
+                                            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                                          />
+                                          <div className="flex flex-wrap gap-1 max-h-[80px] overflow-y-auto no-scrollbar">
+                                            {filteredClients.slice(0, 12).map(c => (
+                                              <button key={c.id}
+                                                onClick={() => {
+                                                  const price = parseFloat(assignPrice) || 0;
+                                                  handleAssignToClient(item.id, c.id, price, item.tier);
+                                                }}
+                                                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer border-none transition-all hover:bg-white/[0.08]"
+                                                style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.7)" }}>
+                                                <Users className="w-2.5 h-2.5 text-white/30" />
+                                                {c.nickname || c.pseudo_snap || c.id}
+                                              </button>
+                                            ))}
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <div className="relative flex-1">
+                                              <input
+                                                type="number"
+                                                placeholder="Prix (EUR)"
+                                                value={assignPrice}
+                                                onChange={e => setAssignPrice(e.target.value)}
+                                                className="w-full px-2.5 py-1.5 rounded-lg text-[11px] text-white placeholder:text-white/25 outline-none"
+                                                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                                              />
+                                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/20">EUR</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Photo history — expandable */}
+                                      {expandedPhotoHistory === item.id && photoAccess.length > 0 && (
+                                        <div className="mt-1.5 rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                                          <div className="px-3 py-1.5 border-b border-white/[0.04]">
+                                            <span className="text-[9px] font-bold uppercase tracking-wider text-white/30">Historique acces</span>
+                                          </div>
+                                          {photoAccesses.filter(a => a.upload_id === item.id).map((acc: any) => {
+                                            const isActive = !acc.revoked_at;
+                                            const client = clients.find(c => c.id === acc.client_id);
+                                            return (
+                                              <div key={acc.id} className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.03] last:border-0">
+                                                <div className="flex-1 min-w-0">
+                                                  <div className="text-[11px] font-medium text-white/70 truncate">{client?.nickname || client?.pseudo_snap || acc.client_id}</div>
+                                                  <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className="text-[9px] text-white/25">{acc.created_at ? relativeTime(acc.created_at) : "-"}</span>
+                                                    {acc.price > 0 && <span className="text-[9px] font-bold text-[#D4AF37]">{fmt.format(acc.price)}</span>}
+                                                  </div>
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{
+                                                    background: isActive ? "rgba(16,185,129,0.15)" : "rgba(220,38,38,0.15)",
+                                                    color: isActive ? "#10B981" : "#F87171",
+                                                  }}>
+                                                    {isActive ? "Actif" : "Revoque"}
+                                                  </span>
+                                                  {isActive && (
+                                                    <button onClick={() => handleRevokeAccess(acc.id)}
+                                                      className="p-1 rounded cursor-pointer border-none bg-transparent text-white/20 hover:text-red-400 transition-colors"
+                                                      title="Revoquer">
+                                                      <Ban className="w-3 h-3" />
+                                                    </button>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                      {expandedPhotoHistory === item.id && photoAccess.length === 0 && (
+                                        <div className="mt-1.5 rounded-xl px-3 py-2" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                                          <span className="text-[10px] text-white/25">Aucun acces accorde</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* RIGHT: Client sidebar */}
+                          <div className="rounded-xl overflow-hidden h-fit" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                            <div className="px-3 py-2.5 border-b border-white/[0.04]">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-white/30">Clients</span>
+                            </div>
+                            <div className="p-2">
+                              <input
+                                type="text"
+                                placeholder="Rechercher..."
+                                value={clientSearch}
+                                onChange={e => setClientSearch(e.target.value)}
+                                className="w-full px-2.5 py-1.5 rounded-lg text-[11px] text-white placeholder:text-white/25 outline-none mb-2"
+                                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                              />
+                            </div>
+                            <div className="max-h-[400px] overflow-y-auto no-scrollbar">
+                              {filteredClients.length === 0 ? (
+                                <div className="px-3 py-4 text-center">
+                                  <span className="text-[10px] text-white/20">Aucun client</span>
+                                </div>
+                              ) : filteredClients.map(c => {
+                                const clientAccessCount = activeAccesses.filter(a => a.client_id === c.id).length;
+                                const isSelected = customClientFilter === c.id;
+                                const tierHex = TIER_HEX[c.tier || "p0"] || "#64748B";
+                                return (
+                                  <button key={c.id}
+                                    onClick={() => setCustomClientFilter(isSelected ? null : c.id)}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left cursor-pointer border-none transition-all"
+                                    style={{
+                                      background: isSelected ? "rgba(212,175,55,0.08)" : "transparent",
+                                      borderLeft: isSelected ? "2px solid #D4AF37" : "2px solid transparent",
+                                    }}>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-[11px] font-medium text-white/70 truncate">{c.nickname || c.pseudo_snap || c.id}</div>
+                                      <div className="flex items-center gap-1.5 mt-0.5">
+                                        <span className="text-[8px] font-bold px-1 py-0.5 rounded" style={{ background: `${tierHex}15`, color: tierHex }}>
+                                          {TIER_META[c.tier || "p0"]?.label || "Public"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    {clientAccessCount > 0 && (
+                                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(212,175,55,0.15)", color: "#D4AF37" }}>
+                                        {clientAccessCount} photo{clientAccessCount > 1 ? "s" : ""}
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Content grid — standard folders */}
+                  {contentFolder !== "custom" && (() => {
                     const filtered = contentFolder === null ? allContent : allContent.filter(c => c.tier === contentFolder);
                     if (filtered.length === 0) {
                       return (
