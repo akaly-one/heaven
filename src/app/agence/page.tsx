@@ -1066,55 +1066,16 @@ export default function AgenceDashboard() {
                     </div>
                   </div>
 
-                  {/* Privacy rule banner for selected pack */}
-                  {contentFolder && contentFolder !== "p0" && (() => {
-                    const pack = packs.find(p => p.id === contentFolder);
-                    if (!pack) return null;
-                    const hex = TIER_HEX[contentFolder] || pack.color;
-                    const tierMeta = TIER_META[contentFolder];
-                    // Find which tiers can access this content
-                    const accessibleBy = packs.filter(p => {
-                      const pLevel = parseInt(p.id.replace("p", ""), 10);
-                      const thisLevel = parseInt(contentFolder.replace("p", ""), 10);
-                      return pLevel >= thisLevel && p.active;
-                    });
-                    return (
-                      <div className="rounded-xl px-4 py-3 mb-3 flex items-start gap-3"
-                        style={{ background: `${hex}08`, border: `1px solid ${hex}15` }}>
-                        <Shield className="w-4 h-4 mt-0.5 shrink-0" style={{ color: hex }} />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-white mb-1">Regle de confidentialite — {tierMeta?.label || pack.name}</div>
-                          <p className="text-[11px] text-white/40 leading-relaxed">
-                            Ce contenu est <span className="font-semibold" style={{ color: hex }}>automatiquement verrouille</span> sur le profil.
-                            {" "}Seuls les abonnes avec un code <span className="font-semibold" style={{ color: hex }}>{pack.name}</span>
-                            {accessibleBy.length > 1 && <> ou superieur ({accessibleBy.filter(a => a.id !== contentFolder).map(a => a.name).join(", ")})</>}
-                            {" "}peuvent y acceder. Les photos en mode « promo » sont visibles en apercu floute.
-                          </p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: `${hex}15`, color: hex }}>
-                              <Lock className="w-2.5 h-2.5 inline mr-1" />Flou par defaut
-                            </span>
-                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981" }}>
-                              <Eye className="w-2.5 h-2.5 inline mr-1" />Promo = visible
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
+                  {/* p0 mini-note */}
                   {contentFolder === "p0" && (
-                    <div className="rounded-xl px-4 py-3 mb-3 flex items-start gap-3"
+                    <div className="rounded-xl px-4 py-2.5 mb-3 flex items-center gap-2.5"
                       style={{ background: "rgba(100,116,139,0.06)", border: "1px solid rgba(100,116,139,0.1)" }}>
-                      <Eye className="w-4 h-4 mt-0.5 shrink-0 text-white/30" />
-                      <div>
-                        <div className="text-xs font-semibold text-white mb-0.5">Contenu public</div>
-                        <p className="text-[11px] text-white/40">Visible par tous les visiteurs sans code d'acces. Ideal pour les previews et le contenu promotionnel.</p>
-                      </div>
+                      <Eye className="w-3.5 h-3.5 shrink-0 text-white/30" />
+                      <span className="text-[11px] text-white/40">Contenu public — visible par tous sans code</span>
                     </div>
                   )}
 
-                  {/* ── Inline Pack Config — when a pack folder is selected ── */}
+                  {/* ── Inline Pack Config + Privacy — when a pack folder is selected ── */}
                   {contentFolder && contentFolder !== "p0" && (() => {
                     const pack = packs.find(p => p.id === contentFolder);
                     if (!pack) return null;
@@ -1132,7 +1093,7 @@ export default function AgenceDashboard() {
                           onClick={() => setExpandedPack(isExpCfg ? null : `cfg-${pack.id}`)}>
                           <Settings className="w-4 h-4 shrink-0" style={{ color: hex }} />
                           <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <span className="text-xs font-semibold text-white">Config pack</span>
+                            <span className="text-xs font-semibold text-white">Config & confidentialite</span>
                             <span className="text-xs font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
                             <span className="text-[10px]" style={{ color: pack.active ? "#10B981" : "#6B7280" }}>{pack.active ? "● Actif" : "○ Off"}</span>
                             <span className="text-[10px] text-white/25">{soldCount} vendus · {fmt.format(packRevenue)}</span>
@@ -1238,6 +1199,34 @@ export default function AgenceDashboard() {
                                     <Plus className="w-3 h-3" /> Ajouter
                                   </button>
                                 )}
+                              </div>
+                            </div>
+
+                            {/* Privacy rules */}
+                            <div className="pt-3 border-t" style={{ borderColor: `${hex}15` }}>
+                              <div className="flex items-center gap-2 mb-2">
+                                <Shield className="w-3.5 h-3.5 shrink-0" style={{ color: hex }} />
+                                <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color: hex }}>Confidentialite</span>
+                              </div>
+                              <p className="text-[11px] text-white/40 leading-relaxed mb-2">
+                                Contenu <span className="font-semibold" style={{ color: hex }}>verrouille</span> sur le profil.
+                                {" "}Accessible avec code <span className="font-semibold" style={{ color: hex }}>{pack.name}</span>
+                                {(() => {
+                                  const accessibleBy = packs.filter(p => {
+                                    const pLevel = parseInt(p.id.replace("p", ""), 10);
+                                    const thisLevel = parseInt(contentFolder!.replace("p", ""), 10);
+                                    return pLevel >= thisLevel && p.active && p.id !== contentFolder;
+                                  });
+                                  return accessibleBy.length > 0 ? <> ou superieur ({accessibleBy.map(a => a.name).join(", ")})</> : null;
+                                })()}.
+                              </p>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: `${hex}15`, color: hex }}>
+                                  <Lock className="w-2.5 h-2.5 inline mr-1" />Flou par defaut
+                                </span>
+                                <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981" }}>
+                                  <Eye className="w-2.5 h-2.5 inline mr-1" />Promo = visible
+                                </span>
                               </div>
                             </div>
 
