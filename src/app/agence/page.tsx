@@ -5,7 +5,7 @@ import {
   Eye, Pencil, Image as ImageIcon, Heart, MessageCircle, Trash2, X,
   Newspaper, Camera, RefreshCw, Users, Key, DollarSign, TrendingUp,
   Copy, Check, Plus, Search, Shield, BarChart3, Clock, Zap, Settings,
-  ChevronDown, Lock, EyeOff, Send, Pin,
+  ChevronDown, Lock, EyeOff, Send, Pin, FolderOpen, Upload, ArrowRight, Grid3x3,
 } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
@@ -74,6 +74,7 @@ function Skeleton({ className = "", style }: { className?: string; style?: React
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "feed", label: "Feed" },
+  { id: "contenu", label: "Contenu" },
   { id: "revenue", label: "Revenus" },
   { id: "settings", label: "Packs" },
 ] as const;
@@ -117,6 +118,13 @@ export default function AgenceDashboard() {
   const [editingPacks, setEditingPacks] = useState(false);
   const [savingPacks, setSavingPacks] = useState(false);
   const [expandedPack, setExpandedPack] = useState<string | null>(null);
+
+  // Contenu tab
+  const [contentFolder, setContentFolder] = useState<string | null>(null); // null = all, or pack id
+  const [movingUpload, setMovingUpload] = useState<string | null>(null);
+  const [uploadingToTier, setUploadingToTier] = useState<string | null>(null);
+  const [contentViewMode, setContentViewMode] = useState<"grid" | "list">("grid");
+  const [deletingUpload, setDeletingUpload] = useState<string | null>(null);
 
   // ── Pull-to-refresh ──
   const [pullY, setPullY] = useState(0);
@@ -346,6 +354,62 @@ export default function AgenceDashboard() {
       }
     } catch (err) { console.error("[Packs] toggle blur:", err); }
     setTogglingBlur(null);
+  }, [modelSlug, authHeaders]);
+
+  // Move upload to a different tier
+  const handleMoveTier = useCallback(async (uploadId: string, newTier: string) => {
+    setMovingUpload(uploadId);
+    try {
+      const res = await fetch("/api/uploads", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ model: toModelId(modelSlug), id: uploadId, updates: { tier: newTier } }),
+      });
+      if (res.ok) {
+        setUploads(prev => prev.map(u => u.id === uploadId ? { ...u, tier: newTier } : u));
+      }
+    } catch (err) { console.error("[Contenu] move tier:", err); }
+    setMovingUpload(null);
+  }, [modelSlug, authHeaders]);
+
+  // Delete upload
+  const handleDeleteUpload = useCallback(async (uploadId: string) => {
+    try {
+      await fetch(`/api/uploads?id=${uploadId}&model=${toModelId(modelSlug)}`, { method: "DELETE", headers: authHeaders() });
+      setUploads(prev => prev.filter(u => u.id !== uploadId));
+    } catch (err) { console.error("[Contenu] delete:", err); }
+    setDeletingUpload(null);
+  }, [modelSlug, authHeaders]);
+
+  // Upload new content to a specific tier
+  const handleUploadToTier = useCallback(async (file: File, tier: string) => {
+    const { valid, error } = validateFile(file, UPLOAD_LIMITS.post.maxMB);
+    if (!valid) { setUploadMsg({ text: error!, type: "error" }); setTimeout(() => setUploadMsg(null), 5000); return; }
+    setUploadMsg({ text: "Upload en cours...", type: "loading" });
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const upRes = await fetch("/api/upload", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ file: reader.result, model: toModelId(modelSlug), folder: `heaven/${toModelId(modelSlug)}/uploads` }) });
+        if (upRes.ok) {
+          const { url } = await upRes.json();
+          if (url) {
+            const newUpload = { model: toModelId(modelSlug), tier, type: "photo" as const, label: "", dataUrl: url, visibility: "pack" as const, tokenPrice: 0, isNew: true };
+            const syncRes = await fetch("/api/uploads", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() },
+              body: JSON.stringify(newUpload) });
+            if (syncRes.ok) {
+              const data = await syncRes.json();
+              if (data.upload) setUploads(prev => [data.upload, ...prev]);
+              else setUploads(prev => [{ id: crypto.randomUUID(), ...newUpload, uploadedAt: new Date().toISOString() }, ...prev]);
+            }
+            setUploadMsg({ text: "Media ajouté", type: "success" });
+          }
+        } else { setUploadMsg({ text: "Erreur upload", type: "error" }); }
+      } catch { setUploadMsg({ text: "Erreur réseau", type: "error" }); }
+      setTimeout(() => setUploadMsg(null), 3000);
+      setUploadingToTier(null);
+    };
+    reader.readAsDataURL(file);
   }, [modelSlug, authHeaders]);
 
   const handleSavePacks = useCallback(async () => {
@@ -875,6 +939,420 @@ export default function AgenceDashboard() {
                   </div>
                 );
               })()}
+            </div>
+          )}
+
+          {/* ══════════ TAB: CONTENU — Folder-based upload manager ══════════ */}
+          {activeTab === "contenu" && (
+            <div className="space-y-4">
+
+              {/* ── Folder sidebar + content area ── */}
+              <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
+
+                {/* LEFT: Folders (packs as folders) */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Dossiers</span>
+                    <span className="text-[10px] text-white/20 ml-auto">{uploads.length} fichiers</span>
+                  </div>
+
+                  {/* All content */}
+                  <button onClick={() => setContentFolder(null)}
+                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left cursor-pointer transition-all border-none ${contentFolder === null ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}>
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: contentFolder === null ? "rgba(212,175,55,0.12)" : "rgba(255,255,255,0.04)" }}>
+                      <Grid3x3 className="w-4 h-4" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.3)" }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-semibold text-white">Tout le contenu</div>
+                      <div className="text-[10px] text-white/25">{uploads.length} medias</div>
+                    </div>
+                  </button>
+
+                  {/* Public folder */}
+                  <button onClick={() => setContentFolder("p0")}
+                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left cursor-pointer transition-all border-none ${contentFolder === "p0" ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}>
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: contentFolder === "p0" ? "rgba(100,116,139,0.15)" : "rgba(255,255,255,0.04)" }}>
+                      <Eye className="w-4 h-4" style={{ color: contentFolder === "p0" ? "#64748B" : "rgba(255,255,255,0.3)" }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-semibold text-white">Public</div>
+                      <div className="text-[10px] text-white/25">{uploads.filter(u => (u.tier || "p0") === "p0").length} medias · Visible par tous</div>
+                    </div>
+                  </button>
+
+                  {/* Pack folders */}
+                  {packs.filter(p => p.active).map(pack => {
+                    const hex = TIER_HEX[pack.id] || pack.color;
+                    const tierMeta = TIER_META[pack.id];
+                    const count = uploads.filter(u => u.tier === pack.id).length;
+                    const isSelected = contentFolder === pack.id;
+                    return (
+                      <button key={pack.id} onClick={() => setContentFolder(pack.id)}
+                        className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left cursor-pointer transition-all border-none ${isSelected ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}>
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ background: isSelected ? `${hex}18` : "rgba(255,255,255,0.04)", border: isSelected ? `1px solid ${hex}30` : "1px solid transparent" }}>
+                          <span className="text-base">{tierMeta?.symbol || "📁"}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-white">{pack.name}</span>
+                            <Lock className="w-2.5 h-2.5 shrink-0" style={{ color: hex }} />
+                          </div>
+                          <div className="text-[10px] text-white/25">{count} medias · {pack.price}€</div>
+                        </div>
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ background: hex }} />
+                      </button>
+                    );
+                  })}
+
+                  {/* Upload button */}
+                  <div className="pt-3 mt-2 border-t border-white/[0.06]">
+                    <label className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl cursor-pointer transition-all border border-dashed border-white/[0.1] hover:border-[#D4AF37]/30 hover:bg-[#D4AF37]/[0.03]">
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(212,175,55,0.08)" }}>
+                        <Upload className="w-4 h-4 text-[#D4AF37]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold text-[#D4AF37]">Ajouter du contenu</div>
+                        <div className="text-[10px] text-white/25">JPG, PNG, WEBP · Max 10MB</div>
+                      </div>
+                      <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" multiple className="hidden" onChange={(e) => {
+                        const files = e.target.files;
+                        if (!files?.length) return;
+                        const tier = contentFolder || "p0";
+                        Array.from(files).forEach(f => handleUploadToTier(f, tier));
+                        e.target.value = "";
+                      }} />
+                    </label>
+                    {contentFolder && contentFolder !== "p0" && (
+                      <p className="text-[9px] text-white/20 mt-1.5 px-1">↑ Upload directement dans « {packs.find(p => p.id === contentFolder)?.name || contentFolder} »</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* RIGHT: Content grid */}
+                <div>
+                  {/* Folder header */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2.5">
+                      <FolderOpen className="w-4 h-4 text-white/30" />
+                      <span className="text-sm font-semibold text-white">
+                        {contentFolder === null ? "Tout le contenu" : contentFolder === "p0" ? "Public" : packs.find(p => p.id === contentFolder)?.name || contentFolder}
+                      </span>
+                      {contentFolder && contentFolder !== "p0" && (() => {
+                        const pack = packs.find(p => p.id === contentFolder);
+                        const hex = TIER_HEX[contentFolder] || pack?.color || "#888";
+                        return (
+                          <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: `${hex}20`, color: hex }}>
+                            {pack?.price}€
+                          </span>
+                        );
+                      })()}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setContentViewMode(contentViewMode === "grid" ? "list" : "grid")}
+                        className="px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer border border-white/[0.06] bg-transparent text-white/30 hover:text-white/50 transition-colors">
+                        {contentViewMode === "grid" ? "Liste" : "Grille"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Privacy rule banner for selected pack */}
+                  {contentFolder && contentFolder !== "p0" && (() => {
+                    const pack = packs.find(p => p.id === contentFolder);
+                    if (!pack) return null;
+                    const hex = TIER_HEX[contentFolder] || pack.color;
+                    const tierMeta = TIER_META[contentFolder];
+                    // Find which tiers can access this content
+                    const accessibleBy = packs.filter(p => {
+                      const pLevel = parseInt(p.id.replace("p", ""), 10);
+                      const thisLevel = parseInt(contentFolder.replace("p", ""), 10);
+                      return pLevel >= thisLevel && p.active;
+                    });
+                    return (
+                      <div className="rounded-xl px-4 py-3 mb-3 flex items-start gap-3"
+                        style={{ background: `${hex}08`, border: `1px solid ${hex}15` }}>
+                        <Shield className="w-4 h-4 mt-0.5 shrink-0" style={{ color: hex }} />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold text-white mb-1">Regle de confidentialite — {tierMeta?.label || pack.name}</div>
+                          <p className="text-[11px] text-white/40 leading-relaxed">
+                            Ce contenu est <span className="font-semibold" style={{ color: hex }}>automatiquement verrouille</span> sur le profil.
+                            {" "}Seuls les abonnes avec un code <span className="font-semibold" style={{ color: hex }}>{pack.name}</span>
+                            {accessibleBy.length > 1 && <> ou superieur ({accessibleBy.filter(a => a.id !== contentFolder).map(a => a.name).join(", ")})</>}
+                            {" "}peuvent y acceder. Les photos en mode « promo » sont visibles en apercu floute.
+                          </p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: `${hex}15`, color: hex }}>
+                              <Lock className="w-2.5 h-2.5 inline mr-1" />Flou par defaut
+                            </span>
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981" }}>
+                              <Eye className="w-2.5 h-2.5 inline mr-1" />Promo = visible
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {contentFolder === "p0" && (
+                    <div className="rounded-xl px-4 py-3 mb-3 flex items-start gap-3"
+                      style={{ background: "rgba(100,116,139,0.06)", border: "1px solid rgba(100,116,139,0.1)" }}>
+                      <Eye className="w-4 h-4 mt-0.5 shrink-0 text-white/30" />
+                      <div>
+                        <div className="text-xs font-semibold text-white mb-0.5">Contenu public</div>
+                        <p className="text-[11px] text-white/40">Visible par tous les visiteurs sans code d'acces. Ideal pour les previews et le contenu promotionnel.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Content grid */}
+                  {(() => {
+                    const filtered = contentFolder === null ? uploads : uploads.filter(u => (u.tier || "p0") === contentFolder);
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="flex flex-col items-center justify-center py-16 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.06)" }}>
+                          <FolderOpen className="w-10 h-10 mb-3 text-white/10" />
+                          <p className="text-sm text-white/25 mb-1">Aucun contenu</p>
+                          <p className="text-xs text-white/15">Upload des medias pour remplir ce dossier</p>
+                        </div>
+                      );
+                    }
+                    return contentViewMode === "grid" ? (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5">
+                        {filtered.map(upload => {
+                          const hex = TIER_HEX[upload.tier] || "#64748B";
+                          const tierMeta = TIER_META[upload.tier];
+                          const isBlurred = upload.visibility !== "promo";
+                          const isFree = !upload.tier || upload.tier === "p0";
+                          return (
+                            <div key={upload.id} className="aspect-[3/4] relative overflow-hidden rounded-xl group"
+                              style={{ border: `1px solid ${isFree ? "rgba(255,255,255,0.06)" : hex + "20"}` }}>
+                              <img src={upload.dataUrl} alt="" className="w-full h-full object-cover transition-all"
+                                style={!isFree && isBlurred ? { filter: "blur(14px) brightness(0.4)", transform: "scale(1.15)" } : { filter: "brightness(0.85)" }} />
+
+                              {/* Tier badge */}
+                              <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
+                                {!isFree && (
+                                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{
+                                    background: `${hex}cc`, color: "#fff", backdropFilter: "blur(4px)"
+                                  }}>{tierMeta?.symbol} {tierMeta?.label}</span>
+                                )}
+                                {isFree && (
+                                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{
+                                    background: "rgba(100,116,139,0.8)", color: "#fff"
+                                  }}>Public</span>
+                                )}
+                              </div>
+
+                              {/* Visibility badge */}
+                              {!isFree && (
+                                <div className="absolute top-1.5 right-1.5">
+                                  <span className="text-[7px] font-bold uppercase px-1 py-0.5 rounded-full" style={{
+                                    background: isBlurred ? "rgba(0,0,0,0.7)" : "rgba(16,185,129,0.8)", color: "#fff"
+                                  }}>{isBlurred ? "🔒" : "👁"}</span>
+                                </div>
+                              )}
+
+                              {/* Lock overlay for blurred non-free */}
+                              {!isFree && isBlurred && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${hex}30`, backdropFilter: "blur(4px)" }}>
+                                    <Lock className="w-3.5 h-3.5 text-white/80" />
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Hover actions */}
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2"
+                                style={{ WebkitTapHighlightColor: "transparent" }}>
+                                {/* Toggle blur */}
+                                {!isFree && (
+                                  <button onClick={() => handleToggleBlur(upload.id, upload.visibility || "pack")}
+                                    disabled={togglingBlur === upload.id}
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all border-none"
+                                    style={{ background: isBlurred ? "rgba(16,185,129,0.9)" : "rgba(139,92,246,0.9)", color: "#fff" }}>
+                                    {togglingBlur === upload.id ? "..." : isBlurred ? <><Eye className="w-3 h-3" /> Promo</> : <><EyeOff className="w-3 h-3" /> Flouter</>}
+                                  </button>
+                                )}
+                                {/* Move tier dropdown */}
+                                <div className="relative">
+                                  <button onClick={(e) => { e.stopPropagation(); setMovingUpload(movingUpload === upload.id ? null : upload.id); }}
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all border-none"
+                                    style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }}>
+                                    <ArrowRight className="w-3 h-3" /> Deplacer
+                                  </button>
+                                  {movingUpload === upload.id && (
+                                    <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 z-20 rounded-xl overflow-hidden shadow-2xl min-w-[140px]"
+                                      style={{ background: "#1a1a22", border: "1px solid rgba(255,255,255,0.1)" }}>
+                                      <button onClick={() => { handleMoveTier(upload.id, "p0"); setMovingUpload(null); }}
+                                        disabled={upload.tier === "p0"}
+                                        className="w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] cursor-pointer border-none transition-colors hover:bg-white/[0.06] disabled:opacity-30"
+                                        style={{ background: "transparent", color: "#64748B" }}>
+                                        <Eye className="w-3 h-3" /> Public
+                                      </button>
+                                      {packs.filter(p => p.active).map(p => {
+                                        const ph = TIER_HEX[p.id] || p.color;
+                                        const pm = TIER_META[p.id];
+                                        return (
+                                          <button key={p.id} onClick={() => { handleMoveTier(upload.id, p.id); setMovingUpload(null); }}
+                                            disabled={upload.tier === p.id}
+                                            className="w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] cursor-pointer border-none transition-colors hover:bg-white/[0.06] disabled:opacity-30"
+                                            style={{ background: "transparent", color: ph }}>
+                                            <span>{pm?.symbol}</span> {p.name}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Delete */}
+                                {deletingUpload === upload.id ? (
+                                  <div className="flex items-center gap-2">
+                                    <button onClick={() => handleDeleteUpload(upload.id)}
+                                      className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer border-none" style={{ background: "#DC2626", color: "#fff" }}>Oui</button>
+                                    <button onClick={() => setDeletingUpload(null)}
+                                      className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer border-none" style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }}>Non</button>
+                                  </div>
+                                ) : (
+                                  <button onClick={() => setDeletingUpload(upload.id)}
+                                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] cursor-pointer border-none transition-colors"
+                                    style={{ background: "rgba(220,38,38,0.2)", color: "#F87171" }}>
+                                    <Trash2 className="w-3 h-3" /> Supprimer
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      /* List view */
+                      <div className={`${surface} overflow-hidden`}>
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-white/[0.06]">
+                              <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5 w-16">Apercu</th>
+                              <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Type</th>
+                              <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Dossier</th>
+                              <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Visibilite</th>
+                              <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Date</th>
+                              <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5 w-20">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filtered.map(upload => {
+                              const hex = TIER_HEX[upload.tier] || "#64748B";
+                              const tierMeta = TIER_META[upload.tier];
+                              const isFree = !upload.tier || upload.tier === "p0";
+                              const isBlurred = upload.visibility !== "promo";
+                              return (
+                                <tr key={upload.id} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors">
+                                  <td className="px-4 py-2">
+                                    <div className="w-10 h-12 rounded-lg overflow-hidden">
+                                      <img src={upload.dataUrl} alt="" className="w-full h-full object-cover"
+                                        style={!isFree && isBlurred ? { filter: "blur(6px) brightness(0.5)", transform: "scale(1.1)" } : {}} />
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-2 text-xs text-white/50">{upload.type || "photo"}</td>
+                                  <td className="px-4 py-2">
+                                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded" style={{ background: `${hex}15`, color: hex }}>
+                                      {isFree ? "Public" : `${tierMeta?.symbol || ""} ${tierMeta?.label || upload.tier}`}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2">
+                                    {isFree ? (
+                                      <span className="text-[10px] text-white/30">Visible</span>
+                                    ) : (
+                                      <button onClick={() => handleToggleBlur(upload.id, upload.visibility || "pack")}
+                                        disabled={togglingBlur === upload.id}
+                                        className="text-[10px] font-semibold px-2 py-0.5 rounded cursor-pointer border-none transition-colors"
+                                        style={{ background: isBlurred ? "rgba(139,92,246,0.1)" : "rgba(16,185,129,0.1)", color: isBlurred ? "#8B5CF6" : "#10B981" }}>
+                                        {togglingBlur === upload.id ? "..." : isBlurred ? "🔒 Flou" : "👁 Promo"}
+                                      </button>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-2 text-[11px] text-white/25 tabular-nums">{upload.uploadedAt ? relativeTime(upload.uploadedAt) : "-"}</td>
+                                  <td className="px-4 py-2 text-right">
+                                    <div className="flex items-center gap-1.5 justify-end">
+                                      <div className="relative">
+                                        <button onClick={() => setMovingUpload(movingUpload === upload.id ? null : upload.id)}
+                                          className="p-1.5 rounded-lg cursor-pointer border-none bg-transparent text-white/20 hover:text-white/50 hover:bg-white/[0.05] transition-colors">
+                                          <ArrowRight className="w-3.5 h-3.5" />
+                                        </button>
+                                        {movingUpload === upload.id && (
+                                          <div className="absolute top-full right-0 mt-1 z-20 rounded-xl overflow-hidden shadow-2xl min-w-[140px]"
+                                            style={{ background: "#1a1a22", border: "1px solid rgba(255,255,255,0.1)" }}>
+                                            <button onClick={() => { handleMoveTier(upload.id, "p0"); setMovingUpload(null); }}
+                                              disabled={upload.tier === "p0"}
+                                              className="w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] cursor-pointer border-none transition-colors hover:bg-white/[0.06] disabled:opacity-30"
+                                              style={{ background: "transparent", color: "#64748B" }}>
+                                              <Eye className="w-3 h-3" /> Public
+                                            </button>
+                                            {packs.filter(p => p.active).map(p => {
+                                              const ph = TIER_HEX[p.id] || p.color;
+                                              const pm = TIER_META[p.id];
+                                              return (
+                                                <button key={p.id} onClick={() => { handleMoveTier(upload.id, p.id); setMovingUpload(null); }}
+                                                  disabled={upload.tier === p.id}
+                                                  className="w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] cursor-pointer border-none transition-colors hover:bg-white/[0.06] disabled:opacity-30"
+                                                  style={{ background: "transparent", color: ph }}>
+                                                  <span>{pm?.symbol}</span> {p.name}
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                      {deletingUpload === upload.id ? (
+                                        <div className="flex items-center gap-1">
+                                          <button onClick={() => handleDeleteUpload(upload.id)} className="p-1 rounded text-[9px] font-bold cursor-pointer border-none" style={{ background: "#DC2626", color: "#fff" }}>✓</button>
+                                          <button onClick={() => setDeletingUpload(null)} className="p-1 rounded text-[9px] cursor-pointer border-none" style={{ background: "rgba(255,255,255,0.1)", color: "#fff" }}>✕</button>
+                                        </div>
+                                      ) : (
+                                        <button onClick={() => setDeletingUpload(upload.id)}
+                                          className="p-1.5 rounded-lg cursor-pointer border-none bg-transparent text-white/15 hover:text-red-400 transition-colors">
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Summary stats */}
+                  {contentFolder && contentFolder !== "p0" && (() => {
+                    const pack = packs.find(p => p.id === contentFolder);
+                    if (!pack) return null;
+                    const hex = TIER_HEX[contentFolder] || pack.color;
+                    const tierUploads = uploads.filter(u => u.tier === contentFolder);
+                    const promoCount = tierUploads.filter(u => u.visibility === "promo").length;
+                    const blurredCount = tierUploads.length - promoCount;
+                    return (
+                      <div className="flex items-center gap-6 mt-4 px-1">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full" style={{ background: hex }} />
+                          <span className="text-[10px] text-white/30">{tierUploads.length} total</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Lock className="w-3 h-3 text-white/20" />
+                          <span className="text-[10px] text-white/30">{blurredCount} floutes</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Eye className="w-3 h-3" style={{ color: "#10B981" }} />
+                          <span className="text-[10px] text-white/30">{promoCount} promo</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
             </div>
           )}
 
