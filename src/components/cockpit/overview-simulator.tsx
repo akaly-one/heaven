@@ -5,6 +5,7 @@ import {
   Target, TrendingUp, Zap, Users, DollarSign,
   ChevronDown, ChevronUp, RotateCcw, Sparkles,
   Clock, AlertTriangle, Eye, Key, Pencil,
+  Image, ShieldCheck, UserX,
 } from "lucide-react";
 import type { AccessCode, PackConfig, ClientInfo, FeedPost } from "@/types/heaven";
 import { isExpired } from "@/lib/timezone";
@@ -29,7 +30,7 @@ interface SimulatorProps {
 const fmt = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 
 /* ══════════════════════════════════════════════ */
-/*  Overview Simulator — Real + Hypothetical       */
+/*  Overview Simulator — Dense Kanban Layout       */
 /* ══════════════════════════════════════════════ */
 
 export function OverviewSimulator({
@@ -51,10 +52,30 @@ export function OverviewSimulator({
     modelCodes
       .filter(c => c.active && !c.revoked && c.expiresAt && !isExpired(c.expiresAt))
       .sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime())
-      .slice(0, 10),
+      .slice(0, 6),
     [modelCodes]);
 
   const avgPerClient = uniqueClients > 0 ? Math.round(revenue / uniqueClients) : 0;
+
+  // ── Extra computed metrics ──
+  const verifiedClients = clients.filter(c => c.is_verified).length;
+  const pendingClients = clients.filter(c => !c.is_verified && !c.is_blocked).length;
+  const bannedClients = clients.filter(c => c.is_blocked).length;
+  const totalCodes = modelCodes.length;
+  const revokedCodes = modelCodes.filter(c => c.revoked).length;
+  const freeCodes = modelCodes.filter(c => c.type !== "paid" && !c.revoked && c.active).length;
+
+  // Revenue by pack
+  const revenueByPack = useMemo(() => {
+    return activePacks.map(p => ({
+      ...p,
+      count: salesByTier[p.id] || 0,
+      rev: (salesByTier[p.id] || 0) * p.price,
+      hex: TIER_HEX[p.id] || p.color || "#888",
+    })).sort((a, b) => b.rev - a.rev);
+  }, [activePacks, salesByTier]);
+
+  const bestPack = revenueByPack[0];
 
   // ── Simulator state ──
   const [simMode, setSimMode] = useState(false);
@@ -70,64 +91,33 @@ export function OverviewSimulator({
     const gap = Math.max(0, targetRevenue - revenue);
     if (gap === 0) return { needed: {}, totalNeeded: 0, gap: 0, recommendations: [] };
 
-    // Weight-based distribution: how many of each pack to sell
     const totalWeight = Object.values(tierWeights).reduce((s, w) => s + w, 0) || 1;
     const needed: Record<string, number> = {};
     let totalNeeded = 0;
-    let allocatedRevenue = 0;
 
-    // First pass: distribute by weight
     activePacks.forEach(p => {
       const weight = tierWeights[p.id] || 0;
       const share = gap * (weight / totalWeight);
       const count = p.price > 0 ? Math.ceil(share / p.price) : 0;
       needed[p.id] = count;
       totalNeeded += count;
-      allocatedRevenue += count * p.price;
     });
 
-    // Recommendations based on analysis
-    const recommendations: { text: string; priority: "high" | "medium" | "low"; action?: string }[] = [];
+    const recommendations: { text: string; priority: "high" | "medium" | "low" }[] = [];
 
-    // Most profitable pack
-    const bestPack = activePacks.reduce((best, p) => (p.price > (best?.price || 0) ? p : best), activePacks[0]);
-    if (bestPack && needed[bestPack.id] > 0) {
-      recommendations.push({
-        text: `Push ${bestPack.name} (${fmt.format(bestPack.price)}) — ${needed[bestPack.id]} ventes = ${fmt.format(needed[bestPack.id] * bestPack.price)}`,
-        priority: "high",
-        action: "promo_story",
-      });
+    const best = activePacks.reduce((b, p) => (p.price > (b?.price || 0) ? p : b), activePacks[0]);
+    if (best && needed[best.id] > 0) {
+      recommendations.push({ text: `Push ${best.name} (${fmt.format(best.price)}) — ${needed[best.id]} ventes`, priority: "high" });
     }
-
-    // Expiring soon = renewal opportunity
     if (expiringCodes.length > 0) {
-      const renewalRevenue = expiringCodes.reduce((s, c) => {
-        const p = packs.find(pk => pk.id === c.tier);
-        return s + (p?.price || 0);
-      }, 0);
-      recommendations.push({
-        text: `${expiringCodes.length} abonnes expirent bientot — relancer = ${fmt.format(renewalRevenue)} potentiel`,
-        priority: "high",
-        action: "renewal",
-      });
+      const renewRev = expiringCodes.reduce((s, c) => s + (packs.find(pk => pk.id === c.tier)?.price || 0), 0);
+      recommendations.push({ text: `${expiringCodes.length} expirent — relancer = ${fmt.format(renewRev)}`, priority: "high" });
     }
-
-    // Low retention
     if (retentionRate < 70) {
-      recommendations.push({
-        text: `Retention ${retentionRate}% — promo renouvellement ou story exclusive pour fideliser`,
-        priority: "medium",
-        action: "retention",
-      });
+      recommendations.push({ text: `Retention ${retentionRate}% — promo fidelisation`, priority: "medium" });
     }
-
-    // Content gap
     if (stories.length < 3) {
-      recommendations.push({
-        text: `Seulement ${stories.length} stories — publier du contenu exclusif pour attirer de nouveaux abonnes`,
-        priority: "medium",
-        action: "content",
-      });
+      recommendations.push({ text: `${stories.length} stories — publier plus`, priority: "medium" });
     }
 
     return { needed, totalNeeded, gap, recommendations };
@@ -145,105 +135,176 @@ export function OverviewSimulator({
   };
 
   /* ══════════════════════════════════════════════ */
-  /*  Render                                        */
+  /*  Render — Dense 3-column kanban                 */
   /* ══════════════════════════════════════════════ */
 
-  return (
-    <div className="space-y-4">
+  const cardStyle = { background: "var(--surface)", border: "1px solid var(--border)" };
 
-      {/* ═══ SECTION 1: Current Reality — Compact KPIs ═══ */}
-      <div className="flex flex-wrap gap-2">
+  return (
+    <div className="space-y-3">
+
+      {/* ═══ ROW 1: KPIs inline chips + quick actions ═══ */}
+      <div className="flex flex-wrap items-center gap-1.5">
         {[
-          { icon: DollarSign, color: "#10B981", label: "Revenus", value: fmt.format(revenue), sub: "ce mois" },
-          { icon: Users, color: "#D4AF37", label: "Abonnes", value: String(activeCodes.length), sub: `${uniqueClients} uniques` },
-          { icon: TrendingUp, color: "#8B5CF6", label: "Retention", value: `${retentionRate}%`, sub: `${fmt.format(avgPerClient)}/client` },
-          { icon: AlertTriangle, color: "#F59E0B", label: "Expirent", value: String(expiringCodes.length), sub: "a renouveler" },
-        ].map((kpi, i) => (
-          <div key={i} className="rounded-lg px-3 py-2 flex items-center gap-2.5 min-w-0"
-            style={{ background: `${kpi.color}08`, border: `1px solid ${kpi.color}1A` }}>
-            <kpi.icon className="w-3.5 h-3.5 shrink-0" style={{ color: kpi.color }} />
-            <div className="min-w-0">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-sm font-black leading-none" style={{ color: kpi.color }}>{kpi.value}</span>
-                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{kpi.label}</span>
-              </div>
-              <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{kpi.sub}</span>
-            </div>
+          { icon: DollarSign, color: "#10B981", val: fmt.format(revenue), lbl: "rev" },
+          { icon: Users, color: "#D4AF37", val: String(activeCodes.length), lbl: "abo" },
+          { icon: TrendingUp, color: "#8B5CF6", val: `${retentionRate}%`, lbl: "ret" },
+          { icon: AlertTriangle, color: "#F59E0B", val: String(expiringCodes.length), lbl: "exp" },
+        ].map((k, i) => (
+          <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded-md"
+            style={{ background: `${k.color}0A`, border: `1px solid ${k.color}15` }}>
+            <k.icon className="w-3 h-3" style={{ color: k.color }} />
+            <span className="text-xs font-black" style={{ color: k.color }}>{k.val}</span>
+            <span className="text-[9px] font-bold uppercase" style={{ color: "var(--text-muted)" }}>{k.lbl}</span>
           </div>
         ))}
+        <div className="w-px h-4 mx-1" style={{ background: "var(--border)" }} />
+        {[
+          { href: `/m/${modelSlug}`, icon: Eye, color: "#E63329", label: "Profil", onClick: undefined as (() => void) | undefined },
+          { href: `/m/${modelSlug}?edit=true`, icon: Pencil, color: "#D4AF37", label: "Edit", onClick: undefined },
+          { href: undefined as string | undefined, icon: Key, color: "#10B981", label: "Code", onClick: onGenerate },
+          { href: undefined, icon: Zap, color: "#8B5CF6", label: "Contenu", onClick: () => onSwitchTab("contenu") },
+        ].map((a, i) => {
+          const cls = "flex items-center gap-1 px-2 py-1 rounded-md no-underline cursor-pointer transition-all hover:scale-[1.03] active:scale-[0.97]";
+          const st = { background: `${a.color}08`, border: `1px solid ${a.color}12` };
+          return a.href ? (
+            <a key={`a${i}`} href={a.href} target="_blank" rel="noopener" className={cls} style={st}>
+              <a.icon className="w-3 h-3" style={{ color: a.color }} />
+              <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>{a.label}</span>
+            </a>
+          ) : (
+            <button key={`a${i}`} onClick={a.onClick} className={`${cls} text-left`} style={st}>
+              <a.icon className="w-3 h-3" style={{ color: a.color }} />
+              <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>{a.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* ═══ SECTION 2+6: Sales by Pack + Expiring — Kanban ═══ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-        {/* Sales by pack */}
-        <div className="rounded-xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold" style={{ color: "var(--text)" }}>Ventes par pack</span>
-            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{paidCodes.length} total</span>
+      {/* ═══ ROW 2: 3-column kanban — Ventes | Finances | Activite ═══ */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+
+        {/* COL 1: Ventes par pack */}
+        <div className="rounded-xl p-3" style={cardStyle}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Ventes</span>
+            <span className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>{paidCodes.length}</span>
           </div>
-          <div className="space-y-2">
-            {activePacks.map(p => {
-              const count = salesByTier[p.id] || 0;
-              const tierRev = count * p.price;
-              const maxCount = Math.max(...Object.values(salesByTier), 1);
-              const pct = (count / maxCount) * 100;
-              const hex = TIER_HEX[p.id] || p.color || "#888";
+          <div className="space-y-1.5">
+            {revenueByPack.map(p => (
+              <div key={p.id} className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full shrink-0" style={{ background: p.hex }} />
+                <span className="text-[10px] font-bold truncate flex-1" style={{ color: "var(--text)" }}>{p.name}</span>
+                <span className="text-[10px] font-black tabular-nums" style={{ color: p.hex }}>{p.count}</span>
+              </div>
+            ))}
+          </div>
+          {bestPack && bestPack.rev > 0 && (
+            <div className="mt-2 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
+              <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>
+                Top: {bestPack.name} → {fmt.format(bestPack.rev)}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* COL 2: Finances */}
+        <div className="rounded-xl p-3" style={cardStyle}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Finances</span>
+            <span className="text-[10px] font-black" style={{ color: "#10B981" }}>{fmt.format(revenue)}</span>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Moy. / client</span>
+              <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>{fmt.format(avgPerClient)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Codes actifs</span>
+              <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>{activeCodes.length} / {totalCodes}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Gratuits</span>
+              <span className="text-[10px] font-bold" style={{ color: "#F59E0B" }}>{freeCodes}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Revoques</span>
+              <span className="text-[10px] font-bold" style={{ color: "#EF4444" }}>{revokedCodes}</span>
+            </div>
+          </div>
+          {expiringCodes.length > 0 && (
+            <div className="mt-2 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
+              <span className="text-[9px]" style={{ color: "#F59E0B" }}>
+                {expiringCodes.length} a renouveler bientot
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* COL 3: Activite — clients + contenu */}
+        <div className="rounded-xl p-3" style={cardStyle}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Activite</span>
+            <span className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>{clients.length} clients</span>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck className="w-3 h-3 shrink-0" style={{ color: "#10B981" }} />
+              <span className="text-[10px] flex-1" style={{ color: "var(--text-muted)" }}>Verifies</span>
+              <span className="text-[10px] font-bold" style={{ color: "#10B981" }}>{verifiedClients}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-3 h-3 shrink-0" style={{ color: "#F59E0B" }} />
+              <span className="text-[10px] flex-1" style={{ color: "var(--text-muted)" }}>En attente</span>
+              <span className="text-[10px] font-bold" style={{ color: "#F59E0B" }}>{pendingClients}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <UserX className="w-3 h-3 shrink-0" style={{ color: "#EF4444" }} />
+              <span className="text-[10px] flex-1" style={{ color: "var(--text-muted)" }}>Bannis</span>
+              <span className="text-[10px] font-bold" style={{ color: "#EF4444" }}>{bannedClients}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Image className="w-3 h-3 shrink-0" style={{ color: "#8B5CF6" }} />
+              <span className="text-[10px] flex-1" style={{ color: "var(--text-muted)" }}>Stories</span>
+              <span className="text-[10px] font-bold" style={{ color: "#8B5CF6" }}>{stories.length}</span>
+            </div>
+          </div>
+          <div className="mt-2 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
+            <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>
+              Retention {retentionRate}% · {uniqueClients} uniques
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ ROW 3: Expiring codes (if any) — compact single row ═══ */}
+      {expiringCodes.length > 0 && (
+        <div className="rounded-xl px-3 py-2" style={cardStyle}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Clock className="w-3 h-3 shrink-0" style={{ color: "#F59E0B" }} />
+            <span className="text-[10px] font-bold shrink-0" style={{ color: "var(--text)" }}>Expirent:</span>
+            {expiringCodes.map(code => {
+              const client = clients.find(cl => cl.pseudo_snap === code.client || cl.pseudo_insta === code.client || cl.nickname === code.client);
+              const name = client?.pseudo_snap || client?.pseudo_insta || code.client;
+              const pack = packs.find(p => p.id === code.tier);
+              const hex = TIER_HEX[code.tier] || pack?.color || "#888";
+              const timeLeft = new Date(code.expiresAt).getTime() - Date.now();
+              const hoursLeft = Math.floor(timeLeft / 3_600_000);
+              const daysLeft = Math.floor(timeLeft / 86_400_000);
+              const urgency = hoursLeft < 24 ? "#F87171" : hoursLeft < 72 ? "#FBBF24" : "#10B981";
+              const timeStr = daysLeft > 0 ? `${daysLeft}j` : `${hoursLeft}h`;
               return (
-                <div key={p.id} className="flex items-center gap-2">
-                  <div className="w-16 shrink-0 flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: hex }} />
-                    <span className="text-[11px] font-bold truncate" style={{ color: "var(--text)" }}>{p.name}</span>
-                  </div>
-                  <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
-                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: hex }} />
-                  </div>
-                  <span className="text-[11px] font-bold w-6 text-right shrink-0" style={{ color: hex }}>{count}</span>
-                  <span className="text-[10px] w-12 text-right shrink-0" style={{ color: "var(--text-muted)" }}>{fmt.format(tierRev)}</span>
+                <div key={code.code} className="flex items-center gap-1 px-1.5 py-0.5 rounded" style={{ background: `${hex}0A` }}>
+                  <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>@{name}</span>
+                  <span className="text-[9px] font-bold" style={{ color: urgency }}>{timeStr}</span>
                 </div>
               );
             })}
           </div>
         </div>
+      )}
 
-        {/* Expiring subscriptions */}
-        {expiringCodes.length > 0 ? (
-          <div className="rounded-xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <div className="flex items-center gap-2 mb-3">
-              <Clock className="w-3.5 h-3.5" style={{ color: "#F59E0B" }} />
-              <span className="text-xs font-bold" style={{ color: "var(--text)" }}>A renouveler</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: "rgba(245,158,11,0.12)", color: "#F59E0B" }}>{expiringCodes.length}</span>
-            </div>
-            <div className="space-y-1">
-              {expiringCodes.map(code => {
-                const client = clients.find(cl => cl.pseudo_snap === code.client || cl.pseudo_insta === code.client || cl.nickname === code.client);
-                const name = client?.pseudo_snap || client?.pseudo_insta || code.client;
-                const pack = packs.find(p => p.id === code.tier);
-                const hex = TIER_HEX[code.tier] || pack?.color || "#888";
-                const timeLeft = new Date(code.expiresAt).getTime() - Date.now();
-                const hoursLeft = Math.floor(timeLeft / 3_600_000);
-                const daysLeft = Math.floor(timeLeft / 86_400_000);
-                const urgency = hoursLeft < 24 ? "#F87171" : hoursLeft < 72 ? "#FBBF24" : "#10B981";
-                const timeStr = daysLeft > 0 ? `${daysLeft}j` : `${hoursLeft}h`;
-                return (
-                  <div key={code.code} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.02]">
-                    <span className="text-[11px] font-bold truncate flex-1" style={{ color: "var(--text)" }}>@{name}</span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0" style={{ background: `${hex}15`, color: hex }}>
-                      {pack?.name || code.tier}
-                    </span>
-                    <span className="text-[10px] font-bold shrink-0" style={{ color: urgency }}>{timeStr}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-xl p-4 flex items-center justify-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>Aucun abonnement a renouveler</span>
-          </div>
-        )}
-      </div>
-
-      {/* ═══ SECTION 3: Simulator Toggle ═══ */}
+      {/* ═══ ROW 4: Simulator toggle + panel ═══ */}
       <button onClick={() => setSimMode(!simMode)}
         className="inline-flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
         style={{
@@ -257,9 +318,8 @@ export function OverviewSimulator({
         {simMode ? <ChevronUp className="w-3 h-3" style={{ color: "#D4AF37" }} /> : <ChevronDown className="w-3 h-3" style={{ color: "var(--text-muted)" }} />}
       </button>
 
-      {/* ═══ SECTION 4: Simulator Panel ═══ */}
       {simMode && (
-        <div className="rounded-xl p-4 space-y-4" style={{ background: "rgba(212,175,55,0.04)", border: "1px solid rgba(212,175,55,0.15)" }}>
+        <div className="rounded-xl p-4 space-y-3" style={{ background: "rgba(212,175,55,0.04)", border: "1px solid rgba(212,175,55,0.15)" }}>
 
           {/* Target revenue slider */}
           <div>
@@ -279,84 +339,72 @@ export function OverviewSimulator({
               className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
               style={{ background: `linear-gradient(to right, #D4AF37 ${((targetRevenue - 100) / (Math.max(5000, revenue * 3) - 100)) * 100}%, var(--border) ${((targetRevenue - 100) / (Math.max(5000, revenue * 3) - 100)) * 100}%)` }}
             />
-            <div className="flex justify-between mt-1">
-              <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{fmt.format(100)}</span>
-              <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{fmt.format(Math.max(5000, revenue * 3))}</span>
-            </div>
           </div>
 
           {/* Gap indicator */}
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: targetRevenue <= revenue ? "rgba(16,185,129,0.08)" : "rgba(245,158,11,0.06)" }}>
+          <div className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ background: targetRevenue <= revenue ? "rgba(16,185,129,0.08)" : "rgba(245,158,11,0.06)" }}>
             {targetRevenue <= revenue ? (
               <>
-                <Sparkles className="w-4 h-4 shrink-0" style={{ color: "#10B981" }} />
-                <span className="text-[11px] font-bold" style={{ color: "#10B981" }}>Objectif atteint ! +{fmt.format(revenue - targetRevenue)} au-dessus</span>
+                <Sparkles className="w-3.5 h-3.5 shrink-0" style={{ color: "#10B981" }} />
+                <span className="text-[11px] font-bold" style={{ color: "#10B981" }}>Objectif atteint ! +{fmt.format(revenue - targetRevenue)}</span>
               </>
             ) : (
               <>
-                <Target className="w-4 h-4 shrink-0" style={{ color: "#F59E0B" }} />
+                <Target className="w-3.5 h-3.5 shrink-0" style={{ color: "#F59E0B" }} />
                 <span className="text-[11px] font-bold" style={{ color: "#F59E0B" }}>Il manque {fmt.format(simulation.gap)}</span>
-                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>soit ~{simulation.totalNeeded} ventes</span>
+                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>~{simulation.totalNeeded} ventes</span>
               </>
             )}
           </div>
 
-          {/* Calibrator + Recommendations — Kanban */}
+          {/* Calibrator + Recommendations — 2 cols */}
           {targetRevenue > revenue && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              {/* Pack weight calibrator */}
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--text-muted)" }}>
-                  Calibrage par pack
+                  Calibrage
                 </span>
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   {activePacks.map(p => {
                     const weight = tierWeights[p.id] || 0;
                     const needed = simulation.needed[p.id] || 0;
                     const hex = TIER_HEX[p.id] || p.color || "#888";
                     return (
-                      <div key={p.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ background: "rgba(255,255,255,0.02)" }}>
+                      <div key={p.id} className="flex items-center gap-1.5 px-2 py-1 rounded" style={{ background: "rgba(255,255,255,0.02)" }}>
                         <div className="w-2 h-2 rounded-full shrink-0" style={{ background: hex }} />
-                        <span className="text-[11px] font-bold w-14 truncate shrink-0" style={{ color: "var(--text)" }}>{p.name}</span>
-                        <span className="text-[10px] shrink-0" style={{ color: "var(--text-muted)" }}>{fmt.format(p.price)}</span>
-                        <div className="flex items-center gap-0.5 ml-auto">
+                        <span className="text-[10px] font-bold w-12 truncate shrink-0" style={{ color: "var(--text)" }}>{p.name}</span>
+                        <div className="flex items-center gap-px ml-auto">
                           <button onClick={() => updateWeight(p.id, -1)}
-                            className="w-5 h-5 rounded flex items-center justify-center cursor-pointer text-[11px] font-bold"
+                            className="w-4 h-4 rounded flex items-center justify-center cursor-pointer text-[10px] font-bold"
                             style={{ background: "rgba(255,255,255,0.04)", border: "none", color: "var(--text-muted)" }}>-</button>
-                          <div className="flex items-center gap-px">
-                            {[1, 2, 3, 4, 5].map(i => (
-                              <div key={i} className="w-2 h-4 rounded-sm" style={{ background: i <= weight ? hex : "rgba(255,255,255,0.06)" }} />
-                            ))}
-                          </div>
+                          {[1, 2, 3, 4, 5].map(i => (
+                            <div key={i} className="w-1.5 h-3 rounded-sm" style={{ background: i <= weight ? hex : "rgba(255,255,255,0.06)" }} />
+                          ))}
                           <button onClick={() => updateWeight(p.id, 1)}
-                            className="w-5 h-5 rounded flex items-center justify-center cursor-pointer text-[11px] font-bold"
+                            className="w-4 h-4 rounded flex items-center justify-center cursor-pointer text-[10px] font-bold"
                             style={{ background: "rgba(255,255,255,0.04)", border: "none", color: "var(--text-muted)" }}>+</button>
                         </div>
-                        <div className="text-right shrink-0 w-12">
-                          <span className="text-[11px] font-black" style={{ color: hex }}>{needed}</span>
-                          <span className="text-[10px] ml-0.5" style={{ color: "var(--text-muted)" }}>v.</span>
-                        </div>
+                        <span className="text-[10px] font-black w-6 text-right shrink-0" style={{ color: hex }}>{needed}</span>
                       </div>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Recommendations */}
               {simulation.recommendations.length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-2">
                     <Zap className="w-3 h-3" style={{ color: "#D4AF37" }} />
                     <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#D4AF37" }}>Actions</span>
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     {simulation.recommendations.map((rec, i) => (
-                      <div key={i} className="flex items-start gap-2 px-2.5 py-2 rounded-lg"
+                      <div key={i} className="flex items-start gap-1.5 px-2 py-1.5 rounded"
                         style={{ background: rec.priority === "high" ? "rgba(230,51,41,0.04)" : "rgba(255,255,255,0.02)" }}>
-                        <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{
+                        <div className="w-1.5 h-1.5 rounded-full mt-1 shrink-0" style={{
                           background: rec.priority === "high" ? "#E63329" : rec.priority === "medium" ? "#F59E0B" : "var(--text-muted)",
                         }} />
-                        <span className="text-[11px] leading-snug" style={{ color: "var(--text)" }}>{rec.text}</span>
+                        <span className="text-[10px] leading-snug" style={{ color: "var(--text)" }}>{rec.text}</span>
                       </div>
                     ))}
                   </div>
@@ -366,31 +414,6 @@ export function OverviewSimulator({
           )}
         </div>
       )}
-
-      {/* ═══ SECTION 5: Quick Actions — Compact ═══ */}
-      <div className="flex flex-wrap gap-1.5">
-        {[
-          { href: `/m/${modelSlug}`, icon: Eye, label: "Profil", color: "#E63329", onClick: undefined as (() => void) | undefined },
-          { href: `/m/${modelSlug}?edit=true`, icon: Pencil, label: "Modifier", color: "#D4AF37", onClick: undefined },
-          { href: undefined as string | undefined, icon: Key, label: "Code", color: "#10B981", onClick: onGenerate },
-          { href: undefined, icon: Zap, label: "Contenu", color: "#8B5CF6", onClick: () => onSwitchTab("contenu") },
-        ].map((act, i) => {
-          const cls = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all hover:scale-[1.02] active:scale-[0.98] no-underline cursor-pointer";
-          const st = { background: `${act.color}0A`, border: `1px solid ${act.color}1A` };
-          return act.href ? (
-            <a key={i} href={act.href} target="_blank" rel="noopener" className={cls} style={st}>
-              <act.icon className="w-3 h-3" style={{ color: act.color }} />
-              <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{act.label}</span>
-            </a>
-          ) : (
-            <button key={i} onClick={act.onClick} className={`${cls} text-left`} style={st}>
-              <act.icon className="w-3 h-3" style={{ color: act.color }} />
-              <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>{act.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
     </div>
   );
 }
