@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
 
     let query = supabase
       .from("agence_photo_access")
-      .select("*, agence_clients(handle, tier, display_name)")
+      .select("*, agence_clients(id, nickname, pseudo_snap, pseudo_insta, tier)")
       .eq("model", model)
       .order("granted_at", { ascending: false });
 
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
         granted_at: new Date().toISOString(),
         notes: body.notes || null,
       })
-      .select("*, agence_clients(handle, tier, display_name)")
+      .select("*, agence_clients(id, nickname, pseudo_snap, pseudo_insta, tier)")
       .single();
 
     if (error) {

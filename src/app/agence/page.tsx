@@ -220,17 +220,18 @@ export default function AgenceDashboard() {
 
   useEffect(() => { const iv = setInterval(() => setTick(t => t + 1), 60000); return () => clearInterval(iv); }, []);
 
-  // ── Fetch photo accesses for custom folder ──
+  // ── Fetch photo accesses for custom folder (include revoked for history) ──
+  const [accessVersion, setAccessVersion] = useState(0);
   useEffect(() => {
     if (contentFolder !== "custom" || !modelSlug) return;
     setAccessLoading(true);
     const headers = authHeaders();
-    fetch(`/api/uploads/access?model=${toModelId(modelSlug)}`, { headers })
+    fetch(`/api/uploads/access?model=${toModelId(modelSlug)}&active_only=false`, { headers })
       .then(r => r.json())
-      .then(data => setPhotoAccesses(data.accesses || []))
-      .catch(() => {})
+      .then(data => { console.log("[Custom] fetched accesses:", data.accesses?.length); setPhotoAccesses(data.accesses || []); })
+      .catch(err => console.error("[Custom] fetch accesses error:", err))
       .finally(() => setAccessLoading(false));
-  }, [contentFolder, modelSlug, authHeaders]);
+  }, [contentFolder, modelSlug, authHeaders, accessVersion]);
 
   // ── Computed ──
   const modelId = toModelId(modelSlug);
@@ -508,27 +509,30 @@ export default function AgenceDashboard() {
   // ── Custom photo assignment handlers ──
   const handleAssignToClient = useCallback(async (uploadId: string, clientId: string, price: number, sourceTier: string) => {
     try {
-      const headers = authHeaders();
+      const hdrs = authHeaders();
       const res = await fetch("/api/uploads/access", {
         method: "POST",
-        headers,
+        headers: { ...hdrs, "Content-Type": "application/json" },
         body: JSON.stringify({ model: toModelId(modelSlug), upload_id: uploadId, client_id: clientId, source_tier: sourceTier, price }),
       });
       const data = await res.json();
+      console.log("[Custom] assign response:", data);
       if (data.access) {
         setPhotoAccesses(prev => [...prev, data.access]);
         setAssigningPhoto(null);
         setClientSearch("");
         setAssignPrice("");
+        setAccessVersion(v => v + 1); // trigger refetch for fresh data
       }
-    } catch {}
+    } catch (err) { console.error("[Custom] assign error:", err); }
   }, [modelSlug, authHeaders]);
 
   const handleRevokeAccess = useCallback(async (accessId: string) => {
     try {
-      const headers = authHeaders();
-      await fetch(`/api/uploads/access?model=${toModelId(modelSlug)}&id=${accessId}`, { method: "DELETE", headers });
+      const hdrs = authHeaders();
+      await fetch(`/api/uploads/access?model=${toModelId(modelSlug)}&id=${accessId}`, { method: "DELETE", headers: hdrs });
       setPhotoAccesses(prev => prev.map(a => a.id === accessId ? { ...a, revoked_at: new Date().toISOString() } : a));
+      setAccessVersion(v => v + 1);
     } catch {}
   }, [modelSlug, authHeaders]);
 
