@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 import { getAuthUser } from "@/lib/api-auth";
+import { toModelId } from "@/lib/model-utils";
 
 /**
  * GET /api/models/media?model=yumi
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
   // Model-scoping: model role can only access their own data
   const user = await getAuthUser();
   if (user && user.role === "model") {
-    if (model && model !== user.sub) {
+    if (model && toModelId(model) !== toModelId(user.sub)) {
       return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
     }
   }
@@ -71,7 +72,7 @@ export async function PATCH(req: NextRequest) {
     // Model-scoping: model role can only access their own data
     const user = await getAuthUser();
     if (user && user.role === "model") {
-      if (model_slug && model_slug !== user.sub) {
+      if (model_slug && toModelId(model_slug) !== toModelId(user.sub)) {
         return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
       }
     }
@@ -130,7 +131,7 @@ export async function POST(req: NextRequest) {
     // Model-scoping: model role can only access their own data
     const user = await getAuthUser();
     if (user && user.role === "model") {
-      if (model_slug && model_slug !== user.sub) {
+      if (model_slug && toModelId(model_slug) !== toModelId(user.sub)) {
         return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
       }
     }

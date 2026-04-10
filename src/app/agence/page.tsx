@@ -943,7 +943,16 @@ export default function AgenceDashboard() {
           )}
 
           {/* ══════════ TAB: CONTENU — Folder-based upload manager ══════════ */}
-          {activeTab === "contenu" && (
+          {activeTab === "contenu" && (() => {
+            // Merge uploads + posts with media into unified content items
+            type ContentItem = { id: string; url: string; tier: string; source: "upload" | "post"; visibility?: string; date: string; type: string; postContent?: string };
+            const allContent: ContentItem[] = [
+              ...uploads.filter(u => u.dataUrl).map(u => ({ id: u.id, url: u.dataUrl, tier: u.tier || "p0", source: "upload" as const, visibility: u.visibility, date: u.uploadedAt || "", type: u.type || "photo" })),
+              ...feedPosts.filter(p => p.media_url).map(p => ({ id: p.id, url: p.media_url!, tier: p.tier_required || "p0", source: "post" as const, visibility: isFreeSlot(p.tier_required) ? "promo" : "pack", date: p.created_at, type: "photo", postContent: p.content || undefined })),
+            ];
+            const contentCount = (tier: string | null) => tier === null ? allContent.length : allContent.filter(c => c.tier === tier).length;
+
+            return (
             <div className="space-y-4">
 
               {/* ── Folder sidebar + content area ── */}
@@ -953,7 +962,7 @@ export default function AgenceDashboard() {
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Dossiers</span>
-                    <span className="text-[10px] text-white/20 ml-auto">{uploads.length} fichiers</span>
+                    <span className="text-[10px] text-white/20 ml-auto">{allContent.length} fichiers</span>
                   </div>
 
                   {/* All content */}
@@ -965,7 +974,7 @@ export default function AgenceDashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-semibold text-white">Tout le contenu</div>
-                      <div className="text-[10px] text-white/25">{uploads.length} medias</div>
+                      <div className="text-[10px] text-white/25">{allContent.length} medias</div>
                     </div>
                   </button>
 
@@ -978,7 +987,7 @@ export default function AgenceDashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-semibold text-white">Public</div>
-                      <div className="text-[10px] text-white/25">{uploads.filter(u => (u.tier || "p0") === "p0").length} medias · Visible par tous</div>
+                      <div className="text-[10px] text-white/25">{contentCount("p0")} medias · Visible par tous</div>
                     </div>
                   </button>
 
@@ -986,7 +995,7 @@ export default function AgenceDashboard() {
                   {packs.filter(p => p.active).map(pack => {
                     const hex = TIER_HEX[pack.id] || pack.color;
                     const tierMeta = TIER_META[pack.id];
-                    const count = uploads.filter(u => u.tier === pack.id).length;
+                    const count = contentCount(pack.id);
                     const isSelected = contentFolder === pack.id;
                     return (
                       <button key={pack.id} onClick={() => setContentFolder(pack.id)}
@@ -1108,31 +1117,34 @@ export default function AgenceDashboard() {
 
                   {/* Content grid */}
                   {(() => {
-                    const filtered = contentFolder === null ? uploads : uploads.filter(u => (u.tier || "p0") === contentFolder);
+                    const filtered = contentFolder === null ? allContent : allContent.filter(c => c.tier === contentFolder);
                     if (filtered.length === 0) {
                       return (
                         <div className="flex flex-col items-center justify-center py-16 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.06)" }}>
                           <FolderOpen className="w-10 h-10 mb-3 text-white/10" />
                           <p className="text-sm text-white/25 mb-1">Aucun contenu</p>
-                          <p className="text-xs text-white/15">Upload des medias pour remplir ce dossier</p>
+                          <p className="text-xs text-white/15">Upload des medias ou publie des posts avec photo</p>
                         </div>
                       );
                     }
                     return contentViewMode === "grid" ? (
                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5">
-                        {filtered.map(upload => {
-                          const hex = TIER_HEX[upload.tier] || "#64748B";
-                          const tierMeta = TIER_META[upload.tier];
-                          const isBlurred = upload.visibility !== "promo";
-                          const isFree = !upload.tier || upload.tier === "p0";
+                        {filtered.map(item => {
+                          const hex = TIER_HEX[item.tier] || "#64748B";
+                          const tierMeta = TIER_META[item.tier];
+                          const isBlurred = item.visibility !== "promo";
+                          const isFree = !item.tier || item.tier === "p0";
                           return (
-                            <div key={upload.id} className="aspect-[3/4] relative overflow-hidden rounded-xl group"
+                            <div key={item.id} className="aspect-[3/4] relative overflow-hidden rounded-xl group"
                               style={{ border: `1px solid ${isFree ? "rgba(255,255,255,0.06)" : hex + "20"}` }}>
-                              <img src={upload.dataUrl} alt="" className="w-full h-full object-cover transition-all"
+                              <img src={item.url} alt="" className="w-full h-full object-cover transition-all"
                                 style={!isFree && isBlurred ? { filter: "blur(14px) brightness(0.4)", transform: "scale(1.15)" } : { filter: "brightness(0.85)" }} />
 
-                              {/* Tier badge */}
+                              {/* Source + Tier badge */}
                               <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
+                                {item.source === "post" && (
+                                  <span className="text-[7px] font-bold px-1 py-0.5 rounded-full" style={{ background: "rgba(230,51,41,0.8)", color: "#fff" }}>POST</span>
+                                )}
                                 {!isFree && (
                                   <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{
                                     background: `${hex}cc`, color: "#fff", backdropFilter: "blur(4px)"
@@ -1166,27 +1178,28 @@ export default function AgenceDashboard() {
                               {/* Hover actions */}
                               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2"
                                 style={{ WebkitTapHighlightColor: "transparent" }}>
-                                {/* Toggle blur */}
-                                {!isFree && (
-                                  <button onClick={() => handleToggleBlur(upload.id, upload.visibility || "pack")}
-                                    disabled={togglingBlur === upload.id}
+                                {/* Toggle blur — uploads only */}
+                                {!isFree && item.source === "upload" && (
+                                  <button onClick={() => handleToggleBlur(item.id, item.visibility || "pack")}
+                                    disabled={togglingBlur === item.id}
                                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all border-none"
                                     style={{ background: isBlurred ? "rgba(16,185,129,0.9)" : "rgba(139,92,246,0.9)", color: "#fff" }}>
-                                    {togglingBlur === upload.id ? "..." : isBlurred ? <><Eye className="w-3 h-3" /> Promo</> : <><EyeOff className="w-3 h-3" /> Flouter</>}
+                                    {togglingBlur === item.id ? "..." : isBlurred ? <><Eye className="w-3 h-3" /> Promo</> : <><EyeOff className="w-3 h-3" /> Flouter</>}
                                   </button>
                                 )}
-                                {/* Move tier dropdown */}
+                                {/* Move tier — uploads only */}
+                                {item.source === "upload" && (
                                 <div className="relative">
-                                  <button onClick={(e) => { e.stopPropagation(); setMovingUpload(movingUpload === upload.id ? null : upload.id); }}
+                                  <button onClick={(e) => { e.stopPropagation(); setMovingUpload(movingUpload === item.id ? null : item.id); }}
                                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all border-none"
                                     style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }}>
                                     <ArrowRight className="w-3 h-3" /> Deplacer
                                   </button>
-                                  {movingUpload === upload.id && (
+                                  {movingUpload === item.id && (
                                     <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 z-20 rounded-xl overflow-hidden shadow-2xl min-w-[140px]"
                                       style={{ background: "#1a1a22", border: "1px solid rgba(255,255,255,0.1)" }}>
-                                      <button onClick={() => { handleMoveTier(upload.id, "p0"); setMovingUpload(null); }}
-                                        disabled={upload.tier === "p0"}
+                                      <button onClick={() => { handleMoveTier(item.id, "p0"); setMovingUpload(null); }}
+                                        disabled={item.tier === "p0"}
                                         className="w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] cursor-pointer border-none transition-colors hover:bg-white/[0.06] disabled:opacity-30"
                                         style={{ background: "transparent", color: "#64748B" }}>
                                         <Eye className="w-3 h-3" /> Public
@@ -1195,8 +1208,8 @@ export default function AgenceDashboard() {
                                         const ph = TIER_HEX[p.id] || p.color;
                                         const pm = TIER_META[p.id];
                                         return (
-                                          <button key={p.id} onClick={() => { handleMoveTier(upload.id, p.id); setMovingUpload(null); }}
-                                            disabled={upload.tier === p.id}
+                                          <button key={p.id} onClick={() => { handleMoveTier(item.id, p.id); setMovingUpload(null); }}
+                                            disabled={item.tier === p.id}
                                             className="w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] cursor-pointer border-none transition-colors hover:bg-white/[0.06] disabled:opacity-30"
                                             style={{ background: "transparent", color: ph }}>
                                             <span>{pm?.symbol}</span> {p.name}
@@ -1206,20 +1219,25 @@ export default function AgenceDashboard() {
                                     </div>
                                   )}
                                 </div>
+                                )}
                                 {/* Delete */}
-                                {deletingUpload === upload.id ? (
+                                {deletingUpload === item.id ? (
                                   <div className="flex items-center gap-2">
-                                    <button onClick={() => handleDeleteUpload(upload.id)}
+                                    <button onClick={() => item.source === "upload" ? handleDeleteUpload(item.id) : handleDeletePost(item.id)}
                                       className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer border-none" style={{ background: "#DC2626", color: "#fff" }}>Oui</button>
                                     <button onClick={() => setDeletingUpload(null)}
                                       className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer border-none" style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }}>Non</button>
                                   </div>
                                 ) : (
-                                  <button onClick={() => setDeletingUpload(upload.id)}
+                                  <button onClick={() => setDeletingUpload(item.id)}
                                     className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] cursor-pointer border-none transition-colors"
                                     style={{ background: "rgba(220,38,38,0.2)", color: "#F87171" }}>
                                     <Trash2 className="w-3 h-3" /> Supprimer
                                   </button>
+                                )}
+                                {/* Source indicator */}
+                                {item.source === "post" && (
+                                  <span className="text-[9px] text-white/40 mt-1">via Feed</span>
                                 )}
                               </div>
                             </div>
@@ -1241,50 +1259,58 @@ export default function AgenceDashboard() {
                             </tr>
                           </thead>
                           <tbody>
-                            {filtered.map(upload => {
-                              const hex = TIER_HEX[upload.tier] || "#64748B";
-                              const tierMeta = TIER_META[upload.tier];
-                              const isFree = !upload.tier || upload.tier === "p0";
-                              const isBlurred = upload.visibility !== "promo";
+                            {filtered.map(item => {
+                              const hex = TIER_HEX[item.tier] || "#64748B";
+                              const tierMeta = TIER_META[item.tier];
+                              const isFree = !item.tier || item.tier === "p0";
+                              const isBlurred = item.visibility !== "promo";
                               return (
-                                <tr key={upload.id} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors">
+                                <tr key={item.id} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors">
                                   <td className="px-4 py-2">
                                     <div className="w-10 h-12 rounded-lg overflow-hidden">
-                                      <img src={upload.dataUrl} alt="" className="w-full h-full object-cover"
+                                      <img src={item.url} alt="" className="w-full h-full object-cover"
                                         style={!isFree && isBlurred ? { filter: "blur(6px) brightness(0.5)", transform: "scale(1.1)" } : {}} />
                                     </div>
                                   </td>
-                                  <td className="px-4 py-2 text-xs text-white/50">{upload.type || "photo"}</td>
+                                  <td className="px-4 py-2">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-xs text-white/50">{item.type || "photo"}</span>
+                                      {item.source === "post" && <span className="text-[8px] font-bold px-1 py-0.5 rounded" style={{ background: "rgba(230,51,41,0.15)", color: "#E63329" }}>POST</span>}
+                                    </div>
+                                  </td>
                                   <td className="px-4 py-2">
                                     <span className="text-[11px] font-semibold px-2 py-0.5 rounded" style={{ background: `${hex}15`, color: hex }}>
-                                      {isFree ? "Public" : `${tierMeta?.symbol || ""} ${tierMeta?.label || upload.tier}`}
+                                      {isFree ? "Public" : `${tierMeta?.symbol || ""} ${tierMeta?.label || item.tier}`}
                                     </span>
                                   </td>
                                   <td className="px-4 py-2">
                                     {isFree ? (
                                       <span className="text-[10px] text-white/30">Visible</span>
-                                    ) : (
-                                      <button onClick={() => handleToggleBlur(upload.id, upload.visibility || "pack")}
-                                        disabled={togglingBlur === upload.id}
+                                    ) : item.source === "upload" ? (
+                                      <button onClick={() => handleToggleBlur(item.id, item.visibility || "pack")}
+                                        disabled={togglingBlur === item.id}
                                         className="text-[10px] font-semibold px-2 py-0.5 rounded cursor-pointer border-none transition-colors"
                                         style={{ background: isBlurred ? "rgba(139,92,246,0.1)" : "rgba(16,185,129,0.1)", color: isBlurred ? "#8B5CF6" : "#10B981" }}>
-                                        {togglingBlur === upload.id ? "..." : isBlurred ? "🔒 Flou" : "👁 Promo"}
+                                        {togglingBlur === item.id ? "..." : isBlurred ? "🔒 Flou" : "👁 Promo"}
                                       </button>
+                                    ) : (
+                                      <span className="text-[10px] text-white/30">🔒 Pack</span>
                                     )}
                                   </td>
-                                  <td className="px-4 py-2 text-[11px] text-white/25 tabular-nums">{upload.uploadedAt ? relativeTime(upload.uploadedAt) : "-"}</td>
+                                  <td className="px-4 py-2 text-[11px] text-white/25 tabular-nums">{item.date ? relativeTime(item.date) : "-"}</td>
                                   <td className="px-4 py-2 text-right">
                                     <div className="flex items-center gap-1.5 justify-end">
+                                      {item.source === "upload" && (
                                       <div className="relative">
-                                        <button onClick={() => setMovingUpload(movingUpload === upload.id ? null : upload.id)}
+                                        <button onClick={() => setMovingUpload(movingUpload === item.id ? null : item.id)}
                                           className="p-1.5 rounded-lg cursor-pointer border-none bg-transparent text-white/20 hover:text-white/50 hover:bg-white/[0.05] transition-colors">
                                           <ArrowRight className="w-3.5 h-3.5" />
                                         </button>
-                                        {movingUpload === upload.id && (
+                                        {movingUpload === item.id && (
                                           <div className="absolute top-full right-0 mt-1 z-20 rounded-xl overflow-hidden shadow-2xl min-w-[140px]"
                                             style={{ background: "#1a1a22", border: "1px solid rgba(255,255,255,0.1)" }}>
-                                            <button onClick={() => { handleMoveTier(upload.id, "p0"); setMovingUpload(null); }}
-                                              disabled={upload.tier === "p0"}
+                                            <button onClick={() => { handleMoveTier(item.id, "p0"); setMovingUpload(null); }}
+                                              disabled={item.tier === "p0"}
                                               className="w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] cursor-pointer border-none transition-colors hover:bg-white/[0.06] disabled:opacity-30"
                                               style={{ background: "transparent", color: "#64748B" }}>
                                               <Eye className="w-3 h-3" /> Public
@@ -1293,8 +1319,8 @@ export default function AgenceDashboard() {
                                               const ph = TIER_HEX[p.id] || p.color;
                                               const pm = TIER_META[p.id];
                                               return (
-                                                <button key={p.id} onClick={() => { handleMoveTier(upload.id, p.id); setMovingUpload(null); }}
-                                                  disabled={upload.tier === p.id}
+                                                <button key={p.id} onClick={() => { handleMoveTier(item.id, p.id); setMovingUpload(null); }}
+                                                  disabled={item.tier === p.id}
                                                   className="w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] cursor-pointer border-none transition-colors hover:bg-white/[0.06] disabled:opacity-30"
                                                   style={{ background: "transparent", color: ph }}>
                                                   <span>{pm?.symbol}</span> {p.name}
@@ -1304,13 +1330,14 @@ export default function AgenceDashboard() {
                                           </div>
                                         )}
                                       </div>
-                                      {deletingUpload === upload.id ? (
+                                      )}
+                                      {deletingUpload === item.id ? (
                                         <div className="flex items-center gap-1">
-                                          <button onClick={() => handleDeleteUpload(upload.id)} className="p-1 rounded text-[9px] font-bold cursor-pointer border-none" style={{ background: "#DC2626", color: "#fff" }}>✓</button>
+                                          <button onClick={() => item.source === "upload" ? handleDeleteUpload(item.id) : handleDeletePost(item.id)} className="p-1 rounded text-[9px] font-bold cursor-pointer border-none" style={{ background: "#DC2626", color: "#fff" }}>✓</button>
                                           <button onClick={() => setDeletingUpload(null)} className="p-1 rounded text-[9px] cursor-pointer border-none" style={{ background: "rgba(255,255,255,0.1)", color: "#fff" }}>✕</button>
                                         </div>
                                       ) : (
-                                        <button onClick={() => setDeletingUpload(upload.id)}
+                                        <button onClick={() => setDeletingUpload(item.id)}
                                           className="p-1.5 rounded-lg cursor-pointer border-none bg-transparent text-white/15 hover:text-red-400 transition-colors">
                                           <Trash2 className="w-3.5 h-3.5" />
                                         </button>
@@ -1331,14 +1358,14 @@ export default function AgenceDashboard() {
                     const pack = packs.find(p => p.id === contentFolder);
                     if (!pack) return null;
                     const hex = TIER_HEX[contentFolder] || pack.color;
-                    const tierUploads = uploads.filter(u => u.tier === contentFolder);
-                    const promoCount = tierUploads.filter(u => u.visibility === "promo").length;
-                    const blurredCount = tierUploads.length - promoCount;
+                    const tierItems = allContent.filter(c => c.tier === contentFolder);
+                    const promoCount = tierItems.filter(c => c.visibility === "promo").length;
+                    const blurredCount = tierItems.length - promoCount;
                     return (
                       <div className="flex items-center gap-6 mt-4 px-1">
                         <div className="flex items-center gap-1.5">
                           <div className="w-2 h-2 rounded-full" style={{ background: hex }} />
-                          <span className="text-[10px] text-white/30">{tierUploads.length} total</span>
+                          <span className="text-[10px] text-white/30">{tierItems.length} total</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Lock className="w-3 h-3 text-white/20" />
@@ -1354,7 +1381,8 @@ export default function AgenceDashboard() {
                 </div>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ══════════ TAB: REVENUE ══════════ */}
           {activeTab === "revenue" && (

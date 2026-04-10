@@ -3,6 +3,7 @@ import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getAuthUser } from "@/lib/api-auth";
+import { toModelId } from "@/lib/model-utils";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
     // Model-scoping: model role can only access their own data
     const user = await getAuthUser();
     if (user && user.role === "model") {
-      if (model && model !== user.sub) {
+      if (model && toModelId(model) !== toModelId(user.sub)) {
         return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
       }
     }
@@ -135,7 +136,7 @@ export async function DELETE(req: NextRequest) {
     // Model-scoping: model role can only access their own data
     const user = await getAuthUser();
     if (user && user.role === "model") {
-      if (model && model !== user.sub) {
+      if (model && toModelId(model) !== toModelId(user.sub)) {
         return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
       }
     }
