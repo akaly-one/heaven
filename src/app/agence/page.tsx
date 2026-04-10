@@ -1075,7 +1075,7 @@ export default function AgenceDashboard() {
                     </div>
                   )}
 
-                  {/* ── Inline Pack Config + Privacy — when a pack folder is selected ── */}
+                  {/* ── Inline Pack Config — when a pack folder is selected ── */}
                   {contentFolder && contentFolder !== "p0" && (() => {
                     const pack = packs.find(p => p.id === contentFolder);
                     if (!pack) return null;
@@ -1085,7 +1085,7 @@ export default function AgenceDashboard() {
                     const soldCount = modelCodes.filter(c => c.tier === pack.id && c.type === "paid" && !c.revoked).length;
                     const packRevenue = soldCount * pack.price;
                     const isExpCfg = expandedPack === `cfg-${pack.id}`;
-                    const previewImgs = allContent.filter(c => c.tier === contentFolder).slice(0, 3);
+                    const previewImgs = allContent.filter(c => c.tier === contentFolder).slice(0, 4);
                     const accessibleBy = packs.filter(p => {
                       const pLevel = parseInt(p.id.replace("p", ""), 10);
                       const thisLevel = parseInt(contentFolder!.replace("p", ""), 10);
@@ -1098,87 +1098,81 @@ export default function AgenceDashboard() {
                         {/* Collapsed header */}
                         <div className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-white/[0.02] transition-colors"
                           onClick={() => setExpandedPack(isExpCfg ? null : `cfg-${pack.id}`)}>
-                          <Settings className="w-3.5 h-3.5 shrink-0" style={{ color: hex }} />
-                          <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-                            <span className="text-xs font-semibold text-white">{pack.name}</span>
-                            <span className="text-xs font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
-                            <span className="text-[10px]" style={{ color: pack.active ? "#10B981" : "#6B7280" }}>{pack.active ? "● Actif" : "○ Off"}</span>
-                            <span className="text-[10px] text-white/20">·</span>
-                            <span className="text-[10px] text-white/30 tabular-nums">{soldCount} vendus · {fmt.format(packRevenue)}</span>
+                          <span className="text-base shrink-0">{tierSymbol}</span>
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="text-xs font-bold text-white">{pack.name}</span>
+                            <span className="text-sm font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
+                            <span className="text-[10px] tabular-nums text-white/30">{soldCount} vendus · {fmt.format(packRevenue)}</span>
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            {!isExpCfg && (
-                              <button onClick={(e) => { e.stopPropagation(); setEditingPacks(true); setExpandedPack(`cfg-${pack.id}`); }}
-                                className="px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer border border-white/[0.06] bg-transparent text-white/30 hover:text-white/50 transition-colors">
-                                <Pencil className="w-3 h-3 inline mr-0.5" />Edit
-                              </button>
-                            )}
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{
+                              background: pack.active ? "rgba(16,185,129,0.1)" : "rgba(107,114,128,0.1)",
+                              color: pack.active ? "#10B981" : "#6B7280" }}>
+                              {pack.active ? "ON" : "OFF"}
+                            </span>
                             <ChevronDown className="w-3.5 h-3.5 text-white/25 transition-transform" style={{ transform: isExpCfg ? "rotate(180deg)" : "rotate(0)" }} />
                           </div>
                         </div>
 
-                        {/* Expanded — profile-like layout */}
+                        {/* Expanded — profile-mirror + config */}
                         {isExpCfg && (
                           <div className="border-t" style={{ borderColor: `${hex}15` }}>
-                            <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-0">
-                              {/* LEFT: Photo preview (mirrors profile blurred grid) */}
-                              <div className="relative overflow-hidden md:rounded-bl-xl" style={{ minHeight: "160px", background: `linear-gradient(135deg, ${hex}10, ${hex}05)` }}>
-                                {previewImgs.length > 0 ? (
-                                  <div className="grid grid-cols-3 gap-0.5 h-full">
-                                    {previewImgs.map((img, i) => (
-                                      <div key={i} className="relative overflow-hidden">
-                                        <img src={img.url} alt="" className="w-full h-full object-cover" style={{ filter: "blur(14px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" />
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${hex}12, ${hex}06)` }} />}
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <div className="w-12 h-12 rounded-xl flex items-center justify-center backdrop-blur-sm"
-                                    style={{ background: `${hex}25`, border: `1.5px solid ${hex}40` }}>
-                                    <span className="text-2xl">{tierSymbol}</span>
+                            <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-0">
+
+                              {/* LEFT: "Vue client" — what subscribers see on profile */}
+                              <div className="relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${hex}08, ${hex}03)` }}>
+                                <div className="text-[8px] font-bold uppercase tracking-wider text-center py-1.5" style={{ background: `${hex}15`, color: hex }}>
+                                  Vue client sur le profil
+                                </div>
+                                <div className="relative" style={{ minHeight: "140px" }}>
+                                  {previewImgs.length > 0 ? (
+                                    <div className="grid grid-cols-2 gap-0.5 p-1.5">
+                                      {previewImgs.map((img, i) => (
+                                        <div key={i} className="aspect-[3/4] relative overflow-hidden rounded-lg">
+                                          <img src={img.url} alt="" className="w-full h-full object-cover" style={{ filter: "blur(14px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" />
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center justify-center h-full p-4">
+                                      <span className="text-[10px] text-white/20">Aucune photo</span>
+                                    </div>
+                                  )}
+                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ top: "20px" }}>
+                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center backdrop-blur-sm"
+                                      style={{ background: `${hex}30`, border: `1px solid ${hex}40` }}>
+                                      <Lock className="w-4 h-4" style={{ color: hex }} />
+                                    </div>
                                   </div>
                                 </div>
-                                <div className="absolute bottom-2 left-2 right-2 flex items-center justify-center gap-1.5">
-                                  <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ background: `${hex}30`, color: "#fff", backdropFilter: "blur(4px)" }}>
-                                    <Lock className="w-2 h-2 inline mr-0.5" />Floute
-                                  </span>
-                                  <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ background: "rgba(16,185,129,0.25)", color: "#fff", backdropFilter: "blur(4px)" }}>
-                                    <Eye className="w-2 h-2 inline mr-0.5" />Promo
-                                  </span>
+                                {/* Access rule */}
+                                <div className="px-3 py-2 text-center" style={{ borderTop: `1px solid ${hex}10` }}>
+                                  <p className="text-[9px] text-white/30 leading-relaxed">
+                                    Accessible : <span className="font-bold" style={{ color: hex }}>{pack.name}</span>
+                                    {accessibleBy.length > 0 && <span className="text-white/20"> + {accessibleBy.map(a => a.name).join(", ")}</span>}
+                                  </p>
                                 </div>
                               </div>
 
                               {/* RIGHT: Config fields */}
-                              <div className="px-4 py-3 space-y-3">
-                                {/* Header row: name + price + stats + edit */}
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-0.5">
-                                      {editingPacks ? (
-                                        <input value={pack.name} onChange={e => updatePack(pack.id, "name", e.target.value)}
-                                          className="px-2 py-1 rounded-lg text-sm font-bold bg-white/[0.05] border border-white/[0.1] text-white outline-none focus:border-[#D4AF37] transition-colors w-28" />
-                                      ) : (
-                                        <span className="text-sm font-bold text-white">{pack.name}</span>
-                                      )}
-                                      {editingPacks ? (
-                                        <input type="number" value={pack.price} onChange={e => updatePack(pack.id, "price", Number(e.target.value))}
-                                          className="px-2 py-1 rounded-lg text-sm font-black tabular-nums bg-white/[0.05] border border-white/[0.1] text-white outline-none focus:border-[#D4AF37] transition-colors w-20" />
-                                      ) : (
-                                        <span className="text-lg font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-2 text-[10px] text-white/30 tabular-nums">
-                                      <span>{soldCount} vendus</span>
-                                      <span>·</span>
-                                      <span style={{ color: hex }}>{fmt.format(packRevenue)}</span>
-                                      <span>·</span>
-                                      <a href={`/m/${modelSlug}#${pack.id}`} target="_blank" rel="noopener"
-                                        className="no-underline transition-colors flex items-center gap-0.5" style={{ color: hex }}>
-                                        <Eye className="w-2.5 h-2.5" /> Profil
-                                      </a>
-                                    </div>
+                              <div className="px-4 py-3 space-y-2.5">
+                                {/* Row 1: name + price + edit */}
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2">
+                                    {editingPacks ? (
+                                      <input value={pack.name} onChange={e => updatePack(pack.id, "name", e.target.value)}
+                                        className="px-2 py-1 rounded-lg text-sm font-bold bg-white/[0.05] border border-white/[0.1] text-white outline-none focus:border-[#D4AF37] transition-colors w-24" />
+                                    ) : (
+                                      <span className="text-sm font-bold text-white">{pack.name}</span>
+                                    )}
+                                    {editingPacks ? (
+                                      <input type="number" value={pack.price} onChange={e => updatePack(pack.id, "price", Number(e.target.value))}
+                                        className="px-2 py-1 rounded-lg text-sm font-black tabular-nums bg-white/[0.05] border border-white/[0.1] text-white outline-none focus:border-[#D4AF37] transition-colors w-16" />
+                                    ) : (
+                                      <span className="text-lg font-black tabular-nums" style={{ color: hex }}>{pack.price}€</span>
+                                    )}
                                   </div>
-                                  <div className="flex items-center gap-1.5 shrink-0">
+                                  <div className="flex items-center gap-1.5">
                                     {editingPacks ? (
                                       <>
                                         <button onClick={() => setEditingPacks(false)}
@@ -1200,19 +1194,19 @@ export default function AgenceDashboard() {
                                   </div>
                                 </div>
 
-                                {/* Status + Badge inline */}
+                                {/* Row 2: status + badge */}
                                 <div className="flex items-center gap-2 flex-wrap">
                                   {editingPacks ? (
                                     <button onClick={() => updatePack(pack.id, "active", !pack.active)}
                                       className="px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-all border-none"
                                       style={{ background: pack.active ? "rgba(16,185,129,0.15)" : "rgba(107,114,128,0.15)", color: pack.active ? "#10B981" : "#6B7280" }}>
-                                      {pack.active ? "✓ Actif" : "✕ Inactif"}
+                                      {pack.active ? "✓ Visible sur profil" : "✕ Masque"}
                                     </button>
                                   ) : (
                                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg" style={{
                                       background: pack.active ? "rgba(16,185,129,0.1)" : "rgba(107,114,128,0.1)",
                                       color: pack.active ? "#10B981" : "#6B7280" }}>
-                                      {pack.active ? "● Visible" : "○ Masque"}
+                                      {pack.active ? "● Visible sur profil" : "○ Masque"}
                                     </span>
                                   )}
                                   {editingPacks ? (
@@ -1222,15 +1216,15 @@ export default function AgenceDashboard() {
                                   ) : pack.badge ? (
                                     <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: `${hex}15`, color: hex }}>{pack.badge}</span>
                                   ) : null}
-                                  {/* Privacy inline */}
-                                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded flex items-center gap-1" style={{ background: `${hex}10`, color: `${hex}` }}>
-                                    <Shield className="w-2.5 h-2.5" />
-                                    {accessibleBy.length > 0 ? `${pack.name} +${accessibleBy.length}` : pack.name}
-                                  </span>
+                                  <a href={`/m/${modelSlug}#${pack.id}`} target="_blank" rel="noopener"
+                                    className="text-[10px] font-medium no-underline transition-colors flex items-center gap-0.5 ml-auto" style={{ color: hex }}>
+                                    <Eye className="w-3 h-3" /> Voir profil
+                                  </a>
                                 </div>
 
                                 {/* Features compact */}
-                                <div className="space-y-1">
+                                <div className="space-y-1 pt-1 border-t border-white/[0.04]">
+                                  <span className="text-[9px] uppercase tracking-wider text-white/20 font-medium">Contenu inclus</span>
                                   {(pack.features || []).map((feat, i) => (
                                     <div key={i} className="flex items-center gap-1.5">
                                       <Check className="w-3 h-3 shrink-0" style={{ color: hex }} />
@@ -1276,59 +1270,50 @@ export default function AgenceDashboard() {
                         {filtered.map(item => {
                           const hex = TIER_HEX[item.tier] || "#64748B";
                           const tierMeta = TIER_META[item.tier];
-                          const isBlurred = item.visibility !== "promo";
+                          const isPromo = item.visibility === "promo";
                           const isFree = !item.tier || item.tier === "p0";
                           return (
                             <div key={item.id} className="aspect-[3/4] relative overflow-hidden rounded-xl group"
                               style={{ border: `1px solid ${isFree ? "rgba(255,255,255,0.06)" : hex + "20"}` }}>
-                              <img src={item.url} alt="" className="w-full h-full object-cover transition-all"
-                                style={!isFree && isBlurred ? { filter: "blur(14px) brightness(0.4)", transform: "scale(1.15)" } : { filter: "brightness(0.85)" }} />
+                              {/* CP mode: always show photos clearly */}
+                              <img src={item.url} alt="" className="w-full h-full object-cover" style={{ filter: "brightness(0.9)" }} />
 
                               {/* Source + Tier badge */}
                               <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
                                 {item.source === "post" && (
                                   <span className="text-[7px] font-bold px-1 py-0.5 rounded-full" style={{ background: "rgba(230,51,41,0.8)", color: "#fff" }}>POST</span>
                                 )}
-                                {!isFree && (
+                                {!isFree && contentFolder === null && (
                                   <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{
                                     background: `${hex}cc`, color: "#fff", backdropFilter: "blur(4px)"
                                   }}>{tierMeta?.symbol} {tierMeta?.label}</span>
                                 )}
-                                {isFree && (
+                                {isFree && contentFolder === null && (
                                   <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{
                                     background: "rgba(100,116,139,0.8)", color: "#fff"
                                   }}>Public</span>
                                 )}
                               </div>
 
-                              {/* Visibility badge */}
+                              {/* Client visibility indicator — what client sees */}
                               {!isFree && (
-                                <div className="absolute top-1.5 right-1.5">
-                                  <span className="text-[7px] font-bold uppercase px-1 py-0.5 rounded-full" style={{
-                                    background: isBlurred ? "rgba(0,0,0,0.7)" : "rgba(16,185,129,0.8)", color: "#fff"
-                                  }}>{isBlurred ? "🔒" : "👁"}</span>
-                                </div>
-                              )}
-
-                              {/* Lock overlay for blurred non-free */}
-                              {!isFree && isBlurred && (
-                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${hex}30`, backdropFilter: "blur(4px)" }}>
-                                    <Lock className="w-3.5 h-3.5 text-white/80" />
-                                  </div>
+                                <div className="absolute bottom-1.5 right-1.5">
+                                  <span className="text-[7px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{
+                                    background: isPromo ? "rgba(16,185,129,0.85)" : "rgba(0,0,0,0.6)", color: "#fff", backdropFilter: "blur(4px)"
+                                  }}>{isPromo ? "Visible" : "Prive"}</span>
                                 </div>
                               )}
 
                               {/* Hover actions */}
                               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2"
                                 style={{ WebkitTapHighlightColor: "transparent" }}>
-                                {/* Toggle blur — uploads only */}
+                                {/* Toggle visibility — uploads only */}
                                 {!isFree && item.source === "upload" && (
                                   <button onClick={() => handleToggleBlur(item.id, item.visibility || "pack")}
                                     disabled={togglingBlur === item.id}
                                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all border-none"
-                                    style={{ background: isBlurred ? "rgba(16,185,129,0.9)" : "rgba(139,92,246,0.9)", color: "#fff" }}>
-                                    {togglingBlur === item.id ? "..." : isBlurred ? <><Eye className="w-3 h-3" /> Promo</> : <><EyeOff className="w-3 h-3" /> Flouter</>}
+                                    style={{ background: isPromo ? "rgba(139,92,246,0.9)" : "rgba(16,185,129,0.9)", color: "#fff" }}>
+                                    {togglingBlur === item.id ? "..." : isPromo ? <><EyeOff className="w-3 h-3" /> Rendre prive</> : <><Eye className="w-3 h-3" /> Rendre visible</>}
                                   </button>
                                 )}
                                 {/* Move tier — uploads only */}
