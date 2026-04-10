@@ -426,6 +426,38 @@ export default function AgenceDashboard() {
     } catch { /* rollback on next fetch */ }
   }, [modelSlug, authHeaders]);
 
+  // ── Drag & Drop handlers (stable refs) ──
+  const onDragStartItem = useCallback((e: React.DragEvent, itemId: string, source: "upload" | "post") => {
+    e.dataTransfer.setData("application/json", JSON.stringify({ id: itemId, source }));
+    e.dataTransfer.effectAllowed = "move";
+    // Need a small timeout so the drag image renders before opacity change
+    requestAnimationFrame(() => setDragItem(itemId));
+  }, []);
+
+  const onDragOverTarget = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }, []);
+
+  const onDropTarget = useCallback((e: React.DragEvent, targetTier: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverTarget(null);
+    setDragItem(null);
+    try {
+      const raw = e.dataTransfer.getData("application/json");
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data.source === "upload") handleMoveTier(data.id, targetTier);
+      else if (data.source === "post") handleChangePostTier(data.id, targetTier);
+    } catch {}
+  }, [handleMoveTier, handleChangePostTier]);
+
+  const onDragEndItem = useCallback(() => {
+    setDragItem(null);
+    setDragOverTarget(null);
+  }, []);
+
   const handleUpdateGroupLabel = useCallback(async (uploadId: string, groupLabel: string | null) => {
     try {
       const res = await fetch("/api/uploads", {
@@ -990,29 +1022,6 @@ export default function AgenceDashboard() {
             const tierSlots = ["p0", "p1", "p2", "p3", "p4", "p5", "custom"];
             const activeTiers = tierSlots.filter(t => allContent.some(c => c.tier === t));
 
-            // ── Drag handlers ──
-            const onDragStart = (e: React.DragEvent, itemId: string, source: "upload" | "post") => {
-              e.dataTransfer.setData("text/plain", JSON.stringify({ id: itemId, source }));
-              e.dataTransfer.effectAllowed = "move";
-              setDragItem(itemId);
-            };
-            const onDragOverFolder = (e: React.DragEvent, targetId: string) => {
-              e.preventDefault();
-              e.dataTransfer.dropEffect = "move";
-              setDragOverTarget(targetId);
-            };
-            const onDragLeaveFolder = () => setDragOverTarget(null);
-            const onDropFolder = (e: React.DragEvent, targetTier: string) => {
-              e.preventDefault();
-              try {
-                const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-                if (data.source === "upload") handleMoveTier(data.id, targetTier);
-                else if (data.source === "post") handleChangePostTier(data.id, targetTier);
-              } catch {}
-              setDragItem(null);
-              setDragOverTarget(null);
-            };
-
             return (
             <div className="space-y-4">
 
@@ -1056,9 +1065,9 @@ export default function AgenceDashboard() {
                           background: isDragOver ? `${hex}08` : "rgba(255,255,255,0.02)",
                           border: isDragOver ? `2px dashed ${hex}` : "1px solid rgba(255,255,255,0.06)",
                         }}
-                        onDragOver={e => onDragOverFolder(e, `col-${tier}`)}
-                        onDragLeave={onDragLeaveFolder}
-                        onDrop={e => { e.preventDefault(); onDropFolder(e, tier); }}>
+                        onDragOver={e => { onDragOverTarget(e); setDragOverTarget(`col-${tier}`); }}
+                        onDragLeave={() => setDragOverTarget(null)}
+                        onDrop={e => onDropTarget(e, tier)}>
                         {/* Column header */}
                         <div className="flex items-center gap-1.5 px-2.5 py-2 shrink-0" style={{ borderBottom: `2px solid ${hex}25` }}>
                           <div className="w-2 h-2 rounded-full" style={{ background: hex }} />
@@ -1069,8 +1078,9 @@ export default function AgenceDashboard() {
                         <div className="flex-1 overflow-y-auto p-1.5" style={{ scrollbarWidth: "thin" }}>
                           <div className="grid grid-cols-3 gap-1">
                             {tierPosts.map(item => (
-                              <div key={item.id} draggable={item.source === "upload"}
-                                onDragStart={item.source === "upload" ? (e) => onDragStart(e, item.id, item.source) : undefined}
+                              <div key={item.id} draggable
+                                onDragStart={(e) => onDragStartItem(e, item.id, item.source)}
+                                onDragEnd={onDragEndItem}
                                 className="relative aspect-square rounded-lg overflow-hidden cursor-grab active:cursor-grabbing group"
                                 style={{
                                   border: "1px solid rgba(255,255,255,0.06)",
@@ -1105,10 +1115,10 @@ export default function AgenceDashboard() {
                   </div>
 
                   {/* All content */}
-                  <button onClick={() => setContentFolder(null)}
-                    onDragOver={e => onDragOverFolder(e, "all")} onDragLeave={onDragLeaveFolder} onDrop={e => onDropFolder(e, "p0")}
-                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left cursor-pointer transition-all border-none ${contentFolder === null ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}
-                    style={dragOverTarget === "all" ? { border: "2px dashed #D4AF37", background: "rgba(212,175,55,0.05)" } : {}}>
+                  <div onClick={() => setContentFolder(null)}
+                    onDragOver={e => { onDragOverTarget(e); setDragOverTarget("all"); }} onDragLeave={() => setDragOverTarget(null)} onDrop={e => onDropTarget(e, "p0")}
+                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl cursor-pointer transition-all ${contentFolder === null ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}
+                    style={dragOverTarget === "all" ? { outline: "2px dashed #D4AF37", outlineOffset: "-2px", background: "rgba(212,175,55,0.05)" } : {}}>
                     <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
                       style={{ background: contentFolder === null ? "rgba(212,175,55,0.12)" : "rgba(255,255,255,0.04)" }}>
                       <Grid3x3 className="w-4 h-4" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.3)" }} />
@@ -1117,13 +1127,13 @@ export default function AgenceDashboard() {
                       <div className="text-xs font-semibold text-white">Tout le contenu</div>
                       <div className="text-[10px] text-white/25">{allContent.length} medias</div>
                     </div>
-                  </button>
+                  </div>
 
                   {/* Public folder */}
-                  <button onClick={() => setContentFolder("p0")}
-                    onDragOver={e => onDragOverFolder(e, "p0")} onDragLeave={onDragLeaveFolder} onDrop={e => onDropFolder(e, "p0")}
-                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left cursor-pointer transition-all border-none ${contentFolder === "p0" ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}
-                    style={dragOverTarget === "p0" ? { border: "2px dashed #64748B", background: "rgba(100,116,139,0.05)" } : {}}>
+                  <div onClick={() => setContentFolder("p0")}
+                    onDragOver={e => { onDragOverTarget(e); setDragOverTarget("p0"); }} onDragLeave={() => setDragOverTarget(null)} onDrop={e => onDropTarget(e, "p0")}
+                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl cursor-pointer transition-all ${contentFolder === "p0" ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}
+                    style={dragOverTarget === "p0" ? { outline: "2px dashed #64748B", outlineOffset: "-2px", background: "rgba(100,116,139,0.05)" } : {}}>
                     <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
                       style={{ background: contentFolder === "p0" ? "rgba(100,116,139,0.15)" : "rgba(255,255,255,0.04)" }}>
                       <Eye className="w-4 h-4" style={{ color: contentFolder === "p0" ? "#64748B" : "rgba(255,255,255,0.3)" }} />
@@ -1132,7 +1142,7 @@ export default function AgenceDashboard() {
                       <div className="text-xs font-semibold text-white">Public</div>
                       <div className="text-[10px] text-white/25">{contentCount("p0")} medias · Visible par tous</div>
                     </div>
-                  </button>
+                  </div>
 
                   {/* Pack folders */}
                   {packs.filter(p => p.active).map(pack => {
@@ -1142,10 +1152,10 @@ export default function AgenceDashboard() {
                     const isSelected = contentFolder === pack.id;
                     const isDragOverThis = dragOverTarget === pack.id;
                     return (
-                      <button key={pack.id} onClick={() => setContentFolder(pack.id)}
-                        onDragOver={e => onDragOverFolder(e, pack.id)} onDragLeave={onDragLeaveFolder} onDrop={e => onDropFolder(e, pack.id)}
-                        className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left cursor-pointer transition-all border-none ${isSelected ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}
-                        style={isDragOverThis ? { border: `2px dashed ${hex}`, background: `${hex}08` } : {}}>
+                      <div key={pack.id} onClick={() => setContentFolder(pack.id)}
+                        onDragOver={e => { onDragOverTarget(e); setDragOverTarget(pack.id); }} onDragLeave={() => setDragOverTarget(null)} onDrop={e => onDropTarget(e, pack.id)}
+                        className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl cursor-pointer transition-all ${isSelected ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}
+                        style={isDragOverThis ? { outline: `2px dashed ${hex}`, outlineOffset: "-2px", background: `${hex}08` } : {}}>
                         <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
                           style={{ background: isSelected ? `${hex}18` : "rgba(255,255,255,0.04)", border: isSelected ? `1px solid ${hex}30` : "1px solid transparent" }}>
                           <span className="text-base">{tierMeta?.symbol || "📁"}</span>
@@ -1158,15 +1168,15 @@ export default function AgenceDashboard() {
                           <div className="text-[10px] text-white/25">{count} medias · {pack.price}€</div>
                         </div>
                         <div className="w-2 h-2 rounded-full shrink-0" style={{ background: hex }} />
-                      </button>
+                      </div>
                     );
                   })}
 
                   {/* Custom folder */}
-                  <button onClick={() => setContentFolder("custom")}
-                    onDragOver={e => onDragOverFolder(e, "custom")} onDragLeave={onDragLeaveFolder} onDrop={e => onDropFolder(e, "custom")}
-                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left cursor-pointer transition-all border-none ${contentFolder === "custom" ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}
-                    style={dragOverTarget === "custom" ? { border: "2px dashed #D4AF37", background: "rgba(212,175,55,0.05)" } : {}}>
+                  <div onClick={() => setContentFolder("custom")}
+                    onDragOver={e => { onDragOverTarget(e); setDragOverTarget("custom"); }} onDragLeave={() => setDragOverTarget(null)} onDrop={e => onDropTarget(e, "custom")}
+                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl cursor-pointer transition-all ${contentFolder === "custom" ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}
+                    style={dragOverTarget === "custom" ? { outline: "2px dashed #D4AF37", outlineOffset: "-2px", background: "rgba(212,175,55,0.05)" } : {}}>
                     <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
                       style={{ background: contentFolder === "custom" ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.04)" }}>
                       <Sparkles className="w-4 h-4" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.3)" }} />
@@ -1175,7 +1185,7 @@ export default function AgenceDashboard() {
                       <div className="text-xs font-semibold text-white">Custom</div>
                       <div className="text-[10px] text-white/25">{customCount} medias · A l&apos;unite</div>
                     </div>
-                  </button>
+                  </div>
 
                   {/* Upload button */}
                   <div className="pt-3 mt-2 border-t border-white/[0.06]">
@@ -1430,8 +1440,9 @@ export default function AgenceDashboard() {
                           const isFree = !item.tier || item.tier === "p0";
                           return (
                             <div key={item.id}
-                              draggable={item.source === "upload"}
-                              onDragStart={item.source === "upload" ? (e) => onDragStart(e, item.id, item.source) : undefined}
+                              draggable
+                              onDragStart={(e) => onDragStartItem(e, item.id, item.source)}
+                                onDragEnd={onDragEndItem}
                               className="aspect-[3/4] relative overflow-hidden rounded-xl group cursor-grab active:cursor-grabbing"
                               style={{
                                 border: `1px solid ${isFree ? "rgba(255,255,255,0.06)" : hex + "20"}`,
@@ -1440,17 +1451,15 @@ export default function AgenceDashboard() {
                                 transition: "opacity 0.15s, transform 0.15s",
                               }}>
                               {/* Grip indicator on hover */}
-                              {item.source === "upload" && (
-                                <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-70 transition-opacity z-10">
-                                  <GripVertical className="w-3 h-3 text-white drop-shadow-lg" />
-                                </div>
-                              )}
+                              <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-70 transition-opacity z-10">
+                                <GripVertical className="w-3 h-3 text-white drop-shadow-lg" />
+                              </div>
                               {/* CP mode: always show photos clearly */}
                               <img src={item.url} alt="" className="w-full h-full object-cover" draggable={false} style={{ filter: "brightness(0.9)" }}
                                 onClick={() => setZoomUrl(item.url)} />
 
                               {/* Source + Tier badge */}
-                              <div className="absolute top-1.5 left-1.5 flex items-center gap-1" style={{ left: item.source === "upload" ? "18px" : "6px" }}>
+                              <div className="absolute top-1.5 flex items-center gap-1" style={{ left: "18px" }}>
                                 {item.source === "post" && (
                                   <span className="text-[7px] font-bold px-1 py-0.5 rounded-full" style={{ background: "rgba(230,51,41,0.8)", color: "#fff" }}>POST</span>
                                 )}
@@ -1572,8 +1581,9 @@ export default function AgenceDashboard() {
                               const isBlurred = item.visibility !== "promo";
                               return (
                                 <tr key={item.id}
-                                  draggable={item.source === "upload"}
-                                  onDragStart={item.source === "upload" ? (e) => onDragStart(e, item.id, item.source) : undefined}
+                                  draggable
+                                  onDragStart={(e) => onDragStartItem(e, item.id, item.source)}
+                                onDragEnd={onDragEndItem}
                                   className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors cursor-grab active:cursor-grabbing"
                                   style={{ opacity: dragItem === item.id ? 0.3 : 1 }}>
                                   <td className="px-4 py-2">
