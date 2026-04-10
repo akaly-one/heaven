@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Eye, Pencil, Image as ImageIcon, Heart, MessageCircle, Trash2, X,
   Newspaper, Camera, RefreshCw, Users, Key, DollarSign, TrendingUp,
@@ -11,6 +12,7 @@ import {
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { GenerateModal } from "@/components/cockpit/generate-modal";
+import { OverviewSimulator } from "@/components/cockpit/overview-simulator";
 import type { PackConfig, AccessCode, ClientInfo, FeedPost, WallPost, UploadedContent } from "@/types/heaven";
 import { DEFAULT_PACKS } from "@/constants/packs";
 import { toSlot, isFreeSlot } from "@/lib/tier-utils";
@@ -94,9 +96,14 @@ export default function AgenceDashboard() {
   const { currentModel, auth, authHeaders, isRoot, ready } = useModel();
   const _modelSlug = currentModel || auth?.model_slug || null;
   const modelSlug = _modelSlug ?? "";
+  const searchParams = useSearchParams();
 
-  // ── Tab state ──
-  const [activeTab, setActiveTab] = useState<TabId>("overview");
+  // ── Tab state — read from ?tab= query param on mount ──
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    const tab = searchParams.get("tab");
+    if (tab && TABS.some(t => t.id === tab)) return tab as TabId;
+    return "overview";
+  });
 
   // ── State ──
   const [codes, setCodes] = useState<AccessCode[]>([]);
@@ -730,7 +737,22 @@ export default function AgenceDashboard() {
           </div>
 
           {/* ══════════ TAB: OVERVIEW ══════════ */}
-          {activeTab === "overview" && (() => {
+          {activeTab === "overview" && (
+            <OverviewSimulator
+              revenue={revenue}
+              activeCodes={activeCodes}
+              modelCodes={modelCodes}
+              packs={packs}
+              clients={clients}
+              uniqueClients={uniqueClients}
+              retentionRate={retentionRate}
+              stories={stories}
+              modelSlug={modelSlug}
+              onSwitchTab={(tab) => setActiveTab(tab as TabId)}
+              onGenerate={() => window.dispatchEvent(new Event("heaven:generate"))}
+            />
+          )}
+          {/* old overview removed */ false && (() => {
             // Expiring subscriptions: active codes sorted by expiry, soonest first
             const expiringCodes = modelCodes
               .filter(c => c.active && !c.revoked && c.expiresAt && !isExpired(c.expiresAt))

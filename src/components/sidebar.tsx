@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, ChevronLeft, ChevronRight,
   Crown, Settings, Target, LogOut, DollarSign,
-  Zap, Network,
+  Zap, Network, FolderOpen,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -14,6 +14,7 @@ import { ThemeToggle } from "./theme-toggle";
 // ── Navigation — 4 model pages + root tools ──
 const NAV_MAIN = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/agence", color: "#E63329" },
+  { id: "contenu", label: "Contenu", icon: FolderOpen, href: "/agence?tab=contenu", color: "#D4AF37" },
   { id: "clients", label: "Clients", icon: Users, href: "/agence/clients", color: "#F59E0B" },
   { id: "strategie", label: "Stratégie", icon: Target, href: "/agence/strategie", color: "#10B981" },
 ] as const;
@@ -28,6 +29,7 @@ const NAV_ROOT = [
 // Mobile bottom nav — all pages in horizontal scroll
 const MOBILE_NAV_MAIN = [
   { id: "dashboard", label: "Home", icon: LayoutDashboard, href: "/agence" },
+  { id: "contenu", label: "Contenu", icon: FolderOpen, href: "/agence?tab=contenu" },
   { id: "clients", label: "Clients", icon: Users, href: "/agence/clients" },
   { id: "strategie", label: "Stratégie", icon: Target, href: "/agence/strategie" },
 ] as const;
@@ -74,8 +76,9 @@ export function Sidebar() {
   const visibleRoot = isRoot ? NAV_ROOT : [];
 
   const renderNavItem = (item: { id: string; label: string; icon: any; href: string; color: string }) => {
-    const isActive = pathname === item.href || (item.href !== "/agence" && pathname.startsWith(item.href));
-    const isDashActive = item.href === "/agence" && pathname === "/agence";
+    const isContenu = item.href.includes("tab=contenu");
+    const isActive = !isContenu && (pathname === item.href || (item.href !== "/agence" && pathname.startsWith(item.href)));
+    const isDashActive = item.href === "/agence" && pathname === "/agence" && !isContenu;
     const active = isActive || isDashActive;
     return (
       <a key={item.id} href={item.href}

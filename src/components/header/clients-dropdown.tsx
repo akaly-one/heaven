@@ -1,6 +1,6 @@
 "use client";
 
-import { X, ExternalLink, CheckCircle, XCircle, ShieldAlert, ShoppingBag, Check, Ban, Clock, Key, ArrowRight } from "lucide-react";
+import { X, ExternalLink, CheckCircle, XCircle, ShieldAlert, ShoppingBag, Check, Ban, Clock, Key, ArrowRight, Send } from "lucide-react";
 
 interface ClientItem {
   id: string; pseudo_snap: string | null; pseudo_insta: string | null;
@@ -109,15 +109,19 @@ export function ClientsDropdown({
               </div>
             )}
 
-            {/* Pending clients — Step 1: verify profile */}
+            {/* Pending clients — compact verification row */}
             {pendingItems.map(({ client: c, pseudo, order }) => {
               const isSnap = !!c.pseudo_snap;
               const profileUrl = isSnap
                 ? `https://snapchat.com/add/${c.pseudo_snap}`
                 : c.pseudo_insta ? `https://instagram.com/${c.pseudo_insta}` : null;
-              const platformLabel = isSnap ? "Snapchat" : "Instagram";
               const pColor = isSnap ? "#C4A600" : "#C13584";
               const isProcessing = verifyingId === c.id;
+
+              // Countdown: hours left before 48h auto-ban
+              const elapsedMs = Date.now() - new Date(c.created_at).getTime();
+              const hoursLeft = Math.max(0, Math.floor((48 * 3600_000 - elapsedMs) / 3_600_000));
+              const isPast48h = elapsedMs >= 48 * 3600_000;
 
               // Parse order info if exists
               const orderAmount = order?.content?.match(/\((\d+)€\)/)?.[1];
@@ -125,64 +129,56 @@ export function ClientsDropdown({
               const orderPayment = order?.content?.match(/via\s+(\w+)/i)?.[1];
 
               return (
-                <div key={`pipe-${c.id}`} className="px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
-                  {/* Client header */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                      style={{ background: `${pColor}20`, color: pColor }}>
-                      {pseudo.charAt(0).toUpperCase()}
+                <div key={`pipe-${c.id}`} style={{ borderBottom: "1px solid var(--border)" }}>
+                  {/* Compact verification row */}
+                  <div className="flex items-center gap-1.5 px-3 py-2">
+                    {/* Platform bubble + pseudo */}
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-full shrink-0"
+                      style={{ background: `${pColor}12`, border: `1px solid ${pColor}25` }}>
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: pColor }} />
+                      <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>@{pseudo}</span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[11px] font-bold truncate block" style={{ color: "var(--text)" }}>@{pseudo}</span>
-                      <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                        {c.lead_source ? `via ${c.lead_source}` : platformLabel} · {new Date(c.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
-                      </span>
-                    </div>
-                  </div>
 
-                  {/* Step 1: Verify profile */}
-                  <div className="ml-4 pl-4 space-y-2" style={{ borderLeft: "2px solid #F59E0B" }}>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold uppercase" style={{ color: "#F59E0B" }}>Etape 1</span>
-                      <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Verifier le profil</span>
-                    </div>
+                    {/* Countdown */}
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0"
+                      style={{ background: isPast48h ? "rgba(220,38,38,0.1)" : "rgba(255,255,255,0.04)", color: isPast48h ? "#DC2626" : hoursLeft < 12 ? "#F59E0B" : "var(--text-muted)" }}>
+                      <Clock className="w-2.5 h-2.5 inline mr-0.5" />{isPast48h ? "exp" : `${hoursLeft}h`}
+                    </span>
+
+                    <div className="flex-1" />
+
+                    {/* Actions: Open platform + Verify + Reject */}
                     {profileUrl && (
                       <a href={profileUrl} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-[11px] font-bold no-underline transition-all hover:scale-[1.02] active:scale-[0.97]"
-                        style={{ background: `${pColor}10`, color: pColor, border: `1px solid ${pColor}30` }}>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        Ouvrir {platformLabel}
-                        <span className="text-[10px] font-normal ml-auto" style={{ opacity: 0.6 }}>@{pseudo}</span>
+                        className="px-2 py-1 rounded text-[10px] font-bold no-underline shrink-0"
+                        style={{ background: `${pColor}10`, color: pColor, border: `1px solid ${pColor}20` }}>
+                        <Send className="w-3 h-3 inline mr-0.5" />{isSnap ? "Snap" : "Insta"}
                       </a>
                     )}
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => onVerify(c.id, "verify")} disabled={isProcessing}
-                        className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.97]"
-                        style={{ background: "rgba(16,185,129,0.12)", color: "#10B981", border: "1px solid rgba(16,185,129,0.25)", opacity: isProcessing ? 0.5 : 1 }}>
-                        <CheckCircle className="w-3.5 h-3.5" /> Profil OK
-                      </button>
-                      <button onClick={() => onVerify(c.id, "reject")} disabled={isProcessing}
-                        className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.97]"
-                        style={{ background: "rgba(239,68,68,0.08)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.2)", opacity: isProcessing ? 0.5 : 1 }}>
-                        <XCircle className="w-3.5 h-3.5" /> Rejeter
-                      </button>
-                    </div>
-
-                    {/* Step 2 preview: order waiting (greyed out until verified) */}
-                    {order && (
-                      <div className="mt-2 opacity-40">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <span className="text-[10px] font-bold uppercase" style={{ color: "#A855F7" }}>Etape 2</span>
-                          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Confirmer paiement</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.1)" }}>
-                          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{orderItem || "Pack"}</span>
-                          {orderAmount && <span className="text-[10px] font-bold" style={{ color: "#10B981" }}>{orderAmount}€</span>}
-                          {orderPayment && <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: "rgba(0,0,0,0.06)", color: "var(--text-muted)" }}>via {orderPayment}</span>}
-                        </div>
-                      </div>
-                    )}
+                    <button onClick={() => onVerify(c.id, "verify")} disabled={isProcessing}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer shrink-0"
+                      style={{ background: "rgba(16,185,129,0.1)", color: "#10B981", border: "1px solid rgba(16,185,129,0.2)", opacity: isProcessing ? 0.4 : 1 }}
+                      title="Valider">
+                      <Check className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => onVerify(c.id, "reject")} disabled={isProcessing}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer shrink-0"
+                      style={{ background: "rgba(239,68,68,0.06)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.15)", opacity: isProcessing ? 0.4 : 1 }}
+                      title="Faux pseudo — bannir">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   </div>
+
+                  {/* Order preview (if exists) — compact sub-row */}
+                  {order && (
+                    <div className="flex items-center gap-2 px-3 pb-2 ml-8">
+                      <ShoppingBag className="w-3 h-3 shrink-0" style={{ color: "#A855F7", opacity: 0.5 }} />
+                      <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{orderItem || "Pack"}</span>
+                      {orderAmount && <span className="text-[10px] font-bold" style={{ color: "#10B981" }}>{orderAmount}€</span>}
+                      {orderPayment && <span className="text-[9px] px-1 py-0.5 rounded" style={{ background: "rgba(0,0,0,0.06)", color: "var(--text-muted)" }}>via {orderPayment}</span>}
+                      <span className="text-[9px]" style={{ color: "var(--text-muted)", opacity: 0.5 }}>en attente validation</span>
+                    </div>
+                  )}
                 </div>
               );
             })}

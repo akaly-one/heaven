@@ -9,10 +9,11 @@ import {
   Copy, Link2, Send, UserPlus, GitMerge, User, Clock,
   ShieldCheck, ShieldX, ShieldAlert, Filter, Package,
   ChevronDown, ChevronRight, Tag, Settings, AlertTriangle,
-  Zap, Eye, MoreHorizontal,
+  Zap, Eye, MoreHorizontal, FolderOpen, List, Grid3x3, Sparkles,
 } from "lucide-react";
 import type { AccessCode, Message, PackConfig } from "@/types/heaven";
 import { isInactive, shouldPurge, formatBelgium, expiresIn, isExpired } from "@/lib/timezone";
+import { TIER_META, TIER_HEX } from "@/constants/tiers";
 
 /* ── Types ── */
 
@@ -107,6 +108,10 @@ export default function ClientsCRMPage() {
   const [genType, setGenType] = useState<"paid" | "promo" | "gift">("paid");
   const [genPromoCode, setGenPromoCode] = useState("");
   const msgEndRef = useRef<HTMLDivElement>(null);
+
+  /* ── View mode: folder (by pack) or list (classic) ── */
+  const [clientViewMode, setClientViewMode] = useState<"folders" | "list">("folders");
+  const [clientFolder, setClientFolder] = useState<string | null>(null); // null = all, "p0"-"p5", "custom", "none"
 
   /* ── Merge modal ── */
   const [mergeModal, setMergeModal] = useState<Client[] | null>(null);
@@ -212,6 +217,27 @@ export default function ClientsCRMPage() {
   const inactiveCount = enriched.filter(c => c.isInactive48h).length;
   const totalUnread = enriched.reduce((s, c) => s + c.unreadCount, 0);
   const purgeable = enriched.filter(c => c.shouldPurge7d);
+
+  // ── Tier-based folder grouping ──
+  const getClientTier = useCallback((c: ClientEnriched) => {
+    if (c.activeCodes.length > 0) return c.activeCodes[0].tier;
+    return c.tier || "none";
+  }, []);
+
+  const displayClients = useMemo(() => {
+    if (clientFolder === null) return filtered;
+    if (clientFolder === "visitors") {
+      // Visitors = no sub (none/p0) + inactive 48h unverified + purgeable 7d
+      return filtered.filter(c => {
+        const t = getClientTier(c);
+        if (t === "none" || t === "p0") return true;
+        if (c.isInactive48h && (c.verified_status || "pending") === "pending") return true;
+        if (c.shouldPurge7d) return true;
+        return false;
+      });
+    }
+    return filtered.filter(c => getClientTier(c) === clientFolder);
+  }, [filtered, clientFolder, getClientTier]);
 
   /* ── Helpers ── */
   const handleCopy = (text: string, id: string) => { navigator.clipboard.writeText(text); setCopied(id); setTimeout(() => setCopied(null), 2000); };
@@ -523,20 +549,299 @@ export default function ClientsCRMPage() {
         </div>
 
         {/* ═══════════════════════════════════ */}
+        {/*  VIEW MODE TOGGLE + FOLDER VIEW     */}
+        {/* ═══════════════════════════════════ */}
+        {(() => {
+          const fmt = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+          const surface = "rounded-xl";
+          // Paid tier slots only (no "none" — those go to "visitors")
+          const paidTierSlots = ["p1", "p2", "p3", "p4", "p5", "custom"];
+          const tierLabels: Record<string, string> = { custom: "Custom", visitors: "Visiteurs / À purger" };
+          const tierIcons: Record<string, string> = { custom: "✦", visitors: "⚠" };
+          const clientsByTier = paidTierSlots.reduce((acc, tier) => {
+            acc[tier] = filtered.filter(c => getClientTier(c) === tier);
+            return acc;
+          }, {} as Record<string, ClientEnriched[]>);
+          // "visitors" = no subscription (none/p0) + inactive48h + purgeable — all merged
+          const visitorsSet = new Set<string>();
+          filtered.forEach(c => {
+            const t = getClientTier(c);
+            if (t === "none" || t === "p0") visitorsSet.add(c.id);
+            if (c.isInactive48h && (c.verified_status || "pending") === "pending") visitorsSet.add(c.id);
+            if (c.shouldPurge7d) visitorsSet.add(c.id);
+          });
+          clientsByTier["visitors"] = filtered.filter(c => visitorsSet.has(c.id));
+          const allSlots = [...paidTierSlots, "visitors"];
+          const activeTiers = allSlots.filter(t => clientsByTier[t].length > 0);
+
+          return (
+            <>
+              {/* View mode toggle bar */}
+              <div className="flex items-center gap-2 px-4 py-2" style={{ borderBottom: "1px solid var(--border)" }}>
+                <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+                  <button onClick={() => setClientViewMode("folders")}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium cursor-pointer border-none transition-colors"
+                    style={{ background: clientViewMode === "folders" ? "var(--accent)" : "transparent", color: clientViewMode === "folders" ? "#fff" : "var(--text-muted)" }}>
+                    <FolderOpen className="w-3 h-3" /> Dossiers
+                  </button>
+                  <button onClick={() => { setClientViewMode("list"); setClientFolder(null); }}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium cursor-pointer border-none transition-colors"
+                    style={{ background: clientViewMode === "list" ? "var(--accent)" : "transparent", color: clientViewMode === "list" ? "#fff" : "var(--text-muted)" }}>
+                    <List className="w-3 h-3" /> Liste
+                  </button>
+                </div>
+                {clientViewMode === "folders" && clientFolder && (
+                  <button onClick={() => setClientFolder(null)} className="text-[11px] font-medium cursor-pointer px-2 py-1 rounded-lg"
+                    style={{ background: "var(--surface)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+                    ← Tous les dossiers
+                  </button>
+                )}
+                <div className="flex-1" />
+                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                  {clientViewMode === "folders" && clientFolder ? `${displayClients.length} clients` : `${filtered.length} clients`}
+                </span>
+              </div>
+
+              {/* Folder sidebar view */}
+              {clientViewMode === "folders" && !clientFolder && (
+                <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {/* All clients folder */}
+                  <button onClick={() => { setClientViewMode("list"); setClientFolder(null); }}
+                    className={`${surface} p-3 text-left cursor-pointer border-none transition-all hover:scale-[1.02] active:scale-[0.98]`}
+                    style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Grid3x3 className="w-4 h-4" style={{ color: "var(--accent)" }} />
+                      <span className="text-xs font-bold" style={{ color: "var(--text)" }}>Tous</span>
+                    </div>
+                    <div className="text-lg font-black" style={{ color: "var(--accent)" }}>{filtered.length}</div>
+                    <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>clients</div>
+                  </button>
+
+                  {/* Pack folders */}
+                  {activeTiers.map(tier => {
+                    const isVisitors = tier === "visitors";
+                    const count = clientsByTier[tier].length;
+                    const tierMeta = TIER_META[tier];
+                    const hex = isVisitors ? "#F59E0B" : (TIER_HEX[tier] || (tier === "custom" ? "#D4AF37" : "#888"));
+                    const label = isVisitors ? "Visiteurs" : (tierMeta?.label || tierLabels[tier] || tier);
+                    const symbol = isVisitors ? "⚠" : (tierMeta?.symbol || tierIcons[tier] || "📁");
+                    const pack = packs.find(p => p.id === tier);
+                    const tierRevenue = isVisitors ? 0 : codes.filter(c => c.tier === tier && c.type === "paid" && !c.revoked).length * (pack?.price || 0);
+                    const inactive48hCount = isVisitors ? clientsByTier[tier].filter(c => c.isInactive48h).length : 0;
+
+                    return (
+                      <button key={tier} onClick={() => setClientFolder(tier)}
+                        className={`${surface} p-3 text-left cursor-pointer border-none transition-all hover:scale-[1.02] active:scale-[0.98]`}
+                        style={{ background: `${hex}08`, border: `1px solid ${hex}${isVisitors ? "30" : "20"}` }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-base">{symbol}</span>
+                          <span className="text-xs font-bold" style={{ color: isVisitors ? hex : "var(--text)" }}>{label}</span>
+                        </div>
+                        <div className="text-lg font-black" style={{ color: hex }}>{count}</div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                            {isVisitors ? "à purger" : "clients"}
+                          </span>
+                          {tierRevenue > 0 && <span className="text-[10px] font-bold" style={{ color: hex }}>{fmt.format(tierRevenue)}</span>}
+                          {isVisitors && inactive48hCount > 0 && (
+                            <span className="text-[10px] font-bold" style={{ color: "#DC2626" }}>{inactive48hCount} &gt;48h</span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Folder detail view — show clients in selected folder */}
+              {clientViewMode === "folders" && clientFolder && (() => {
+                const isVisitors = clientFolder === "visitors";
+                const hex = isVisitors ? "#F59E0B" : (TIER_HEX[clientFolder] || (clientFolder === "custom" ? "#D4AF37" : "#64748B"));
+                const tierMeta = TIER_META[clientFolder];
+                const label = isVisitors ? "Visiteurs / À purger" : (tierMeta?.label || tierLabels[clientFolder] || clientFolder);
+                const symbol = isVisitors ? "⚠" : (tierMeta?.symbol || tierIcons[clientFolder] || "📁");
+                const inactive48hInFolder = displayClients.filter(c => c.isInactive48h && (c.verified_status || "pending") === "pending").length;
+                const purge7dInFolder = displayClients.filter(c => c.shouldPurge7d).length;
+
+                return (
+                  <div className="px-4 pt-3 pb-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-base">{symbol}</span>
+                      <span className="text-sm font-bold" style={{ color: "var(--text)" }}>{label}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: `${hex}15`, color: hex }}>{displayClients.length}</span>
+                      <div className="flex-1" />
+                      {isVisitors && displayClients.length > 0 && (
+                        <div className="flex items-center gap-1.5">
+                          {inactive48hInFolder > 0 && (
+                            <button onClick={purgeInactive48h} className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                              style={{ background: "rgba(245,158,11,0.08)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)" }}>
+                              <AlertTriangle className="w-3 h-3 inline mr-0.5" />Ban 48h ({inactive48hInFolder})
+                            </button>
+                          )}
+                          {purge7dInFolder > 0 && (
+                            <button onClick={runCleanup} className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                              style={{ background: "rgba(220,38,38,0.06)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.12)" }}>
+                              <Trash2 className="w-3 h-3 inline mr-0.5" />Purger 7j+ ({purge7dInFolder})
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {isVisitors && (
+                      <p className="text-[10px] mb-2" style={{ color: "var(--text-muted)" }}>
+                        Pseudos non vérifiés — accès bloqué après 48h, ban auto du pseudo après 7j
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+            </>
+          );
+        })()}
+
+        {/* ═══════════════════════════════════ */}
         {/*  CLIENT LIST — Main content         */}
         {/* ═══════════════════════════════════ */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto" style={{ display: clientViewMode === "folders" && !clientFolder ? "none" : undefined }}>
           {loading && <p className="text-xs text-center py-8" style={{ color: "var(--text-muted)" }}>Chargement...</p>}
-          {!loading && filtered.length === 0 && (
-            <p className="text-xs text-center py-8" style={{ color: "var(--text-muted)" }}>Aucun client</p>
+          {!loading && displayClients.length === 0 && (
+            <p className="text-xs text-center py-8" style={{ color: "var(--text-muted)" }}>Aucun client dans ce dossier</p>
           )}
 
-          {!loading && filtered.map(c => {
+          {!loading && displayClients.map(c => {
             const pseudo = pseudoOf(c);
             const isExpanded = expandedClient === c.id;
             const isSelected = selected.has(c.id);
             const tierColor = TIER_COLORS[c.activeCodes[0]?.tier || ""] || "var(--text-muted)";
+            const vs = c.verified_status || "pending";
+            const isVisitorRow = clientFolder === "visitors" || (vs !== "verified" && c.activeCodes.length === 0);
 
+            // ── Countdown: hours left before 48h auto-ban ──
+            const createdMs = new Date(c.created_at).getTime();
+            const elapsedMs = Date.now() - createdMs;
+            const purge48hMs = 48 * 3600_000;
+            const purge7dMs = 7 * 86_400_000;
+            const hoursLeft48 = Math.max(0, Math.floor((purge48hMs - elapsedMs) / 3_600_000));
+            const daysLeft7 = Math.max(0, Math.ceil((purge7dMs - elapsedMs) / 86_400_000));
+            const isPast48h = elapsedMs >= purge48hMs;
+            const isPast7d = elapsedMs >= purge7dMs;
+
+            // ── Snap/Insta deep link ──
+            const snapLink = c.pseudo_snap ? `https://www.snapchat.com/add/${c.pseudo_snap}` : null;
+            const instaLink = c.pseudo_insta ? `https://www.instagram.com/${c.pseudo_insta}` : null;
+            const platformLink = snapLink || instaLink;
+
+            /* ═══ VISITOR ROW — compact verification ═══ */
+            if (isVisitorRow && vs === "pending") {
+              return (
+                <div key={c.id} className="flex items-center gap-2 px-3 py-2 relative" style={{ borderBottom: "1px solid var(--border)" }}>
+                  <button onClick={() => toggleSelect(c.id)}
+                    className="w-6 h-6 flex items-center justify-center shrink-0 cursor-pointer"
+                    style={{ background: "transparent", border: "none" }}>
+                    <span className="w-3.5 h-3.5 rounded flex items-center justify-center"
+                      style={{ background: isSelected ? "var(--accent)" : "var(--bg)", border: `1px solid ${isSelected ? "var(--accent)" : "var(--border)"}` }}>
+                      {isSelected && <Check className="w-2 h-2 text-white" />}
+                    </span>
+                  </button>
+                  {/* Platform icon + pseudo bubble */}
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-full shrink-0"
+                    style={{ background: `${platformColor(c)}12`, border: `1px solid ${platformColor(c)}25` }}>
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: platformColor(c) }} />
+                    <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>@{pseudo}</span>
+                  </div>
+                  {/* Countdown timer */}
+                  {isPast7d ? (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0" style={{ background: "rgba(220,38,38,0.1)", color: "#DC2626" }}>BANNI</span>
+                  ) : isPast48h ? (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>
+                      <Clock className="w-2.5 h-2.5 inline mr-0.5" />{daysLeft7}j ban
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0" style={{ background: "rgba(255,255,255,0.04)", color: hoursLeft48 < 12 ? "#F59E0B" : "var(--text-muted)" }}>
+                      <Clock className="w-2.5 h-2.5 inline mr-0.5" />{hoursLeft48}h
+                    </span>
+                  )}
+                  <div className="flex-1" />
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setShowGenerateFor(showGenerateFor === c.id ? null : c.id)}
+                      className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                      style={{ background: "rgba(16,185,129,0.08)", color: "#10B981", border: "1px solid rgba(16,185,129,0.15)" }}>
+                      <Key className="w-3 h-3 inline mr-0.5" />Code
+                    </button>
+                    {platformLink && (
+                      <a href={platformLink} target="_blank" rel="noopener noreferrer"
+                        className="px-2 py-1 rounded text-[10px] font-bold no-underline"
+                        style={{ background: `${platformColor(c)}10`, color: platformColor(c), border: `1px solid ${platformColor(c)}20` }}>
+                        <Send className="w-3 h-3 inline mr-0.5" />{isSnap(c) ? "Snap" : "Insta"}
+                      </a>
+                    )}
+                    <button onClick={() => verifyClient(c.id, "verify")}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer"
+                      style={{ background: "rgba(16,185,129,0.1)", color: "#10B981", border: "1px solid rgba(16,185,129,0.2)" }} title="Valider">
+                      <Check className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => verifyClient(c.id, "reject")}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer"
+                      style={{ background: "rgba(220,38,38,0.06)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.15)" }} title="Faux — bannir">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {/* Generate code popover */}
+                  {showGenerateFor === c.id && (
+                    <div className="absolute right-3 top-full z-40 w-64 rounded-xl p-3 space-y-2"
+                      style={{ background: "var(--bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}
+                      onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Activation @{pseudo}</span>
+                        <button onClick={() => setShowGenerateFor(null)} className="cursor-pointer" style={{ background: "none", border: "none", color: "var(--text-muted)" }}><X className="w-3 h-3" /></button>
+                      </div>
+                      <button onClick={() => generateCode(c.id)} className="w-full py-2 rounded-lg text-[11px] font-bold cursor-pointer"
+                        style={{ background: "var(--accent)", color: "#fff", border: "none" }}>
+                        Générer code d'activation
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            /* ═══ REJECTED ROW — banned pseudo archive ═══ */
+            if (isVisitorRow && vs === "rejected") {
+              return (
+                <div key={c.id} className="flex items-center gap-2 px-3 py-2 opacity-50" style={{ borderBottom: "1px solid var(--border)" }}>
+                  <button onClick={() => toggleSelect(c.id)}
+                    className="w-6 h-6 flex items-center justify-center shrink-0 cursor-pointer"
+                    style={{ background: "transparent", border: "none" }}>
+                    <span className="w-3.5 h-3.5 rounded flex items-center justify-center"
+                      style={{ background: isSelected ? "var(--accent)" : "var(--bg)", border: `1px solid ${isSelected ? "var(--accent)" : "var(--border)"}` }}>
+                      {isSelected && <Check className="w-2 h-2 text-white" />}
+                    </span>
+                  </button>
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-full"
+                    style={{ background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.12)" }}>
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: platformColor(c) }} />
+                    <span className="text-[11px] font-bold line-through" style={{ color: "var(--text-muted)" }}>@{pseudo}</span>
+                  </div>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(220,38,38,0.08)", color: "#DC2626" }}>BANNI</span>
+                  <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{formatBelgium(c.created_at, "short")}</span>
+                  <div className="flex-1" />
+                  <button onClick={() => verifyClient(c.id, "verify")}
+                    className="px-2 py-1 rounded text-[10px] cursor-pointer"
+                    style={{ background: "rgba(16,185,129,0.06)", color: "#10B981", border: "1px solid rgba(16,185,129,0.12)" }} title="Restaurer si erreur">
+                    Restaurer
+                  </button>
+                  <button onClick={async () => {
+                    await fetch(`/api/clients?id=${c.id}&model=${toModelId(model)}`, { method: "DELETE", headers: authHeaders() });
+                    fetchAll();
+                  }} className="p-1 cursor-pointer" style={{ color: "var(--text-muted)", background: "none", border: "none" }} title="Supprimer définitivement">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            }
+
+            /* ═══ STANDARD ROW — paid/verified clients ═══ */
             return (
               <div key={c.id} style={{ borderBottom: "1px solid var(--border)" }}>
                 {/* ── Client row ── */}
@@ -563,7 +868,7 @@ export default function ClientsCRMPage() {
                     style={{
                       background: c.unreadCount > 0 ? `${platformColor(c)}18` : "rgba(255,255,255,0.04)",
                       color: c.unreadCount > 0 ? platformColor(c) : "var(--text-muted)",
-                      border: c.isInactive48h ? "2px solid rgba(245,158,11,0.4)" : `2px solid ${platformColor(c)}30`,
+                      border: `2px solid ${platformColor(c)}30`,
                     }}>
                     {pseudo.charAt(0).toUpperCase()}
                     <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2"
@@ -574,27 +879,19 @@ export default function ClientsCRMPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-bold truncate" style={{ color: "var(--text)" }}>@{pseudo}</span>
-                      {/* Verification badge */}
-                      {(() => {
-                        const vs = c.verified_status || "pending";
-                        const badge = VERIFY_BADGE[vs];
-                        if (!badge) return null;
-                        return (
-                          <span className="text-[9px] font-bold px-1 py-0.5 rounded shrink-0"
-                            style={{ background: badge.bg, color: badge.color }}>
-                            {vs === "verified" ? "✓" : vs === "rejected" ? "✗" : "?"}
-                          </span>
-                        );
-                      })()}
+                      {vs === "verified" && (
+                        <span className="text-[9px] font-bold px-1 py-0.5 rounded shrink-0"
+                          style={{ background: "rgba(16,185,129,0.12)", color: "#10B981" }}>✓</span>
+                      )}
+                      {vs === "pending" && (
+                        <span className="text-[9px] font-bold px-1 py-0.5 rounded shrink-0"
+                          style={{ background: "rgba(245,158,11,0.12)", color: "#F59E0B" }}>?</span>
+                      )}
                       {c.activeCodes.length > 0 && (
                         <span className="text-[10px] font-bold px-1 py-0.5 rounded shrink-0"
                           style={{ background: `${tierColor}15`, color: tierColor }}>
                           {c.activeCodes[0].tier?.toUpperCase()}
                         </span>
-                      )}
-                      {c.isInactive48h && !c.activeCodes.length && (
-                        <span className="text-[9px] px-1 py-0.5 rounded shrink-0"
-                          style={{ background: "rgba(245,158,11,0.08)", color: "#F59E0B" }}>48h+</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
@@ -604,11 +901,7 @@ export default function ClientsCRMPage() {
                           {c.lastMessage.content}
                         </p>
                       ) : (
-                        <p className="text-[11px] flex-1" style={{ color: "var(--text-muted)" }}>
-                          {(c.verified_status || "pending") === "pending"
-                            ? `À vérifier — ${Math.max(0, 7 - Math.floor((Date.now() - new Date(c.created_at).getTime()) / 86400000))}j`
-                            : "Pas de messages"}
-                        </p>
+                        <p className="text-[11px] flex-1" style={{ color: "var(--text-muted)" }}>Pas de messages</p>
                       )}
                       {c.totalSpent > 0 && (
                         <span className="text-[10px] font-bold shrink-0" style={{ color: "var(--success, #10B981)" }}>
@@ -726,17 +1019,25 @@ export default function ClientsCRMPage() {
                           </div>
                         )}
                       </div>
-                      {(c.verified_status || "pending") === "pending" && (
+                      {platformLink && (
+                        <a href={platformLink} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold no-underline"
+                          style={{ background: `${platformColor(c)}10`, color: platformColor(c), border: `1px solid ${platformColor(c)}20` }}
+                          onClick={e => e.stopPropagation()}>
+                          <Send className="w-3 h-3" />Ouvrir {isSnap(c) ? "Snap" : "Insta"}
+                        </a>
+                      )}
+                      {vs === "pending" && (
                         <>
                           <button onClick={(e) => { e.stopPropagation(); verifyClient(c.id, "verify"); }}
-                            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer"
-                            style={{ background: "rgba(16,185,129,0.08)", color: "#10B981", border: "1px solid rgba(16,185,129,0.2)" }}>
-                            <ShieldCheck className="w-3 h-3" />Vérifier
+                            className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer"
+                            style={{ background: "rgba(16,185,129,0.1)", color: "#10B981", border: "1px solid rgba(16,185,129,0.2)" }} title="Valider">
+                            <Check className="w-3.5 h-3.5" />
                           </button>
                           <button onClick={(e) => { e.stopPropagation(); verifyClient(c.id, "reject"); }}
-                            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer"
-                            style={{ background: "rgba(220,38,38,0.06)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.15)" }}>
-                            <ShieldX className="w-3 h-3" />Faux
+                            className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer"
+                            style={{ background: "rgba(220,38,38,0.06)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.15)" }} title="Faux — bannir">
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         </>
                       )}
