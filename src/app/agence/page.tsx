@@ -5,6 +5,7 @@ import {
   Eye, Pencil, Image as ImageIcon, Heart, MessageCircle, Trash2, X,
   Newspaper, Camera, RefreshCw, Users, Key, DollarSign, TrendingUp,
   Copy, Check, Plus, Search, Shield, BarChart3, Clock, Zap, Settings,
+  ChevronDown,
 } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
@@ -13,6 +14,7 @@ import type { PackConfig, AccessCode, ClientInfo, FeedPost, WallPost } from "@/t
 import { DEFAULT_PACKS } from "@/constants/packs";
 import { toSlot, isFreeSlot } from "@/lib/tier-utils";
 import { toModelId } from "@/lib/model-utils";
+import { TIER_META } from "@/constants/tiers";
 
 // ── Upload config ──
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -111,6 +113,7 @@ export default function AgenceDashboard() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [editingPacks, setEditingPacks] = useState(false);
   const [savingPacks, setSavingPacks] = useState(false);
+  const [expandedPack, setExpandedPack] = useState<string | null>(null);
 
   // ── Pull-to-refresh ──
   const [pullY, setPullY] = useState(0);
@@ -319,7 +322,7 @@ export default function AgenceDashboard() {
     setTimeout(() => setCodeCopied(null), 2000);
   }, []);
 
-  const updatePack = useCallback((packId: string, field: string, value: number | boolean) => {
+  const updatePack = useCallback((packId: string, field: string, value: number | boolean | string | string[]) => {
     setPacks(prev => prev.map(p => p.id === packId ? { ...p, [field]: value } : p));
   }, []);
 
@@ -1033,60 +1036,126 @@ export default function AgenceDashboard() {
                   )}
                 </div>
               </div>
-              <div className={`${surface} overflow-hidden`}>
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-white/[0.06]">
-                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-3">Pack</th>
-                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-3">Prix</th>
-                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-3">Status</th>
-                      <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-3">Vendus</th>
-                      <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-3">Revenus</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {packs.map(pack => {
-                      const soldCount = modelCodes.filter(c => c.tier === pack.id && c.type === "paid" && !c.revoked).length;
-                      const packRevenue = soldCount * pack.price;
-                      return (
-                        <tr key={pack.id} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-2.5 h-2.5 rounded-full" style={{ background: pack.color }} />
-                              <span className="text-sm font-semibold text-white">{pack.name}</span>
+              <div className="space-y-3">
+                {packs.map(pack => {
+                  const soldCount = modelCodes.filter(c => c.tier === pack.id && c.type === "paid" && !c.revoked).length;
+                  const packRevenue = soldCount * pack.price;
+                  const isExpanded = expandedPack === pack.id;
+                  const tierMeta = TIER_META[pack.id];
+                  return (
+                    <div key={pack.id} className={`${surface} overflow-hidden transition-all`}
+                      style={{ borderLeft: `3px solid ${pack.color}`, opacity: pack.active ? 1 : 0.5 }}>
+                      {/* Header row — always visible */}
+                      <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.02] transition-colors"
+                        onClick={() => setExpandedPack(isExpanded ? null : pack.id)}>
+                        <span className="text-lg" style={{ color: pack.color }}>{tierMeta?.symbol}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-white">{pack.name}</span>
+                            {pack.badge && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: `${pack.color}20`, color: pack.color }}>{pack.badge}</span>}
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            <span className="text-xs text-white/40">{fmt.format(pack.price)}</span>
+                            <span className="text-[10px]" style={{ color: pack.active ? "#10B981" : "#6B7280" }}>{pack.active ? "● Actif" : "○ Inactif"}</span>
+                            <span className="text-[10px] text-white/30">{soldCount} vendus</span>
+                            <span className="text-[10px] font-semibold" style={{ color: pack.color }}>{fmt.format(packRevenue)}</span>
+                          </div>
+                        </div>
+                        <ChevronDown className="w-4 h-4 text-white/30 transition-transform" style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0)" }} />
+                      </div>
+                      {/* Expanded details */}
+                      {isExpanded && (
+                        <div className="px-4 pb-4 pt-1 border-t border-white/[0.06] space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            {/* Name */}
+                            <div>
+                              <label className="text-[10px] uppercase tracking-wider text-white/30 font-medium mb-1 block">Nom</label>
+                              {editingPacks ? (
+                                <input value={pack.name} onChange={e => updatePack(pack.id, "name", e.target.value)}
+                                  className="w-full px-2.5 py-1.5 rounded-lg text-sm font-semibold bg-white/[0.05] border border-white/[0.1] text-white outline-none focus:border-[#D4AF37] transition-colors" />
+                              ) : <span className="text-sm text-white font-semibold">{pack.name}</span>}
                             </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            {editingPacks ? (
-                              <input type="number" value={pack.price} onChange={e => updatePack(pack.id, "price", Number(e.target.value))}
-                                className="w-20 px-2 py-1 rounded-md text-sm font-semibold tabular-nums bg-white/[0.05] border border-white/[0.1] text-white outline-none focus:border-[#D4AF37] transition-colors" />
-                            ) : (
-                              <span className="text-sm font-semibold text-white tabular-nums">{fmt.format(pack.price)}</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
+                            {/* Price */}
+                            <div>
+                              <label className="text-[10px] uppercase tracking-wider text-white/30 font-medium mb-1 block">Prix (€)</label>
+                              {editingPacks ? (
+                                <input type="number" value={pack.price} onChange={e => updatePack(pack.id, "price", Number(e.target.value))}
+                                  className="w-full px-2.5 py-1.5 rounded-lg text-sm font-semibold tabular-nums bg-white/[0.05] border border-white/[0.1] text-white outline-none focus:border-[#D4AF37] transition-colors" />
+                              ) : <span className="text-sm text-white font-semibold tabular-nums">{fmt.format(pack.price)}</span>}
+                            </div>
+                          </div>
+                          {/* Status toggle */}
+                          <div>
+                            <label className="text-[10px] uppercase tracking-wider text-white/30 font-medium mb-1 block">Statut</label>
                             {editingPacks ? (
                               <button onClick={() => updatePack(pack.id, "active", !pack.active)}
-                                className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all border-none"
-                                style={{
-                                  background: pack.active ? "rgba(16,185,129,0.15)" : "rgba(107,114,128,0.15)",
-                                  color: pack.active ? "#10B981" : "#6B7280",
-                                }}>
-                                {pack.active ? "Actif" : "Inactif"}
+                                className="px-4 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all border-none"
+                                style={{ background: pack.active ? "rgba(16,185,129,0.15)" : "rgba(107,114,128,0.15)", color: pack.active ? "#10B981" : "#6B7280" }}>
+                                {pack.active ? "✓ Actif — visible sur le profil" : "✕ Inactif — masqué du profil"}
                               </button>
-                            ) : (
-                              <span className="text-xs font-medium" style={{ color: pack.active ? "#10B981" : "#6B7280" }}>
-                                {pack.active ? "Actif" : "Inactif"}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm font-semibold text-white tabular-nums">{soldCount}</td>
-                          <td className="px-4 py-3 text-right text-sm font-bold tabular-nums" style={{ color: pack.color }}>{fmt.format(packRevenue)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            ) : <span className="text-xs font-medium" style={{ color: pack.active ? "#10B981" : "#6B7280" }}>{pack.active ? "Actif" : "Inactif"}</span>}
+                          </div>
+                          {/* Features */}
+                          <div>
+                            <label className="text-[10px] uppercase tracking-wider text-white/30 font-medium mb-1 block">Contenu inclus</label>
+                            <div className="space-y-1.5">
+                              {(pack.features || []).map((feat, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                  <span className="text-xs" style={{ color: pack.color }}>✓</span>
+                                  {editingPacks ? (
+                                    <div className="flex items-center gap-1 flex-1">
+                                      <input value={feat} onChange={e => {
+                                        const newFeats = [...(pack.features || [])];
+                                        newFeats[i] = e.target.value;
+                                        updatePack(pack.id, "features", newFeats);
+                                      }}
+                                        className="flex-1 px-2 py-1 rounded text-xs bg-white/[0.05] border border-white/[0.08] text-white outline-none focus:border-[#D4AF37] transition-colors" />
+                                      <button onClick={() => {
+                                        const newFeats = (pack.features || []).filter((_, j) => j !== i);
+                                        updatePack(pack.id, "features", newFeats);
+                                      }} className="text-white/20 hover:text-red-400 cursor-pointer bg-transparent border-none text-xs transition-colors">✕</button>
+                                    </div>
+                                  ) : <span className="text-xs text-white/70">{feat}</span>}
+                                </div>
+                              ))}
+                              {editingPacks && (
+                                <button onClick={() => updatePack(pack.id, "features", [...(pack.features || []), ""])}
+                                  className="text-[10px] text-white/30 hover:text-white/50 cursor-pointer bg-transparent border-none transition-colors mt-1">
+                                  + Ajouter un avantage
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          {/* Badge */}
+                          {editingPacks && (
+                            <div>
+                              <label className="text-[10px] uppercase tracking-wider text-white/30 font-medium mb-1 block">Badge (optionnel)</label>
+                              <input value={pack.badge || ""} onChange={e => updatePack(pack.id, "badge", e.target.value || null as unknown as string)}
+                                placeholder="Ex: Populaire, Ultimate..."
+                                className="w-full px-2.5 py-1.5 rounded-lg text-xs bg-white/[0.05] border border-white/[0.08] text-white outline-none focus:border-[#D4AF37] transition-colors placeholder:text-white/20" />
+                            </div>
+                          )}
+                          {/* Stats */}
+                          <div className="flex items-center gap-4 pt-2 border-t border-white/[0.04]">
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-white tabular-nums">{soldCount}</div>
+                              <div className="text-[10px] text-white/30">Vendus</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-lg font-bold tabular-nums" style={{ color: pack.color }}>{fmt.format(packRevenue)}</div>
+                              <div className="text-[10px] text-white/30">Revenus</div>
+                            </div>
+                            <div className="flex-1" />
+                            <a href={`/m/${modelSlug}#${pack.id}`} target="_blank" rel="noopener"
+                              className="text-[10px] text-white/30 hover:text-white/60 no-underline transition-colors">
+                              Voir sur le profil →
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
