@@ -385,7 +385,7 @@ export default function ModelPage() {
 
         {/* ═══ TIER VIEW MINI HEADER ═══ */}
         {isTierView && (
-          <div className="flex items-center gap-3 max-w-6xl mx-auto px-5 sm:px-8 md:px-12 py-3 fade-up">
+          <div key={`tier-header-${galleryTier}`} className="flex items-center gap-3 max-w-6xl mx-auto px-5 sm:px-8 md:px-12 py-3 fade-up">
             <div className="w-8 h-8 rounded-full overflow-hidden shrink-0" style={{ border: `2px solid var(--tier-${normalizeTier(galleryTier)})` }}>
               {displayModel?.avatar ? <img src={displayModel.avatar} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full" style={{ background: "var(--bg3)" }} />}
             </div>
@@ -399,7 +399,7 @@ export default function ModelPage() {
         )}
 
         {/* ═══ TAB CONTENT ═══ */}
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 md:px-12 py-6 sm:py-8">
+        <div key={galleryTier} className="max-w-6xl mx-auto px-5 sm:px-8 md:px-12 py-6 sm:py-8 fade-up">
 
           {/* ── FEED ── */}
           {galleryTier === "feed" && (
