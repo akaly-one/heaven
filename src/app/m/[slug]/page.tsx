@@ -716,7 +716,7 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, vi
                   </div>
                   <span className="text-[9px] font-bold uppercase tracking-wide shrink-0 hidden sm:inline"
                     style={{ color: visitorVerified ? "#10B981" : "var(--text-muted)" }}>
-                    {unlockedTier ? (TIER_META[unlockedTier]?.label || "VIP") : (visitorVerified ? "Verifie" : "Visiteur")}
+                    {visitorVerified ? "Verifie" : "Visiteur"}{unlockedTier && <span style={{ color: TIER_HEX[unlockedTier] || "var(--text-muted)" }}>{" / "}{TIER_META[unlockedTier]?.label || "Custom"}</span>}
                   </span>
                 </div>
               )}
