@@ -5,7 +5,7 @@ import {
   Eye, Pencil, Image as ImageIcon, Heart, MessageCircle, Trash2, X,
   Newspaper, Camera, RefreshCw, Users, Key, DollarSign, TrendingUp,
   Copy, Check, Plus, Search, Shield, BarChart3, Clock, Zap, Settings,
-  ChevronDown, Lock, EyeOff,
+  ChevronDown, Lock, EyeOff, Send, Pin,
 } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
@@ -73,6 +73,7 @@ function Skeleton({ className = "", style }: { className?: string; style?: React
 // ── Tab definitions (Contenu & Clients have their own sidebar pages) ──
 const TABS = [
   { id: "overview", label: "Overview" },
+  { id: "feed", label: "Feed" },
   { id: "revenue", label: "Revenus" },
   { id: "settings", label: "Packs" },
 ] as const;
@@ -180,7 +181,7 @@ export default function AgenceDashboard() {
       if (clientsData?.clients) setClients(clientsData.clients);
       if (packsData?.packs?.length > 0) setPacks(packsData.packs);
       if (modelData) setModelInfo(modelData);
-      if (postsData?.posts) setFeedPosts(postsData.posts.slice(0, 5));
+      if (postsData?.posts) setFeedPosts(postsData.posts);
       if (wallData?.posts) setWallPosts(wallData.posts.slice(0, 20));
       if (uploadsData?.uploads) setUploads(uploadsData.uploads);
       setDataLoaded(modelSlug);
@@ -650,347 +651,230 @@ export default function AgenceDashboard() {
             </div>
           )}
 
-          {/* TAB: CONTENT removed — uses /agence/contenu sidebar page */}
-          {false && (
-            <div className="space-y-4">
-              {/* Content sub-tabs — underline style */}
-              <div className="flex items-center gap-5">
-                {[
-                  { id: "feed" as const, label: "Feed" },
-                  { id: "wall" as const, label: "Wall" },
-                  { id: "stories" as const, label: `Stories${stories.length > 0 ? ` (${stories.length})` : ""}` },
-                ].map(tab => (
-                  <button key={tab.id} onClick={() => setContentSubTab(tab.id)}
-                    className="relative pb-2 text-xs font-medium cursor-pointer transition-colors bg-transparent border-none px-0"
-                    style={{ color: contentSubTab === tab.id ? "#D4AF37" : "rgba(255,255,255,0.35)" }}>
-                    {tab.label}
-                    {contentSubTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ background: "#D4AF37" }} />}
-                  </button>
-                ))}
-              </div>
+          {/* ══════════ TAB: FEED — Facebook-style timeline ══════════ */}
+          {activeTab === "feed" && (
+            <div className="max-w-[680px] mx-auto space-y-4">
 
-              {/* ── FEED SUB-TAB ── */}
-              {contentSubTab === "feed" && (
-                <div className="space-y-3">
-                  {/* Compact composer */}
-                  <div className={`${surface} p-3`}>
-                    <div className="flex items-start gap-2.5">
-                      <div className="w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0"
-                        style={{ background: "linear-gradient(135deg, #E63329, #E84393)", color: "#fff" }}>
-                        {modelSlug.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <textarea value={newPostContent} onChange={e => setNewPostContent(e.target.value)}
-                          placeholder={newPostType === "story" ? "Texte de ta story..." : "Partager quelque chose..."}
-                          rows={1}
-                          className="w-full bg-transparent text-xs outline-none resize-none text-white placeholder:text-white/20" />
+              {/* ── Composer Card ── */}
+              <div className={`${surface} overflow-hidden`}>
+                <div className="p-4">
+                  <div className="flex items-start gap-3">
+                    {/* Avatar */}
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden"
+                      style={{ background: modelInfo?.avatar ? "transparent" : "linear-gradient(135deg, #E63329, #E84393)", color: "#fff" }}>
+                      {modelInfo?.avatar ? <img src={modelInfo.avatar} alt="" className="w-full h-full object-cover" /> : modelSlug.charAt(0).toUpperCase()}
+                    </div>
+                    {/* Input area */}
+                    <div className="flex-1 min-w-0">
+                      <textarea value={newPostContent} onChange={e => setNewPostContent(e.target.value)}
+                        placeholder="Partager quelque chose avec tes abonnés..."
+                        rows={2}
+                        className="w-full bg-transparent text-sm outline-none resize-none text-white placeholder:text-white/25 leading-relaxed" />
 
-                        {newPostType === "story" && !newPostImage && (
-                          <p className="text-[10px] flex items-center gap-1 text-[#E63329]"><Camera className="w-3 h-3" /> Ajoute une photo</p>
-                        )}
-
-                        {posting && newPostImage && (
-                          <div className="h-0.5 rounded-full overflow-hidden bg-white/[0.06]">
-                            <div className="h-full rounded-full bg-[#D4AF37]" style={{ animation: "uploadProg 2s ease-in-out infinite" }} />
-                          </div>
-                        )}
-
-                        {newPostImage && !posting && (
-                          <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-white/[0.06]">
-                            <img src={newPostImage || ""} alt="" className="w-full h-full object-cover" draggable={false} />
-                            <button onClick={() => setNewPostImage(null)}
-                              className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center cursor-pointer bg-black/70 text-white border-none hover:scale-110 transition-transform">
-                              <X className="w-2.5 h-2.5" />
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Controls row */}
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <div className="flex items-center rounded-md overflow-hidden border border-white/[0.06]">
-                            {(["feed", "story"] as const).map(type => (
-                              <button key={type} onClick={() => setNewPostType(type)}
-                                className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium cursor-pointer transition-colors border-none"
-                                style={{ background: newPostType === type ? "rgba(230,51,41,0.2)" : "transparent", color: newPostType === type ? "#E63329" : "rgba(255,255,255,0.3)" }}>
-                                {type === "feed" ? <Newspaper className="w-2.5 h-2.5" /> : <Camera className="w-2.5 h-2.5" />}
-                                {type === "feed" ? "Feed" : "Story"}
-                              </button>
-                            ))}
-                          </div>
-
-                          <label className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer border border-white/[0.06] text-white/30 hover:text-white/50 transition-colors">
-                            <ImageIcon className="w-2.5 h-2.5" /> Photo
-                            <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" className="hidden" onChange={(e) => {
-                              const file = e.target.files?.[0]; if (!file) return;
-                              const { valid, error } = validateFile(file, UPLOAD_LIMITS.post.maxMB);
-                              if (!valid) { setUploadMsg({ text: error!, type: "error" }); setTimeout(() => setUploadMsg(null), 5000); e.target.value = ""; return; }
-                              const reader = new FileReader();
-                              reader.onload = () => setNewPostImage(reader.result as string);
-                              reader.readAsDataURL(file); e.target.value = "";
-                            }} />
-                          </label>
-
-                          {(newPostContent.trim() || newPostImage) && (
-                            <div className="flex items-center gap-1 ml-auto">
-                              {TIER_OPTIONS.filter(t => t.id !== "p0").map(t => {
-                                const selected = newPostTier === t.id;
-                                return (
-                                  <button key={t.id} onClick={() => setNewPostTier(selected ? "p0" : t.id)}
-                                    className="px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer shrink-0 transition-all border-none"
-                                    style={{
-                                      background: selected ? t.color : "transparent",
-                                      color: selected ? "#fff" : "rgba(255,255,255,0.3)",
-                                      outline: `1px solid ${selected ? t.color : "rgba(255,255,255,0.08)"}`,
-                                    }}>
-                                    {t.label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-
-                          <button onClick={handleCreatePost} disabled={(!newPostContent.trim() && !newPostImage) || posting}
-                            className="ml-auto px-4 py-1.5 rounded-md text-[11px] font-bold cursor-pointer transition-all hover:brightness-110 disabled:opacity-20 border-none"
-                            style={{ background: "#D4AF37", color: "#0f0f12" }}>
-                            {posting ? "..." : "Publier"}
+                      {/* Image preview */}
+                      {newPostImage && !posting && (
+                        <div className="relative mt-2 rounded-xl overflow-hidden border border-white/[0.08] max-h-[300px]">
+                          <img src={newPostImage} alt="" className="w-full object-cover max-h-[300px]" draggable={false} />
+                          <button onClick={() => setNewPostImage(null)}
+                            className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer border-none transition-transform hover:scale-110"
+                            style={{ background: "rgba(0,0,0,0.7)", color: "#fff" }}>
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                      </div>
+                      )}
+
+                      {/* Upload progress */}
+                      {posting && newPostImage && (
+                        <div className="h-1 rounded-full overflow-hidden bg-white/[0.06] mt-2">
+                          <div className="h-full rounded-full bg-[#D4AF37]" style={{ animation: "uploadProg 2s ease-in-out infinite" }} />
+                        </div>
+                      )}
                     </div>
                   </div>
-
-                  {/* Post grid — compact thumbnails */}
-                  {feedPosts.length === 0 ? (
-                    <p className="text-xs text-white/20 py-6 text-center">Aucun post pour le moment</p>
-                  ) : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
-                      {feedPosts.slice(0, 20).map((post) => (
-                        <div key={post.id} className="relative group rounded-lg overflow-hidden bg-white/[0.03] border border-white/[0.04] hover:border-white/[0.1] transition-all cursor-pointer"
-                          style={{ aspectRatio: "1" }}>
-                          {post.media_url ? (
-                            <img src={post.media_url} alt="" className="w-full h-full object-cover" loading="lazy" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center p-2">
-                              <p className="text-[10px] text-white/40 line-clamp-4 text-center leading-tight">{post.content}</p>
-                            </div>
-                          )}
-                          {/* Overlay on hover */}
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
-                            <div className="flex items-center gap-3 text-white/80">
-                              <span className="flex items-center gap-1 text-[10px]"><Heart className="w-3 h-3" />{post.likes_count || 0}</span>
-                              <span className="flex items-center gap-1 text-[10px]"><MessageCircle className="w-3 h-3" />{post.comments_count || 0}</span>
-                            </div>
-                            {!isFreeSlot(post.tier_required) && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/15 text-white mt-0.5">
-                                {toSlot(post.tier_required).toUpperCase()}
-                              </span>
-                            )}
-                            <span className="text-[9px] text-white/40">{relativeTime(post.created_at)}</span>
-                            {deleteConfirm === post.id ? (
-                              <div className="flex items-center gap-2 mt-1">
-                                <button onClick={() => handleDeletePost(post.id)} className="text-[10px] font-semibold text-red-400 cursor-pointer bg-transparent border-none">Suppr</button>
-                                <button onClick={() => setDeleteConfirm(null)} className="text-[10px] text-white/40 cursor-pointer bg-transparent border-none">Non</button>
-                              </div>
-                            ) : (
-                              <button onClick={() => setDeleteConfirm(post.id)} className="mt-1 cursor-pointer bg-transparent border-none text-white/30 hover:text-red-400 transition-colors">
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              )}
 
-              {/* ── WALL SUB-TAB ── */}
-              {contentSubTab === "wall" && (
-                <div className="space-y-0">
-                  {(() => {
-                    const clientMessages = wallPosts.filter(w => !w.content?.includes("#post-") && w.pseudo !== "SYSTEM");
-                    if (clientMessages.length === 0) return (
-                      <p className="text-xs text-white/20 py-6 text-center">Aucun message pour le moment</p>
-                    );
-                    return (
-                      <div className={`${surface} overflow-hidden`}>
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b border-white/[0.06]">
-                              <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Pseudo</th>
-                              <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Message</th>
-                              <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Date</th>
-                              <th className="w-8" />
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {clientMessages.slice(0, 30).map(w => (
-                              <tr key={w.id} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors group">
-                                <td className="px-4 py-3 text-sm font-semibold text-white whitespace-nowrap">@{w.pseudo}</td>
-                                <td className="px-4 py-3 text-sm text-white/50 truncate max-w-[400px]">{w.content}</td>
-                                <td className="px-4 py-3 text-xs text-white/25 text-right tabular-nums whitespace-nowrap">{relativeTime(w.created_at)}</td>
-                                <td className="px-2 py-2">
-                                  <button onClick={async () => {
-                                    try {
-                                      await fetch(`/api/wall?id=${w.id}&model=${toModelId(modelSlug)}`, { method: "DELETE", headers: authHeaders() });
-                                      setWallPosts(prev => prev.filter(p => p.id !== w.id));
-                                    } catch {}
-                                  }} className="opacity-0 group-hover:opacity-100 cursor-pointer bg-transparent border-none text-white/20 hover:text-red-400 transition-all p-0.5">
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    );
-                  })()}
-                  <a href="/agence/clients" className="block text-center py-2.5 text-[11px] font-medium text-[#D4AF37] no-underline hover:underline mt-2">
-                    Voir tout dans Clients
-                  </a>
-                </div>
-              )}
-
-              {/* ── STORIES SUB-TAB ── */}
-              {contentSubTab === "stories" && (
-                <div>
-                  {stories.length === 0 ? (
-                    <p className="text-xs text-white/20 py-6 text-center">Aucune story active. Change le type en &quot;Story&quot; dans le composer.</p>
-                  ) : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
-                      {stories.map(s => (
-                        <div key={s.id} className="relative rounded-lg overflow-hidden aspect-[9/16] group cursor-pointer border border-white/[0.04] hover:border-white/[0.1] transition-all">
-                          {s.media_url && <img src={s.media_url} alt="" className="w-full h-full object-cover" loading="lazy" />}
-                          <div className="absolute inset-0" style={{ background: "linear-gradient(transparent 50%, rgba(0,0,0,0.7))" }} />
-                          <div className="absolute bottom-2 left-2 right-2">
-                            {s.content && <p className="text-[10px] text-white font-medium line-clamp-2">{s.content}</p>}
-                            <p className="text-[9px] text-white/40 mt-0.5">{relativeTime(s.created_at)}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB: CLIENTS removed — uses /agence/clients sidebar page */}
-          {false && (
-            <div className="space-y-5">
-              {/* Search + header */}
-              <div className="flex items-center gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-                  <input value={clientSearch} onChange={e => setClientSearch(e.target.value)}
-                    placeholder="Rechercher..."
-                    className="w-full pl-9 pr-3 py-2 rounded-lg text-sm bg-white/[0.03] border border-white/[0.06] text-white outline-none placeholder:text-white/20 focus:border-white/[0.12] transition-colors" />
-                </div>
-                <span className="text-xs text-white/30 shrink-0">{clients.length} clients · {fmt.format(clients.reduce((s, c) => s + (c.total_spent || 0), 0))}</span>
-                <a href="/agence/clients" className="text-xs font-medium text-[#D4AF37] no-underline hover:underline shrink-0">Gerer</a>
-              </div>
-
-              {/* Client table */}
-              <div className={`${surface} overflow-hidden`}>
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-white/[0.06]">
-                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Handle</th>
-                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5 hidden sm:table-cell">Tier</th>
-                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5 hidden sm:table-cell">Derniere activite</th>
-                      <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Depenses</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredClients.length === 0 ? (
-                      <tr><td colSpan={4} className="text-center py-6 text-xs text-white/20">{clientSearch ? "Aucun resultat" : "Aucun client"}</td></tr>
-                    ) : filteredClients.slice(0, 50).map(c => {
-                      const handle = c.pseudo_snap || c.pseudo_insta || c.nickname || "?";
-                      const tierLabel = TIER_OPTIONS.find(t => t.id === (c.tier || "p1"))?.label || "Silver";
-                      const tierColor = TIER_OPTIONS.find(t => t.id === (c.tier || "p1"))?.color || "#C0C0C0";
-                      return (
-                        <tr key={c.id} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors">
-                          <td className="px-4 py-3">
-                            <span className="text-sm font-semibold text-white">@{handle}</span>
-                          </td>
-                          <td className="px-4 py-3 hidden sm:table-cell">
-                            <span className="text-xs font-semibold" style={{ color: tierColor }}>{tierLabel}</span>
-                          </td>
-                          <td className="px-4 py-3 hidden sm:table-cell">
-                            <span className="text-xs text-white/30 tabular-nums">{c.last_active ? relativeTime(c.last_active) : "-"}</span>
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <span className="text-sm font-semibold text-white/50 tabular-nums">{c.total_spent ? fmt.format(c.total_spent) : "-"}</span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Access Codes */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Codes d&apos;acces</span>
-                    <span className="text-xs text-white/20">{activeCodes.length} actifs / {modelCodes.length}</span>
+                {/* Bottom bar — actions */}
+                <div className="flex items-center gap-2 px-4 py-2.5 border-t border-white/[0.06]">
+                  {/* Type toggle */}
+                  <div className="flex items-center rounded-lg overflow-hidden border border-white/[0.08]">
+                    {(["feed", "story"] as const).map(type => (
+                      <button key={type} onClick={() => setNewPostType(type)}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium cursor-pointer transition-colors border-none"
+                        style={{ background: newPostType === type ? "rgba(230,51,41,0.15)" : "transparent", color: newPostType === type ? "#E63329" : "rgba(255,255,255,0.3)" }}>
+                        {type === "feed" ? <Newspaper className="w-3 h-3" /> : <Camera className="w-3 h-3" />}
+                        {type === "feed" ? "Feed" : "Story"}
+                      </button>
+                    ))}
                   </div>
-                  <button onClick={() => setShowGenerator(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold cursor-pointer transition-all hover:brightness-110 border-none"
+
+                  {/* Photo upload */}
+                  <label className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer border border-white/[0.08] text-white/30 hover:text-white/60 hover:border-white/[0.15] transition-colors">
+                    <ImageIcon className="w-3 h-3" /> Photo
+                    <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" className="hidden" onChange={(e) => {
+                      const file = e.target.files?.[0]; if (!file) return;
+                      const { valid, error } = validateFile(file, UPLOAD_LIMITS.post.maxMB);
+                      if (!valid) { setUploadMsg({ text: error!, type: "error" }); setTimeout(() => setUploadMsg(null), 5000); e.target.value = ""; return; }
+                      const reader = new FileReader();
+                      reader.onload = () => setNewPostImage(reader.result as string);
+                      reader.readAsDataURL(file); e.target.value = "";
+                    }} />
+                  </label>
+
+                  {/* Tier selector — only when composing */}
+                  {(newPostContent.trim() || newPostImage) && (
+                    <div className="flex items-center gap-1 ml-1">
+                      {TIER_OPTIONS.filter(t => t.id !== "p0").map(t => {
+                        const selected = newPostTier === t.id;
+                        return (
+                          <button key={t.id} onClick={() => setNewPostTier(selected ? "p0" : t.id)}
+                            className="px-2 py-1 rounded-md text-[10px] font-semibold cursor-pointer shrink-0 transition-all border-none"
+                            style={{
+                              background: selected ? t.color : "transparent",
+                              color: selected ? "#fff" : "rgba(255,255,255,0.25)",
+                              outline: `1px solid ${selected ? t.color : "rgba(255,255,255,0.06)"}`,
+                            }}>
+                            {t.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="flex-1" />
+
+                  {/* Publish */}
+                  <button onClick={handleCreatePost} disabled={(!newPostContent.trim() && !newPostImage) || posting}
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:brightness-110 disabled:opacity-20 border-none"
                     style={{ background: "#D4AF37", color: "#0f0f12" }}>
-                    <Plus className="w-3 h-3" /> Generer
+                    <Send className="w-3 h-3" />
+                    {posting ? "..." : "Publier"}
                   </button>
                 </div>
-
-                {modelCodes.length === 0 ? (
-                  <p className="text-xs text-white/20 py-4 text-center">Aucun code genere</p>
-                ) : (
-                  <div className={`${surface} overflow-hidden`}>
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-white/[0.06]">
-                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Code</th>
-                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Client</th>
-                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5 hidden sm:table-cell">Tier</th>
-                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5 hidden sm:table-cell">Date</th>
-                          <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {modelCodes.slice(0, 30).map(c => {
-                          const expired = isExpired(c.expiresAt);
-                          const status = c.revoked ? "Revoque" : expired ? "Expire" : c.active ? "Actif" : "Inactif";
-                          const statusColor = c.revoked ? "#EF4444" : expired ? "#6B7280" : c.active ? "#10B981" : "#F59E0B";
-                          const tierOption = TIER_OPTIONS.find(t => t.id === c.tier);
-                          return (
-                            <tr key={c.code} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors group">
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-1.5">
-                                  <code className="text-xs font-mono font-semibold text-white">{c.code}</code>
-                                  <button onClick={() => copyCode(c.code)}
-                                    className="cursor-pointer bg-transparent border-none text-white/15 hover:text-white/40 transition-colors p-0 opacity-0 group-hover:opacity-100">
-                                    {codeCopied === c.code ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
-                                  </button>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-xs text-white/50">@{c.client}</td>
-                              <td className="px-4 py-3 hidden sm:table-cell">
-                                {tierOption && <span className="text-[11px] font-semibold" style={{ color: tierOption.color }}>{tierOption.label}</span>}
-                              </td>
-                              <td className="px-4 py-3 hidden sm:table-cell text-xs text-white/25 tabular-nums">{relativeTime(c.created)}</td>
-                              <td className="px-4 py-3 text-right">
-                                <span className="text-xs font-semibold" style={{ color: statusColor }}>{status}</span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
               </div>
+
+              {/* ── Feed Timeline ── */}
+              {feedPosts.length === 0 ? (
+                <div className="text-center py-12">
+                  <Newspaper className="w-8 h-8 mx-auto mb-3 text-white/10" />
+                  <p className="text-sm text-white/25">Aucun post pour le moment</p>
+                  <p className="text-xs text-white/15 mt-1">Publie ton premier contenu ci-dessus</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {feedPosts.map(post => {
+                    const tierColor = TIER_OPTIONS.find(t => t.id === post.tier_required)?.color;
+                    const tierLabel = TIER_OPTIONS.find(t => t.id === post.tier_required)?.label;
+                    const isLocked = !isFreeSlot(post.tier_required);
+                    const isStory = (post as FeedPost & { post_type?: string }).post_type === "story";
+                    return (
+                      <div key={post.id} className={`${surface} overflow-hidden`}>
+                        {/* Post header */}
+                        <div className="flex items-center gap-3 px-4 pt-3.5 pb-2">
+                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden"
+                            style={{ background: modelInfo?.avatar ? "transparent" : "linear-gradient(135deg, #E63329, #E84393)", color: "#fff" }}>
+                            {modelInfo?.avatar ? <img src={modelInfo.avatar} alt="" className="w-full h-full object-cover" /> : modelSlug.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold text-white">{modelInfo?.display_name || modelSlug.toUpperCase()}</span>
+                              {isStory && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: "rgba(168,85,247,0.15)", color: "#A855F7" }}>Story</span>}
+                              {isLocked && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: `${tierColor}20`, color: tierColor }}>{tierLabel}</span>}
+                              {post.pinned && <Pin className="w-3 h-3 text-[#D4AF37]" />}
+                            </div>
+                            <span className="text-[11px] text-white/25">{relativeTime(post.created_at)}</span>
+                          </div>
+                          {/* Delete */}
+                          {deleteConfirm === post.id ? (
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => handleDeletePost(post.id)} className="text-[10px] font-semibold text-red-400 cursor-pointer bg-transparent border-none">Supprimer</button>
+                              <button onClick={() => setDeleteConfirm(null)} className="text-[10px] text-white/30 cursor-pointer bg-transparent border-none">Non</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setDeleteConfirm(post.id)} className="cursor-pointer bg-transparent border-none text-white/15 hover:text-red-400 transition-colors p-1">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Content text */}
+                        {post.content && (
+                          <div className="px-4 pb-2">
+                            <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                          </div>
+                        )}
+
+                        {/* Media */}
+                        {post.media_url && (
+                          <div className="relative">
+                            <img src={post.media_url} alt="" className="w-full max-h-[500px] object-cover" loading="lazy" />
+                            {isLocked && (
+                              <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                                style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
+                                <Lock className="w-3 h-3" style={{ color: tierColor }} />
+                                <span className="text-[10px] font-bold" style={{ color: tierColor }}>{tierLabel}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Interaction bar */}
+                        <div className="flex items-center gap-6 px-4 py-2.5 border-t border-white/[0.04]">
+                          <div className="flex items-center gap-1.5 text-white/30">
+                            <Heart className="w-4 h-4" fill={(post.likes_count || 0) > 0 ? "currentColor" : "none"} style={(post.likes_count || 0) > 0 ? { color: "#F43F5E" } : {}} />
+                            <span className="text-xs tabular-nums">{post.likes_count || 0}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-white/30">
+                            <MessageCircle className="w-4 h-4" />
+                            <span className="text-xs tabular-nums">{post.comments_count || 0}</span>
+                          </div>
+                          <div className="flex-1" />
+                          {isLocked && (
+                            <span className="text-[10px] text-white/20 flex items-center gap-1">
+                              <Lock className="w-3 h-3" /> Reserve {tierLabel}
+                            </span>
+                          )}
+                          {!isLocked && (
+                            <span className="text-[10px] text-white/20 flex items-center gap-1">
+                              <Eye className="w-3 h-3" /> Public
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* ── Wall Messages section ── */}
+              {(() => {
+                const clientMessages = wallPosts.filter(w => !w.content?.includes("#post-") && w.pseudo !== "SYSTEM");
+                if (clientMessages.length === 0) return null;
+                return (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3 mt-2">
+                      <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Messages du mur</span>
+                      <span className="text-[10px] text-white/20">{clientMessages.length}</span>
+                    </div>
+                    <div className="space-y-2">
+                      {clientMessages.slice(0, 10).map(w => (
+                        <div key={w.id} className={`${surface} px-4 py-3 flex items-start gap-3`}>
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                            style={{ background: "rgba(212,175,55,0.12)", color: "#D4AF37" }}>
+                            {(w.pseudo || "?").charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-white/70">@{w.pseudo}</span>
+                              <span className="text-[10px] text-white/20">{relativeTime(w.created_at)}</span>
+                            </div>
+                            <p className="text-xs text-white/50 mt-0.5 leading-relaxed">{w.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
