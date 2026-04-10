@@ -352,7 +352,9 @@ export default function ModelPage() {
         <HeroSection
           model={model} displayModel={displayModel} posts={posts} uploads={uploads} wallPosts={wallPosts}
           isTierView={isTierView} contentUnlocked={contentUnlocked} visitorRegistered={visitorRegistered}
-          isEditMode={edit.isEditMode} activeStories={activeStories} setStoryViewIdx={setStoryViewIdx}
+          isEditMode={edit.isEditMode} isModelLoggedIn={isModelLoggedIn}
+          chatOpen={chatOpen} setChatOpen={setChatOpen} chatUnread={chatUnread}
+          activeStories={activeStories} setStoryViewIdx={setStoryViewIdx}
           edit={edit}
         />
 
@@ -674,24 +676,8 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, vi
           <span className="text-xs sm:text-sm font-bold tracking-wide uppercase truncate" style={{ color: "var(--text)", letterSpacing: "0.08em" }}>{model.display_name}</span>
           {displayModel?.online && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }} />}
         </div>
-        {/* CENTER: Chat bubble */}
-        <div className="flex-1 flex justify-center">
-          {!isModelLoggedIn && (
-            <button onClick={() => setChatOpen(!chatOpen)}
-              className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
-              style={{
-                background: "linear-gradient(135deg, var(--rose), var(--accent))", border: "none",
-                boxShadow: chatUnread > 0 ? "0 0 8px rgba(230,51,41,0.5), 0 0 16px rgba(16,185,129,0.3)" : "0 2px 8px rgba(230,51,41,0.3)",
-                animation: chatUnread > 0 ? "chatBubbleGlow 1.5s ease-in-out infinite" : "none",
-              }}>
-              <MessageCircle className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-white" />
-              {chatUnread > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full text-[9px] font-bold flex items-center justify-center"
-                  style={{ background: "#10B981", color: "#fff", boxShadow: "0 0 6px rgba(16,185,129,0.6)" }}>{chatUnread}</span>
-              )}
-            </button>
-          )}
-        </div>
+        {/* CENTER: spacer */}
+        <div className="flex-1" />
         {/* RIGHT: Visitor info */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {visitorRegistered && (
@@ -766,9 +752,10 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, vi
 }
 
 // ── Hero Section ──
-function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierView, contentUnlocked, visitorRegistered, isEditMode, activeStories, setStoryViewIdx, edit }: {
+function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierView, contentUnlocked, visitorRegistered, isEditMode, isModelLoggedIn, chatOpen, setChatOpen, chatUnread, activeStories, setStoryViewIdx, edit }: {
   model: ModelInfo; displayModel: ModelInfo | null; posts: Post[]; uploads: UploadedContent[]; wallPosts: WallPost[];
   isTierView: boolean; contentUnlocked: boolean; visitorRegistered: boolean; isEditMode: boolean;
+  isModelLoggedIn: boolean; chatOpen: boolean; setChatOpen: (v: boolean) => void; chatUnread: number;
   activeStories: Post[]; setStoryViewIdx: (v: number | null) => void;
   edit: ReturnType<typeof useEditMode>;
 }) {
@@ -811,8 +798,25 @@ function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierVie
             </div>
             {/* Name + bio + stats */}
             <div className="flex-1 min-w-0 pb-1">
+              <div className="flex items-center gap-3 sm:gap-4">
               <h1 className="profile-stagger-2 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light uppercase truncate"
                 style={{ color: "#fff", letterSpacing: "0.12em", textShadow: "0 2px 20px rgba(0,0,0,0.5)" }}>{displayModel?.display_name}</h1>
+              {!isModelLoggedIn && (
+                <button onClick={() => setChatOpen(!chatOpen)}
+                  className="relative shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
+                  style={{
+                    background: "linear-gradient(135deg, var(--rose), var(--accent))", border: "none",
+                    boxShadow: chatUnread > 0 ? "0 0 8px rgba(230,51,41,0.5), 0 0 16px rgba(16,185,129,0.3)" : "0 2px 8px rgba(230,51,41,0.3)",
+                    animation: chatUnread > 0 ? "chatBubbleGlow 1.5s ease-in-out infinite" : "none",
+                  }}>
+                  <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  {chatUnread > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[20px] h-[20px] rounded-full text-[10px] font-bold flex items-center justify-center"
+                      style={{ background: "#10B981", color: "#fff", boxShadow: "0 0 6px rgba(16,185,129,0.6)" }}>{chatUnread}</span>
+                  )}
+                </button>
+              )}
+            </div>
               {displayModel?.bio && <p className="profile-stagger-3 text-sm sm:text-base mt-2 sm:mt-3 line-clamp-2 leading-relaxed max-w-lg" style={{ color: "rgba(255,255,255,0.7)" }}>{displayModel.bio}</p>}
               {displayModel?.status_text && !isEditMode && <p className="text-sm sm:text-base mt-2 max-w-md" style={{ color: "rgba(255,255,255,0.8)", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>{displayModel.status_text}</p>}
               <div className="profile-stagger-4 flex items-center gap-6 sm:gap-8 mt-3 sm:mt-4">
