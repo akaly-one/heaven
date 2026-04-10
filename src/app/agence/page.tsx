@@ -5,7 +5,7 @@ import {
   Eye, Pencil, Image as ImageIcon, Heart, MessageCircle, Trash2, X,
   Newspaper, Camera, RefreshCw, Users, Key, DollarSign, TrendingUp,
   Copy, Check, Plus, Search, Shield, BarChart3, Clock, Zap, Settings,
-  ChevronDown, Lock, EyeOff, Send, Pin, FolderOpen, Upload, ArrowRight, Grid3x3,
+  ChevronDown, Lock, EyeOff, Send, Pin, FolderOpen, Upload, ArrowRight, Grid3x3, GripVertical, Columns, Sparkles,
 } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
@@ -123,6 +123,10 @@ export default function AgenceDashboard() {
   const [movingUpload, setMovingUpload] = useState<string | null>(null);
   const [uploadingToTier, setUploadingToTier] = useState<string | null>(null);
   const [contentViewMode, setContentViewMode] = useState<"grid" | "list">("grid");
+  const [contentLayout, setContentLayout] = useState<"folders" | "columns">("folders");
+  const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
+  const [dragItem, setDragItem] = useState<string | null>(null);
+  const [zoomUrl, setZoomUrl] = useState<string | null>(null);
   const [deletingUpload, setDeletingUpload] = useState<string | null>(null);
 
   // ── Pull-to-refresh ──
@@ -409,6 +413,30 @@ export default function AgenceDashboard() {
       setUploadingToTier(null);
     };
     reader.readAsDataURL(file);
+  }, [modelSlug, authHeaders]);
+
+  const handleChangePostTier = useCallback(async (postId: string, newTier: string) => {
+    setFeedPosts(prev => prev.map(p => p.id === postId ? { ...p, tier_required: newTier } : p));
+    try {
+      await fetch("/api/posts", {
+        method: "PATCH",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ id: postId, model: toModelId(modelSlug), tier_required: newTier }),
+      });
+    } catch { /* rollback on next fetch */ }
+  }, [modelSlug, authHeaders]);
+
+  const handleUpdateGroupLabel = useCallback(async (uploadId: string, groupLabel: string | null) => {
+    try {
+      const res = await fetch("/api/uploads", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ model: toModelId(modelSlug), id: uploadId, updates: { groupLabel } }),
+      });
+      if (res.ok) {
+        setUploads(prev => prev.map(u => u.id === uploadId ? { ...u, groupLabel } : u));
+      }
+    } catch (err) { console.error("[Contenu] update group:", err); }
   }, [modelSlug, authHeaders]);
 
   const handleSavePacks = useCallback(async () => {
@@ -944,17 +972,129 @@ export default function AgenceDashboard() {
           {/* ══════════ TAB: CONTENU — Folder-based upload manager ══════════ */}
           {activeTab === "contenu" && (() => {
             // Merge uploads + posts with media into unified content items
-            type ContentItem = { id: string; url: string; tier: string; source: "upload" | "post"; visibility?: string; date: string; type: string; postContent?: string };
+            type ContentItem = { id: string; url: string; tier: string; source: "upload" | "post"; visibility?: string; date: string; type: string; postContent?: string; groupLabel?: string | null; clientId?: string | null };
             const allContent: ContentItem[] = [
-              ...uploads.filter(u => u.dataUrl).map(u => ({ id: u.id, url: u.dataUrl, tier: u.tier || "p0", source: "upload" as const, visibility: u.visibility, date: u.uploadedAt || "", type: u.type || "photo" })),
-              ...feedPosts.filter(p => p.media_url).map(p => ({ id: p.id, url: p.media_url!, tier: p.tier_required || "p0", source: "post" as const, visibility: isFreeSlot(p.tier_required) ? "promo" : "pack", date: p.created_at, type: "photo", postContent: p.content || undefined })),
+              ...uploads.filter(u => u.dataUrl).map(u => ({
+                id: u.id, url: u.dataUrl, tier: u.tier || "p0", source: "upload" as const,
+                visibility: u.visibility, date: u.uploadedAt || "", type: u.type || "photo",
+                groupLabel: (u as any).groupLabel || null, clientId: (u as any).clientId || null,
+              })),
+              ...feedPosts.filter(p => p.media_url).map(p => ({
+                id: p.id, url: p.media_url!, tier: p.tier_required || "p0", source: "post" as const,
+                visibility: isFreeSlot(p.tier_required) ? "promo" : "pack", date: p.created_at,
+                type: "photo", postContent: p.content || undefined, groupLabel: null, clientId: null,
+              })),
             ];
             const contentCount = (tier: string | null) => tier === null ? allContent.length : allContent.filter(c => c.tier === tier).length;
+            const customCount = allContent.filter(c => c.tier === "custom").length;
+            const tierSlots = ["p0", "p1", "p2", "p3", "p4", "p5", "custom"];
+            const activeTiers = tierSlots.filter(t => allContent.some(c => c.tier === t));
+
+            // ── Drag handlers ──
+            const onDragStart = (e: React.DragEvent, itemId: string, source: "upload" | "post") => {
+              e.dataTransfer.setData("text/plain", JSON.stringify({ id: itemId, source }));
+              e.dataTransfer.effectAllowed = "move";
+              setDragItem(itemId);
+            };
+            const onDragOverFolder = (e: React.DragEvent, targetId: string) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              setDragOverTarget(targetId);
+            };
+            const onDragLeaveFolder = () => setDragOverTarget(null);
+            const onDropFolder = (e: React.DragEvent, targetTier: string) => {
+              e.preventDefault();
+              try {
+                const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+                if (data.source === "upload") handleMoveTier(data.id, targetTier);
+                else if (data.source === "post") handleChangePostTier(data.id, targetTier);
+              } catch {}
+              setDragItem(null);
+              setDragOverTarget(null);
+            };
 
             return (
             <div className="space-y-4">
 
-              {/* ── Folder sidebar + content area ── */}
+              {/* ── Layout toggle header ── */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Contenu</span>
+                  <span className="text-[10px] text-white/20">{allContent.length} fichiers</span>
+                </div>
+                <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <button onClick={() => { setContentLayout("folders"); setContentViewMode("grid"); }}
+                    className="px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer border-none transition-all"
+                    style={{ background: contentLayout === "folders" && contentViewMode === "grid" ? "rgba(212,175,55,0.15)" : "transparent", color: contentLayout === "folders" && contentViewMode === "grid" ? "#D4AF37" : "rgba(255,255,255,0.3)" }}>
+                    <Grid3x3 className="w-3 h-3 inline mr-0.5" />Dossiers
+                  </button>
+                  <button onClick={() => setContentLayout("columns")}
+                    className="px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer border-none transition-all"
+                    style={{ background: contentLayout === "columns" ? "rgba(212,175,55,0.15)" : "transparent", color: contentLayout === "columns" ? "#D4AF37" : "rgba(255,255,255,0.3)" }}>
+                    <Columns className="w-3 h-3 inline mr-0.5" />Colonnes
+                  </button>
+                  <button onClick={() => { setContentLayout("folders"); setContentViewMode("list"); }}
+                    className="px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer border-none transition-all"
+                    style={{ background: contentLayout === "folders" && contentViewMode === "list" ? "rgba(212,175,55,0.15)" : "transparent", color: contentLayout === "folders" && contentViewMode === "list" ? "#D4AF37" : "rgba(255,255,255,0.3)" }}>
+                    Liste
+                  </button>
+                </div>
+              </div>
+
+              {/* ══════ COLUMNS / KANBAN VIEW ══════ */}
+              {contentLayout === "columns" && (
+                <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.max(activeTiers.length, 1)}, 1fr)` }}>
+                  {activeTiers.map(tier => {
+                    const tierPosts = allContent.filter(c => c.tier === tier);
+                    const config = TIER_META[tier];
+                    const hex = TIER_HEX[tier] || "#888";
+                    const isDragOver = dragOverTarget === `col-${tier}`;
+                    return (
+                      <div key={tier} className="flex flex-col rounded-xl overflow-hidden"
+                        style={{
+                          minHeight: "calc(100vh - 250px)",
+                          background: isDragOver ? `${hex}08` : "rgba(255,255,255,0.02)",
+                          border: isDragOver ? `2px dashed ${hex}` : "1px solid rgba(255,255,255,0.06)",
+                        }}
+                        onDragOver={e => onDragOverFolder(e, `col-${tier}`)}
+                        onDragLeave={onDragLeaveFolder}
+                        onDrop={e => { e.preventDefault(); onDropFolder(e, tier); }}>
+                        {/* Column header */}
+                        <div className="flex items-center gap-1.5 px-2.5 py-2 shrink-0" style={{ borderBottom: `2px solid ${hex}25` }}>
+                          <div className="w-2 h-2 rounded-full" style={{ background: hex }} />
+                          <span className="text-[11px] font-bold text-white truncate">{config?.symbol} {config?.label || tier}</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-auto" style={{ background: `${hex}18`, color: hex }}>{tierPosts.length}</span>
+                        </div>
+                        {/* Column body */}
+                        <div className="flex-1 overflow-y-auto p-1.5" style={{ scrollbarWidth: "thin" }}>
+                          <div className="grid grid-cols-3 gap-1">
+                            {tierPosts.map(item => (
+                              <div key={item.id} draggable={item.source === "upload"}
+                                onDragStart={item.source === "upload" ? (e) => onDragStart(e, item.id, item.source) : undefined}
+                                className="relative aspect-square rounded-lg overflow-hidden cursor-grab active:cursor-grabbing group"
+                                style={{
+                                  border: "1px solid rgba(255,255,255,0.06)",
+                                  opacity: dragItem === item.id ? 0.3 : 1,
+                                }}>
+                                <img src={item.url} alt="" className="w-full h-full object-cover" loading="lazy" draggable={false} onClick={() => setZoomUrl(item.url)} />
+                                <div className="absolute top-0 left-0 opacity-0 group-hover:opacity-80 transition-opacity p-0.5">
+                                  <GripVertical className="w-2.5 h-2.5 text-white drop-shadow-lg" />
+                                </div>
+                                {item.source === "post" && (
+                                  <span className="absolute top-0.5 right-0.5 text-[6px] font-bold px-1 py-0.5 rounded-full" style={{ background: "rgba(230,51,41,0.8)", color: "#fff" }}>P</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* ══════ FOLDERS VIEW (grid or list) ══════ */}
+              {contentLayout === "folders" && (
               <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
 
                 {/* LEFT: Folders (packs as folders) */}
@@ -966,7 +1106,9 @@ export default function AgenceDashboard() {
 
                   {/* All content */}
                   <button onClick={() => setContentFolder(null)}
-                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left cursor-pointer transition-all border-none ${contentFolder === null ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}>
+                    onDragOver={e => onDragOverFolder(e, "all")} onDragLeave={onDragLeaveFolder} onDrop={e => onDropFolder(e, "p0")}
+                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left cursor-pointer transition-all border-none ${contentFolder === null ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}
+                    style={dragOverTarget === "all" ? { border: "2px dashed #D4AF37", background: "rgba(212,175,55,0.05)" } : {}}>
                     <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
                       style={{ background: contentFolder === null ? "rgba(212,175,55,0.12)" : "rgba(255,255,255,0.04)" }}>
                       <Grid3x3 className="w-4 h-4" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.3)" }} />
@@ -979,7 +1121,9 @@ export default function AgenceDashboard() {
 
                   {/* Public folder */}
                   <button onClick={() => setContentFolder("p0")}
-                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left cursor-pointer transition-all border-none ${contentFolder === "p0" ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}>
+                    onDragOver={e => onDragOverFolder(e, "p0")} onDragLeave={onDragLeaveFolder} onDrop={e => onDropFolder(e, "p0")}
+                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left cursor-pointer transition-all border-none ${contentFolder === "p0" ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}
+                    style={dragOverTarget === "p0" ? { border: "2px dashed #64748B", background: "rgba(100,116,139,0.05)" } : {}}>
                     <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
                       style={{ background: contentFolder === "p0" ? "rgba(100,116,139,0.15)" : "rgba(255,255,255,0.04)" }}>
                       <Eye className="w-4 h-4" style={{ color: contentFolder === "p0" ? "#64748B" : "rgba(255,255,255,0.3)" }} />
@@ -996,9 +1140,12 @@ export default function AgenceDashboard() {
                     const tierMeta = TIER_META[pack.id];
                     const count = contentCount(pack.id);
                     const isSelected = contentFolder === pack.id;
+                    const isDragOverThis = dragOverTarget === pack.id;
                     return (
                       <button key={pack.id} onClick={() => setContentFolder(pack.id)}
-                        className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left cursor-pointer transition-all border-none ${isSelected ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}>
+                        onDragOver={e => onDragOverFolder(e, pack.id)} onDragLeave={onDragLeaveFolder} onDrop={e => onDropFolder(e, pack.id)}
+                        className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left cursor-pointer transition-all border-none ${isSelected ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}
+                        style={isDragOverThis ? { border: `2px dashed ${hex}`, background: `${hex}08` } : {}}>
                         <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
                           style={{ background: isSelected ? `${hex}18` : "rgba(255,255,255,0.04)", border: isSelected ? `1px solid ${hex}30` : "1px solid transparent" }}>
                           <span className="text-base">{tierMeta?.symbol || "📁"}</span>
@@ -1014,6 +1161,21 @@ export default function AgenceDashboard() {
                       </button>
                     );
                   })}
+
+                  {/* Custom folder */}
+                  <button onClick={() => setContentFolder("custom")}
+                    onDragOver={e => onDragOverFolder(e, "custom")} onDragLeave={onDragLeaveFolder} onDrop={e => onDropFolder(e, "custom")}
+                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left cursor-pointer transition-all border-none ${contentFolder === "custom" ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}
+                    style={dragOverTarget === "custom" ? { border: "2px dashed #D4AF37", background: "rgba(212,175,55,0.05)" } : {}}>
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: contentFolder === "custom" ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.04)" }}>
+                      <Sparkles className="w-4 h-4" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.3)" }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-semibold text-white">Custom</div>
+                      <div className="text-[10px] text-white/25">{customCount} medias · A l&apos;unite</div>
+                    </div>
+                  </button>
 
                   {/* Upload button */}
                   <div className="pt-3 mt-2 border-t border-white/[0.06]">
@@ -1046,9 +1208,9 @@ export default function AgenceDashboard() {
                     <div className="flex items-center gap-2.5">
                       <FolderOpen className="w-4 h-4 text-white/30" />
                       <span className="text-sm font-semibold text-white">
-                        {contentFolder === null ? "Tout le contenu" : contentFolder === "p0" ? "Public" : packs.find(p => p.id === contentFolder)?.name || contentFolder}
+                        {contentFolder === null ? "Tout le contenu" : contentFolder === "p0" ? "Public" : contentFolder === "custom" ? "Custom" : packs.find(p => p.id === contentFolder)?.name || contentFolder}
                       </span>
-                      {contentFolder && contentFolder !== "p0" && (() => {
+                      {contentFolder && contentFolder !== "p0" && contentFolder !== "custom" && (() => {
                         const pack = packs.find(p => p.id === contentFolder);
                         const hex = TIER_HEX[contentFolder] || pack?.color || "#888";
                         return (
@@ -1057,12 +1219,6 @@ export default function AgenceDashboard() {
                           </span>
                         );
                       })()}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => setContentViewMode(contentViewMode === "grid" ? "list" : "grid")}
-                        className="px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer border border-white/[0.06] bg-transparent text-white/30 hover:text-white/50 transition-colors">
-                        {contentViewMode === "grid" ? "Liste" : "Grille"}
-                      </button>
                     </div>
                   </div>
 
@@ -1076,7 +1232,7 @@ export default function AgenceDashboard() {
                   )}
 
                   {/* ── Inline Pack Config — when a pack folder is selected ── */}
-                  {contentFolder && contentFolder !== "p0" && (() => {
+                  {contentFolder && contentFolder !== "p0" && contentFolder !== "custom" && (() => {
                     const pack = packs.find(p => p.id === contentFolder);
                     if (!pack) return null;
                     const hex = TIER_HEX[contentFolder] || pack.color;
@@ -1273,13 +1429,28 @@ export default function AgenceDashboard() {
                           const isPromo = item.visibility === "promo";
                           const isFree = !item.tier || item.tier === "p0";
                           return (
-                            <div key={item.id} className="aspect-[3/4] relative overflow-hidden rounded-xl group"
-                              style={{ border: `1px solid ${isFree ? "rgba(255,255,255,0.06)" : hex + "20"}` }}>
+                            <div key={item.id}
+                              draggable={item.source === "upload"}
+                              onDragStart={item.source === "upload" ? (e) => onDragStart(e, item.id, item.source) : undefined}
+                              className="aspect-[3/4] relative overflow-hidden rounded-xl group cursor-grab active:cursor-grabbing"
+                              style={{
+                                border: `1px solid ${isFree ? "rgba(255,255,255,0.06)" : hex + "20"}`,
+                                opacity: dragItem === item.id ? 0.3 : 1,
+                                transform: dragItem === item.id ? "scale(0.9)" : "scale(1)",
+                                transition: "opacity 0.15s, transform 0.15s",
+                              }}>
+                              {/* Grip indicator on hover */}
+                              {item.source === "upload" && (
+                                <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-70 transition-opacity z-10">
+                                  <GripVertical className="w-3 h-3 text-white drop-shadow-lg" />
+                                </div>
+                              )}
                               {/* CP mode: always show photos clearly */}
-                              <img src={item.url} alt="" className="w-full h-full object-cover" style={{ filter: "brightness(0.9)" }} />
+                              <img src={item.url} alt="" className="w-full h-full object-cover" draggable={false} style={{ filter: "brightness(0.9)" }}
+                                onClick={() => setZoomUrl(item.url)} />
 
                               {/* Source + Tier badge */}
-                              <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
+                              <div className="absolute top-1.5 left-1.5 flex items-center gap-1" style={{ left: item.source === "upload" ? "18px" : "6px" }}>
                                 {item.source === "post" && (
                                   <span className="text-[7px] font-bold px-1 py-0.5 rounded-full" style={{ background: "rgba(230,51,41,0.8)", color: "#fff" }}>POST</span>
                                 )}
@@ -1345,6 +1516,12 @@ export default function AgenceDashboard() {
                                           </button>
                                         );
                                       })}
+                                      <button onClick={() => { handleMoveTier(item.id, "custom"); setMovingUpload(null); }}
+                                        disabled={item.tier === "custom"}
+                                        className="w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] cursor-pointer border-none transition-colors hover:bg-white/[0.06] disabled:opacity-30"
+                                        style={{ background: "transparent", color: "#D4AF37" }}>
+                                        <Sparkles className="w-3 h-3" /> Custom
+                                      </button>
                                     </div>
                                   )}
                                 </div>
@@ -1394,11 +1571,15 @@ export default function AgenceDashboard() {
                               const isFree = !item.tier || item.tier === "p0";
                               const isBlurred = item.visibility !== "promo";
                               return (
-                                <tr key={item.id} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors">
+                                <tr key={item.id}
+                                  draggable={item.source === "upload"}
+                                  onDragStart={item.source === "upload" ? (e) => onDragStart(e, item.id, item.source) : undefined}
+                                  className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors cursor-grab active:cursor-grabbing"
+                                  style={{ opacity: dragItem === item.id ? 0.3 : 1 }}>
                                   <td className="px-4 py-2">
-                                    <div className="w-10 h-12 rounded-lg overflow-hidden">
+                                    <div className="w-10 h-12 rounded-lg overflow-hidden cursor-pointer" onClick={() => setZoomUrl(item.url)}>
                                       <img src={item.url} alt="" className="w-full h-full object-cover"
-                                        style={!isFree && isBlurred ? { filter: "blur(6px) brightness(0.5)", transform: "scale(1.1)" } : {}} />
+                                        style={{ filter: "brightness(0.9)" }} draggable={false} />
                                     </div>
                                   </td>
                                   <td className="px-4 py-2">
@@ -1420,10 +1601,10 @@ export default function AgenceDashboard() {
                                         disabled={togglingBlur === item.id}
                                         className="text-[10px] font-semibold px-2 py-0.5 rounded cursor-pointer border-none transition-colors"
                                         style={{ background: isBlurred ? "rgba(139,92,246,0.1)" : "rgba(16,185,129,0.1)", color: isBlurred ? "#8B5CF6" : "#10B981" }}>
-                                        {togglingBlur === item.id ? "..." : isBlurred ? "🔒 Flou" : "👁 Promo"}
+                                        {togglingBlur === item.id ? "..." : isBlurred ? "Prive" : "Promo"}
                                       </button>
                                     ) : (
-                                      <span className="text-[10px] text-white/30">🔒 Pack</span>
+                                      <span className="text-[10px] text-white/30">Pack</span>
                                     )}
                                   </td>
                                   <td className="px-4 py-2 text-[11px] text-white/25 tabular-nums">{item.date ? relativeTime(item.date) : "-"}</td>
@@ -1456,6 +1637,12 @@ export default function AgenceDashboard() {
                                                 </button>
                                               );
                                             })}
+                                            <button onClick={() => { handleMoveTier(item.id, "custom"); setMovingUpload(null); }}
+                                              disabled={item.tier === "custom"}
+                                              className="w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] cursor-pointer border-none transition-colors hover:bg-white/[0.06] disabled:opacity-30"
+                                              style={{ background: "transparent", color: "#D4AF37" }}>
+                                              <Sparkles className="w-3 h-3" /> Custom
+                                            </button>
                                           </div>
                                         )}
                                       </div>
@@ -1483,7 +1670,7 @@ export default function AgenceDashboard() {
                   })()}
 
                   {/* Summary stats */}
-                  {contentFolder && contentFolder !== "p0" && (() => {
+                  {contentFolder && contentFolder !== "p0" && contentFolder !== "custom" && (() => {
                     const pack = packs.find(p => p.id === contentFolder);
                     if (!pack) return null;
                     const hex = TIER_HEX[contentFolder] || pack.color;
@@ -1509,6 +1696,17 @@ export default function AgenceDashboard() {
                   })()}
                 </div>
               </div>
+              )}
+
+              {/* Zoom lightbox */}
+              {zoomUrl && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm cursor-pointer" onClick={() => setZoomUrl(null)}>
+                  <button className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer z-10" style={{ background: "rgba(255,255,255,0.15)", border: "none" }} onClick={() => setZoomUrl(null)}>
+                    <X className="w-4 h-4 text-white" />
+                  </button>
+                  <img src={zoomUrl} alt="" className="max-w-[92vw] max-h-[92vh] object-contain rounded-lg" style={{ boxShadow: "0 0 60px rgba(0,0,0,0.5)" }} />
+                </div>
+              )}
             </div>
             );
           })()}

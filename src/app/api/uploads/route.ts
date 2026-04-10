@@ -15,6 +15,7 @@ interface UploadRow {
   id: string; tier: string; type: string; label: string;
   dataUrl: string; uploadedAt: string; isNew?: boolean;
   visibility?: string; tokenPrice?: number;
+  groupLabel?: string | null; clientId?: string | null;
 }
 
 function requireSupabase() {
@@ -111,6 +112,8 @@ export async function POST(req: NextRequest) {
       isNew: body.isNew ?? true,
       visibility: body.visibility || "p0",
       tokenPrice: body.tokenPrice ?? 0,
+      groupLabel: body.groupLabel || null,
+      clientId: body.clientId || null,
     };
 
     const { data, error } = await supabase
@@ -154,6 +157,7 @@ export async function PUT(req: NextRequest) {
     const allowedFields: Record<string, string> = {
       tier: "tier", label: "label", visibility: "visibility", type: "type",
       dataUrl: "data_url", tokenPrice: "token_price", isNew: "is_new",
+      groupLabel: "group_label", clientId: "client_id",
     };
     for (const [k, v] of Object.entries(body.updates || {})) {
       const dbKey = allowedFields[k];
@@ -223,6 +227,8 @@ function mapFromDb(row: any): UploadRow {
     dataUrl: row.data_url ?? row.dataUrl, uploadedAt: row.created_at ?? row.uploadedAt,
     isNew: row.is_new ?? row.isNew, visibility: row.visibility,
     tokenPrice: row.token_price ?? row.tokenPrice,
+    groupLabel: row.group_label ?? row.groupLabel ?? null,
+    clientId: row.client_id ?? row.clientId ?? null,
   };
 }
 function mapToDb(u: any, model: string) {
@@ -231,5 +237,7 @@ function mapToDb(u: any, model: string) {
     label: u.label || "", data_url: u.dataUrl || u.data_url || "",
     visibility: u.visibility || "p0", token_price: u.tokenPrice ?? u.token_price ?? 0,
     is_new: u.isNew ?? u.is_new ?? true,
+    group_label: u.groupLabel ?? u.group_label ?? null,
+    client_id: u.clientId ?? u.client_id ?? null,
   };
 }
