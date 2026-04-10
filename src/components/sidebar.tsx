@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, ChevronLeft, ChevronRight,
-  Crown, Settings, Target, LogOut, Workflow, DollarSign,
+  Crown, Settings, Target, LogOut, DollarSign,
   Zap, Network,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -15,7 +15,6 @@ import { ThemeToggle } from "./theme-toggle";
 const NAV_MAIN = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/agence", color: "#E63329" },
   { id: "clients", label: "Clients", icon: Users, href: "/agence/clients", color: "#F59E0B" },
-  { id: "contenu", label: "Contenu", icon: Workflow, href: "/agence/contenu", color: "#6366F1" },
   { id: "strategie", label: "Stratégie", icon: Target, href: "/agence/strategie", color: "#10B981" },
 ] as const;
 
@@ -30,7 +29,6 @@ const NAV_ROOT = [
 const MOBILE_NAV_MAIN = [
   { id: "dashboard", label: "Home", icon: LayoutDashboard, href: "/agence" },
   { id: "clients", label: "Clients", icon: Users, href: "/agence/clients" },
-  { id: "contenu", label: "Contenu", icon: Workflow, href: "/agence/contenu" },
   { id: "strategie", label: "Stratégie", icon: Target, href: "/agence/strategie" },
 ] as const;
 

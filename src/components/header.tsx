@@ -13,10 +13,10 @@ import { SocialsDropdown } from "@/components/header/socials-dropdown";
 
 // ── Page titles ──
 const PAGE_TITLES: Record<string, string> = {
-  "/agence": "Dashboard", "/agence/clients": "Clients", "/agence/contenu": "Contenu",
+  "/agence": "Dashboard", "/agence/clients": "Clients",
   "/agence/strategie": "Strategie", "/agence/finances": "Finances",
   "/agence/automation": "Automation", "/agence/architecture": "Architecture",
-  "/agence/settings": "Settings", "/agence/cms": "CMS",
+  "/agence/settings": "Settings",
 };
 
 // ── Platforms ──

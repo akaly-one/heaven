@@ -6,7 +6,6 @@ import { toModelId } from "@/lib/model-utils";
 import { OsLayout } from "@/components/os-layout";
 import { SecurityAlerts } from "@/components/cockpit/security-alerts";
 import { Settings, UserPlus, Trash2, Shield, ShieldCheck, Power, Lock, Users, Edit3, GitMerge, Zap, ChevronDown, ChevronUp, Database, Cloud, CreditCard, Server, CheckCircle, AlertCircle, Globe, Monitor, RefreshCw, Hash, UserCheck, Key, DollarSign, FileText } from "lucide-react";
-// PackConfigurator moved to /agence/contenu
 
 // ── Types ──
 interface Account {
@@ -16,7 +15,6 @@ interface Account {
 const SECTIONS = [
   { id: "security" as const, label: "Sécurité", icon: Lock },
   { id: "accounts" as const, label: "Comptes", icon: Users },
-  // Packs moved to /agence/contenu
   { id: "mode" as const, label: "Mode", icon: Zap },
   { id: "devcenter" as const, label: "Dev Center", icon: Monitor, rootOnly: true },
 ];
