@@ -169,112 +169,99 @@ export function OverviewSimulator({
         })}
       </div>
 
-      {/* ═══ 2-column kanban: Ventes (graph) | Stats ═══ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-
-        {/* LEFT: Ventes — bar chart style banque */}
-        <div className="rounded-xl p-4" style={cardStyle}>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>Ventes par pack</span>
-            <span className="text-lg font-black" style={{ color: "#10B981" }}>{fmt.format(revenue)}</span>
+      {/* ═══ Single dense block — everything ═══ */}
+      <div className="rounded-xl p-4" style={cardStyle}>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>Overview</span>
+            <span className="text-xs ml-3" style={{ color: "var(--text-muted)" }}>
+              {paidCodes.length} ventes · {clients.length} clients · {fmt.format(avgPerClient)}/moy
+            </span>
           </div>
-          <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-            {paidCodes.length} ventes · {uniqueClients} clients · {fmt.format(avgPerClient)}/moy
-          </p>
-
-          {/* Bar chart */}
-          <div className="flex items-end gap-3" style={{ height: 100 }}>
-            {revenueByPack.map(p => {
-              const heightPct = maxSales > 0 ? (p.count / maxSales) * 100 : 0;
-              return (
-                <div key={p.id} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-xs font-bold" style={{ color: p.hex }}>{p.count}</span>
-                  <div className="w-full rounded-t-md transition-all" style={{
-                    height: `${Math.max(heightPct, 6)}%`,
-                    background: `linear-gradient(180deg, ${p.hex}, ${p.hex}66)`,
-                    minHeight: 6,
-                  }} />
-                  <span className="text-[11px] font-medium truncate max-w-full" style={{ color: "var(--text-muted)" }}>
-                    {p.name}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Revenue per pack — under chart */}
-          <div className="flex gap-3 mt-3 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
-            {revenueByPack.map(p => (
-              <div key={p.id} className="flex-1 text-center">
-                <span className="text-xs font-bold" style={{ color: p.hex }}>{fmt.format(p.rev)}</span>
-              </div>
-            ))}
-          </div>
+          <span className="text-lg font-black" style={{ color: "#10B981" }}>{fmt.format(revenue)}</span>
         </div>
 
-        {/* RIGHT: Stats — multi-column dense block */}
-        <div className="rounded-xl p-4" style={cardStyle}>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>Vue d'ensemble</span>
-            <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>{clients.length} clients</span>
+        {/* Packs — horizontal bars (compact) + 4 stat columns — all in one row */}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_1fr] gap-x-5 gap-y-4">
+
+          {/* Ventes — horizontal bars */}
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider block mb-2" style={{ color: "var(--text-muted)" }}>Ventes</span>
+            <div className="space-y-2">
+              {revenueByPack.map(p => {
+                const pct = maxSales > 0 ? (p.count / maxSales) * 100 : 0;
+                return (
+                  <div key={p.id}>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-xs font-medium" style={{ color: "var(--text)" }}>{p.name}</span>
+                      <span className="text-xs font-bold" style={{ color: p.hex }}>{p.count} · {fmt.format(p.rev)}</span>
+                    </div>
+                    <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
+                      <div className="h-full rounded-full" style={{ width: `${Math.max(pct, 3)}%`, background: `linear-gradient(90deg, ${p.hex}, ${p.hex}88)` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* 2x2 inner grid to fill horizontal space */}
-          <div className="grid grid-cols-2 gap-x-5 gap-y-3">
-            {/* Codes */}
-            <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Codes</span>
-              <div className="space-y-1">
-                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Actifs</span><span className="text-xs font-bold" style={{ color: "#10B981" }}>{activeCodes.length}</span></div>
-                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Payes</span><span className="text-xs font-bold" style={{ color: "#D4AF37" }}>{paidCodes.length}</span></div>
-                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Gratuits</span><span className="text-xs font-bold" style={{ color: "#F59E0B" }}>{freeCodes}</span></div>
-                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Revoques</span><span className="text-xs font-bold" style={{ color: "#EF4444" }}>{revokedCodes}</span></div>
-              </div>
+          {/* Codes */}
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider block mb-2" style={{ color: "var(--text-muted)" }}>Codes</span>
+            <div className="space-y-1.5">
+              <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Actifs</span><span className="text-xs font-bold" style={{ color: "#10B981" }}>{activeCodes.length}</span></div>
+              <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Payes</span><span className="text-xs font-bold" style={{ color: "#D4AF37" }}>{paidCodes.length}</span></div>
+              <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Gratuits</span><span className="text-xs font-bold" style={{ color: "#F59E0B" }}>{freeCodes}</span></div>
+              <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Revoques</span><span className="text-xs font-bold" style={{ color: "#EF4444" }}>{revokedCodes}</span></div>
             </div>
-            {/* Clients */}
-            <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Clients</span>
-              <div className="space-y-1">
-                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Verifies</span><span className="text-xs font-bold" style={{ color: "#10B981" }}>{verifiedClients}</span></div>
-                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>En attente</span><span className="text-xs font-bold" style={{ color: "#F59E0B" }}>{pendingClients}</span></div>
-                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Bannis</span><span className="text-xs font-bold" style={{ color: "#EF4444" }}>{bannedClients}</span></div>
-                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Retention</span><span className="text-xs font-bold" style={{ color: "#8B5CF6" }}>{retentionRate}%</span></div>
-              </div>
+          </div>
+
+          {/* Clients */}
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider block mb-2" style={{ color: "var(--text-muted)" }}>Clients</span>
+            <div className="space-y-1.5">
+              <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Verifies</span><span className="text-xs font-bold" style={{ color: "#10B981" }}>{verifiedClients}</span></div>
+              <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>En attente</span><span className="text-xs font-bold" style={{ color: "#F59E0B" }}>{pendingClients}</span></div>
+              <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Bannis</span><span className="text-xs font-bold" style={{ color: "#EF4444" }}>{bannedClients}</span></div>
+              <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Retention</span><span className="text-xs font-bold" style={{ color: "#8B5CF6" }}>{retentionRate}%</span></div>
             </div>
-            {/* Contenu */}
-            <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Contenu</span>
-              <div className="space-y-1">
-                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Stories</span><span className="text-xs font-bold" style={{ color: "#8B5CF6" }}>{stories.length}</span></div>
-                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Uniques</span><span className="text-xs font-bold" style={{ color: "var(--text)" }}>{uniqueClients}</span></div>
-              </div>
-            </div>
-            {/* Renouvellements */}
-            <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Expirations</span>
-              {expiringCodes.length > 0 ? (
-                <div className="space-y-1">
-                  {expiringCodes.slice(0, 4).map(code => {
-                    const cl = clients.find(c => c.pseudo_snap === code.client || c.pseudo_insta === code.client || c.nickname === code.client);
-                    const name = cl?.pseudo_snap || cl?.pseudo_insta || code.client;
-                    const timeLeft = new Date(code.expiresAt).getTime() - Date.now();
-                    const h = Math.floor(timeLeft / 3_600_000);
-                    const d = Math.floor(timeLeft / 86_400_000);
-                    const urgency = h < 24 ? "#F87171" : h < 72 ? "#FBBF24" : "#10B981";
-                    return (
-                      <div key={code.code} className="flex justify-between">
-                        <span className="text-xs truncate mr-2" style={{ color: "var(--text)" }}>@{name}</span>
-                        <span className="text-xs font-bold shrink-0" style={{ color: urgency }}>{d > 0 ? `${d}j` : `${h}h`}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <span className="text-xs" style={{ color: "var(--text-muted)" }}>Aucune</span>
+          </div>
+
+          {/* Contenu + Expirations */}
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider block mb-2" style={{ color: "var(--text-muted)" }}>Activite</span>
+            <div className="space-y-1.5">
+              <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Stories</span><span className="text-xs font-bold" style={{ color: "#8B5CF6" }}>{stories.length}</span></div>
+              <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Uniques</span><span className="text-xs font-bold" style={{ color: "var(--text)" }}>{uniqueClients}</span></div>
+              <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Abonnes</span><span className="text-xs font-bold" style={{ color: "#D4AF37" }}>{activeCodes.length}</span></div>
+              {expiringCodes.length > 0 && (
+                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Expirent</span><span className="text-xs font-bold" style={{ color: "#F59E0B" }}>{expiringCodes.length}</span></div>
               )}
             </div>
           </div>
         </div>
+
+        {/* Expiring list — inline under the grid if any */}
+        {expiringCodes.length > 0 && (
+          <div className="mt-3 pt-3 flex flex-wrap gap-2" style={{ borderTop: "1px solid var(--border)" }}>
+            <span className="text-xs font-semibold shrink-0" style={{ color: "#F59E0B" }}>A renouveler :</span>
+            {expiringCodes.map(code => {
+              const cl = clients.find(c => c.pseudo_snap === code.client || c.pseudo_insta === code.client || c.nickname === code.client);
+              const name = cl?.pseudo_snap || cl?.pseudo_insta || code.client;
+              const timeLeft = new Date(code.expiresAt).getTime() - Date.now();
+              const h = Math.floor(timeLeft / 3_600_000);
+              const d = Math.floor(timeLeft / 86_400_000);
+              const urgency = h < 24 ? "#F87171" : h < 72 ? "#FBBF24" : "#10B981";
+              return (
+                <span key={code.code} className="text-xs">
+                  <span style={{ color: "var(--text)" }}>@{name}</span>{" "}
+                  <span className="font-bold" style={{ color: urgency }}>{d > 0 ? `${d}j` : `${h}h`}</span>
+                </span>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ═══ Simulator toggle ═══ */}
