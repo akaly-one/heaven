@@ -68,11 +68,9 @@ function Skeleton({ className = "", style }: { className?: string; style?: React
   return <div className={`animate-pulse rounded-lg bg-white/[0.06] ${className}`} style={style} />;
 }
 
-// ── Tab definitions ──
+// ── Tab definitions (Contenu & Clients have their own sidebar pages) ──
 const TABS = [
   { id: "overview", label: "Overview" },
-  { id: "content", label: "Contenu" },
-  { id: "clients", label: "Clients" },
   { id: "revenue", label: "Revenus" },
   { id: "settings", label: "Packs" },
 ] as const;
@@ -111,6 +109,8 @@ export default function AgenceDashboard() {
   const [clientSearch, setClientSearch] = useState("");
   const [codeCopied, setCodeCopied] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [editingPacks, setEditingPacks] = useState(false);
+  const [savingPacks, setSavingPacks] = useState(false);
 
   // ── Pull-to-refresh ──
   const [pullY, setPullY] = useState(0);
@@ -156,7 +156,7 @@ export default function AgenceDashboard() {
     if (!ready || !modelSlug) return;
     if (dataLoaded === modelSlug) return;
     const mid = toModelId(modelSlug);
-    const headers = { "Content-Type": "application/json" };
+    const headers = authHeaders();
     const safeFetch = (url: string) => fetch(url, { headers }).then(r => {
       if (!r.ok) { console.warn(`[Dashboard] ${url} → ${r.status}`); return null; }
       return r.json();
@@ -319,6 +319,23 @@ export default function AgenceDashboard() {
     setTimeout(() => setCodeCopied(null), 2000);
   }, []);
 
+  const updatePack = useCallback((packId: string, field: string, value: number | boolean) => {
+    setPacks(prev => prev.map(p => p.id === packId ? { ...p, [field]: value } : p));
+  }, []);
+
+  const handleSavePacks = useCallback(async () => {
+    setSavingPacks(true);
+    try {
+      await fetch("/api/packs", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ model: toModelId(modelSlug), packs }),
+      });
+      setEditingPacks(false);
+    } catch (err) { console.error("[Packs] save:", err); }
+    finally { setSavingPacks(false); }
+  }, [packs, modelSlug, authHeaders]);
+
   // Auto-refresh safety net for model accounts
   useEffect(() => {
     if (ready && !modelSlug && !isRoot) {
@@ -445,24 +462,12 @@ export default function AgenceDashboard() {
               <span className="text-xs text-white/30 shrink-0">{modelInfo?.online ? "en ligne" : "hors ligne"}</span>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button onClick={() => setShowGenerator(true)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold cursor-pointer transition-all hover:brightness-110 active:scale-95 border-none"
-                style={{ background: "#D4AF37", color: "#0f0f12" }}>
-                <Plus className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Generer</span>
-              </button>
-              <a href={`/m/${modelSlug}`} target="_blank"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium no-underline text-white/40 hover:text-white/60 transition-colors border border-white/[0.06] bg-transparent">
-                <Eye className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Profil</span>
-              </a>
-              <a href={`/m/${modelSlug}?edit=true`}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium no-underline text-white/40 hover:text-white/60 transition-colors border border-white/[0.06] bg-transparent">
-                <Pencil className="w-3.5 h-3.5" />
-              </a>
-            </div>
+            {/* Toggle online/offline */}
+            <button onClick={handleToggleStatus} disabled={statusUpdating}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all border border-white/[0.06] bg-transparent shrink-0 disabled:opacity-50"
+              style={{ color: modelInfo?.online ? "#10B981" : "#6B7280" }}>
+              {statusUpdating ? "..." : modelInfo?.online ? "En ligne" : "Hors ligne"}
+            </button>
           </div>
 
           {/* ══ KPI BAR ══ */}
@@ -573,8 +578,8 @@ export default function AgenceDashboard() {
             </div>
           )}
 
-          {/* ══════════ TAB: CONTENT ══════════ */}
-          {activeTab === "content" && (
+          {/* TAB: CONTENT removed — uses /agence/contenu sidebar page */}
+          {false && (
             <div className="space-y-4">
               {/* Content sub-tabs — underline style */}
               <div className="flex items-center gap-5">
@@ -620,7 +625,7 @@ export default function AgenceDashboard() {
 
                         {newPostImage && !posting && (
                           <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-white/[0.06]">
-                            <img src={newPostImage} alt="" className="w-full h-full object-cover" draggable={false} />
+                            <img src={newPostImage || ""} alt="" className="w-full h-full object-cover" draggable={false} />
                             <button onClick={() => setNewPostImage(null)}
                               className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center cursor-pointer bg-black/70 text-white border-none hover:scale-110 transition-transform">
                               <X className="w-2.5 h-2.5" />
@@ -799,8 +804,8 @@ export default function AgenceDashboard() {
             </div>
           )}
 
-          {/* ══════════ TAB: CLIENTS ══════════ */}
-          {activeTab === "clients" && (
+          {/* TAB: CLIENTS removed — uses /agence/clients sidebar page */}
+          {false && (
             <div className="space-y-5">
               {/* Search + header */}
               <div className="flex items-center gap-4">
@@ -1005,16 +1010,38 @@ export default function AgenceDashboard() {
           {/* ══════════ TAB: SETTINGS (Packs) ══════════ */}
           {activeTab === "settings" && (
             <div className="space-y-4">
-              <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Configuration des packs</span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Configuration des packs</span>
+                <div className="flex items-center gap-2">
+                  {editingPacks ? (
+                    <>
+                      <button onClick={() => setEditingPacks(false)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors border border-white/[0.06] bg-transparent text-white/40 hover:text-white/60">
+                        Annuler
+                      </button>
+                      <button onClick={handleSavePacks} disabled={savingPacks}
+                        className="px-4 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all hover:brightness-110 border-none disabled:opacity-50"
+                        style={{ background: "#D4AF37", color: "#0f0f12" }}>
+                        {savingPacks ? "..." : "Sauvegarder"}
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={() => setEditingPacks(true)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors border border-white/[0.06] bg-transparent text-white/40 hover:text-white/60">
+                      <Settings className="w-3.5 h-3.5 inline mr-1" />Modifier
+                    </button>
+                  )}
+                </div>
+              </div>
               <div className={`${surface} overflow-hidden`}>
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-white/[0.06]">
-                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Pack</th>
-                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Prix</th>
-                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5 hidden sm:table-cell">Status</th>
-                      <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Vendus</th>
-                      <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Revenus</th>
+                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-3">Pack</th>
+                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-3">Prix</th>
+                      <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-3">Status</th>
+                      <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-3">Vendus</th>
+                      <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-3">Revenus</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1024,16 +1051,34 @@ export default function AgenceDashboard() {
                       return (
                         <tr key={pack.id} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors">
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full" style={{ background: pack.color }} />
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ background: pack.color }} />
                               <span className="text-sm font-semibold text-white">{pack.name}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-sm font-semibold text-white tabular-nums">{fmt.format(pack.price)}</td>
-                          <td className="px-4 py-3 hidden sm:table-cell">
-                            <span className="text-xs font-medium" style={{ color: pack.active ? "#10B981" : "#6B7280" }}>
-                              {pack.active ? "Actif" : "Inactif"}
-                            </span>
+                          <td className="px-4 py-3">
+                            {editingPacks ? (
+                              <input type="number" value={pack.price} onChange={e => updatePack(pack.id, "price", Number(e.target.value))}
+                                className="w-20 px-2 py-1 rounded-md text-sm font-semibold tabular-nums bg-white/[0.05] border border-white/[0.1] text-white outline-none focus:border-[#D4AF37] transition-colors" />
+                            ) : (
+                              <span className="text-sm font-semibold text-white tabular-nums">{fmt.format(pack.price)}</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {editingPacks ? (
+                              <button onClick={() => updatePack(pack.id, "active", !pack.active)}
+                                className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all border-none"
+                                style={{
+                                  background: pack.active ? "rgba(16,185,129,0.15)" : "rgba(107,114,128,0.15)",
+                                  color: pack.active ? "#10B981" : "#6B7280",
+                                }}>
+                                {pack.active ? "Actif" : "Inactif"}
+                              </button>
+                            ) : (
+                              <span className="text-xs font-medium" style={{ color: pack.active ? "#10B981" : "#6B7280" }}>
+                                {pack.active ? "Actif" : "Inactif"}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-right text-sm font-semibold text-white tabular-nums">{soldCount}</td>
                           <td className="px-4 py-3 text-right text-sm font-bold tabular-nums" style={{ color: pack.color }}>{fmt.format(packRevenue)}</td>

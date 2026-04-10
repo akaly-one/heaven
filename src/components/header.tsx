@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import { MessageCircle, Users, Link2, Globe, Instagram, KeyRound, ImagePlus } from "lucide-react";
+import { MessageCircle, Users, Link2, Globe, Instagram, KeyRound, ImagePlus, Eye, Pencil } from "lucide-react";
 import { StoryGenerator } from "@/components/profile/story-generator";
 import { useModel } from "@/lib/model-context";
 import { toModelId } from "@/lib/model-utils";
@@ -358,6 +358,24 @@ export function Header() {
           <ImagePlus className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Story</span>
         </button>
+      )}
+
+      {/* Profil & Edit shortcuts */}
+      {modelSlug && (
+        <div className="flex items-center gap-1 shrink-0 mr-1">
+          <a href={`/m/${modelSlug}`} target="_blank"
+            className="w-9 h-9 rounded-lg flex items-center justify-center no-underline transition-colors"
+            style={{ background: "transparent", border: "none", color: "var(--text-muted)" }}
+            title="Voir profil public">
+            <Eye className="w-[18px] h-[18px]" />
+          </a>
+          <a href={`/m/${modelSlug}?edit=true`}
+            className="w-9 h-9 rounded-lg flex items-center justify-center no-underline transition-colors"
+            style={{ background: "transparent", border: "none", color: "var(--text-muted)" }}
+            title="Modifier profil">
+            <Pencil className="w-[18px] h-[18px]" />
+          </a>
+        </div>
       )}
 
       {/* Right — 3 buttons with dropdowns */}
