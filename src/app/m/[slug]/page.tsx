@@ -106,7 +106,7 @@ export default function ModelPage() {
       if (hash === "all" || hash === "public" || hash === "gallery" || hash === "shootings") return "feed";
       if (hash === "shop") return "custom";
     }
-    return "feed";
+    return "home";
   });
 
   // ── Access code ──
@@ -166,7 +166,10 @@ export default function ModelPage() {
   const contentUnlocked = visitorVerified || isModelLoggedIn;
   const hasPurchased = purchasedItems.size > 0 || !!unlockedTier;
   const activePacks = edit.displayPacks.filter(p => p.active);
-  const isTierView = galleryTier !== "feed" && galleryTier !== "custom";
+  // Hero collapses whenever user navigates to any tab (feed/pack/custom)
+  // "home" = full profile with hero visible
+  const isNavActive = galleryTier !== "home";
+  const isTierView = galleryTier !== "home" && galleryTier !== "feed" && galleryTier !== "custom";
 
   // ── Validate URL access code on mount ──
   useEffect(() => {
@@ -331,7 +334,7 @@ export default function ModelPage() {
     <div className="min-h-screen pb-24 md:pb-8" style={{ background: "var(--bg)", userSelect: "none", WebkitUserSelect: "none" }}>
       {/* Identity Gate */}
       {!visitorRegistered && !isModelLoggedIn && model && (
-        <IdentityGate slug={slug} modelName={model.display_name} onRegistered={handleGateRegistered} onNeedShop={() => setGalleryTier("feed")} />
+        <IdentityGate slug={slug} modelName={model.display_name} onRegistered={handleGateRegistered} onNeedShop={() => setGalleryTier("home")} />
       )}
       <ProfileStyles />
 
@@ -352,7 +355,7 @@ export default function ModelPage() {
         {/* ═══ HERO SECTION ═══ */}
         <HeroSection
           model={model} displayModel={displayModel} posts={posts} uploads={uploads} wallPosts={wallPosts}
-          isTierView={isTierView} contentUnlocked={contentUnlocked} visitorRegistered={visitorRegistered}
+          isTierView={isNavActive} contentUnlocked={contentUnlocked} visitorRegistered={visitorRegistered}
           isEditMode={edit.isEditMode} isModelLoggedIn={isModelLoggedIn}
           chatOpen={chatOpen} setChatOpen={setChatOpen} chatUnread={chatUnread}
           activeStories={activeStories} setStoryViewIdx={setStoryViewIdx}
@@ -368,7 +371,7 @@ export default function ModelPage() {
                 <AlertTriangle className="w-4 h-4" />
                 <span>Ton code a expire</span>
               </div>
-              <button onClick={() => setGalleryTier("feed")}
+              <button onClick={() => setGalleryTier("home")}
                 className="px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all"
                 style={{ background: "var(--warning)", color: "#fff" }}>
                 Renouveler
@@ -402,7 +405,7 @@ export default function ModelPage() {
         <div key={galleryTier} className="max-w-6xl mx-auto px-5 sm:px-8 md:px-12 py-6 sm:py-8 fade-up">
 
           {/* ── FEED ── */}
-          {galleryTier === "feed" && (
+          {(galleryTier === "feed" || galleryTier === "home") && (
             <FeedView
               model={model} displayModel={displayModel} posts={posts} uploads={uploads} wallPosts={wallPosts}
               wallContent={wallContent} setWallContent={setWallContent} wallPosting={wallPosting}
@@ -416,7 +419,7 @@ export default function ModelPage() {
           )}
 
           {/* ── TIER CONTENT ── */}
-          {galleryTier !== "feed" && galleryTier !== "custom" && (
+          {galleryTier !== "home" && galleryTier !== "feed" && galleryTier !== "custom" && (
             <TierView
               galleryTier={galleryTier} posts={posts} uploads={uploads} packs={packs}
               activePacks={activePacks} displayPacks={displayPacks}
@@ -675,16 +678,16 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, vi
         {/* LEFT: Back + Model name */}
         <div className="flex items-center gap-2 min-w-0 shrink-0">
           {isModelLoggedIn && <a href="/agence" className="text-sm font-bold no-underline shrink-0" style={{ color: "var(--accent)" }}>&#8592;</a>}
-          {galleryTier !== "feed" && (
-            <button onClick={() => setGalleryTier("feed")}
+          {galleryTier !== "home" && (
+            <button onClick={() => setGalleryTier("home")}
               className="text-sm font-bold shrink-0 cursor-pointer bg-transparent border-none transition-all hover:scale-105 active:scale-95"
               style={{ color: "var(--accent)" }}>&#8592;</button>
           )}
-          <button onClick={() => setGalleryTier("feed")}
+          <button onClick={() => setGalleryTier("home")}
             className="text-xs sm:text-sm font-bold tracking-wide uppercase truncate bg-transparent border-none cursor-pointer transition-all hover:opacity-80 active:scale-95 p-0"
             style={{ color: "var(--text)", letterSpacing: "0.08em" }}>{model.display_name}</button>
           {displayModel?.online && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }} />}
-          {galleryTier !== "feed" && (
+          {galleryTier !== "home" && (
             <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md shrink-0"
               style={{ background: `${TIER_HEX[galleryTier] || "var(--accent)"}20`, color: TIER_HEX[galleryTier] || "var(--accent)" }}>
               {TIER_META[galleryTier]?.symbol} {TIER_META[galleryTier]?.label || galleryTier}
@@ -897,7 +900,7 @@ function DesktopTierNav({ galleryTier, setGalleryTier, setFocusPack, activePacks
       <div className="max-w-6xl mx-auto px-5 sm:px-8 md:px-12">
         <div className="flex gap-2 justify-center pb-1" role="tablist">
           {/* Feed */}
-          <button role="tab" aria-selected={galleryTier === "feed"} onClick={() => { setGalleryTier("feed"); setFocusPack(null); }}
+          <button role="tab" aria-selected={galleryTier === "feed"} onClick={() => { setGalleryTier(galleryTier === "feed" ? "home" : "feed"); setFocusPack(null); }}
             className="relative flex-1 rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] group overflow-hidden"
             style={{ minWidth: "70px", padding: "12px 16px", background: galleryTier === "feed" ? "linear-gradient(135deg, var(--accent), #F43F5E)" : "var(--surface)", border: galleryTier === "feed" ? "none" : "1px solid var(--border)", boxShadow: galleryTier === "feed" ? "0 4px 16px rgba(230,51,41,0.25)" : "none" }}>
             <div className="flex flex-col items-center gap-1">
@@ -914,7 +917,7 @@ function DesktopTierNav({ galleryTier, setGalleryTier, setFocusPack, activePacks
             const isActive = galleryTier === t;
             const previewImg = uploads.find(u => normalizeTier(u.tier) === t && u.dataUrl && u.type === "photo")?.dataUrl;
             return (
-              <button key={t} role="tab" aria-selected={isActive} onClick={() => { setGalleryTier(t); setFocusPack(null); }}
+              <button key={t} role="tab" aria-selected={isActive} onClick={() => { setGalleryTier(isActive ? "home" : t); setFocusPack(null); }}
                 className="relative flex-1 rounded-xl cursor-pointer poker-tile group overflow-hidden"
                 style={{ minWidth: "70px", height: "72px", background: isActive ? `linear-gradient(135deg, ${tierHex}, ${tierHex}CC)` : "var(--surface)", border: isActive ? `2px solid ${tierHex}` : "1px solid var(--border)", boxShadow: isActive ? `0 4px 20px ${tierHex}40` : "none", opacity: isLocked && !isActive ? 0.7 : 1 }}>
                 <div className="absolute inset-0">
@@ -934,7 +937,7 @@ function DesktopTierNav({ galleryTier, setGalleryTier, setFocusPack, activePacks
             );
           })}
           {/* Custom */}
-          <button role="tab" aria-selected={galleryTier === "custom"} onClick={() => { setGalleryTier("custom"); setFocusPack(null); }}
+          <button role="tab" aria-selected={galleryTier === "custom"} onClick={() => { setGalleryTier(galleryTier === "custom" ? "home" : "custom"); setFocusPack(null); }}
             className="relative flex-1 rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] group overflow-hidden"
             style={{ minWidth: "70px", padding: "12px 16px", background: galleryTier === "custom" ? "linear-gradient(135deg, #D4AF37, #B8860B)" : "var(--surface)", border: galleryTier === "custom" ? "none" : "1px solid var(--border)", boxShadow: galleryTier === "custom" ? "0 4px 16px rgba(184,134,11,0.25)" : "none" }}>
             <div className="flex flex-col items-center gap-1">
@@ -957,7 +960,7 @@ function MobileBottomNav({ galleryTier, setGalleryTier, setFocusPack, activePack
     <nav className="fixed bottom-0 left-0 right-0 z-30 md:hidden safe-area-bottom"
       style={{ background: "color-mix(in srgb, var(--bg) 95%, transparent)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: "1px solid var(--border)" }}>
       <div className="flex items-center overflow-x-auto no-scrollbar px-2 py-2.5 gap-1">
-        <button onClick={() => { setGalleryTier("feed"); setFocusPack(null); }}
+        <button onClick={() => { setGalleryTier(galleryTier === "feed" ? "home" : "feed"); setFocusPack(null); }}
           className="relative flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl cursor-pointer transition-all shrink-0"
           style={{ color: galleryTier === "feed" ? "#fff" : "var(--text-muted)", background: galleryTier === "feed" ? "var(--accent)" : "transparent" }}>
           <Newspaper className="w-5 h-5" /><span className="text-[10px] font-bold uppercase" style={{ letterSpacing: "0.05em" }}>Feed</span>
@@ -967,7 +970,7 @@ function MobileBottomNav({ galleryTier, setGalleryTier, setFocusPack, activePack
           const isActive = galleryTier === p.id;
           const isLocked = !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, p.id));
           return (
-            <button key={p.id} onClick={() => { setGalleryTier(p.id); setFocusPack(null); }}
+            <button key={p.id} onClick={() => { setGalleryTier(isActive ? "home" : p.id); setFocusPack(null); }}
               className="relative flex flex-col items-center gap-1 px-3.5 py-1.5 rounded-xl cursor-pointer transition-all shrink-0"
               style={{ color: isActive ? "#fff" : hex, background: isActive ? hex : "transparent", opacity: isLocked && !isActive ? 0.5 : 1 }}>
               <span className="text-lg relative leading-none">{TIER_META[p.id]?.symbol}{isLocked && <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-2" style={{ color: isActive ? "#fff" : hex, opacity: 0.7 }} />}</span>
@@ -975,7 +978,7 @@ function MobileBottomNav({ galleryTier, setGalleryTier, setFocusPack, activePack
             </button>
           );
         })}
-        <button onClick={() => { setGalleryTier("custom"); setFocusPack(null); }}
+        <button onClick={() => { setGalleryTier(galleryTier === "custom" ? "home" : "custom"); setFocusPack(null); }}
           className="relative flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl cursor-pointer transition-all shrink-0"
           style={{ color: galleryTier === "custom" ? "#fff" : "var(--text-muted)", background: galleryTier === "custom" ? "var(--gold, #D4A017)" : "transparent" }}>
           <Sparkles className="w-5 h-5" /><span className="text-[10px] font-bold uppercase" style={{ letterSpacing: "0.05em" }}>Custom</span>
