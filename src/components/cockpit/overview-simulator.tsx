@@ -140,141 +140,139 @@ export function OverviewSimulator({
 
   const cardStyle = { background: "var(--surface)", border: "1px solid var(--border)" };
 
-  return (
-    <div className="space-y-3">
+  const maxSales = Math.max(...Object.values(salesByTier), 1);
 
-      {/* ═══ Quick actions — single compact row ═══ */}
-      <div className="flex flex-wrap items-center gap-1.5">
+  return (
+    <div className="space-y-4">
+
+      {/* ═══ Quick actions ═══ */}
+      <div className="flex flex-wrap items-center gap-2">
         {[
           { href: `/m/${modelSlug}`, icon: Eye, color: "#E63329", label: "Profil", onClick: undefined as (() => void) | undefined },
           { href: `/m/${modelSlug}?edit=true`, icon: Pencil, color: "#D4AF37", label: "Edit", onClick: undefined },
           { href: undefined as string | undefined, icon: Key, color: "#10B981", label: "Code", onClick: onGenerate },
           { href: undefined, icon: Zap, color: "#8B5CF6", label: "Contenu", onClick: () => onSwitchTab("contenu") },
         ].map((a, i) => {
-          const cls = "flex items-center gap-1 px-2 py-1 rounded-md no-underline cursor-pointer transition-all hover:scale-[1.03] active:scale-[0.97]";
-          const st = { background: `${a.color}08`, border: `1px solid ${a.color}12` };
+          const cls = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg no-underline cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]";
+          const st = { background: `${a.color}0A`, border: `1px solid ${a.color}18` };
           return a.href ? (
             <a key={`a${i}`} href={a.href} target="_blank" rel="noopener" className={cls} style={st}>
-              <a.icon className="w-3 h-3" style={{ color: a.color }} />
-              <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>{a.label}</span>
+              <a.icon className="w-3.5 h-3.5" style={{ color: a.color }} />
+              <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>{a.label}</span>
             </a>
           ) : (
             <button key={`a${i}`} onClick={a.onClick} className={`${cls} text-left`} style={st}>
-              <a.icon className="w-3 h-3" style={{ color: a.color }} />
-              <span className="text-[10px] font-bold" style={{ color: "var(--text)" }}>{a.label}</span>
+              <a.icon className="w-3.5 h-3.5" style={{ color: a.color }} />
+              <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>{a.label}</span>
             </button>
           );
         })}
       </div>
 
-      {/* ═══ 3-column kanban — all data integrated ═══ */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+      {/* ═══ 2-column kanban: Ventes (graph) | Stats ═══ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
 
-        {/* COL 1: Ventes — packs + revenue + KPIs intégrés */}
-        <div className="rounded-xl p-3" style={cardStyle}>
+        {/* LEFT: Ventes — bar chart style banque */}
+        <div className="rounded-xl p-4" style={cardStyle}>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Ventes</span>
-            <span className="text-sm font-black" style={{ color: "#10B981" }}>{fmt.format(revenue)}</span>
+            <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>Ventes par pack</span>
+            <span className="text-lg font-black" style={{ color: "#10B981" }}>{fmt.format(revenue)}</span>
           </div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{paidCodes.length} ventes · {activeCodes.length} abo · {fmt.format(avgPerClient)}/client</span>
-          </div>
-          <div className="space-y-1">
+          <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
+            {paidCodes.length} ventes · {uniqueClients} clients · {fmt.format(avgPerClient)}/moy
+          </p>
+
+          {/* Bar chart */}
+          <div className="flex items-end gap-3" style={{ height: 100 }}>
             {revenueByPack.map(p => {
-              const maxCount = Math.max(...Object.values(salesByTier), 1);
-              const pct = (p.count / maxCount) * 100;
+              const heightPct = maxSales > 0 ? (p.count / maxSales) * 100 : 0;
               return (
-                <div key={p.id} className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: p.hex }} />
-                  <span className="text-[10px] font-bold truncate w-14 shrink-0" style={{ color: "var(--text)" }}>{p.name}</span>
-                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
-                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: p.hex }} />
-                  </div>
-                  <span className="text-[10px] font-black tabular-nums w-4 text-right shrink-0" style={{ color: p.hex }}>{p.count}</span>
-                  <span className="text-[9px] tabular-nums w-10 text-right shrink-0" style={{ color: "var(--text-muted)" }}>{fmt.format(p.rev)}</span>
+                <div key={p.id} className="flex-1 flex flex-col items-center gap-1">
+                  <span className="text-xs font-bold" style={{ color: p.hex }}>{p.count}</span>
+                  <div className="w-full rounded-t-md transition-all" style={{
+                    height: `${Math.max(heightPct, 6)}%`,
+                    background: `linear-gradient(180deg, ${p.hex}, ${p.hex}66)`,
+                    minHeight: 6,
+                  }} />
+                  <span className="text-[11px] font-medium truncate max-w-full" style={{ color: "var(--text-muted)" }}>
+                    {p.name}
+                  </span>
                 </div>
               );
             })}
           </div>
+
+          {/* Revenue per pack — under chart */}
+          <div className="flex gap-3 mt-3 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+            {revenueByPack.map(p => (
+              <div key={p.id} className="flex-1 text-center">
+                <span className="text-xs font-bold" style={{ color: p.hex }}>{fmt.format(p.rev)}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* COL 2: Codes & Finances */}
-        <div className="rounded-xl p-3" style={cardStyle}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Codes</span>
-            <span className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>{activeCodes.length}/{totalCodes}</span>
+        {/* RIGHT: Stats — multi-column dense block */}
+        <div className="rounded-xl p-4" style={cardStyle}>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>Vue d'ensemble</span>
+            <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>{clients.length} clients</span>
           </div>
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Payes</span>
-              <span className="text-[10px] font-bold" style={{ color: "#10B981" }}>{paidCodes.length}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Gratuits</span>
-              <span className="text-[10px] font-bold" style={{ color: "#F59E0B" }}>{freeCodes}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Revoques</span>
-              <span className="text-[10px] font-bold" style={{ color: "#EF4444" }}>{revokedCodes}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Retention</span>
-              <span className="text-[10px] font-bold" style={{ color: "#8B5CF6" }}>{retentionRate}%</span>
-            </div>
-          </div>
-          {expiringCodes.length > 0 && (
-            <div className="mt-2 pt-1.5 space-y-0.5" style={{ borderTop: "1px solid var(--border)" }}>
-              <span className="text-[9px] font-bold" style={{ color: "#F59E0B" }}>{expiringCodes.length} expirent bientot</span>
-              {expiringCodes.slice(0, 3).map(code => {
-                const cl = clients.find(c => c.pseudo_snap === code.client || c.pseudo_insta === code.client || c.nickname === code.client);
-                const name = cl?.pseudo_snap || cl?.pseudo_insta || code.client;
-                const timeLeft = new Date(code.expiresAt).getTime() - Date.now();
-                const h = Math.floor(timeLeft / 3_600_000);
-                const d = Math.floor(timeLeft / 86_400_000);
-                const urgency = h < 24 ? "#F87171" : h < 72 ? "#FBBF24" : "#10B981";
-                return (
-                  <div key={code.code} className="flex items-center justify-between">
-                    <span className="text-[9px] truncate" style={{ color: "var(--text-muted)" }}>@{name}</span>
-                    <span className="text-[9px] font-bold" style={{ color: urgency }}>{d > 0 ? `${d}j` : `${h}h`}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
 
-        {/* COL 3: Activite — clients + contenu */}
-        <div className="rounded-xl p-3" style={cardStyle}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold" style={{ color: "var(--text)" }}>Activite</span>
-            <span className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>{clients.length} clients</span>
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3 h-3 shrink-0" style={{ color: "#10B981" }} />
-              <span className="text-[10px] flex-1" style={{ color: "var(--text-muted)" }}>Verifies</span>
-              <span className="text-[10px] font-bold" style={{ color: "#10B981" }}>{verifiedClients}</span>
+          {/* 2x2 inner grid to fill horizontal space */}
+          <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+            {/* Codes */}
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Codes</span>
+              <div className="space-y-1">
+                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Actifs</span><span className="text-xs font-bold" style={{ color: "#10B981" }}>{activeCodes.length}</span></div>
+                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Payes</span><span className="text-xs font-bold" style={{ color: "#D4AF37" }}>{paidCodes.length}</span></div>
+                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Gratuits</span><span className="text-xs font-bold" style={{ color: "#F59E0B" }}>{freeCodes}</span></div>
+                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Revoques</span><span className="text-xs font-bold" style={{ color: "#EF4444" }}>{revokedCodes}</span></div>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Clock className="w-3 h-3 shrink-0" style={{ color: "#F59E0B" }} />
-              <span className="text-[10px] flex-1" style={{ color: "var(--text-muted)" }}>En attente</span>
-              <span className="text-[10px] font-bold" style={{ color: "#F59E0B" }}>{pendingClients}</span>
+            {/* Clients */}
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Clients</span>
+              <div className="space-y-1">
+                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Verifies</span><span className="text-xs font-bold" style={{ color: "#10B981" }}>{verifiedClients}</span></div>
+                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>En attente</span><span className="text-xs font-bold" style={{ color: "#F59E0B" }}>{pendingClients}</span></div>
+                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Bannis</span><span className="text-xs font-bold" style={{ color: "#EF4444" }}>{bannedClients}</span></div>
+                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Retention</span><span className="text-xs font-bold" style={{ color: "#8B5CF6" }}>{retentionRate}%</span></div>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <UserX className="w-3 h-3 shrink-0" style={{ color: "#EF4444" }} />
-              <span className="text-[10px] flex-1" style={{ color: "var(--text-muted)" }}>Bannis</span>
-              <span className="text-[10px] font-bold" style={{ color: "#EF4444" }}>{bannedClients}</span>
+            {/* Contenu */}
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Contenu</span>
+              <div className="space-y-1">
+                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Stories</span><span className="text-xs font-bold" style={{ color: "#8B5CF6" }}>{stories.length}</span></div>
+                <div className="flex justify-between"><span className="text-xs" style={{ color: "var(--text)" }}>Uniques</span><span className="text-xs font-bold" style={{ color: "var(--text)" }}>{uniqueClients}</span></div>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Image className="w-3 h-3 shrink-0" style={{ color: "#8B5CF6" }} />
-              <span className="text-[10px] flex-1" style={{ color: "var(--text-muted)" }}>Stories</span>
-              <span className="text-[10px] font-bold" style={{ color: "#8B5CF6" }}>{stories.length}</span>
+            {/* Renouvellements */}
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Expirations</span>
+              {expiringCodes.length > 0 ? (
+                <div className="space-y-1">
+                  {expiringCodes.slice(0, 4).map(code => {
+                    const cl = clients.find(c => c.pseudo_snap === code.client || c.pseudo_insta === code.client || c.nickname === code.client);
+                    const name = cl?.pseudo_snap || cl?.pseudo_insta || code.client;
+                    const timeLeft = new Date(code.expiresAt).getTime() - Date.now();
+                    const h = Math.floor(timeLeft / 3_600_000);
+                    const d = Math.floor(timeLeft / 86_400_000);
+                    const urgency = h < 24 ? "#F87171" : h < 72 ? "#FBBF24" : "#10B981";
+                    return (
+                      <div key={code.code} className="flex justify-between">
+                        <span className="text-xs truncate mr-2" style={{ color: "var(--text)" }}>@{name}</span>
+                        <span className="text-xs font-bold shrink-0" style={{ color: urgency }}>{d > 0 ? `${d}j` : `${h}h`}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <span className="text-xs" style={{ color: "var(--text-muted)" }}>Aucune</span>
+              )}
             </div>
-          </div>
-          <div className="mt-2 pt-1.5" style={{ borderTop: "1px solid var(--border)" }}>
-            <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>
-              {uniqueClients} uniques · {activeCodes.length} abonnes
-            </span>
           </div>
         </div>
       </div>
