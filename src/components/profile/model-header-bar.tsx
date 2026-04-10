@@ -8,6 +8,7 @@ import {
 import type { ModelInfo, AccessCode, VisitorPlatform } from "@/types/heaven";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ClientBadge } from "@/components/profile/client-badge";
+import BeaconWidget from "@/components/beacon-widget";
 
 // ── Live countdown badge ──
 function CountdownBadge({ tier, expiresAt }: { tier: string; expiresAt: string }) {
@@ -107,26 +108,7 @@ export function ModelHeaderBar({
 
         {/* CENTER: BEACON chat bubble */}
         <div className="flex-1 flex justify-center">
-          {!isModelLoggedIn && (
-            <button onClick={() => setChatOpen(!chatOpen)}
-              className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
-              style={{
-                background: "linear-gradient(135deg, var(--rose), var(--accent))",
-                border: "none",
-                boxShadow: chatUnread > 0
-                  ? "0 0 8px rgba(230,51,41,0.5), 0 0 16px rgba(16,185,129,0.3)"
-                  : "0 2px 8px rgba(230,51,41,0.3)",
-                animation: chatUnread > 0 ? "chatBubbleGlow 1.5s ease-in-out infinite" : "none",
-              }}>
-              <MessageCircle className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-white" />
-              {chatUnread > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full text-[9px] font-bold flex items-center justify-center"
-                  style={{ background: "#10B981", color: "#fff", boxShadow: "0 0 6px rgba(16,185,129,0.6)" }}>
-                  {chatUnread}
-                </span>
-              )}
-            </button>
-          )}
+          <BeaconWidget />
         </div>
 
         {/* RIGHT: Visitor info + actions */}
