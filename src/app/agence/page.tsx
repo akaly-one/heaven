@@ -519,6 +519,54 @@ export default function AgenceDashboard() {
           {/* ══════════ TAB: OVERVIEW ══════════ */}
           {activeTab === "overview" && (
             <div className="space-y-5">
+              {/* Quick Actions — CP ↔ Profile workflow */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <a href={`/m/${modelSlug}`} target="_blank" rel="noopener"
+                  className="group flex items-center gap-2.5 px-3.5 py-3 rounded-xl no-underline transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  style={{ background: "rgba(230,51,41,0.06)", border: "1px solid rgba(230,51,41,0.12)" }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(230,51,41,0.12)" }}>
+                    <Eye className="w-4 h-4" style={{ color: "#E63329" }} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-white">Voir profil</div>
+                    <div className="text-[10px] text-white/30">Page publique</div>
+                  </div>
+                </a>
+                <a href={`/m/${modelSlug}?edit=true`} target="_blank" rel="noopener"
+                  className="group flex items-center gap-2.5 px-3.5 py-3 rounded-xl no-underline transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.12)" }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(212,175,55,0.12)" }}>
+                    <Pencil className="w-4 h-4" style={{ color: "#D4AF37" }} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-white">Modifier</div>
+                    <div className="text-[10px] text-white/30">Bio, avatar, medias</div>
+                  </div>
+                </a>
+                <button onClick={() => window.dispatchEvent(new Event("heaven:generate"))}
+                  className="group flex items-center gap-2.5 px-3.5 py-3 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-left"
+                  style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.12)" }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(16,185,129,0.12)" }}>
+                    <Key className="w-4 h-4" style={{ color: "#10B981" }} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-white">Generer code</div>
+                    <div className="text-[10px] text-white/30">Acces client</div>
+                  </div>
+                </button>
+                <button onClick={() => setActiveTab("packs")}
+                  className="group flex items-center gap-2.5 px-3.5 py-3 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-left"
+                  style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.12)" }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
+                    <Zap className="w-4 h-4" style={{ color: "#8B5CF6" }} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-white">Packs</div>
+                    <div className="text-[10px] text-white/30">Prix & contenu</div>
+                  </div>
+                </button>
+              </div>
+
               {/* Two-column: Activity + Quick stats */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Recent Activity — table style */}
