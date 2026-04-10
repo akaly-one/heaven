@@ -721,7 +721,7 @@ export default function AgenceDashboard() {
             </div>
           </div>
 
-          {/* ══ UNDERLINE TABS ══ */}
+          {/* ══ UNDERLINE TABS + shortcuts ══ */}
           <div className="flex items-center gap-7 border-b border-white/[0.06] overflow-x-auto no-scrollbar">
             {TABS.map(tab => {
               const isActive = activeTab === tab.id;
@@ -734,6 +734,20 @@ export default function AgenceDashboard() {
                 </button>
               );
             })}
+            <div className="flex-1" />
+            {/* Quick shortcuts — right-aligned in tab bar */}
+            <div className="flex items-center gap-1 pb-1 shrink-0">
+              <a href={`/m/${modelSlug}`} target="_blank" rel="noopener"
+                className="p-1.5 rounded-md no-underline transition-all hover:bg-white/[0.06]"
+                title="Voir profil public">
+                <Eye className="w-4 h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
+              </a>
+              <a href={`/m/${modelSlug}?edit=true`} target="_blank" rel="noopener"
+                className="p-1.5 rounded-md no-underline transition-all hover:bg-white/[0.06]"
+                title="Modifier profil">
+                <Pencil className="w-4 h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
+              </a>
+            </div>
           </div>
 
           {/* ══════════ TAB: OVERVIEW ══════════ */}
@@ -747,9 +761,6 @@ export default function AgenceDashboard() {
               uniqueClients={uniqueClients}
               retentionRate={retentionRate}
               stories={stories}
-              modelSlug={modelSlug}
-              onSwitchTab={(tab) => setActiveTab(tab as TabId)}
-              onGenerate={() => window.dispatchEvent(new Event("heaven:generate"))}
             />
           )}
           {/* old overview removed */ false && (() => {

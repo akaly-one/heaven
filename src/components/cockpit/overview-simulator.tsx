@@ -2,14 +2,13 @@
 
 import { useState, useMemo } from "react";
 import {
-  Target, TrendingUp, Zap, Users, DollarSign,
+  Target, Zap,
   ChevronDown, ChevronUp, RotateCcw, Sparkles,
-  Clock, AlertTriangle, Eye, Key, Pencil,
-  Image, ShieldCheck, UserX,
+  AlertTriangle,
 } from "lucide-react";
 import type { AccessCode, PackConfig, ClientInfo, FeedPost } from "@/types/heaven";
 import { isExpired } from "@/lib/timezone";
-import { TIER_META, TIER_HEX } from "@/constants/tiers";
+import { TIER_HEX } from "@/constants/tiers";
 
 /* ── Types ── */
 
@@ -22,9 +21,6 @@ interface SimulatorProps {
   uniqueClients: number;
   retentionRate: number;
   stories: FeedPost[];
-  modelSlug: string;
-  onSwitchTab: (tab: string) => void;
-  onGenerate: () => void;
 }
 
 const fmt = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
@@ -35,8 +31,7 @@ const fmt = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR",
 
 export function OverviewSimulator({
   revenue, activeCodes, modelCodes, packs, clients,
-  uniqueClients, retentionRate, stories, modelSlug,
-  onSwitchTab, onGenerate,
+  uniqueClients, retentionRate, stories,
 }: SimulatorProps) {
   // ── Current reality data ──
   const activePacks = packs.filter(p => p.active);
@@ -144,30 +139,6 @@ export function OverviewSimulator({
 
   return (
     <div className="space-y-4">
-
-      {/* ═══ Quick actions ═══ */}
-      <div className="flex flex-wrap items-center gap-2">
-        {[
-          { href: `/m/${modelSlug}`, icon: Eye, color: "#E63329", label: "Profil", onClick: undefined as (() => void) | undefined },
-          { href: `/m/${modelSlug}?edit=true`, icon: Pencil, color: "#D4AF37", label: "Edit", onClick: undefined },
-          { href: undefined as string | undefined, icon: Key, color: "#10B981", label: "Code", onClick: onGenerate },
-          { href: undefined, icon: Zap, color: "#8B5CF6", label: "Contenu", onClick: () => onSwitchTab("contenu") },
-        ].map((a, i) => {
-          const cls = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg no-underline cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]";
-          const st = { background: `${a.color}0A`, border: `1px solid ${a.color}18` };
-          return a.href ? (
-            <a key={`a${i}`} href={a.href} target="_blank" rel="noopener" className={cls} style={st}>
-              <a.icon className="w-3.5 h-3.5" style={{ color: a.color }} />
-              <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>{a.label}</span>
-            </a>
-          ) : (
-            <button key={`a${i}`} onClick={a.onClick} className={`${cls} text-left`} style={st}>
-              <a.icon className="w-3.5 h-3.5" style={{ color: a.color }} />
-              <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>{a.label}</span>
-            </button>
-          );
-        })}
-      </div>
 
       {/* ═══ Single dense block — everything ═══ */}
       <div className="rounded-xl p-4" style={cardStyle}>
