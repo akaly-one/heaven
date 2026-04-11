@@ -146,6 +146,7 @@ export default function AgenceDashboard() {
   const [movingUpload, setMovingUpload] = useState<string | null>(null);
   const [uploadingToTier, setUploadingToTier] = useState<string | null>(null);
   const [contentViewMode, setContentViewMode] = useState<"grid" | "list">("grid");
+  const [showMobileOverview, setShowMobileOverview] = useState(false);
   const [contentLayout, setContentLayout] = useState<"folders" | "columns">("folders");
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
   const [dragItem, setDragItem] = useState<string | null>(null);
@@ -789,18 +790,32 @@ export default function AgenceDashboard() {
                 {/* ── LEFT COLUMN: Feed (+ mobile overview) ── */}
                 <div className="space-y-4 min-w-0">
 
-                  {/* Mobile-only: Overview collapsed above feed */}
+                  {/* Mobile-only: Overview toggle */}
                   <div className="lg:hidden">
-                    <OverviewSimulator
-                      revenue={revenue}
-                      activeCodes={activeCodes}
-                      modelCodes={modelCodes}
-                      packs={packs}
-                      clients={clients}
-                      uniqueClients={uniqueClients}
-                      retentionRate={retentionRate}
-                      stories={stories}
-                    />
+                    <button onClick={() => setShowMobileOverview(prev => !prev)}
+                      className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl cursor-pointer transition-all"
+                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-black tabular-nums" style={{ color: "#D4AF37" }}>{fmt.format(revenue)}</span>
+                        <span className="text-[10px] text-white/30">·</span>
+                        <span className="text-[10px] text-white/40">{activeCodes.length} codes · {uniqueClients} clients</span>
+                      </div>
+                      <ChevronDown className="w-3.5 h-3.5 text-white/25 transition-transform" style={{ transform: showMobileOverview ? "rotate(180deg)" : "rotate(0)" }} />
+                    </button>
+                    {showMobileOverview && (
+                      <div className="mt-2">
+                        <OverviewSimulator
+                          revenue={revenue}
+                          activeCodes={activeCodes}
+                          modelCodes={modelCodes}
+                          packs={packs}
+                          clients={clients}
+                          uniqueClients={uniqueClients}
+                          retentionRate={retentionRate}
+                          stories={stories}
+                        />
+                      </div>
+                    )}
                   </div>
 
               {/* ── Composer Card ── */}
