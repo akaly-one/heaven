@@ -857,61 +857,60 @@ export default function AgenceDashboard() {
                 </div>
 
                 {/* Bottom bar — actions */}
-                <div className="flex items-center gap-2 px-4 py-2.5 border-t border-white/[0.06]">
-                  {/* Type toggle */}
-                  <div className="flex items-center rounded-lg overflow-hidden border border-white/[0.08]">
-                    {(["feed", "story"] as const).map(type => (
-                      <button key={type} onClick={() => setNewPostType(type)}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium cursor-pointer transition-colors border-none"
-                        style={{ background: newPostType === type ? "rgba(230,51,41,0.15)" : "transparent", color: newPostType === type ? "#E63329" : "rgba(255,255,255,0.3)" }}>
-                        {type === "feed" ? <Newspaper className="w-3 h-3" /> : <Camera className="w-3 h-3" />}
-                        {type === "feed" ? "Feed" : "Story"}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Photo upload */}
-                  <label className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer border border-white/[0.08] text-white/30 hover:text-white/60 hover:border-white/[0.15] transition-colors">
-                    <ImageIcon className="w-3 h-3" /> Photo
-                    <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" className="hidden" onChange={(e) => {
-                      const file = e.target.files?.[0]; if (!file) return;
-                      const { valid, error } = validateFile(file, UPLOAD_LIMITS.post.maxMB);
-                      if (!valid) { setUploadMsg({ text: error!, type: "error" }); setTimeout(() => setUploadMsg(null), 5000); e.target.value = ""; return; }
-                      const reader = new FileReader();
-                      reader.onload = () => setNewPostImage(reader.result as string);
-                      reader.readAsDataURL(file); e.target.value = "";
-                    }} />
-                  </label>
-
-                  {/* Tier selector — only when composing */}
+                <div className="border-t border-white/[0.06]">
+                  {/* Row 1: Publish button (visible when composing) */}
                   {(newPostContent.trim() || newPostImage) && (
-                    <div className="flex items-center gap-1 ml-1">
-                      {TIER_OPTIONS.filter(t => t.id !== "p0").map(t => {
-                        const selected = newPostTier === t.id;
-                        return (
-                          <button key={t.id} onClick={() => setNewPostTier(selected ? "p0" : t.id)}
-                            className="px-2 py-1 rounded-md text-[10px] font-semibold cursor-pointer shrink-0 transition-all border-none"
-                            style={{
-                              background: selected ? t.color : "transparent",
-                              color: selected ? "#fff" : "rgba(255,255,255,0.25)",
-                              outline: `1px solid ${selected ? t.color : "rgba(255,255,255,0.06)"}`,
-                            }}>
-                            {t.label}
-                          </button>
-                        );
-                      })}
+                    <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.06]">
+                      {/* Tier selector */}
+                      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                        {TIER_OPTIONS.filter(t => t.id !== "p0").map(t => {
+                          const selected = newPostTier === t.id;
+                          return (
+                            <button key={t.id} onClick={() => setNewPostTier(selected ? "p0" : t.id)}
+                              className="px-2 py-1 rounded-md text-[10px] font-semibold cursor-pointer shrink-0 transition-all border-none"
+                              style={{
+                                background: selected ? t.color : "transparent",
+                                color: selected ? "#fff" : "rgba(255,255,255,0.25)",
+                                outline: `1px solid ${selected ? t.color : "rgba(255,255,255,0.06)"}`,
+                              }}>
+                              {t.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {/* Publish */}
+                      <button onClick={handleCreatePost} disabled={(!newPostContent.trim() && !newPostImage) || posting}
+                        className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:brightness-110 disabled:opacity-20 border-none shrink-0 ml-2"
+                        style={{ background: "#D4AF37", color: "#0f0f12" }}>
+                        <Send className="w-3.5 h-3.5" />
+                        {posting ? "..." : "Publier"}
+                      </button>
                     </div>
                   )}
-
-                  <div className="flex-1" />
-
-                  {/* Publish */}
-                  <button onClick={handleCreatePost} disabled={(!newPostContent.trim() && !newPostImage) || posting}
-                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:brightness-110 disabled:opacity-20 border-none"
-                    style={{ background: "#D4AF37", color: "#0f0f12" }}>
-                    <Send className="w-3 h-3" />
-                    {posting ? "..." : "Publier"}
-                  </button>
+                  {/* Row 2: Type toggle + Photo */}
+                  <div className="flex items-center gap-2 px-4 py-2">
+                    <div className="flex items-center rounded-lg overflow-hidden border border-white/[0.08]">
+                      {(["feed", "story"] as const).map(type => (
+                        <button key={type} onClick={() => setNewPostType(type)}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium cursor-pointer transition-colors border-none"
+                          style={{ background: newPostType === type ? "rgba(230,51,41,0.15)" : "transparent", color: newPostType === type ? "#E63329" : "rgba(255,255,255,0.3)" }}>
+                          {type === "feed" ? <Newspaper className="w-3 h-3" /> : <Camera className="w-3 h-3" />}
+                          {type === "feed" ? "Feed" : "Story"}
+                        </button>
+                      ))}
+                    </div>
+                    <label className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer border border-white/[0.08] text-white/30 hover:text-white/60 hover:border-white/[0.15] transition-colors">
+                      <ImageIcon className="w-3 h-3" /> Photo
+                      <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" className="hidden" onChange={(e) => {
+                        const file = e.target.files?.[0]; if (!file) return;
+                        const { valid, error } = validateFile(file, UPLOAD_LIMITS.post.maxMB);
+                        if (!valid) { setUploadMsg({ text: error!, type: "error" }); setTimeout(() => setUploadMsg(null), 5000); e.target.value = ""; return; }
+                        const reader = new FileReader();
+                        reader.onload = () => setNewPostImage(reader.result as string);
+                        reader.readAsDataURL(file); e.target.value = "";
+                      }} />
+                    </label>
+                  </div>
                 </div>
               </div>
 
