@@ -13,6 +13,8 @@ import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { GenerateModal } from "@/components/cockpit/generate-modal";
 import { OverviewSimulator } from "@/components/cockpit/overview-simulator";
+import { ClientsPanel } from "@/components/cockpit/clients-panel";
+import { StrategiePanel } from "@/components/cockpit/strategie-panel";
 import type { PackConfig, AccessCode, ClientInfo, FeedPost, WallPost, UploadedContent } from "@/types/heaven";
 import { DEFAULT_PACKS } from "@/constants/packs";
 import { toSlot, isFreeSlot } from "@/lib/tier-utils";
@@ -67,13 +69,7 @@ function remainingTime(expiresAt: string): string {
   return `${days}j`;
 }
 
-const TIER_OPTIONS = [
-  { id: "p0", label: "Public", color: "#64748B" },
-  { id: "p1", label: "Silver", color: "#C0C0C0" },
-  { id: "p2", label: "Gold", color: "#D4AF37" },
-  { id: "p4", label: "VIP Black", color: "#8B5CF6" },
-  { id: "p5", label: "VIP Platinum", color: "#B8860B" },
-];
+// TIER_OPTIONS moved inside component (derived from packs state)
 
 // ── Clean surface primitives (no glassmorphism) ──
 const surface = "bg-white/[0.03] border border-white/[0.06] rounded-xl";
@@ -82,11 +78,12 @@ function Skeleton({ className = "", style }: { className?: string; style?: React
   return <div className={`animate-pulse rounded-lg bg-white/[0.06] ${className}`} style={style} />;
 }
 
-// ── Tab definitions (Contenu & Clients have their own sidebar pages) ──
+// ── Tab definitions ──
 const TABS = [
-  { id: "overview", label: "Overview" },
-  { id: "feed", label: "Feed" },
+  { id: "dashboard", label: "Dashboard" },
   { id: "contenu", label: "Contenu" },
+  { id: "clients", label: "Clients" },
+  { id: "strategie", label: "Stratégie" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -102,7 +99,7 @@ export default function AgenceDashboard() {
   const [activeTab, setActiveTab] = useState<TabId>(() => {
     const tab = searchParams.get("tab");
     if (tab && TABS.some(t => t.id === tab)) return tab as TabId;
-    return "overview";
+    return "dashboard";
   });
 
   // ── State ──
@@ -117,6 +114,16 @@ export default function AgenceDashboard() {
   const [wallPosts, setWallPosts] = useState<WallPost[]>([]);
   const [uploads, setUploads] = useState<UploadedContent[]>([]);
   const [togglingBlur, setTogglingBlur] = useState<string | null>(null);
+
+  const TIER_OPTIONS = useMemo(() => {
+    const publicTier = { id: "p0", label: "Public", color: "#64748B" };
+    const packTiers = packs.filter(p => p.active !== false).map(p => ({
+      id: p.id,
+      label: p.name,
+      color: TIER_HEX[p.id] || p.color || "#888",
+    }));
+    return [publicTier, ...packTiers];
+  }, [packs]);
 
   // Feed composer
   const [newPostContent, setNewPostContent] = useState("");
@@ -750,266 +757,28 @@ export default function AgenceDashboard() {
             </div>
           </div>
 
-          {/* ══════════ TAB: OVERVIEW ══════════ */}
-          {activeTab === "overview" && (
-            <OverviewSimulator
-              revenue={revenue}
-              activeCodes={activeCodes}
-              modelCodes={modelCodes}
-              packs={packs}
-              clients={clients}
-              uniqueClients={uniqueClients}
-              retentionRate={retentionRate}
-              stories={stories}
-            />
-          )}
-          {/* old overview removed */ false && (() => {
-            // Expiring subscriptions: active codes sorted by expiry, soonest first
-            const expiringCodes = modelCodes
-              .filter(c => c.active && !c.revoked && c.expiresAt && !isExpired(c.expiresAt))
-              .sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime())
-              .slice(0, 10);
-            const paidCodesCount = modelCodes.filter(c => c.type === "paid" && !c.revoked).length;
-            const avgPerClient = uniqueClients > 0 ? Math.round(revenue / uniqueClients) : 0;
-            return (
-            <div className="space-y-5">
-              {/* Quick Actions — CP ↔ Profile workflow */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                <a href={`/m/${modelSlug}`} target="_blank" rel="noopener"
-                  className="group flex items-center gap-2.5 px-3.5 py-3 rounded-xl no-underline transition-all hover:scale-[1.02] active:scale-[0.98]"
-                  style={{ background: "rgba(230,51,41,0.06)", border: "1px solid rgba(230,51,41,0.12)" }}>
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(230,51,41,0.12)" }}>
-                    <Eye className="w-4 h-4" style={{ color: "#E63329" }} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold text-white">Voir profil</div>
-                    <div className="text-[10px] text-white/30">Page publique</div>
-                  </div>
-                </a>
-                <a href={`/m/${modelSlug}?edit=true`} target="_blank" rel="noopener"
-                  className="group flex items-center gap-2.5 px-3.5 py-3 rounded-xl no-underline transition-all hover:scale-[1.02] active:scale-[0.98]"
-                  style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.12)" }}>
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(212,175,55,0.12)" }}>
-                    <Pencil className="w-4 h-4" style={{ color: "#D4AF37" }} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold text-white">Modifier</div>
-                    <div className="text-[10px] text-white/30">Bio, avatar, medias</div>
-                  </div>
-                </a>
-                <button onClick={() => window.dispatchEvent(new Event("heaven:generate"))}
-                  className="group flex items-center gap-2.5 px-3.5 py-3 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-left"
-                  style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.12)" }}>
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(16,185,129,0.12)" }}>
-                    <Key className="w-4 h-4" style={{ color: "#10B981" }} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold text-white">Generer code</div>
-                    <div className="text-[10px] text-white/30">Acces client</div>
-                  </div>
-                </button>
-                <button onClick={() => setActiveTab("contenu")}
-                  className="group flex items-center gap-2.5 px-3.5 py-3 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-left"
-                  style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.12)" }}>
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
-                    <Zap className="w-4 h-4" style={{ color: "#8B5CF6" }} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold text-white">Packs</div>
-                    <div className="text-[10px] text-white/30">Prix & contenu</div>
-                  </div>
-                </button>
-              </div>
+          {/* ══════════ TAB: DASHBOARD — Feed + Overview side by side ══════════ */}
+          {activeTab === "dashboard" && (
+            <div className="space-y-4">
+              {/* Two-column layout: Feed (left) + Overview (right sticky) */}
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 items-start">
 
-              {/* Two-column: Activity + Quick stats */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                {/* Recent Activity — table style */}
-                <div className="lg:col-span-2">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Activite recente</span>
-                  </div>
-                  {recentActivity.length === 0 ? (
-                    <p className="text-xs text-white/20 py-4">Aucune activite recente</p>
-                  ) : (
-                    <div className={`${surface} overflow-hidden`}>
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-white/[0.06]">
-                            <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Type</th>
-                            <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Detail</th>
-                            <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Quand</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {recentActivity.map((item, i) => (
-                            <tr key={i} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors">
-                              <td className="px-4 py-3">
-                                <span className="text-[11px] font-medium px-2 py-0.5 rounded" style={{
-                                  background: item.type === "revenue" ? "rgba(212,175,55,0.1)" : item.type === "client" ? "rgba(16,185,129,0.1)" : "rgba(139,92,246,0.1)",
-                                  color: item.type === "revenue" ? "#D4AF37" : item.type === "client" ? "#10B981" : "#8B5CF6",
-                                }}>{item.type === "revenue" ? "Paiement" : item.type === "client" ? "Client" : "Contenu"}</span>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-white/60 truncate max-w-[400px]">{item.text}</td>
-                              <td className="px-4 py-3 text-xs text-white/25 text-right tabular-nums whitespace-nowrap">{item.time ? relativeTime(item.time) : "-"}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+                {/* ── LEFT COLUMN: Feed (+ mobile overview) ── */}
+                <div className="space-y-4 min-w-0">
 
-                {/* Quick Stats sidebar — compact list */}
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Apercu</span>
+                  {/* Mobile-only: Overview collapsed above feed */}
+                  <div className="lg:hidden">
+                    <OverviewSimulator
+                      revenue={revenue}
+                      activeCodes={activeCodes}
+                      modelCodes={modelCodes}
+                      packs={packs}
+                      clients={clients}
+                      uniqueClients={uniqueClients}
+                      retentionRate={retentionRate}
+                      stories={stories}
+                    />
                   </div>
-                  <div className={`${surface} divide-y divide-white/[0.04]`}>
-                    {[
-                      { label: "Codes actifs", value: String(activeCodes.length), color: "#10B981" },
-                      { label: "Total codes", value: String(modelCodes.length), color: "#fff" },
-                      { label: "Messages wall", value: String(wallPosts.filter(w => w.pseudo !== "SYSTEM").length), color: "#fff" },
-                      { label: "Codes vendus", value: String(paidCodesCount), color: "#D4AF37" },
-                      { label: "Stories", value: String(stories.length), color: "#fff" },
-                      { label: "Moy. / client", value: fmt.format(avgPerClient), color: "#D4AF37" },
-                    ].map((row, i) => (
-                      <div key={i} className="flex items-center justify-between px-4 py-3">
-                        <span className="text-sm text-white/40">{row.label}</span>
-                        <span className="text-sm font-bold tabular-nums" style={{ color: row.color }}>{row.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Expiring Subscriptions — retention box ── */}
-              {expiringCodes.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400/60" />
-                    <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Abonnements a renouveler</span>
-                    <span className="text-[10px] text-white/15 ml-auto">10 prochains</span>
-                  </div>
-                  <div className={`${surface} overflow-hidden`}>
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-white/[0.06]">
-                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Client</th>
-                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Pack</th>
-                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Code</th>
-                          <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2.5">Reste</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {expiringCodes.map((code) => {
-                          const remaining = remainingTime(code.expiresAt);
-                          const hoursLeft = (new Date(code.expiresAt).getTime() - Date.now()) / 3600000;
-                          const urgencyColor = hoursLeft < 24 ? "#F87171" : hoursLeft < 72 ? "#FBBF24" : "#10B981";
-                          const tierMeta = TIER_META[code.tier];
-                          const tierHex = TIER_HEX[code.tier] || "#64748B";
-                          const client = clients.find(c => c.id === code.clientId || c.pseudo_snap === code.client);
-                          const displayName = client?.nickname || client?.pseudo_snap || code.client || "—";
-                          return (
-                            <tr key={code.id || code.code} className="border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors">
-                              <td className="px-4 py-2.5">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
-                                    style={{ background: `${tierHex}15`, color: tierHex }}>
-                                    {displayName.charAt(0).toUpperCase()}
-                                  </div>
-                                  <span className="text-xs font-medium text-white/70 truncate">{displayName}</span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-2.5">
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${tierHex}15`, color: tierHex }}>
-                                  {tierMeta?.label || code.tier}
-                                </span>
-                              </td>
-                              <td className="px-4 py-2.5">
-                                <span className="text-[10px] text-white/30 font-mono">{code.code}</span>
-                              </td>
-                              <td className="px-4 py-2.5 text-right">
-                                <span className="text-xs font-bold tabular-nums" style={{ color: urgencyColor }}>{remaining}</span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* ── Revenue Breakdown (merged from Revenus tab) ── */}
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4">
-                {/* Tier breakdown — table */}
-                <div>
-                  <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Revenus par niveau</span>
-                  <div className={`${surface} mt-2 overflow-hidden`}>
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-white/[0.06]">
-                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2">Pack</th>
-                          <th className="text-left text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2">Prog</th>
-                          <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2">Rev</th>
-                          <th className="text-right text-[11px] uppercase tracking-wider text-white/25 font-medium px-4 py-2 w-12">Qty</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {packs.filter(p => p.active).map(pack => {
-                          const count = modelCodes.filter(c => c.tier === pack.id && c.type === "paid" && !c.revoked).length;
-                          const tierRevenue = count * pack.price;
-                          const maxRevenue = Math.max(...packs.filter(p => p.active).map(p => modelCodes.filter(c => c.tier === p.id && c.type === "paid" && !c.revoked).length * p.price), 1);
-                          return (
-                            <tr key={pack.id} className="border-b border-white/[0.03] last:border-0">
-                              <td className="px-4 py-2.5">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full" style={{ background: pack.color }} />
-                                  <span className="text-xs font-medium text-white">{pack.name}</span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-2.5">
-                                <div className="h-1.5 rounded-full bg-white/[0.04] overflow-hidden w-full max-w-[140px]">
-                                  <div className="h-full rounded-full transition-all duration-700"
-                                    style={{ width: `${Math.max((tierRevenue / maxRevenue) * 100, tierRevenue > 0 ? 4 : 0)}%`, background: pack.color }} />
-                                </div>
-                              </td>
-                              <td className="px-4 py-2.5 text-right text-xs font-semibold tabular-nums" style={{ color: pack.color }}>{fmt.format(tierRevenue)}</td>
-                              <td className="px-4 py-2.5 text-right text-[11px] text-white/30 tabular-nums">{count}x</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Revenue by type */}
-                <div>
-                  <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Repartition par type</span>
-                  <div className={`${surface} mt-2 divide-y divide-white/[0.04]`}>
-                    {[
-                      { type: "paid", label: "Payants", color: "#D4AF37" },
-                      { type: "trial", label: "Trial", color: "#3B82F6" },
-                    ].map(t => {
-                      const count = modelCodes.filter(c => c.type === t.type && !c.revoked).length;
-                      return (
-                        <div key={t.type} className="flex items-center justify-between px-4 py-3">
-                          <span className="text-sm text-white/40">{t.label}</span>
-                          <span className="text-sm font-bold tabular-nums" style={{ color: t.color }}>{count}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-            );
-          })()}
-
-          {/* ══════════ TAB: FEED — Facebook-style timeline ══════════ */}
-          {activeTab === "feed" && (
-            <div className="max-w-[680px] mx-auto space-y-4">
 
               {/* ── Composer Card ── */}
               <div className={`${surface} overflow-hidden`}>
@@ -1231,6 +1000,24 @@ export default function AgenceDashboard() {
                   </div>
                 );
               })()}
+                </div>
+
+                {/* ── RIGHT COLUMN: Overview + Simulator (sticky on desktop) ── */}
+                <div className="hidden lg:block sticky top-4">
+                  <OverviewSimulator
+                    revenue={revenue}
+                    activeCodes={activeCodes}
+                    modelCodes={modelCodes}
+                    packs={packs}
+                    clients={clients}
+                    uniqueClients={uniqueClients}
+                    retentionRate={retentionRate}
+                    stories={stories}
+                  />
+                </div>
+
+                {/* Mobile: Overview above feed (shown only on small screens) */}
+              </div>
             </div>
           )}
 
@@ -2388,7 +2175,21 @@ export default function AgenceDashboard() {
             );
           })()}
 
-          {/* Revenue tab removed — merged into Overview */}
+          {/* ══════════ TAB: CLIENTS ══════════ */}
+          {activeTab === "clients" && <ClientsPanel />}
+
+          {activeTab === "strategie" && (
+            <StrategiePanel realData={{
+              revenue,
+              activeCodes,
+              modelCodes,
+              packs,
+              clients,
+              uniqueClients,
+              retentionRate,
+              stories,
+            }} />
+          )}
 
 
           {/* ── Generate Modal ── */}
@@ -2398,6 +2199,7 @@ export default function AgenceDashboard() {
             onGenerate={handleGenerate}
             modelSlug={modelSlug}
             prefillClient={prefillClient}
+            packs={packs}
           />
 
         </div>

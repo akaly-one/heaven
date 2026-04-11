@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { X, Copy, Check, Link2, Send } from "lucide-react";
+import type { PackConfig } from "@/types/heaven";
+import { TIER_CONFIG } from "@/constants/tiers";
 
 interface GenerateModalProps {
   open: boolean;
   onClose: () => void;
   modelSlug: string;
   prefillClient?: string;
+  packs: PackConfig[];
   onGenerate: (data: {
     client: string;
     platform: string;
@@ -17,19 +20,27 @@ interface GenerateModalProps {
   }) => string | null | Promise<string | null>;
 }
 
-const TIERS = [
-  { id: "p1", label: "VIP", symbol: "♥", color: "var(--tier-vip)" },
-  { id: "p2", label: "Gold", symbol: "★", color: "var(--tier-gold)" },
-  { id: "p4", label: "Diamond", symbol: "♦", color: "var(--tier-diamond)" },
-  { id: "p5", label: "Platinum", symbol: "♛", color: "var(--tier-platinum)" },
-];
-
 // Duration is now a slider 1-30 days
 
-export function GenerateModal({ open, onClose, onGenerate, modelSlug, prefillClient = "" }: GenerateModalProps) {
+export function GenerateModal({ open, onClose, onGenerate, modelSlug, prefillClient = "", packs }: GenerateModalProps) {
+  const TIERS = useMemo(() =>
+    packs
+      .filter(p => p.active !== false)
+      .map(p => {
+        const meta = TIER_CONFIG[p.id];
+        return {
+          id: p.id,
+          label: p.name,
+          symbol: meta?.symbol || "●",
+          color: meta?.color || p.color || "#888",
+        };
+      }),
+    [packs]
+  );
+
   const [client, setClient] = useState("");
   const [platform, setPlatform] = useState("snapchat");
-  const [tier, setTier] = useState("p1");
+  const [tier, setTier] = useState(packs.find(p => p.active !== false)?.id || "p1");
   const [durationDays, setDurationDays] = useState(7);
   const [type, setType] = useState<"paid" | "promo" | "gift">("paid");
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);

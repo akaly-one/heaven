@@ -8,54 +8,43 @@ import {
 } from "lucide-react";
 import { ContentProtection } from "@/components/content-protection";
 import type { UploadedContent, PackConfig } from "@/types/heaven";
-import { TIER_META, TIER_HEX } from "@/constants/tiers";
+import { TIER_CONFIG, TIER_META, TIER_HEX } from "@/constants/tiers";
 import { toSlot, isFreeSlot } from "@/lib/tier-utils";
 
-// ── Pack tier rules (canonical tiers from constants/tiers.ts) ──
-const PACK_RULES: Record<string, { icon: React.ReactNode; label: string; color: string; desc: string; access: string[] }> = {
-  p0: {
-    icon: <Eye className="w-3.5 h-3.5" />,
-    label: "Public",
-    color: "#64748B",
-    desc: "Visible par tous les visiteurs",
-    access: ["Gratuit", "Teasing / promo", "Aucun code requis"],
-  },
-  p1: {
-    icon: <Sparkles className="w-3.5 h-3.5" />,
-    label: "Silver",
-    color: "#C0C0C0",
-    desc: "♣ Photos, shootings, promos — sans nudité",
-    access: ["Photos glamour", "Shootings pro", "Promos exclusives", "Sans nudité"],
-  },
-  p2: {
-    icon: <Star className="w-3.5 h-3.5" />,
-    label: "Gold",
-    color: "#D4AF37",
-    desc: "♦ Tenue dentelle, sensuel, poses suggestives",
-    access: ["Tout du Silver inclus", "Lingerie dentelle", "Poses suggestives", "Contenu sensuel"],
-  },
-  p3: {
-    icon: <Diamond className="w-3.5 h-3.5" />,
-    label: "VIP Black",
-    color: "#1C1C1C",
-    desc: "♠ Sextapes & nudes — visage caché",
-    access: ["Tout du Gold inclus", "Nudes complets", "Sextapes", "Visage caché"],
-  },
-  p4: {
-    icon: <Heart className="w-3.5 h-3.5" />,
-    label: "Feet Lovers",
-    color: "#E8A87C",
-    desc: "🦶 Photos pieds glamour, accessoires, dédicaces",
-    access: ["Photos pieds glamour", "Accessoires", "Dédicaces personnalisées", "Contenu exclusif"],
-  },
-  p5: {
-    icon: <Crown className="w-3.5 h-3.5" />,
-    label: "VIP Platinum",
-    color: "#B8860B",
-    desc: "♥ Visage découvert, contenu explicite premium",
-    access: ["Accès TOTAL tous packs", "Visage découvert", "Contenu explicite premium", "Demandes personnalisées"],
-  },
+// ── Gallery-specific tier extras (icons & access lists) ──
+// Labels, colors, descriptions come from TIER_CONFIG (constants/tiers.ts)
+const TIER_ICONS: Record<string, React.ReactNode> = {
+  p0: <Eye className="w-3.5 h-3.5" />,
+  p1: <Sparkles className="w-3.5 h-3.5" />,
+  p2: <Star className="w-3.5 h-3.5" />,
+  p3: <Heart className="w-3.5 h-3.5" />,
+  p4: <Diamond className="w-3.5 h-3.5" />,
+  p5: <Crown className="w-3.5 h-3.5" />,
 };
+
+const TIER_ACCESS: Record<string, string[]> = {
+  p0: ["Gratuit", "Teasing / promo", "Aucun code requis"],
+  p1: ["Photos glamour", "Shootings pro", "Promos exclusives", "Sans nudité"],
+  p2: ["Tout du Silver inclus", "Lingerie dentelle", "Poses suggestives", "Contenu sensuel"],
+  p3: ["Photos pieds glamour", "Accessoires", "Dédicaces personnalisées", "Contenu exclusif"],
+  p4: ["Tout du Gold inclus", "Nudes complets", "Sextapes", "Visage caché"],
+  p5: ["Accès TOTAL tous packs", "Visage découvert", "Contenu explicite premium", "Demandes personnalisées"],
+};
+
+// Derived from TIER_CONFIG — single source of truth for label, color, description
+const PACK_RULES: Record<string, { icon: React.ReactNode; label: string; color: string; desc: string; access: string[] }> =
+  Object.fromEntries(
+    ["p0", "p1", "p2", "p3", "p4", "p5"].map(id => {
+      const cfg = TIER_CONFIG[id];
+      return [id, {
+        icon: TIER_ICONS[id],
+        label: cfg.label,
+        color: cfg.hex,
+        desc: cfg.symbol ? `${cfg.symbol} ${cfg.description}` : cfg.description,
+        access: TIER_ACCESS[id] || [],
+      }];
+    })
+  );
 
 const DROP_ORDER = ["p0", "p1", "p2", "p3", "p4", "p5"] as const;
 

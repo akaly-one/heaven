@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { toPng } from "html-to-image";
 import { Download, Share2, X, User, Key, Sparkles, Image } from "lucide-react";
+import { TIER_CONFIG, TIER_HIERARCHY } from "@/constants/tiers";
 
 type GeneratorMode = "code" | "promo" | "teaser";
 
@@ -20,7 +21,7 @@ export function StoryGenerator({ modelName, modelAvatar, accentColor = "#E63329"
   // Code mode fields
   const [clientName, setClientName] = useState("");
   const [codeText, setCodeText] = useState("");
-  const [tierLabel, setTierLabel] = useState("Gold");
+  const [tierSlot, setTierSlot] = useState("p2");
 
   // Promo mode fields
   const [promoCode, setPromoCode] = useState("");
@@ -32,12 +33,8 @@ export function StoryGenerator({ modelName, modelAvatar, accentColor = "#E63329"
   const [teaserDesc, setTeaserDesc] = useState("Disponible maintenant");
   const [teaserImageUrl, setTeaserImageUrl] = useState("");
 
-  const TIER_COLORS: Record<string, string> = {
-    Silver: "#C0C0C0", Gold: "#D4AF37", "Feet Lovers": "#E8A87C",
-    "VIP Black": "#1C1C1C", "VIP Platinum": "#B8860B",
-  };
-
-  const tierColor = TIER_COLORS[tierLabel] || accentColor;
+  const tierLabel = TIER_CONFIG[tierSlot]?.label || tierSlot;
+  const tierColor = TIER_CONFIG[tierSlot]?.hex || accentColor;
 
   const buildStoryHTML = useCallback((): string => {
     const bg = mode === "code" ? `linear-gradient(160deg, #0a0a0a, ${tierColor}30, #0a0a0a)`
@@ -100,7 +97,7 @@ export function StoryGenerator({ modelName, modelAvatar, accentColor = "#E63329"
       <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 30%, rgba(255,255,255,0.03), transparent 70%);"></div>
       <div style="position:relative;width:100%;z-index:1;">${content}</div>
     </div>`;
-  }, [mode, modelName, modelAvatar, accentColor, tierColor, tierLabel, clientName, codeText, promoCode, promoText, promoDiscount, teaserTitle, teaserDesc, teaserImageUrl]);
+  }, [mode, modelName, modelAvatar, accentColor, tierColor, tierLabel, tierSlot, clientName, codeText, promoCode, promoText, promoDiscount, teaserTitle, teaserDesc, teaserImageUrl]);
 
   const handleDownload = useCallback(async () => {
     setDownloading(true);
@@ -184,9 +181,9 @@ export function StoryGenerator({ modelName, modelAvatar, accentColor = "#E63329"
               </div>
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Pack tier</label>
-                <select value={tierLabel} onChange={e => setTierLabel(e.target.value)}
+                <select value={tierSlot} onChange={e => setTierSlot(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl text-sm outline-none cursor-pointer" style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)" }}>
-                  {Object.keys(TIER_COLORS).map(t => <option key={t} value={t}>{t}</option>)}
+                  {TIER_HIERARCHY.map(slot => <option key={slot} value={slot}>{TIER_CONFIG[slot].label}</option>)}
                 </select>
               </div>
             </>

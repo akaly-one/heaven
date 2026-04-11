@@ -15,8 +15,8 @@ import { ThemeToggle } from "./theme-toggle";
 const NAV_MAIN = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/agence", color: "#E63329" },
   { id: "contenu", label: "Contenu", icon: FolderOpen, href: "/agence?tab=contenu", color: "#D4AF37" },
-  { id: "clients", label: "Clients", icon: Users, href: "/agence/clients", color: "#F59E0B" },
-  { id: "strategie", label: "Stratégie", icon: Target, href: "/agence/strategie", color: "#10B981" },
+  { id: "clients", label: "Clients", icon: Users, href: "/agence?tab=clients", color: "#F59E0B" },
+  { id: "strategie", label: "Stratégie", icon: Target, href: "/agence?tab=strategie", color: "#10B981" },
 ] as const;
 
 const NAV_ROOT = [
@@ -30,8 +30,8 @@ const NAV_ROOT = [
 const MOBILE_NAV_MAIN = [
   { id: "dashboard", label: "Home", icon: LayoutDashboard, href: "/agence" },
   { id: "contenu", label: "Contenu", icon: FolderOpen, href: "/agence?tab=contenu" },
-  { id: "clients", label: "Clients", icon: Users, href: "/agence/clients" },
-  { id: "strategie", label: "Stratégie", icon: Target, href: "/agence/strategie" },
+  { id: "clients", label: "Clients", icon: Users, href: "/agence?tab=clients" },
+  { id: "strategie", label: "Stratégie", icon: Target, href: "/agence?tab=strategie" },
 ] as const;
 
 const MOBILE_NAV_ROOT = [
@@ -76,9 +76,9 @@ export function Sidebar() {
   const visibleRoot = isRoot ? NAV_ROOT : [];
 
   const renderNavItem = (item: { id: string; label: string; icon: any; href: string; color: string }) => {
-    const isContenu = item.href.includes("tab=contenu");
-    const isActive = !isContenu && (pathname === item.href || (item.href !== "/agence" && pathname.startsWith(item.href)));
-    const isDashActive = item.href === "/agence" && pathname === "/agence" && !isContenu;
+    const hasTabParam = item.href.includes("tab=");
+    const isActive = !hasTabParam && (pathname === item.href || (item.href !== "/agence" && pathname.startsWith(item.href)));
+    const isDashActive = item.href === "/agence" && pathname === "/agence" && !hasTabParam;
     const active = isActive || isDashActive;
     return (
       <a key={item.id} href={item.href}
@@ -184,9 +184,12 @@ export function Sidebar() {
         style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
         <div className="flex items-center justify-evenly py-2">
           {MOBILE_NAV_MAIN.map((item) => {
-            const active = item.href === "/agence"
-              ? pathname === "/agence"
-              : pathname.startsWith(item.href);
+            const hasTab = item.href.includes("tab=");
+            const active = hasTab
+              ? false // tab params handle active via dashboard state
+              : item.href === "/agence"
+                ? pathname === "/agence"
+                : pathname.startsWith(item.href);
             return (
               <a key={item.id} href={item.href}
                 className="flex flex-col items-center gap-0.5 py-1 rounded-lg no-underline transition-colors"

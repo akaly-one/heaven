@@ -6,7 +6,7 @@ import { MessageCircle, Users, Link2, Globe, Instagram, KeyRound, ImagePlus, Eye
 import { StoryGenerator } from "@/components/profile/story-generator";
 import { useModel } from "@/lib/model-context";
 import { toModelId } from "@/lib/model-utils";
-import { toSlot } from "@/lib/tier-utils";
+import { TIER_CONFIG } from "@/constants/tiers";
 import { MessagesDropdown } from "@/components/header/messages-dropdown";
 import { ClientsDropdown } from "@/components/header/clients-dropdown";
 import { SocialsDropdown } from "@/components/header/socials-dropdown";
@@ -112,8 +112,13 @@ export function Header() {
       // Parse order details
       const pseudoMatch = content?.match(/@(\S+)/);
       const pseudo = pseudoMatch?.[1] || "";
-      const tierMatch = content?.match(/Silver|Gold|Feet|Black|Platinum/i);
-      const tier = tierMatch ? toSlot(tierMatch[0].toLowerCase()) : "p1";
+      const labelToSlot: Record<string, string> = {};
+      for (const [slot, cfg] of Object.entries(TIER_CONFIG)) {
+        if (/^p[1-5]$/.test(slot)) labelToSlot[cfg.label.toLowerCase()] = slot;
+      }
+      const tierNames = Object.keys(labelToSlot).map(l => l.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+      const tierMatch = content?.match(new RegExp(tierNames, "i"));
+      const tier = tierMatch ? (labelToSlot[tierMatch[0].toLowerCase()] || "p1") : "p1";
       const amountMatch = content?.match(/\((\d+)€\)/);
       const amount = amountMatch ? amountMatch[1] : "0";
       const itemMatch = content?.match(/commande:\s*(.+?)\s*\(/);

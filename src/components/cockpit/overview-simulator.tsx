@@ -141,36 +141,35 @@ export function OverviewSimulator({
     <div className="space-y-4">
 
       {/* ═══ Single dense block — everything ═══ */}
-      <div className="rounded-xl p-4" style={cardStyle}>
+      <div className="rounded-xl p-3 xl:p-4" style={cardStyle}>
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="min-w-0">
             <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>Overview</span>
-            <span className="text-xs ml-3" style={{ color: "var(--text-muted)" }}>
-              {paidCodes.length} ventes · {clients.length} clients · {fmt.format(avgPerClient)}/moy
+            <span className="text-[11px] ml-2 hidden sm:inline" style={{ color: "var(--text-muted)" }}>
+              {paidCodes.length} ventes · {clients.length} clients
             </span>
           </div>
-          <span className="text-lg font-black" style={{ color: "#10B981" }}>{fmt.format(revenue)}</span>
+          <span className="text-base font-black shrink-0" style={{ color: "#10B981" }}>{fmt.format(revenue)}</span>
         </div>
 
-        {/* Packs — horizontal bars (compact) + 4 stat columns — all in one row */}
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_1fr] gap-x-5 gap-y-4">
+        {/* Packs — horizontal bars (compact) + stat columns — 2x2 on sidebar, 4-col on wide */}
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-x-4 gap-y-3">
 
           {/* Ventes — horizontal bars */}
-          <div>
+          <div className="col-span-2">
             <span className="text-[11px] font-bold uppercase tracking-wider block mb-2" style={{ color: "var(--text-muted)" }}>Ventes</span>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {revenueByPack.map(p => {
                 const pct = maxSales > 0 ? (p.count / maxSales) * 100 : 0;
                 return (
-                  <div key={p.id}>
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="text-xs font-medium" style={{ color: "var(--text)" }}>{p.name}</span>
-                      <span className="text-xs font-bold" style={{ color: p.hex }}>{p.count} · {fmt.format(p.rev)}</span>
-                    </div>
-                    <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
+                  <div key={p.id} className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: p.hex }} />
+                    <span className="text-[11px] font-medium truncate w-16 shrink-0" style={{ color: "var(--text)" }}>{p.name}</span>
+                    <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
                       <div className="h-full rounded-full" style={{ width: `${Math.max(pct, 3)}%`, background: `linear-gradient(90deg, ${p.hex}, ${p.hex}88)` }} />
                     </div>
+                    <span className="text-[11px] font-bold tabular-nums shrink-0" style={{ color: p.hex }}>{p.count}·{fmt.format(p.rev)}</span>
                   </div>
                 );
               })}
