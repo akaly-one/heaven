@@ -956,18 +956,17 @@ function MobileBottomNav({ galleryTier, setGalleryTier, setFocusPack, activePack
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 md:hidden safe-area-bottom"
       style={{ background: "color-mix(in srgb, var(--bg) 95%, transparent)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: "1px solid var(--border)" }}>
-      <div className="flex items-center justify-around px-1 py-2 gap-0.5">
+      <div className="flex items-center justify-around px-2 py-2.5">
         {(() => {
           const feedActive = galleryTier === "feed" || galleryTier === "home";
           return (
             <button onClick={() => { setGalleryTier(galleryTier === "feed" ? "home" : "feed"); setFocusPack(null); }}
-              className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg cursor-pointer transition-all min-w-[44px]"
+              className="flex items-center justify-center w-10 h-10 rounded-full cursor-pointer transition-all"
               style={{
                 color: feedActive ? "var(--accent)" : "var(--text-muted)",
-                background: feedActive ? "rgba(230,51,41,0.1)" : "transparent",
+                background: feedActive ? "rgba(230,51,41,0.12)" : "transparent",
               }}>
               <Newspaper className="w-5 h-5" />
-              <span className="text-[9px] font-bold uppercase" style={{ letterSpacing: "0.03em" }}>Feed</span>
             </button>
           );
         })()}
@@ -977,25 +976,23 @@ function MobileBottomNav({ galleryTier, setGalleryTier, setFocusPack, activePack
           const isLocked = !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, p.id));
           return (
             <button key={p.id} onClick={() => { setGalleryTier(isActive ? "home" : p.id); setFocusPack(null); }}
-              className="flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-lg cursor-pointer transition-all min-w-[44px]"
+              className="flex items-center justify-center w-10 h-10 rounded-full cursor-pointer transition-all"
               style={{
-                color: isActive ? hex : isLocked ? "var(--text-muted)" : hex,
-                background: isActive ? `${hex}15` : "transparent",
-                opacity: isLocked && !isActive ? 0.45 : 1,
+                color: isActive ? "#fff" : isLocked ? "var(--text-muted)" : hex,
+                background: isActive ? hex : "transparent",
+                opacity: isLocked && !isActive ? 0.4 : 1,
               }}>
-              <span className="text-base leading-none relative">{TIER_META[p.id]?.symbol}{isLocked && <Lock className="w-2 h-2 absolute -top-0.5 -right-2" style={{ color: hex, opacity: 0.6 }} />}</span>
-              <span className="text-[9px] font-bold uppercase" style={{ letterSpacing: "0.02em" }}>{TIER_META[p.id]?.label}</span>
+              <span className="text-lg leading-none relative">{TIER_META[p.id]?.symbol}{isLocked && <Lock className="w-2 h-2 absolute -top-0.5 -right-2" style={{ color: isActive ? "#fff" : hex, opacity: 0.6 }} />}</span>
             </button>
           );
         })}
         <button onClick={() => { setGalleryTier(galleryTier === "custom" ? "home" : "custom"); setFocusPack(null); }}
-          className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg cursor-pointer transition-all min-w-[44px]"
+          className="flex items-center justify-center w-10 h-10 rounded-full cursor-pointer transition-all"
           style={{
-            color: galleryTier === "custom" ? "#B8860B" : "var(--text-muted)",
-            background: galleryTier === "custom" ? "rgba(184,134,11,0.1)" : "transparent",
+            color: galleryTier === "custom" ? "#fff" : "var(--text-muted)",
+            background: galleryTier === "custom" ? "#B8860B" : "transparent",
           }}>
           <Sparkles className="w-5 h-5" />
-          <span className="text-[9px] font-bold uppercase" style={{ letterSpacing: "0.03em" }}>Custom</span>
         </button>
       </div>
     </nav>
