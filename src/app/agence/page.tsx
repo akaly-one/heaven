@@ -1142,8 +1142,61 @@ export default function AgenceDashboard() {
               {contentLayout === "folders" && (
               <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
 
-                {/* LEFT: Folders (packs as folders) */}
-                <div className="space-y-1.5">
+                {/* ── MOBILE: Compact horizontal folder tiles ── */}
+                <div className="lg:hidden">
+                  <div className="flex items-center overflow-x-auto no-scrollbar gap-1.5 pb-2">
+                    {/* All */}
+                    <button onClick={() => setContentFolder(null)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg cursor-pointer transition-all shrink-0"
+                      style={{
+                        background: contentFolder === null ? "rgba(212,175,55,0.12)" : "rgba(255,255,255,0.04)",
+                        border: contentFolder === null ? "1px solid rgba(212,175,55,0.25)" : "1px solid rgba(255,255,255,0.06)",
+                      }}>
+                      <Grid3x3 className="w-3.5 h-3.5" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.3)" }} />
+                      <span className="text-[10px] font-semibold" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.5)" }}>{allContent.length}</span>
+                    </button>
+                    {/* Public */}
+                    <button onClick={() => setContentFolder("p0")}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg cursor-pointer transition-all shrink-0"
+                      style={{
+                        background: contentFolder === "p0" ? "rgba(100,116,139,0.15)" : "rgba(255,255,255,0.04)",
+                        border: contentFolder === "p0" ? "1px solid rgba(100,116,139,0.25)" : "1px solid rgba(255,255,255,0.06)",
+                      }}>
+                      <Eye className="w-3.5 h-3.5" style={{ color: contentFolder === "p0" ? "#64748B" : "rgba(255,255,255,0.3)" }} />
+                      <span className="text-[10px] font-semibold" style={{ color: contentFolder === "p0" ? "#64748B" : "rgba(255,255,255,0.5)" }}>{contentCount("p0")}</span>
+                    </button>
+                    {/* Pack folders */}
+                    {packs.filter(p => p.active).map(pack => {
+                      const hex = TIER_HEX[pack.id] || pack.color;
+                      const tierMeta = TIER_META[pack.id];
+                      const isSelected = contentFolder === pack.id;
+                      return (
+                        <button key={pack.id} onClick={() => setContentFolder(pack.id)}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg cursor-pointer transition-all shrink-0"
+                          style={{
+                            background: isSelected ? `${hex}18` : "rgba(255,255,255,0.04)",
+                            border: isSelected ? `1px solid ${hex}30` : "1px solid rgba(255,255,255,0.06)",
+                          }}>
+                          <span className="text-sm leading-none">{tierMeta?.symbol || "📁"}</span>
+                          <span className="text-[10px] font-semibold" style={{ color: isSelected ? hex : "rgba(255,255,255,0.5)" }}>{contentCount(pack.id)}</span>
+                        </button>
+                      );
+                    })}
+                    {/* Custom */}
+                    <button onClick={() => setContentFolder("custom")}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg cursor-pointer transition-all shrink-0"
+                      style={{
+                        background: contentFolder === "custom" ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.04)",
+                        border: contentFolder === "custom" ? "1px solid rgba(212,175,55,0.25)" : "1px solid rgba(255,255,255,0.06)",
+                      }}>
+                      <Sparkles className="w-3.5 h-3.5" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.3)" }} />
+                      <span className="text-[10px] font-semibold" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.5)" }}>{customCount}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── DESKTOP: Full folder sidebar ── */}
+                <div className="hidden lg:block space-y-1.5">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Dossiers</span>
                     <span className="text-[10px] text-white/20 ml-auto">{allContent.length} fichiers</span>
