@@ -331,7 +331,7 @@ export default function ModelPage() {
   const { displayModel, displayPacks } = edit;
 
   return (
-    <div className="min-h-screen pb-24 md:pb-8" style={{ background: "var(--bg)", userSelect: "none", WebkitUserSelect: "none" }}>
+    <div className="min-h-screen pb-8" style={{ background: "var(--bg)", userSelect: "none", WebkitUserSelect: "none" }}>
       {/* Identity Gate */}
       {!visitorRegistered && !isModelLoggedIn && model && (
         <IdentityGate slug={slug} modelName={model.display_name} onRegistered={handleGateRegistered} onNeedShop={() => setGalleryTier("home")} />
@@ -380,11 +380,15 @@ export default function ModelPage() {
           </div>
         )}
 
-        {/* ═══ DESKTOP NAV ═══ */}
+        {/* ═══ TIER NAV — Desktop: card tiles / Mobile: compact pill bar ═══ */}
         <DesktopTierNav
           galleryTier={galleryTier} setGalleryTier={setGalleryTier} setFocusPack={setFocusPack}
           activePacks={activePacks} uploads={uploads} unlockedTier={unlockedTier} isModelLoggedIn={isModelLoggedIn}
         />
+        {!(edit.isEditMode && edit.editDirty) && (
+          <MobileTierBar galleryTier={galleryTier} setGalleryTier={setGalleryTier} setFocusPack={setFocusPack}
+            activePacks={activePacks} unlockedTier={unlockedTier} isModelLoggedIn={isModelLoggedIn} />
+        )}
 
         {/* ═══ TIER VIEW MINI HEADER ═══ */}
         {isTierView && (
@@ -402,7 +406,7 @@ export default function ModelPage() {
         )}
 
         {/* ═══ TAB CONTENT ═══ */}
-        <div key={galleryTier} className="max-w-6xl mx-auto px-5 sm:px-8 md:px-12 py-6 sm:py-8 fade-up">
+        <div key={galleryTier} className="max-w-6xl mx-auto px-2 sm:px-8 md:px-12 py-3 sm:py-8 fade-up">
 
           {/* ── FEED ── */}
           {(galleryTier === "feed" || galleryTier === "home") && (
@@ -589,11 +593,7 @@ export default function ModelPage() {
           </div>
         )}
 
-        {/* Mobile Bottom Nav */}
-        {!(edit.isEditMode && edit.editDirty) && (
-          <MobileBottomNav galleryTier={galleryTier} setGalleryTier={setGalleryTier} setFocusPack={setFocusPack}
-            activePacks={activePacks} unlockedTier={unlockedTier} isModelLoggedIn={isModelLoggedIn} />
-        )}
+        {/* Mobile bottom nav removed — tier bar now sticky at top */}
 
       </div>
 
@@ -949,18 +949,22 @@ function DesktopTierNav({ galleryTier, setGalleryTier, setFocusPack, activePacks
 }
 
 // ── Mobile Bottom Nav ──
-function MobileBottomNav({ galleryTier, setGalleryTier, setFocusPack, activePacks, unlockedTier, isModelLoggedIn }: {
+function MobileTierBar({ galleryTier, setGalleryTier, setFocusPack, activePacks, unlockedTier, isModelLoggedIn }: {
   galleryTier: string; setGalleryTier: (v: string) => void; setFocusPack: (v: string | null) => void;
   activePacks: PackConfig[]; unlockedTier: string | null; isModelLoggedIn: boolean;
 }) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 md:hidden safe-area-bottom"
-      style={{ background: "color-mix(in srgb, var(--bg) 95%, transparent)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: "1px solid var(--border)" }}>
-      <div className="flex items-center overflow-x-auto no-scrollbar px-2 py-2.5 gap-1">
+    <div className="sticky top-[36px] z-30 md:hidden"
+      style={{ background: "color-mix(in srgb, var(--bg) 95%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderBottom: "1px solid var(--border)" }}>
+      <div className="flex items-center overflow-x-auto no-scrollbar px-3 py-2 gap-1.5">
         <button onClick={() => { setGalleryTier(galleryTier === "feed" ? "home" : "feed"); setFocusPack(null); }}
-          className="relative flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl cursor-pointer transition-all shrink-0"
-          style={{ color: galleryTier === "feed" ? "#fff" : "var(--accent)", background: galleryTier === "feed" ? "var(--accent)" : `rgba(230,51,41,0.08)` }}>
-          <Newspaper className="w-5 h-5" /><span className="text-[10px] font-bold uppercase" style={{ letterSpacing: "0.05em" }}>Feed</span>
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer transition-all shrink-0"
+          style={{
+            color: galleryTier === "feed" ? "#fff" : "var(--accent)",
+            background: galleryTier === "feed" ? "var(--accent)" : "rgba(230,51,41,0.08)",
+            fontSize: "11px", fontWeight: 700, letterSpacing: "0.03em",
+          }}>
+          <Newspaper className="w-3.5 h-3.5" />Feed
         </button>
         {activePacks.map(p => {
           const hex = TIER_HEX[p.id] || p.color;
@@ -968,20 +972,29 @@ function MobileBottomNav({ galleryTier, setGalleryTier, setFocusPack, activePack
           const isLocked = !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, p.id));
           return (
             <button key={p.id} onClick={() => { setGalleryTier(isActive ? "home" : p.id); setFocusPack(null); }}
-              className="relative flex flex-col items-center gap-1 px-3.5 py-1.5 rounded-xl cursor-pointer transition-all shrink-0"
-              style={{ color: isActive ? "#fff" : hex, background: isActive ? hex : `${hex}12`, opacity: isLocked && !isActive ? 0.5 : 1 }}>
-              <span className="text-lg relative leading-none">{TIER_META[p.id]?.symbol}{isLocked && <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-2" style={{ color: isActive ? "#fff" : hex, opacity: 0.7 }} />}</span>
-              <span className="text-[10px] font-bold uppercase" style={{ letterSpacing: "0.04em" }}>{TIER_META[p.id]?.label}</span>
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full cursor-pointer transition-all shrink-0"
+              style={{
+                color: isActive ? "#fff" : hex,
+                background: isActive ? hex : `${hex}10`,
+                fontSize: "11px", fontWeight: 700, letterSpacing: "0.03em",
+                opacity: isLocked && !isActive ? 0.5 : 1,
+              }}>
+              <span className="text-sm leading-none relative">{TIER_META[p.id]?.symbol}{isLocked && <Lock className="w-2 h-2 absolute -top-0.5 -right-2.5" style={{ color: isActive ? "#fff" : hex, opacity: 0.7 }} />}</span>
+              <span>{TIER_META[p.id]?.label}</span>
             </button>
           );
         })}
         <button onClick={() => { setGalleryTier(galleryTier === "custom" ? "home" : "custom"); setFocusPack(null); }}
-          className="relative flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl cursor-pointer transition-all shrink-0"
-          style={{ color: galleryTier === "custom" ? "#fff" : "#B8860B", background: galleryTier === "custom" ? "var(--gold, #D4A017)" : "rgba(184,134,11,0.08)" }}>
-          <Sparkles className="w-5 h-5" /><span className="text-[10px] font-bold uppercase" style={{ letterSpacing: "0.05em" }}>Custom</span>
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer transition-all shrink-0"
+          style={{
+            color: galleryTier === "custom" ? "#fff" : "#B8860B",
+            background: galleryTier === "custom" ? "var(--gold, #D4A017)" : "rgba(184,134,11,0.08)",
+            fontSize: "11px", fontWeight: 700, letterSpacing: "0.03em",
+          }}>
+          <Sparkles className="w-3.5 h-3.5" />Custom
         </button>
       </div>
-    </nav>
+    </div>
   );
 }
 
@@ -1021,7 +1034,7 @@ function FeedView({ model, displayModel, posts, uploads, wallPosts, wallContent,
   return (
     <div className="fade-up">
       <div className="flex gap-5 max-w-5xl mx-auto">
-        <div className="space-y-5 sm:space-y-6 flex-1 min-w-0 max-w-2xl mx-auto">
+        <div className="space-y-3 sm:space-y-6 flex-1 min-w-0 max-w-2xl mx-auto">
           {/* Composer */}
           {!isModelLoggedIn && (
             <div className="rounded-2xl p-5 sm:p-6" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
@@ -1272,13 +1285,13 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
         ]);
         return (
           <>
-            <div className="columns-2 md:columns-3 lg:columns-4 gap-2">
+            <div className="columns-2 md:columns-3 lg:columns-4 gap-1 sm:gap-2">
               {allMedia.map((item, i) => {
                 const aspect = getMasonryAspect(i);
                 const hex = TIER_HEX[item.tier] || "var(--text-muted)";
                 const unlocked = item.tier === "p0" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, item.tier));
                 return (
-                  <div key={`${item.type}-${item.id}`} className={`break-inside-avoid mb-2 relative ${aspect} overflow-hidden rounded-xl cursor-pointer group transition-all duration-300 hover:scale-[1.02] hover:shadow-lg`} style={{ animation: `slideUp 0.4s ease-out ${i * 0.03}s both` }}>
+                  <div key={`${item.type}-${item.id}`} className={`break-inside-avoid mb-1 sm:mb-2 relative ${aspect} overflow-hidden rounded-lg sm:rounded-xl cursor-pointer group transition-all duration-300 hover:scale-[1.02] hover:shadow-lg`} style={{ animation: `slideUp 0.4s ease-out ${i * 0.03}s both` }}>
                     {unlocked ? (
                       <>
                         <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">
