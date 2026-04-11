@@ -67,10 +67,12 @@ export async function POST(req: NextRequest) {
       // Check media config exists and model is active
       const supabase = getServerSupabase();
       if (supabase) {
+        // Try both slug and model_id formats for compatibility
+        const normalizedModel = toModelId(model);
         const { data: config } = await supabase
           .from("agence_media_config")
           .select("max_storage_mb, max_uploads, max_file_size_mb, total_files, total_bytes, is_active")
-          .eq("model_slug", model)
+          .or(`model_slug.eq.${model},model_slug.eq.${normalizedModel}`)
           .single();
 
         if (config) {

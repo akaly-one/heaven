@@ -432,27 +432,50 @@ export default function AgenceDashboard() {
   const handleUploadToTier = useCallback(async (file: File, tier: string) => {
     const { valid, error } = validateFile(file, UPLOAD_LIMITS.post.maxMB);
     if (!valid) { setUploadMsg({ text: error!, type: "error" }); setTimeout(() => setUploadMsg(null), 5000); return; }
-    setUploadMsg({ text: "Upload en cours...", type: "loading" });
+    setUploadMsg({ text: `Upload ${file.name}...`, type: "loading" });
     const reader = new FileReader();
+    reader.onerror = () => {
+      setUploadMsg({ text: "Erreur lecture fichier", type: "error" });
+      setTimeout(() => setUploadMsg(null), 4000);
+    };
     reader.onload = async () => {
       try {
-        const upRes = await fetch("/api/upload", { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ file: reader.result, model: toModelId(modelSlug), folder: `heaven/${toModelId(modelSlug)}/uploads` }) });
-        if (upRes.ok) {
-          const { url } = await upRes.json();
-          if (url) {
-            const newUpload = { model: toModelId(modelSlug), tier, type: "photo" as const, label: "", dataUrl: url, visibility: "pack" as const, tokenPrice: 0, isNew: true };
-            const syncRes = await fetch("/api/uploads", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() },
-              body: JSON.stringify(newUpload) });
-            if (syncRes.ok) {
-              const data = await syncRes.json();
-              if (data.upload) setUploads(prev => [data.upload, ...prev]);
-              else setUploads(prev => [{ id: crypto.randomUUID(), ...newUpload, uploadedAt: new Date().toISOString() }, ...prev]);
-            }
-            setUploadMsg({ text: "Media ajouté", type: "success" });
-          }
-        } else { setUploadMsg({ text: "Erreur upload", type: "error" }); }
-      } catch { setUploadMsg({ text: "Erreur réseau", type: "error" }); }
+        const mid = toModelId(modelSlug);
+        const upRes = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders() },
+          body: JSON.stringify({ file: reader.result, model: mid, folder: `heaven/${mid}/uploads` }),
+        });
+        if (!upRes.ok) {
+          const errData = await upRes.json().catch(() => ({ error: `HTTP ${upRes.status}` }));
+          setUploadMsg({ text: errData.error || `Erreur ${upRes.status}`, type: "error" });
+          setTimeout(() => setUploadMsg(null), 5000);
+          setUploadingToTier(null);
+          return;
+        }
+        const { url } = await upRes.json();
+        if (!url) {
+          setUploadMsg({ text: "Pas d'URL retournée", type: "error" });
+          setTimeout(() => setUploadMsg(null), 4000);
+          setUploadingToTier(null);
+          return;
+        }
+        const newUpload = { model: mid, tier, type: "photo" as const, label: "", dataUrl: url, visibility: "pack" as const, tokenPrice: 0, isNew: true };
+        const syncRes = await fetch("/api/uploads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders() },
+          body: JSON.stringify(newUpload),
+        });
+        if (syncRes.ok) {
+          const data = await syncRes.json();
+          if (data.upload) setUploads(prev => [data.upload, ...prev]);
+          else setUploads(prev => [{ id: crypto.randomUUID(), ...newUpload, uploadedAt: new Date().toISOString() }, ...prev]);
+        }
+        setUploadMsg({ text: "Media ajouté", type: "success" });
+      } catch (err) {
+        console.error("[Upload]", err);
+        setUploadMsg({ text: "Erreur réseau", type: "error" });
+      }
       setTimeout(() => setUploadMsg(null), 3000);
       setUploadingToTier(null);
     };
