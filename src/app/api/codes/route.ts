@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
   }
   try {
     const supabase = requireSupabase();
+    const normalizedModel = model ? toModelId(model) : null;
 
     const pageParam = req.nextUrl.searchParams.get("page");
     const limitParam = req.nextUrl.searchParams.get("limit");
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest) {
     if (paginated) {
       // Paginated mode: return page + total count
       let countQ = supabase.from("agence_codes").select("*", { count: "exact", head: true });
-      if (model) countQ = countQ.eq("model", model);
+      if (normalizedModel) countQ = countQ.eq("model", normalizedModel);
       if (clientId) countQ = countQ.eq("client_id", clientId);
       if (statusFilter === "active") {
         countQ = countQ.eq("active", true).eq("revoked", false).gt("expires_at", new Date().toISOString());
@@ -67,7 +68,7 @@ export async function GET(req: NextRequest) {
       const total = count ?? 0;
 
       let q = supabase.from("agence_codes").select("*").order("created_at", { ascending: false }).range(offset, offset + limit - 1);
-      if (model) q = q.eq("model", model);
+      if (normalizedModel) q = q.eq("model", normalizedModel);
       if (clientId) q = q.eq("client_id", clientId);
       if (statusFilter === "active") {
         q = q.eq("active", true).eq("revoked", false).gt("expires_at", new Date().toISOString());
@@ -91,7 +92,7 @@ export async function GET(req: NextRequest) {
 
     // Legacy mode: return all (backward compat)
     let q = supabase.from("agence_codes").select("*").order("created_at", { ascending: false }).limit(500);
-    if (model) q = q.eq("model", model);
+    if (normalizedModel) q = q.eq("model", normalizedModel);
     if (clientId) q = q.eq("client_id", clientId);
     if (statusFilter === "active") {
       q = q.eq("active", true).eq("revoked", false).gt("expires_at", new Date().toISOString());
@@ -133,9 +134,10 @@ export async function POST(req: NextRequest) {
       if (!trimmed) return NextResponse.json({ error: "Code requis" }, { status: 400, headers: cors });
       if (!isValidModelSlug(model)) return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
 
+      const normalizedModel = toModelId(model);
       const { data: found, error } = await supabase
         .from("agence_codes").select("*")
-        .ilike("code", trimmed).eq("model", model).eq("revoked", false)
+        .ilike("code", trimmed).eq("model", normalizedModel).eq("revoked", false)
         .maybeSingle();
 
       if (error) {
@@ -169,11 +171,12 @@ export async function POST(req: NextRequest) {
     const normalizedClient = (body.client || "").trim().toLowerCase();
     const model = body.model;
     if (!isValidModelSlug(model)) return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
+    const normalizedModel = toModelId(model);
     const platform = body.platform || "snapchat";
 
     const newCode: CodeRow = {
       code: body.code,
-      model,
+      model: normalizedModel,
       client: normalizedClient,
       platform,
       role: body.role || "client",
@@ -197,14 +200,14 @@ export async function POST(req: NextRequest) {
       // Try primary field first
       let { data: existingClient } = await supabase
         .from("agence_clients").select("id")
-        .eq("model", model).ilike(primaryField, normalizedClient)
+        .eq("model", normalizedModel).ilike(primaryField, normalizedClient)
         .maybeSingle();
 
       // Fallback: try secondary field
       if (!existingClient) {
         const { data: fallback } = await supabase
           .from("agence_clients").select("id")
-          .eq("model", model).ilike(secondaryField, normalizedClient)
+          .eq("model", normalizedModel).ilike(secondaryField, normalizedClient)
           .maybeSingle();
         existingClient = fallback;
       }
@@ -212,7 +215,7 @@ export async function POST(req: NextRequest) {
       if (existingClient) {
         clientId = existingClient.id;
       } else {
-        const insertData: Record<string, unknown> = { model, last_active: new Date().toISOString() };
+        const insertData: Record<string, unknown> = { model: normalizedModel, last_active: new Date().toISOString() };
         insertData[primaryField] = normalizedClient;
         const { data: newClient } = await supabase
           .from("agence_clients").insert(insertData).select("id").single();
@@ -263,8 +266,9 @@ export async function PUT(req: NextRequest) {
     }
     const supabase = requireSupabase();
 
+    const normalizedModel = toModelId(model);
     const { data: found, error: findErr } = await supabase
-      .from("agence_codes").select("*").ilike("code", target).eq("model", model).maybeSingle();
+      .from("agence_codes").select("*").ilike("code", target).eq("model", normalizedModel).maybeSingle();
 
     if (findErr) {
       console.error("[API/codes] PUT find error:", findErr);
@@ -318,8 +322,9 @@ export async function DELETE(req: NextRequest) {
   }
   try {
     const supabase = requireSupabase();
+    const normalizedModel = toModelId(model);
     const { data, error } = await supabase
-      .from("agence_codes").delete().ilike("code", code).eq("model", model).select();
+      .from("agence_codes").delete().ilike("code", code).eq("model", normalizedModel).select();
 
     if (error) {
       console.error("[API/codes] DELETE error:", error);
@@ -353,12 +358,13 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "code, model, updates requis" }, { status: 400, headers: cors });
     }
     const supabase = requireSupabase();
+    const normalizedModel = toModelId(model);
     const dbUpdates = mapToDb(updates);
     const { error } = await supabase
       .from("agence_codes")
       .update(dbUpdates)
       .ilike("code", code)
-      .eq("model", model);
+      .eq("model", normalizedModel);
     if (error) throw error;
     return NextResponse.json({ success: true }, { headers: cors });
   } catch (err) {

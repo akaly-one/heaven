@@ -3,7 +3,7 @@ import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 import { sanitize } from "@/lib/api-utils";
 import { getAuthUser } from "@/lib/api-auth";
-import { toModelId } from "@/lib/model-utils";
+import { toModelId, isModelId } from "@/lib/model-utils";
 
 export const runtime = "nodejs";
 
@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
     if (!isValidModelSlug(modelFilter)) {
       return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
     }
+    const normalizedModel = modelFilter ? (isModelId(modelFilter) ? modelFilter : toModelId(modelFilter)) : null;
     // Model-scoping: model role can only access their own data
     const user = await getAuthUser();
     if (user && user.role === "model") {
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
     let q = supabase
       .from("agence_messages")
       .select("*")
-      .eq("model", modelFilter)
+      .eq("model", normalizedModel)
       .order("created_at", { ascending: false })
       .limit(500);
 
@@ -70,6 +71,7 @@ export async function POST(req: NextRequest) {
     if (!isValidModelSlug(model) || !client_id || !sender_type || !content) {
       return NextResponse.json({ error: "model, client_id, sender_type, content requis" }, { status: 400, headers: cors });
     }
+    const normalizedModel = toModelId(model);
 
     if (sender_type === "client") {
       // Verify client_id exists in DB
@@ -94,7 +96,7 @@ export async function POST(req: NextRequest) {
 
     const { data, error } = await supabase
       .from("agence_messages")
-      .insert({ model, client_id, sender_type, content: cleanContent })
+      .insert({ model: normalizedModel, client_id, sender_type, content: cleanContent })
       .select()
       .single();
 
@@ -124,6 +126,7 @@ export async function DELETE(req: NextRequest) {
   const model = req.nextUrl.searchParams.get("model");
   if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
   if (!model || !isValidModelSlug(model)) return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
+  const normalizedModel = toModelId(model);
   // Model-scoping: model role can only access their own data
   const user = await getAuthUser();
   if (user && user.role === "model") {
@@ -136,7 +139,7 @@ export async function DELETE(req: NextRequest) {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    const { error } = await supabase.from("agence_messages").delete().eq("id", id).eq("model", model);
+    const { error } = await supabase.from("agence_messages").delete().eq("id", id).eq("model", normalizedModel);
     if (error) throw error;
 
     return NextResponse.json({ success: true }, { headers: cors });
@@ -152,6 +155,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
     const { id, client_id, model, action } = body;
+    const normalizedModel = model ? toModelId(model) : null;
     // Model-scoping: model role can only access their own data
     const user = await getAuthUser();
     if (user && user.role === "model") {
@@ -168,7 +172,7 @@ export async function PATCH(req: NextRequest) {
       const { error } = await supabase
         .from("agence_messages")
         .update({ read: true })
-        .eq("model", model)
+        .eq("model", normalizedModel!)
         .eq("client_id", client_id)
         .eq("sender_type", "client")
         .eq("read", false);
@@ -185,7 +189,7 @@ export async function PATCH(req: NextRequest) {
         .from("agence_messages")
         .update({ client_id })
         .eq("id", id)
-        .eq("model", model);
+        .eq("model", normalizedModel!);
       if (error) throw error;
       return NextResponse.json({ success: true }, { headers: cors });
     }

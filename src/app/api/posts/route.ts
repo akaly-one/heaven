@@ -4,7 +4,7 @@ import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 import { sanitize } from "@/lib/api-utils";
 import { normalizeTier } from "@/lib/tier-utils";
 import { getAuthUser } from "@/lib/api-auth";
-import { toModelId } from "@/lib/model-utils";
+import { toModelId, isModelId } from "@/lib/model-utils";
 
 export const runtime = "nodejs";
 
@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
     if (model && !isValidModelSlug(model)) {
       return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
     }
+    const modelParam = model ? (isModelId(model) ? model : toModelId(model)) : null;
 
     const type = req.nextUrl.searchParams.get("type");
     const pageParam = req.nextUrl.searchParams.get("page");
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
     if (paginated) {
       // Paginated mode: return page + total count
       let countQ = supabase.from("agence_posts").select("*", { count: "exact", head: true });
-      if (model) countQ = countQ.eq("model", model);
+      if (modelParam) countQ = countQ.eq("model", modelParam);
       if (type) countQ = countQ.eq("post_type", type);
       const { count } = await countQ;
       const total = count ?? 0;
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
         .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
 
-      if (model) q = q.eq("model", model);
+      if (modelParam) q = q.eq("model", modelParam);
       if (type) q = q.eq("post_type", type);
 
       const { data, error } = await q;
@@ -72,7 +73,7 @@ export async function GET(req: NextRequest) {
       .order("created_at", { ascending: false })
       .limit(50);
 
-    if (model) q = q.eq("model", model);
+    if (modelParam) q = q.eq("model", modelParam);
     if (type) q = q.eq("post_type", type);
 
     const { data, error } = await q;
@@ -100,6 +101,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!isValidModelSlug(model)) return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
+    const normalizedModel = toModelId(model);
 
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
@@ -107,7 +109,7 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabase
       .from("agence_posts")
       .insert({
-        model,
+        model: normalizedModel,
         content: body.content ? sanitize(body.content) : null,
         media_url: body.media_url || null,
         media_type: body.media_type || null,
@@ -137,6 +139,7 @@ export async function PUT(req: NextRequest) {
     if (!model || !isValidModelSlug(model)) {
       return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
     }
+    const normalizedModel = toModelId(model);
     // Model-scoping: model role can only access their own data
     const user = await getAuthUser();
     if (user && user.role === "model") {
@@ -166,8 +169,8 @@ export async function PUT(req: NextRequest) {
           if (rpcErr) throw rpcErr;
         } catch {
           // Fallback if RPC doesn't exist: manual decrement
-          const { data: p } = await supabase.from("agence_posts").select("likes_count").eq("id", id).eq("model", model).single();
-          if (p) await supabase.from("agence_posts").update({ likes_count: Math.max(0, (p.likes_count || 0) - 1) }).eq("id", id).eq("model", model);
+          const { data: p } = await supabase.from("agence_posts").select("likes_count").eq("id", id).eq("model", normalizedModel).single();
+          if (p) await supabase.from("agence_posts").update({ likes_count: Math.max(0, (p.likes_count || 0) - 1) }).eq("id", id).eq("model", normalizedModel);
         }
         return NextResponse.json({ liked: false }, { headers: cors });
       } else {
@@ -180,8 +183,8 @@ export async function PUT(req: NextRequest) {
           const { error: rpcErr } = await supabase.rpc("increment_likes", { post_id_param: id });
           if (rpcErr) throw rpcErr;
         } catch {
-          const { data: p } = await supabase.from("agence_posts").select("likes_count").eq("id", id).eq("model", model).single();
-          if (p) await supabase.from("agence_posts").update({ likes_count: (p.likes_count || 0) + 1 }).eq("id", id).eq("model", model);
+          const { data: p } = await supabase.from("agence_posts").select("likes_count").eq("id", id).eq("model", normalizedModel).single();
+          if (p) await supabase.from("agence_posts").update({ likes_count: (p.likes_count || 0) + 1 }).eq("id", id).eq("model", normalizedModel);
         }
         return NextResponse.json({ liked: true }, { headers: cors });
       }
@@ -198,17 +201,17 @@ export async function PUT(req: NextRequest) {
         const { error: rpcErr } = await supabase.rpc("increment_comments", { post_id_param: id });
         if (rpcErr) throw rpcErr;
       } catch {
-        const { data: post } = await supabase.from("agence_posts").select("comments_count").eq("id", id).eq("model", model).single();
-        if (post) await supabase.from("agence_posts").update({ comments_count: (post.comments_count || 0) + 1 }).eq("id", id).eq("model", model);
+        const { data: post } = await supabase.from("agence_posts").select("comments_count").eq("id", id).eq("model", normalizedModel).single();
+        if (post) await supabase.from("agence_posts").update({ comments_count: (post.comments_count || 0) + 1 }).eq("id", id).eq("model", normalizedModel);
       }
       return NextResponse.json({ success: true }, { headers: cors });
     }
 
     // Pin/unpin
     if (action === "pin") {
-      const { data: post } = await supabase.from("agence_posts").select("pinned").eq("id", id).eq("model", model).single();
+      const { data: post } = await supabase.from("agence_posts").select("pinned").eq("id", id).eq("model", normalizedModel).single();
       if (post) {
-        await supabase.from("agence_posts").update({ pinned: !post.pinned }).eq("id", id).eq("model", model);
+        await supabase.from("agence_posts").update({ pinned: !post.pinned }).eq("id", id).eq("model", normalizedModel);
       }
       return NextResponse.json({ success: true }, { headers: cors });
     }
@@ -230,6 +233,7 @@ export async function PATCH(req: NextRequest) {
     if (!model || !isValidModelSlug(model)) {
       return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
     }
+    const normalizedModel = toModelId(model);
     // Model-scoping: model role can only access their own data
     const user = await getAuthUser();
     if (user && user.role === "model") {
@@ -253,7 +257,7 @@ export async function PATCH(req: NextRequest) {
       .from("agence_posts")
       .update(updates)
       .eq("id", id)
-      .eq("model", model)
+      .eq("model", normalizedModel)
       .select()
       .single();
 
@@ -274,6 +278,7 @@ export async function DELETE(req: NextRequest) {
   if (!model || !isValidModelSlug(model)) {
     return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
   }
+  const normalizedModel = toModelId(model);
   // Model-scoping: model role can only access their own data
   const user = await getAuthUser();
   if (user && user.role === "model") {
@@ -286,7 +291,7 @@ export async function DELETE(req: NextRequest) {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    const { error } = await supabase.from("agence_posts").delete().eq("id", id).eq("model", model);
+    const { error } = await supabase.from("agence_posts").delete().eq("id", id).eq("model", normalizedModel);
     if (error) throw error;
 
     return NextResponse.json({ success: true }, { headers: cors });

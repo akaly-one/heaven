@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
       .order("created_at", { ascending: false })
       .limit(200);
 
-    if (model) q = q.eq("model_slug", model);
+    if (model) q = q.eq("model_slug", toModelId(model));
     if (stage) q = q.eq("stage", stage);
 
     const { data, error } = await q;
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
     const supabase = requireSupabase();
 
     const payload = {
-      model_slug: body.model_slug,
+      model_slug: toModelId(body.model_slug),
       title: body.title,
       content_type: body.content_type || "photo_set",
       platforms: body.platforms || [],
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
       thumbnail_url: body.thumbnail_url || null,
     };
 
-    if (!isValidModelSlug(payload.model_slug)) {
+    if (!isValidModelSlug(body.model_slug)) {
       return NextResponse.json({ error: "model_slug requis" }, { status: 400, headers: cors });
     }
     if (!payload.title) {
@@ -160,6 +160,7 @@ export async function PUT(req: NextRequest) {
         { status: 400, headers: cors }
       );
     }
+    const normalizedModel = toModelId(model_slug);
 
     const supabase = requireSupabase();
 
@@ -188,7 +189,7 @@ export async function PUT(req: NextRequest) {
       .from("agence_content_pipeline")
       .update(sanitized)
       .eq("id", id)
-      .eq("model_slug", model_slug)
+      .eq("model_slug", normalizedModel)
       .select()
       .single();
 

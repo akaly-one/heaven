@@ -48,9 +48,10 @@ export async function GET(req: NextRequest) {
     if (!supabase) {
       return NextResponse.json({ uploads: [] }, { headers: cors });
     }
+    const normalizedModel = toModelId(model);
     const { data, error } = await supabase
       .from("agence_uploads").select("*")
-      .eq("model", model)
+      .eq("model", normalizedModel)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -82,16 +83,17 @@ export async function POST(req: NextRequest) {
     }
     const supabase = requireSupabase();
 
+    const normalizedModel = toModelId(model);
     // Bulk sync
     if (body.action === "sync") {
       const uploads = (body.uploads || []) as UploadRow[];
-      const { error: delErr } = await supabase.from("agence_uploads").delete().eq("model", model);
+      const { error: delErr } = await supabase.from("agence_uploads").delete().eq("model", normalizedModel);
       if (delErr) {
         console.error("[API/uploads] sync delete error:", delErr);
         return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
       }
       if (uploads.length > 0) {
-        const rows = uploads.map(u => mapToDb(u, model));
+        const rows = uploads.map(u => mapToDb(u, normalizedModel));
         const { error: insErr } = await supabase.from("agence_uploads").insert(rows);
         if (insErr) {
           console.error("[API/uploads] sync insert error:", insErr);
@@ -118,7 +120,7 @@ export async function POST(req: NextRequest) {
 
     const { data, error } = await supabase
       .from("agence_uploads")
-      .insert(mapToDb(newUpload, model))
+      .insert(mapToDb(newUpload, normalizedModel))
       .select().single();
 
     if (error) {
@@ -152,6 +154,7 @@ export async function PUT(req: NextRequest) {
     const id = body.id;
     if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
 
+    const normalizedModel = toModelId(model);
     const supabase = requireSupabase();
     const dbUpdates: Record<string, unknown> = {};
     const allowedFields: Record<string, string> = {
@@ -167,7 +170,7 @@ export async function PUT(req: NextRequest) {
     const { data, error } = await supabase
       .from("agence_uploads")
       .update(dbUpdates)
-      .eq("model", model).eq("id", id)
+      .eq("model", normalizedModel).eq("id", id)
       .select().single();
 
     if (error) {
@@ -199,11 +202,12 @@ export async function DELETE(req: NextRequest) {
     }
   }
   try {
+    const normalizedModel = toModelId(model);
     const supabase = requireSupabase();
     const { data, error } = await supabase
       .from("agence_uploads")
       .delete()
-      .eq("model", model).eq("id", id)
+      .eq("model", normalizedModel).eq("id", id)
       .select();
 
     if (error) {

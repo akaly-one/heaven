@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (model) q = q.eq("model_slug", model);
+    if (model) q = q.eq("model_slug", toModelId(model));
     if (status) q = q.eq("status", status);
 
     const { data, error } = await q;
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     const supabase = requireSupabase();
 
     const payload = {
-      model_slug: body.model_slug,
+      model_slug: toModelId(body.model_slug),
       title: body.title,
       category: body.category || "revenue",
       target_value: body.target_value || 0,
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
       status: body.status || "active",
     };
 
-    if (!isValidModelSlug(payload.model_slug)) {
+    if (!isValidModelSlug(body.model_slug)) {
       return NextResponse.json({ error: "model_slug requis" }, { status: 400, headers: cors });
     }
     if (!payload.title) {
@@ -160,6 +160,7 @@ export async function PUT(req: NextRequest) {
         { status: 400, headers: cors }
       );
     }
+    const normalizedModel = toModelId(model_slug);
 
     const supabase = requireSupabase();
 
@@ -191,7 +192,7 @@ export async function PUT(req: NextRequest) {
       .from("agence_goals")
       .update(sanitized)
       .eq("id", id)
-      .eq("model_slug", model_slug)
+      .eq("model_slug", normalizedModel)
       .select()
       .single();
 

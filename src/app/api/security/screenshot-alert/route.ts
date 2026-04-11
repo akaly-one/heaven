@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
+import { toModelId } from "@/lib/model-utils";
 
 export const runtime = "nodejs";
 // Allowed page values
@@ -26,6 +27,7 @@ export async function POST(req: NextRequest) {
     if (!subscriberId || !isValidModelSlug(modelId)) {
       return NextResponse.json({ error: "subscriberId and valid modelId required" }, { status: 400, headers: cors });
     }
+    const normalizedModelId = toModelId(modelId);
 
     const supabase = getServerSupabase();
     if (!supabase) {
@@ -36,7 +38,7 @@ export async function POST(req: NextRequest) {
     const { data: modelExists } = await supabase
       .from("agence_accounts")
       .select("id")
-      .eq("model_slug", modelId)
+      .eq("model_slug", normalizedModelId)
       .maybeSingle();
 
     if (!modelExists) {
@@ -77,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     // 3. Log security alert
     await supabase.from("agence_security_alerts").insert({
-      model: modelId,
+      model: normalizedModelId,
       client_id: subscriberId,
       client_pseudo: clientPseudo,
       client_tier: client.tier || null,
@@ -97,7 +99,7 @@ export async function POST(req: NextRequest) {
       const msg = warningMessages[newCount] || warningMessages[3];
 
       await supabase.from("agence_messages").insert({
-        model: modelId,
+        model: normalizedModelId,
         client_id: subscriberId,
         sender_type: "model",
         content: msg,
@@ -135,10 +137,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "DB not configured" }, { status: 500, headers: cors });
     }
 
+    const normalizedModel = toModelId(model);
     const { data: alerts, error } = await supabase
       .from("agence_security_alerts")
       .select("*")
-      .eq("model", model)
+      .eq("model", normalizedModel)
       .order("created_at", { ascending: false })
       .limit(50);
 

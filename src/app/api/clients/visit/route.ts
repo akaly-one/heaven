@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
+import { toModelId } from "@/lib/model-utils";
 import { calculateBadgeGrade } from "@/constants/badges";
 
 export const runtime = "nodejs";
@@ -19,6 +20,7 @@ export async function POST(req: NextRequest) {
     if (!isValidModelSlug(model) || !client_id) {
       return NextResponse.json({ error: "model + client_id requis" }, { status: 400, headers: cors });
     }
+    const normalizedModel = toModelId(model);
 
     const supabase = getServerSupabase();
     if (!supabase) {
@@ -29,7 +31,7 @@ export async function POST(req: NextRequest) {
     const { data: existing } = await supabase
       .from("agence_fan_lifecycle")
       .select("*")
-      .eq("model_slug", model)
+      .eq("model_slug", normalizedModel)
       .eq("client_id", client_id)
       .single();
 
@@ -38,7 +40,7 @@ export async function POST(req: NextRequest) {
     if (!lifecycle) {
       const { data: created, error: createErr } = await supabase
         .from("agence_fan_lifecycle")
-        .insert({ model_slug: model, client_id, stage: "active", visit_count: 0, wall_posts_count: 0, orders_completed: 0 })
+        .insert({ model_slug: normalizedModel, client_id, stage: "active", visit_count: 0, wall_posts_count: 0, orders_completed: 0 })
         .select()
         .single();
       if (createErr) {

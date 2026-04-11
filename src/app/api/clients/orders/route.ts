@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
+import { toModelId } from "@/lib/model-utils";
 
 export const runtime = "nodejs";
 
@@ -24,11 +25,12 @@ export async function GET(req: NextRequest) {
     }
 
     // ── Primary: query agence_pending_payments ──
+    const normalizedModel = toModelId(model);
     const normalizedHandle = handle.trim().toLowerCase();
     const { data: payments, error: payErr } = await supabase
       .from("agence_pending_payments")
       .select("id, pack_name, tier, amount, currency, status, payment_method, generated_code, created_at, completed_at")
-      .eq("model", model)
+      .eq("model", normalizedModel)
       .or(`client_pseudo.ilike.${normalizedHandle},client_pseudo.ilike.@${normalizedHandle}`)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -57,7 +59,7 @@ export async function GET(req: NextRequest) {
     const { data, error } = await supabase
       .from("agence_wall_posts")
       .select("id, content, created_at")
-      .eq("model", model)
+      .eq("model", normalizedModel)
       .eq("pseudo", "SYSTEM")
       .ilike("content", `%@${handle}%`)
       .order("created_at", { ascending: false })

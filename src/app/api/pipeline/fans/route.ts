@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
       .select("*, agence_clients(pseudo_snap, pseudo_insta, firstname, tier)")
       .order("last_interaction", { ascending: false });
 
-    if (model) q = q.eq("model_slug", model);
+    if (model) q = q.eq("model_slug", toModelId(model));
     if (stage) q = q.eq("stage", stage);
     if (churnRisk) q = q.eq("churn_risk", churnRisk);
 
@@ -93,6 +93,7 @@ export async function PUT(req: NextRequest) {
         { status: 400, headers: cors }
       );
     }
+    const normalizedModel = toModelId(model_slug);
 
     const supabase = requireSupabase();
 
@@ -118,7 +119,7 @@ export async function PUT(req: NextRequest) {
       .from("agence_fan_lifecycle")
       .update(sanitized)
       .eq("id", id)
-      .eq("model_slug", model_slug)
+      .eq("model_slug", normalizedModel)
       .select()
       .single();
 

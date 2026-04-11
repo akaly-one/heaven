@@ -36,10 +36,11 @@ export async function GET(req: NextRequest) {
   }
   try {
     const supabase = requireSupabase();
+    const normalizedModel = toModelId(model);
     const { data, error } = await supabase
       .from("agence_pages")
       .select("*")
-      .eq("model", model)
+      .eq("model", normalizedModel)
       .order("updated_at", { ascending: false });
 
     if (error) {
@@ -73,10 +74,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "title et slug requis" }, { status: 400, headers: cors });
     }
     const supabase = requireSupabase();
+    const normalizedModel = toModelId(model);
     const { data, error } = await supabase
       .from("agence_pages")
       .insert({
-        model,
+        model: normalizedModel,
         title,
         slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, ""),
         status: status || "draft",

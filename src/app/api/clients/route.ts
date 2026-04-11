@@ -38,10 +38,11 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(200, Math.max(1, parseInt(limitParam || "50", 10) || 50));
     const offset = (page - 1) * limit;
 
+    const normalizedModel = modelFilter ? toModelId(modelFilter) : null;
     if (paginated) {
       // Paginated mode: return page + total count
       let countQ = supabase.from("agence_clients").select("*", { count: "exact", head: true });
-      if (modelFilter) countQ = countQ.eq("model", modelFilter);
+      if (normalizedModel) countQ = countQ.eq("model", normalizedModel);
       const { count } = await countQ;
       const total = count ?? 0;
 
@@ -51,7 +52,7 @@ export async function GET(req: NextRequest) {
         .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
 
-      if (modelFilter) q = q.eq("model", modelFilter);
+      if (normalizedModel) q = q.eq("model", normalizedModel);
 
       const { data, error } = await q;
       if (error) throw error;
@@ -72,7 +73,7 @@ export async function GET(req: NextRequest) {
       .order("created_at", { ascending: false })
       .limit(200);
 
-    if (modelFilter) q = q.eq("model", modelFilter);
+    if (normalizedModel) q = q.eq("model", normalizedModel);
 
     const { data, error } = await q;
     if (error) throw error;
@@ -106,6 +107,7 @@ export async function POST(req: NextRequest) {
     const lead_hook = body.lead_hook || null;
 
     if (!model || !isValidModelSlug(model)) return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
+    const normalizedModel = toModelId(model);
     if (!pseudo_snap && !pseudo_insta && !phone && !nickname) {
       return NextResponse.json({ error: "pseudo_snap, pseudo_insta, phone ou nickname requis" }, { status: 400, headers: cors });
     }
@@ -119,7 +121,7 @@ export async function POST(req: NextRequest) {
       const { data } = await supabase
         .from("agence_clients")
         .select("*")
-        .eq("model", model)
+        .eq("model", normalizedModel)
         .ilike("pseudo_snap", pseudo_snap)
         .maybeSingle();
       existing = data;
@@ -128,7 +130,7 @@ export async function POST(req: NextRequest) {
       const { data } = await supabase
         .from("agence_clients")
         .select("*")
-        .eq("model", model)
+        .eq("model", normalizedModel)
         .ilike("pseudo_insta", pseudo_insta)
         .maybeSingle();
       existing = data;
@@ -138,7 +140,7 @@ export async function POST(req: NextRequest) {
         const { data } = await supabase
           .from("agence_clients")
           .select("*")
-          .eq("model", model)
+          .eq("model", normalizedModel)
           .eq("phone", phone)
           .maybeSingle();
         existing = data;
@@ -151,7 +153,7 @@ export async function POST(req: NextRequest) {
         const { data } = await supabase
           .from("agence_clients")
           .select("*")
-          .eq("model", model)
+          .eq("model", normalizedModel)
           .ilike("nickname", nickname)
           .maybeSingle();
         existing = data;
@@ -192,7 +194,7 @@ export async function POST(req: NextRequest) {
 
     // Create new client
     const insertData: Record<string, unknown> = {
-      model,
+      model: normalizedModel,
       pseudo_snap: pseudo_snap || null,
       pseudo_insta: pseudo_insta || null,
       last_active: new Date().toISOString(),
@@ -213,7 +215,7 @@ export async function POST(req: NextRequest) {
     } catch (insertErr) {
       // If phone/nickname columns don't exist, retry without them
       const safeInsert: Record<string, unknown> = {
-        model,
+        model: normalizedModel,
         pseudo_snap: pseudo_snap || null,
         pseudo_insta: pseudo_insta || null,
         last_active: new Date().toISOString(),
@@ -240,10 +242,11 @@ export async function PUT(req: NextRequest) {
     const { id, model, ...updates } = body;
     if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
     if (!model || !isValidModelSlug(model)) return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
+    const normalizedModel = toModelId(model);
     // Model-scoping: model role can only access their own data
     const user = await getAuthUser();
     if (user && user.role === "model") {
-      if (toModelId(model) !== toModelId(user.sub)) {
+      if (normalizedModel !== toModelId(user.sub)) {
         return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
       }
     }
@@ -260,7 +263,7 @@ export async function PUT(req: NextRequest) {
         verified_by: updates.verified_by || "model",
       };
       try {
-        const { data, error } = await supabase.from("agence_clients").update(verifyUpdate).eq("id", id).eq("model", model).select().single();
+        const { data, error } = await supabase.from("agence_clients").update(verifyUpdate).eq("id", id).eq("model", normalizedModel).select().single();
         if (error) throw error;
         return NextResponse.json({ success: true, client: data }, { headers: cors });
       } catch (verifyErr) {
@@ -276,7 +279,7 @@ export async function PUT(req: NextRequest) {
       if (updates[f] !== undefined) allowed[f] = updates[f];
     }
 
-    const { data, error } = await supabase.from("agence_clients").update(allowed).eq("id", id).eq("model", model).select().single();
+    const { data, error } = await supabase.from("agence_clients").update(allowed).eq("id", id).eq("model", normalizedModel).select().single();
     if (error) throw error;
 
     return NextResponse.json({ success: true, client: data }, { headers: cors });
@@ -293,10 +296,11 @@ export async function DELETE(req: NextRequest) {
   const model = req.nextUrl.searchParams.get("model");
   if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
   if (!model || !isValidModelSlug(model)) return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
+  const normalizedModel = toModelId(model);
   // Model-scoping: model role can only access their own data
   const user = await getAuthUser();
   if (user && user.role === "model") {
-    if (toModelId(model) !== toModelId(user.sub)) {
+    if (normalizedModel !== toModelId(user.sub)) {
       return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
     }
   }
@@ -305,7 +309,7 @@ export async function DELETE(req: NextRequest) {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    const { error } = await supabase.from("agence_clients").delete().eq("id", id).eq("model", model);
+    const { error } = await supabase.from("agence_clients").delete().eq("id", id).eq("model", normalizedModel);
     if (error) {
       console.error("[API/clients] DELETE error:", error);
       return NextResponse.json({ error: error.message }, { status: 500, headers: cors });
@@ -326,10 +330,11 @@ export async function PATCH(req: NextRequest) {
     const { id, model, ...updates } = body;
     if (!id) return NextResponse.json({ error: "id requis" }, { status: 400, headers: cors });
     if (!model || !isValidModelSlug(model)) return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
+    const normalizedModel = toModelId(model);
     // Model-scoping: model role can only access their own data
     const user = await getAuthUser();
     if (user && user.role === "model") {
-      if (toModelId(model) !== toModelId(user.sub)) {
+      if (normalizedModel !== toModelId(user.sub)) {
         return NextResponse.json({ error: "Access denied" }, { status: 403, headers: cors });
       }
     }
@@ -337,7 +342,7 @@ export async function PATCH(req: NextRequest) {
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
 
-    const { data, error } = await supabase.from("agence_clients").update(updates).eq("id", id).eq("model", model).select().single();
+    const { data, error } = await supabase.from("agence_clients").update(updates).eq("id", id).eq("model", normalizedModel).select().single();
     if (error) {
       console.error("[API/clients] PATCH error:", error);
       return NextResponse.json({ error: error.message }, { status: 500, headers: cors });

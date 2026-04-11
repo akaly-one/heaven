@@ -7,6 +7,11 @@ const PUBLIC_GET = new Set([
   "/api/wall",
   "/api/packs",
   "/api/posts",
+  "/api/uploads",
+  "/api/uploads/access",
+  "/api/codes",
+  "/api/clients",
+  "/api/messages",
   "/api/system/status",
   "/api/credits/balance",
 ]);
@@ -16,10 +21,16 @@ const PUBLIC_GET_PREFIXES = [
   "/api/models/",
   "/api/payments/revolut/status",
   "/api/clients/orders",
+  "/api/clients/",
 ];
 
 // ── Public POST routes (no auth required) ──
+// Profile visitors need: wall posts, messages, client registration, code validation
 const PUBLIC_POST = new Set([
+  "/api/wall",
+  "/api/messages",
+  "/api/clients",
+  "/api/codes",
   "/api/codes/security",
   "/api/credits/purchase",
   "/api/payments/paypal/create",

@@ -43,10 +43,11 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = requireSupabase();
 
+    const normalizedModel = toModelId(model);
     let query = supabase
       .from("agence_photo_access")
       .select("*, agence_clients(id, nickname, pseudo_snap, pseudo_insta, tier)")
-      .eq("model", model)
+      .eq("model", normalizedModel)
       .order("granted_at", { ascending: false });
 
     // Optional filters
@@ -101,10 +102,11 @@ export async function POST(req: NextRequest) {
 
     const supabase = requireSupabase();
 
+    const normalizedModel = toModelId(model);
     const { data, error } = await supabase
       .from("agence_photo_access")
       .insert({
-        model,
+        model: normalizedModel,
         upload_id,
         client_id,
         source_tier: source_tier || null,
@@ -152,10 +154,11 @@ export async function DELETE(req: NextRequest) {
   try {
     const supabase = requireSupabase();
 
+    const normalizedModel = toModelId(model);
     const { data, error } = await supabase
       .from("agence_photo_access")
       .update({ revoked_at: new Date().toISOString() })
-      .eq("model", model)
+      .eq("model", normalizedModel)
       .eq("id", id)
       .is("revoked_at", null)
       .select()

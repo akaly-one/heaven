@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
+import { toModelId } from "@/lib/model-utils";
 import { requireRoot } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
@@ -31,10 +32,11 @@ export async function GET(req: NextRequest) {
   }
   try {
     const supabase = requireSupabase();
+    const normalizedModel = toModelId(model);
     const { data, error } = await supabase
       .from("agence_collaborators")
       .select("*")
-      .eq("model", model)
+      .eq("model", normalizedModel)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -64,8 +66,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "name requis" }, { status: 400, headers: cors });
     }
     const supabase = requireSupabase();
+    const normalizedModel = toModelId(model);
     const insert: Record<string, unknown> = {
-      model,
+      model: normalizedModel,
       name,
       role: role || "editor",
       active: true,

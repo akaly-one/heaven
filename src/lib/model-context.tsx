@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { HeavenAuth } from "@/components/auth-guard";
-import { toModelId } from "@/lib/model-utils";
+import { toModelId, updateModelMap } from "@/lib/model-utils";
 
 interface ModelContextValue {
   currentModel: string | null;
@@ -83,6 +83,11 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
             slug: m.slug || m.model_slug,
             display_name: m.display_name,
           })));
+          // Update runtime model map for slug<->id resolution
+          const mapEntries = data.models
+            .filter((m: any) => m.model_id && (m.slug || m.model_slug))
+            .map((m: any) => ({ slug: m.slug || m.model_slug, model_id: m.model_id }));
+          if (mapEntries.length > 0) updateModelMap(mapEntries);
           if (!currentModel && data.models.length > 0) {
             const first = data.models[0];
             setCurrentModel(first.slug || first.model_slug);

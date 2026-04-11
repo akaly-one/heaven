@@ -32,10 +32,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "model slug invalide" }, { status: 400, headers: cors });
     }
 
+    const normalizedModel = toModelId(model);
     const { data, error } = await supabase
       .from("agence_media_config")
       .select("*")
-      .eq("model_slug", model)
+      .eq("model_slug", normalizedModel)
       .single();
 
     if (error || !data) {
@@ -99,10 +100,11 @@ export async function PATCH(req: NextRequest) {
       if (allowed[k]) dbUpdates[k] = v;
     }
 
+    const normalizedModel = toModelId(model_slug);
     const { data, error } = await supabase
       .from("agence_media_config")
       .update(dbUpdates)
-      .eq("model_slug", model_slug)
+      .eq("model_slug", normalizedModel)
       .select()
       .single();
 
@@ -145,8 +147,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
     }
 
+    const normalizedModel = toModelId(model_slug);
     // Call the DB function to refresh stats
-    const { error } = await supabase.rpc("refresh_media_stats", { p_slug: model_slug });
+    const { error } = await supabase.rpc("refresh_media_stats", { p_slug: normalizedModel });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500, headers: cors });
@@ -156,7 +159,7 @@ export async function POST(req: NextRequest) {
     const { data } = await supabase
       .from("agence_media_config")
       .select("*")
-      .eq("model_slug", model_slug)
+      .eq("model_slug", normalizedModel)
       .single();
 
     return NextResponse.json({ media: data }, { headers: cors });

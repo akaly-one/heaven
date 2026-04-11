@@ -21,8 +21,26 @@ export async function GET(req: NextRequest) {
       .eq("active", true)
       .order("display_name");
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500, headers: cors });
+    if (error || !data || data.length === 0) {
+      // Fallback: query agence_models directly
+      const { data: models, error: modelsError } = await supabase
+        .from("agence_models")
+        .select("slug, display_name, model_id, is_active")
+        .eq("is_active", true)
+        .order("model_number");
+
+      if (modelsError) {
+        return NextResponse.json({ error: modelsError.message }, { status: 500, headers: cors });
+      }
+
+      return NextResponse.json({
+        models: (models || []).map(m => ({
+          model_slug: m.slug,
+          display_name: m.display_name || m.slug,
+          active: true,
+          model_id: m.model_id,
+        }))
+      }, { headers: cors });
     }
 
     return NextResponse.json({ models: data || [] }, { headers: cors });

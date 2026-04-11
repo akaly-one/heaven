@@ -34,9 +34,10 @@ export async function GET(req: NextRequest) {
     if (!supabase) {
       return NextResponse.json({ packs: DEFAULT_PACKS }, { headers: cors });
     }
+    const normalizedModel = toModelId(model);
     const { data, error } = await supabase
       .from("agence_packs").select("*")
-      .eq("model", model)
+      .eq("model", normalizedModel)
       .order("sort_order", { ascending: true });
 
     if (error) {
@@ -84,15 +85,16 @@ export async function POST(req: NextRequest) {
 
     const supabase = requireSupabase();
 
+    const normalizedModel = toModelId(model);
     const rows = packs.map((p: Record<string, unknown>, i: number) => ({
-      model, pack_id: p.id || `pack-${i}`, name: p.name || "", price: p.price || 0,
+      model: normalizedModel, pack_id: p.id || `pack-${i}`, name: p.name || "", price: p.price || 0,
       color: p.color || "#C9A84C", features: p.features || [], bonuses: p.bonuses || {},
       face: p.face || false, badge: p.badge || null, active: p.active !== false, sort_order: i,
       revolut_url: p.revolut_url || null,
     }));
 
     // Step 1: delete all existing packs for this model
-    const { error: delErr } = await supabase.from("agence_packs").delete().eq("model", model);
+    const { error: delErr } = await supabase.from("agence_packs").delete().eq("model", normalizedModel);
     if (delErr) {
       console.error("[API/packs] POST delete error:", delErr);
       return NextResponse.json({ error: "Database delete error", detail: delErr.message }, { status: 502, headers: cors });

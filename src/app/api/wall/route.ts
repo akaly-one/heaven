@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 import { sanitize } from "@/lib/api-utils";
+import { toModelId } from "@/lib/model-utils";
 
 export const runtime = "nodejs";
 
@@ -19,6 +20,7 @@ export async function GET(req: NextRequest) {
     const pseudoSnap = req.nextUrl.searchParams.get("pseudo_snap");
     const pseudoInsta = req.nextUrl.searchParams.get("pseudo_insta");
     if (!model) return NextResponse.json({ posts: [] }, { headers: cors });
+    const normalizedModel = toModelId(model);
 
     const supabase = getServerSupabase();
     if (!supabase) return NextResponse.json({ error: "DB non configuree" }, { status: 502, headers: cors });
@@ -26,7 +28,7 @@ export async function GET(req: NextRequest) {
     let q = supabase
       .from("agence_wall_posts")
       .select("*")
-      .eq("model", model)
+      .eq("model", normalizedModel)
       .order("created_at", { ascending: false })
       .limit(100);
 
@@ -62,6 +64,7 @@ export async function POST(req: NextRequest) {
     if (!isValidModelSlug(model) || !pseudo) {
       return NextResponse.json({ error: "model and pseudo required" }, { status: 400, headers: cors });
     }
+    const normalizedModel = toModelId(model);
     if (!content && !photo_url) {
       return NextResponse.json({ error: "content or photo required" }, { status: 400, headers: cors });
     }
@@ -86,7 +89,7 @@ export async function POST(req: NextRequest) {
       const { data: existing } = await supabase
         .from("agence_clients")
         .select("id")
-        .eq("model", model)
+        .eq("model", normalizedModel)
         .ilike(field, handle!)
         .maybeSingle();
 
@@ -99,7 +102,7 @@ export async function POST(req: NextRequest) {
         const { data: newClient } = await supabase
           .from("agence_clients")
           .insert({
-            model,
+            model: normalizedModel,
             pseudo_snap: pseudo_snap?.toLowerCase() || null,
             pseudo_insta: pseudo_insta?.toLowerCase() || null,
             last_active: new Date().toISOString(),
@@ -113,7 +116,7 @@ export async function POST(req: NextRequest) {
     // Insert with only columns that exist in the table
     // DB schema: id, model, pseudo, content, photo_url, created_at, cloudinary_id
     const insertData: Record<string, unknown> = {
-      model,
+      model: normalizedModel,
       pseudo,
       content: content || null,
       photo_url,

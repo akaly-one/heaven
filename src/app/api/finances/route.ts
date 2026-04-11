@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
+import { toModelId } from "@/lib/model-utils";
 import { requireRoot } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
@@ -31,6 +32,7 @@ export async function GET(req: NextRequest) {
     if (modelFilter && !isValidModelSlug(modelFilter)) {
       return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
     }
+    const normalizedModel = modelFilter ? toModelId(modelFilter) : null;
 
     // ── 1. Completed payments from agence_pending_payments ──
     let paymentsQuery = supabase
@@ -40,7 +42,7 @@ export async function GET(req: NextRequest) {
       .order("completed_at", { ascending: false })
       .limit(500);
 
-    if (modelFilter) paymentsQuery = paymentsQuery.eq("model", modelFilter);
+    if (normalizedModel) paymentsQuery = paymentsQuery.eq("model", normalizedModel);
 
     const { data: payments, error: paymentsErr } = await paymentsQuery;
     if (paymentsErr) console.error("[API/finances] payments error:", paymentsErr);
@@ -52,7 +54,7 @@ export async function GET(req: NextRequest) {
       .order("created_at", { ascending: false })
       .limit(500);
 
-    if (modelFilter) revenueQuery = revenueQuery.eq("model", modelFilter);
+    if (normalizedModel) revenueQuery = revenueQuery.eq("model", normalizedModel);
 
     let revenueLog = null;
     let revenueLogErr = null;
@@ -73,7 +75,7 @@ export async function GET(req: NextRequest) {
       .order("total_spent", { ascending: false })
       .limit(200);
 
-    if (modelFilter) clientsQuery = clientsQuery.eq("model", modelFilter);
+    if (normalizedModel) clientsQuery = clientsQuery.eq("model", normalizedModel);
 
     const { data: clients, error: clientsErr } = await clientsQuery;
     if (clientsErr) console.error("[API/finances] clients error:", clientsErr);
