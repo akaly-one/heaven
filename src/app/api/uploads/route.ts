@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 import { normalizeTier } from "@/lib/tier-utils";
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest) {
 
     // Single upload
     const newUpload: UploadRow = {
-      id: body.id || `upl-${Date.now()}`,
+      id: body.id || `upl-${randomUUID().replace(/-/g, "").slice(0, 12)}`,
       tier: body.tier === "custom" ? "custom" : body.tier ? normalizeTier(body.tier) : "p0",
       type: body.type || "photo",
       label: body.label || "",
@@ -125,8 +126,8 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       if (error.code === "23505") return NextResponse.json({ error: "Upload deja existant" }, { status: 409, headers: cors });
-      console.error("[API/uploads] POST Supabase error:", error);
-      return NextResponse.json({ error: "Database error" }, { status: 502, headers: cors });
+      console.error("[API/uploads] POST Supabase error:", JSON.stringify(error), "row:", JSON.stringify(mapToDb(newUpload, normalizedModel)));
+      return NextResponse.json({ error: `Database error: ${error.message || error.code}` }, { status: 502, headers: cors });
     }
 
     const mapped = mapFromDb(data);
@@ -243,5 +244,6 @@ function mapToDb(u: any, model: string) {
     is_new: u.isNew ?? u.is_new ?? true,
     group_label: u.groupLabel ?? u.group_label ?? null,
     client_id: u.clientId ?? u.client_id ?? null,
+    created_at: u.uploadedAt || new Date().toISOString(),
   };
 }
