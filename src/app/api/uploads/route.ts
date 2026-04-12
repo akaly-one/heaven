@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
 
     // Single upload
     const newUpload: UploadRow = {
-      id: body.id || `upl-${randomUUID().replace(/-/g, "").slice(0, 12)}`,
+      id: body.id || randomUUID(),
       tier: body.tier === "custom" ? "custom" : body.tier ? normalizeTier(body.tier) : "p0",
       type: body.type || "photo",
       label: body.label || "",
@@ -238,7 +238,7 @@ function mapFromDb(row: any): UploadRow {
 }
 function mapToDb(u: any, model: string) {
   return {
-    id: u.id || undefined, model, tier: u.tier === "custom" ? "custom" : u.tier ? normalizeTier(u.tier) : "p0", type: u.type || "photo",
+    id: u.id || randomUUID(), model, tier: u.tier === "custom" ? "custom" : u.tier ? normalizeTier(u.tier) : "p0", type: u.type || "photo",
     label: u.label || "", data_url: u.dataUrl || u.data_url || "",
     visibility: u.visibility || "p0", token_price: u.tokenPrice ?? u.token_price ?? 0,
     is_new: u.isNew ?? u.is_new ?? true,
