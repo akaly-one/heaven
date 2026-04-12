@@ -791,35 +791,37 @@ export default function AgenceDashboard() {
 
 
           {/* ══ UNDERLINE TABS + shortcuts ══ */}
-          <div className="flex items-center gap-7 border-b border-white/[0.06] overflow-x-auto no-scrollbar">
-            {TABS.map(tab => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  className="relative pb-3 text-sm font-medium cursor-pointer transition-colors whitespace-nowrap bg-transparent border-none px-0"
-                  style={{ color: isActive ? "#D4AF37" : "rgba(255,255,255,0.35)" }}>
-                  {tab.label}
-                  {isActive && <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ background: "#D4AF37" }} />}
-                </button>
-              );
-            })}
-            <div className="flex-1" />
-            {/* Quick shortcuts — right-aligned in tab bar */}
-            <div className="flex items-center gap-1 pb-1 shrink-0">
+          <div className="flex items-center gap-4 md:gap-7 border-b border-white/[0.06]">
+            <div className="flex items-center gap-4 md:gap-7 overflow-x-auto no-scrollbar">
+              {TABS.map(tab => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                    className="relative pb-3 text-sm font-medium cursor-pointer transition-colors whitespace-nowrap bg-transparent border-none px-0"
+                    style={{ color: isActive ? "#D4AF37" : "rgba(255,255,255,0.35)" }}>
+                    {tab.label}
+                    {isActive && <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ background: "#D4AF37" }} />}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex-1 min-w-0" />
+            {/* Quick shortcuts — always visible */}
+            <div className="flex items-center gap-0.5 pb-1 shrink-0">
               <a href={`/m/${modelSlug}`} target="_blank" rel="noopener"
                 className="p-1.5 rounded-md no-underline transition-all hover:bg-white/[0.06]"
                 title="Voir profil public">
-                <Eye className="w-4 h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
+                <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
               </a>
               <a href={`/m/${modelSlug}?edit=true`} target="_blank" rel="noopener"
                 className="p-1.5 rounded-md no-underline transition-all hover:bg-white/[0.06]"
                 title="Modifier profil">
-                <Pencil className="w-4 h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
+                <Pencil className="w-3.5 h-3.5 md:w-4 md:h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
               </a>
               <button onClick={() => window.dispatchEvent(new CustomEvent("heaven:toggle-socials"))}
                 className="p-1.5 rounded-md transition-all hover:bg-white/[0.06] cursor-pointer border-none bg-transparent"
                 title="Liens sociaux">
-                <Link2 className="w-4 h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
+                <Link2 className="w-3.5 h-3.5 md:w-4 md:h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
               </button>
             </div>
           </div>
