@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { MessageCircle, Users, Link2, Globe, Instagram, KeyRound, ImagePlus, Eye, Pencil } from "lucide-react";
 import { StoryGenerator } from "@/components/profile/story-generator";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useModel } from "@/lib/model-context";
 import { toModelId } from "@/lib/model-utils";
 import { TIER_CONFIG } from "@/constants/tiers";
@@ -219,6 +220,13 @@ export function Header() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // ── Listen for socials toggle from tab bar ──
+  useEffect(() => {
+    const handler = () => setOpenDropdown(prev => prev === "socials" ? null : "socials");
+    window.addEventListener("heaven:toggle-socials", handler);
+    return () => window.removeEventListener("heaven:toggle-socials", handler);
+  }, []);
+
   // ── Fetch model info ──
   useEffect(() => {
     if (!ready || !modelSlug) return;
@@ -346,6 +354,11 @@ export function Header() {
         </>}
       </div>
 
+      {/* Theme toggle — mobile */}
+      <div className="shrink-0 md:hidden">
+        <ThemeToggle size="sm" />
+      </div>
+
       {/* Center — Générer */}
       <button onClick={() => window.dispatchEvent(new Event("heaven:generate"))}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold cursor-pointer transition-all hover:scale-105 active:scale-95 shrink-0 mx-2"
@@ -365,25 +378,7 @@ export function Header() {
         </button>
       )}
 
-      {/* Profil & Edit shortcuts */}
-      {modelSlug && (
-        <div className="flex items-center gap-1 shrink-0 mr-1">
-          <a href={`/m/${modelSlug}`} target="_blank"
-            className="w-9 h-9 rounded-lg flex items-center justify-center no-underline transition-colors"
-            style={{ background: "transparent", border: "none", color: "var(--text-muted)" }}
-            title="Voir profil public">
-            <Eye className="w-[18px] h-[18px]" />
-          </a>
-          <a href={`/m/${modelSlug}?edit=true`}
-            className="w-9 h-9 rounded-lg flex items-center justify-center no-underline transition-colors"
-            style={{ background: "transparent", border: "none", color: "var(--text-muted)" }}
-            title="Modifier profil">
-            <Pencil className="w-[18px] h-[18px]" />
-          </a>
-        </div>
-      )}
-
-      {/* Right — 3 buttons with dropdowns */}
+      {/* Right — 2 buttons with dropdowns */}
       <div className="flex items-center gap-1" ref={dropdownRef}>
 
         {/* ═══ MESSAGES ═══ */}
@@ -460,15 +455,9 @@ export function Header() {
           )}
         </div>
 
-        {/* ═══ SOCIAL LINKS ═══ */}
-        <div className="relative">
-          <button onClick={() => toggle("socials")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
-            style={{ background: openDropdown === "socials" ? "rgba(0,0,0,0.08)" : "transparent", border: "none", color: "var(--text-muted)" }}
-            title="Reseaux sociaux">
-            <Link2 className="w-[18px] h-[18px]" />
-          </button>
-          {openDropdown === "socials" && (
+        {/* ═══ SOCIALS (triggered from tab bar) ═══ */}
+        {openDropdown === "socials" && (
+          <div className="relative">
             <SocialsDropdown
               dropdownBox={dropdownBox}
               dropdownStyle={dropdownStyle}
@@ -477,8 +466,8 @@ export function Header() {
               onSavePlatform={handleSavePlatform}
               onClose={() => setOpenDropdown(null)}
             />
-          )}
-        </div>
+          </div>
+        )}
 
       </div>
 

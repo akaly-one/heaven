@@ -7,7 +7,7 @@ import {
   Newspaper, Camera, RefreshCw, Users, Key, DollarSign, TrendingUp,
   Copy, Check, Plus, Search, Shield, BarChart3, Clock, Zap, Settings,
   ChevronDown, Lock, EyeOff, Send, Pin, FolderOpen, Upload, ArrowRight, Grid3x3, GripVertical, Columns, Sparkles,
-  UserPlus, Ban, AlertTriangle, List,
+  UserPlus, Ban, AlertTriangle, List, Link2,
 } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
@@ -152,6 +152,7 @@ export default function AgenceDashboard() {
   const [dragItem, setDragItem] = useState<string | null>(null);
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
   const [deletingUpload, setDeletingUpload] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ tier: string; fileName: string; progress: number } | null>(null);
 
   // Custom folder management
   const [photoAccesses, setPhotoAccesses] = useState<any[]>([]);
@@ -433,35 +434,69 @@ export default function AgenceDashboard() {
   const handleUploadToTier = useCallback(async (file: File, tier: string) => {
     const { valid, error } = validateFile(file, UPLOAD_LIMITS.post.maxMB);
     if (!valid) { setUploadMsg({ text: error!, type: "error" }); setTimeout(() => setUploadMsg(null), 5000); return; }
+    setUploadingToTier(tier);
+    setUploadProgress({ tier, fileName: file.name, progress: 0 });
     setUploadMsg({ text: `Upload ${file.name}...`, type: "loading" });
+
+    // Animate reading phase (0→25%)
+    let prog = 0;
+    const readInterval = setInterval(() => {
+      prog = Math.min(prog + 3, 25);
+      setUploadProgress(prev => prev ? { ...prev, progress: prog } : null);
+    }, 60);
+
     const reader = new FileReader();
     reader.onerror = () => {
+      clearInterval(readInterval);
       setUploadMsg({ text: "Erreur lecture fichier", type: "error" });
       setTimeout(() => setUploadMsg(null), 4000);
+      setUploadingToTier(null);
+      setUploadProgress(null);
     };
     reader.onload = async () => {
+      clearInterval(readInterval);
+      setUploadProgress(prev => prev ? { ...prev, progress: 30 } : null);
+
+      // Animate upload phase (30→75%)
+      let uploadProg = 30;
+      const uploadInterval = setInterval(() => {
+        uploadProg = Math.min(uploadProg + 2, 75);
+        setUploadProgress(prev => prev ? { ...prev, progress: uploadProg } : null);
+      }, 100);
+
       try {
         const mid = toModelId(modelSlug);
+        // Step 1: Upload file to Cloudinary
         const upRes = await fetch("/api/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders() },
           body: JSON.stringify({ file: reader.result, model: mid, folder: `heaven/${mid}/uploads` }),
         });
+        clearInterval(uploadInterval);
+
         if (!upRes.ok) {
           const errData = await upRes.json().catch(() => ({ error: `HTTP ${upRes.status}` }));
           setUploadMsg({ text: errData.error || `Erreur ${upRes.status}`, type: "error" });
           setTimeout(() => setUploadMsg(null), 5000);
           setUploadingToTier(null);
+          setUploadProgress(null);
           return;
         }
+        setUploadProgress(prev => prev ? { ...prev, progress: 80 } : null);
+
         const { url } = await upRes.json();
         if (!url) {
           setUploadMsg({ text: "Pas d'URL retournée", type: "error" });
           setTimeout(() => setUploadMsg(null), 4000);
           setUploadingToTier(null);
+          setUploadProgress(null);
           return;
         }
-        const newUpload = { model: mid, tier, type: "photo" as const, label: "", dataUrl: url, visibility: "pack" as const, tokenPrice: 0, isNew: true };
+
+        setUploadProgress(prev => prev ? { ...prev, progress: 90 } : null);
+
+        // Step 2: Save metadata to Supabase
+        const newUpload = { model: mid, tier, type: "photo" as const, label: "", dataUrl: url, visibility: tier === "p0" ? "promo" as const : "pack" as const, tokenPrice: 0, isNew: true };
         const syncRes = await fetch("/api/uploads", {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -471,13 +506,24 @@ export default function AgenceDashboard() {
           const data = await syncRes.json();
           if (data.upload) setUploads(prev => [data.upload, ...prev]);
           else setUploads(prev => [{ id: crypto.randomUUID(), ...newUpload, uploadedAt: new Date().toISOString() }, ...prev]);
+        } else {
+          const errData = await syncRes.json().catch(() => ({ error: `HTTP ${syncRes.status}` }));
+          setUploadMsg({ text: errData.error || `Erreur sauvegarde`, type: "error" });
+          setTimeout(() => setUploadMsg(null), 5000);
+          setUploadingToTier(null);
+          setUploadProgress(null);
+          return;
         }
-        setUploadMsg({ text: "Media ajouté", type: "success" });
+
+        setUploadProgress(prev => prev ? { ...prev, progress: 100 } : null);
+        const tierLabel = tier === "custom" ? "Custom" : tier === "p0" ? "Public" : TIER_META[tier]?.label || tier.toUpperCase();
+        setUploadMsg({ text: `Photo ajoutée dans ${tierLabel}`, type: "success" });
       } catch (err) {
+        clearInterval(uploadInterval);
         console.error("[Upload]", err);
         setUploadMsg({ text: "Erreur réseau", type: "error" });
       }
-      setTimeout(() => setUploadMsg(null), 3000);
+      setTimeout(() => { setUploadMsg(null); setUploadProgress(null); }, 2000);
       setUploadingToTier(null);
     };
     reader.readAsDataURL(file);
@@ -778,6 +824,11 @@ export default function AgenceDashboard() {
                 title="Modifier profil">
                 <Pencil className="w-4 h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
               </a>
+              <button onClick={() => window.dispatchEvent(new CustomEvent("heaven:toggle-socials"))}
+                className="p-1.5 rounded-md transition-all hover:bg-white/[0.06] cursor-pointer border-none bg-transparent"
+                title="Liens sociaux">
+                <Link2 className="w-4 h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
+              </button>
             </div>
           </div>
 
@@ -1083,18 +1134,48 @@ export default function AgenceDashboard() {
             <div className="space-y-4">
 
               {/* ── Layout toggle header ── */}
+              {(() => {
+                const uploadHex = contentFolder && contentFolder !== "custom" ? (TIER_HEX[contentFolder] || "#D4AF37") : "#D4AF37";
+                const folderLabel = contentFolder === null ? "Public" : contentFolder === "p0" ? "Public" : contentFolder === "custom" ? "Custom" : TIER_META[contentFolder]?.label || contentFolder;
+                return (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-xs uppercase tracking-wider text-white/30 font-semibold">Contenu</span>
                   <span className="text-[10px] text-white/20">{allContent.length} fichiers</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Upload button — targets current folder */}
-                  <label className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg cursor-pointer transition-all hover:bg-[#D4AF37]/10"
-                    style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.15)" }}>
-                    <Upload className="w-3 h-3 text-[#D4AF37]" />
-                    <span className="text-[10px] font-semibold text-[#D4AF37]">Upload</span>
-                    <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" multiple className="hidden" onChange={(e) => {
+                  {/* Upload button — targets current folder, color matches tier */}
+                  <label className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl cursor-pointer transition-all overflow-hidden"
+                    style={{
+                      background: uploadProgress ? `${uploadHex}25` : `${uploadHex}10`,
+                      border: `1px solid ${uploadHex}30`,
+                    }}>
+                    {/* Progress bar background */}
+                    {uploadProgress && (
+                      <div className="absolute inset-0 rounded-xl" style={{
+                        background: `linear-gradient(90deg, ${uploadHex}35 ${uploadProgress.progress}%, transparent ${uploadProgress.progress}%)`,
+                        transition: "background 0.3s ease",
+                      }} />
+                    )}
+                    <div className="relative flex items-center gap-1.5 z-10">
+                      {uploadProgress ? (
+                        uploadProgress.progress >= 100 ? (
+                          <Check className="w-3.5 h-3.5" style={{ color: uploadHex }} />
+                        ) : (
+                          <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: `${uploadHex}30`, borderTopColor: uploadHex }} />
+                        )
+                      ) : (
+                        <Upload className="w-3.5 h-3.5" style={{ color: uploadHex }} />
+                      )}
+                      <span className="text-[11px] font-bold" style={{ color: uploadHex }}>
+                        {uploadProgress
+                          ? uploadProgress.progress >= 100
+                            ? "Termine !"
+                            : `${uploadProgress.progress}%`
+                          : `Upload → ${folderLabel}`}
+                      </span>
+                    </div>
+                    <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" multiple className="hidden" disabled={!!uploadProgress} onChange={(e) => {
                       const files = e.target.files;
                       if (!files?.length) return;
                       const tier = contentFolder || "p0";
@@ -1105,22 +1186,68 @@ export default function AgenceDashboard() {
                   <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                     <button onClick={() => { setContentLayout("folders"); setContentViewMode("grid"); }}
                       className="px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer border-none transition-all"
-                      style={{ background: contentLayout === "folders" && contentViewMode === "grid" ? "rgba(212,175,55,0.15)" : "transparent", color: contentLayout === "folders" && contentViewMode === "grid" ? "#D4AF37" : "rgba(255,255,255,0.3)" }}>
+                      style={{ background: contentLayout === "folders" && contentViewMode === "grid" ? `${uploadHex}20` : "transparent", color: contentLayout === "folders" && contentViewMode === "grid" ? uploadHex : "rgba(255,255,255,0.3)" }}>
                       <Grid3x3 className="w-3 h-3 inline mr-0.5" />Dossiers
                     </button>
                     <button onClick={() => setContentLayout("columns")}
                       className="px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer border-none transition-all"
-                      style={{ background: contentLayout === "columns" ? "rgba(212,175,55,0.15)" : "transparent", color: contentLayout === "columns" ? "#D4AF37" : "rgba(255,255,255,0.3)" }}>
+                      style={{ background: contentLayout === "columns" ? `${uploadHex}20` : "transparent", color: contentLayout === "columns" ? uploadHex : "rgba(255,255,255,0.3)" }}>
                       <Columns className="w-3 h-3 inline mr-0.5" />Colonnes
                     </button>
                     <button onClick={() => { setContentLayout("folders"); setContentViewMode("list"); }}
                       className="px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer border-none transition-all"
-                      style={{ background: contentLayout === "folders" && contentViewMode === "list" ? "rgba(212,175,55,0.15)" : "transparent", color: contentLayout === "folders" && contentViewMode === "list" ? "#D4AF37" : "rgba(255,255,255,0.3)" }}>
+                      style={{ background: contentLayout === "folders" && contentViewMode === "list" ? `${uploadHex}20` : "transparent", color: contentLayout === "folders" && contentViewMode === "list" ? uploadHex : "rgba(255,255,255,0.3)" }}>
                       Liste
                     </button>
                   </div>
                 </div>
               </div>
+                );
+              })()}
+
+              {/* ── Upload progress banner ── */}
+              {uploadProgress && (
+                <div className="rounded-xl overflow-hidden transition-all"
+                  style={{
+                    background: `color-mix(in srgb, ${TIER_HEX[uploadProgress.tier] || "#D4AF37"} 6%, #0f0f12)`,
+                    border: `1px solid ${TIER_HEX[uploadProgress.tier] || "#D4AF37"}25`,
+                  }}>
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    {uploadProgress.progress >= 100 ? (
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${TIER_HEX[uploadProgress.tier] || "#D4AF37"}20` }}>
+                        <Check className="w-4 h-4" style={{ color: TIER_HEX[uploadProgress.tier] || "#D4AF37" }} />
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center relative" style={{ background: `${TIER_HEX[uploadProgress.tier] || "#D4AF37"}15` }}>
+                        <Upload className="w-4 h-4" style={{ color: TIER_HEX[uploadProgress.tier] || "#D4AF37" }} />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-bold text-white truncate">{uploadProgress.fileName}</span>
+                        <span className="text-[11px] font-black tabular-nums ml-2 shrink-0" style={{ color: TIER_HEX[uploadProgress.tier] || "#D4AF37" }}>
+                          {uploadProgress.progress}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div className="h-full rounded-full transition-all duration-300 ease-out" style={{
+                          width: `${uploadProgress.progress}%`,
+                          background: `linear-gradient(90deg, ${TIER_HEX[uploadProgress.tier] || "#D4AF37"}, ${TIER_HEX[uploadProgress.tier] || "#D4AF37"}cc)`,
+                          boxShadow: `0 0 8px ${TIER_HEX[uploadProgress.tier] || "#D4AF37"}40`,
+                        }} />
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[9px] text-white/30">
+                          {uploadProgress.progress < 30 ? "Lecture fichier..." : uploadProgress.progress < 80 ? "Upload vers le cloud..." : uploadProgress.progress < 100 ? "Sauvegarde..." : "Termine !"}
+                        </span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${TIER_HEX[uploadProgress.tier] || "#D4AF37"}15`, color: TIER_HEX[uploadProgress.tier] || "#D4AF37" }}>
+                          → {uploadProgress.tier === "custom" ? "Custom" : uploadProgress.tier === "p0" ? "Public" : TIER_META[uploadProgress.tier]?.label || uploadProgress.tier}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* ══════ COLUMNS / KANBAN VIEW ══════ */}
               {contentLayout === "columns" && (
@@ -1184,27 +1311,27 @@ export default function AgenceDashboard() {
                   <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
                     {/* All */}
                     <button onClick={() => setContentFolder(null)}
-                      className="flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 min-w-[56px]"
+                      className="flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 min-w-[64px]"
                       style={{
                         background: contentFolder === null ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.04)",
                         border: contentFolder === null ? "1.5px solid rgba(212,175,55,0.4)" : "1px solid rgba(255,255,255,0.06)",
                         boxShadow: contentFolder === null ? "0 2px 8px rgba(212,175,55,0.15)" : "none",
                       }}>
-                      <Grid3x3 className="w-5 h-5" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.25)" }} />
-                      <span className="text-[9px] font-bold" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.4)" }}>Tout</span>
-                      <span className="text-[8px] tabular-nums" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.2)" }}>{allContent.length}</span>
+                      <Grid3x3 className="w-6 h-6" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.25)" }} />
+                      <span className="text-[10px] font-bold" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.4)" }}>Tout</span>
+                      <span className="text-[9px] tabular-nums" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.2)" }}>{allContent.length}</span>
                     </button>
                     {/* Public */}
                     <button onClick={() => setContentFolder("p0")}
-                      className="flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 min-w-[56px]"
+                      className="flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 min-w-[64px]"
                       style={{
                         background: contentFolder === "p0" ? "rgba(100,116,139,0.18)" : "rgba(255,255,255,0.04)",
                         border: contentFolder === "p0" ? "1.5px solid rgba(100,116,139,0.4)" : "1px solid rgba(255,255,255,0.06)",
                         boxShadow: contentFolder === "p0" ? "0 2px 8px rgba(100,116,139,0.15)" : "none",
                       }}>
-                      <Eye className="w-5 h-5" style={{ color: contentFolder === "p0" ? "#94A3B8" : "rgba(255,255,255,0.25)" }} />
-                      <span className="text-[9px] font-bold" style={{ color: contentFolder === "p0" ? "#94A3B8" : "rgba(255,255,255,0.4)" }}>Public</span>
-                      <span className="text-[8px] tabular-nums" style={{ color: contentFolder === "p0" ? "#94A3B8" : "rgba(255,255,255,0.2)" }}>{contentCount("p0")}</span>
+                      <Eye className="w-6 h-6" style={{ color: contentFolder === "p0" ? "#94A3B8" : "rgba(255,255,255,0.25)" }} />
+                      <span className="text-[10px] font-bold" style={{ color: contentFolder === "p0" ? "#94A3B8" : "rgba(255,255,255,0.4)" }}>Public</span>
+                      <span className="text-[9px] tabular-nums" style={{ color: contentFolder === "p0" ? "#94A3B8" : "rgba(255,255,255,0.2)" }}>{contentCount("p0")}</span>
                     </button>
                     {/* Pack folders */}
                     {packs.filter(p => p.active).map(pack => {
@@ -1213,43 +1340,30 @@ export default function AgenceDashboard() {
                       const isSelected = contentFolder === pack.id;
                       return (
                         <button key={pack.id} onClick={() => setContentFolder(pack.id)}
-                          className="flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 min-w-[56px]"
+                          className="flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 min-w-[64px]"
                           style={{
                             background: isSelected ? `${hex}20` : "rgba(255,255,255,0.04)",
                             border: isSelected ? `1.5px solid ${hex}60` : "1px solid rgba(255,255,255,0.06)",
                             boxShadow: isSelected ? `0 2px 8px ${hex}25` : "none",
                           }}>
-                          <span className="text-lg leading-none">{tierMeta?.symbol || "📁"}</span>
-                          <span className="text-[9px] font-bold" style={{ color: isSelected ? hex : "rgba(255,255,255,0.4)" }}>{tierMeta?.label || pack.name}</span>
-                          <span className="text-[8px] tabular-nums" style={{ color: isSelected ? hex : "rgba(255,255,255,0.2)" }}>{contentCount(pack.id)}</span>
+                          <span className="text-2xl leading-none">{tierMeta?.symbol || "📁"}</span>
+                          <span className="text-[10px] font-bold" style={{ color: isSelected ? hex : "rgba(255,255,255,0.4)" }}>{tierMeta?.label || pack.name}</span>
+                          <span className="text-[9px] tabular-nums" style={{ color: isSelected ? hex : "rgba(255,255,255,0.2)" }}>{contentCount(pack.id)}</span>
                         </button>
                       );
                     })}
                     {/* Custom */}
                     <button onClick={() => setContentFolder("custom")}
-                      className="flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 min-w-[56px]"
+                      className="flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 min-w-[64px]"
                       style={{
                         background: contentFolder === "custom" ? "rgba(212,175,55,0.18)" : "rgba(255,255,255,0.04)",
                         border: contentFolder === "custom" ? "1.5px solid rgba(212,175,55,0.4)" : "1px solid rgba(255,255,255,0.06)",
                         boxShadow: contentFolder === "custom" ? "0 2px 8px rgba(212,175,55,0.15)" : "none",
                       }}>
-                      <Sparkles className="w-5 h-5" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.25)" }} />
-                      <span className="text-[9px] font-bold" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.4)" }}>Custom</span>
-                      <span className="text-[8px] tabular-nums" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.2)" }}>{customCount}</span>
+                      <Sparkles className="w-6 h-6" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.25)" }} />
+                      <span className="text-[10px] font-bold" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.4)" }}>Custom</span>
+                      <span className="text-[9px] tabular-nums" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.2)" }}>{customCount}</span>
                     </button>
-                    {/* Upload button inline */}
-                    <label className="flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 min-w-[56px]"
-                      style={{ background: "rgba(212,175,55,0.1)", border: "1.5px dashed rgba(212,175,55,0.35)" }}>
-                      <Upload className="w-5 h-5 text-[#D4AF37]" />
-                      <span className="text-[9px] font-bold text-[#D4AF37]">Upload</span>
-                      <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" multiple className="hidden" onChange={(e) => {
-                        const files = e.target.files;
-                        if (!files?.length) return;
-                        const tier = contentFolder || "p0";
-                        Array.from(files).forEach(f => handleUploadToTier(f, tier));
-                        e.target.value = "";
-                      }} />
-                    </label>
                   </div>
                 </div>
 
@@ -1313,6 +1427,20 @@ export default function AgenceDashboard() {
                           </div>
                           <div className="text-[10px] text-white/25">{count} medias · {pack.price}€</div>
                         </div>
+                        {/* Inline upload for this pack */}
+                        <label className="p-1.5 rounded-lg cursor-pointer transition-all shrink-0 hover:bg-white/[0.06]"
+                          style={{ color: `${hex}80` }}
+                          title={`Upload vers ${pack.name}`}
+                          onClick={e => e.stopPropagation()}>
+                          <Upload className="w-3 h-3" />
+                          <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" multiple className="hidden" disabled={!!uploadProgress} onChange={(e) => {
+                            const files = e.target.files;
+                            if (!files?.length) return;
+                            setContentFolder(pack.id);
+                            Array.from(files).forEach(f => handleUploadToTier(f, pack.id));
+                            e.target.value = "";
+                          }} />
+                        </label>
                         <div className="w-2 h-2 rounded-full shrink-0" style={{ background: hex }} />
                       </div>
                     );
@@ -1987,12 +2115,25 @@ export default function AgenceDashboard() {
                   {/* Content grid — standard folders */}
                   {contentFolder !== "custom" && (() => {
                     const filtered = contentFolder === null ? allContent : allContent.filter(c => c.tier === contentFolder);
+                    const emptyHex = contentFolder ? (TIER_HEX[contentFolder] || "#D4AF37") : "#64748B";
+                    const emptyLabel = contentFolder === null ? "Public" : contentFolder === "p0" ? "Public" : TIER_META[contentFolder]?.label || contentFolder;
                     if (filtered.length === 0) {
                       return (
-                        <div className="flex flex-col items-center justify-center py-16 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.06)" }}>
-                          <FolderOpen className="w-10 h-10 mb-3 text-white/10" />
+                        <div className="flex flex-col items-center justify-center py-16 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: `1px dashed ${emptyHex}20` }}>
+                          <FolderOpen className="w-10 h-10 mb-3" style={{ color: `${emptyHex}25` }} />
                           <p className="text-sm text-white/25 mb-1">Aucun contenu</p>
-                          <p className="text-xs text-white/15">Upload des medias ou publie des posts avec photo</p>
+                          <p className="text-xs text-white/15 mb-4">Upload des medias ou publie des posts avec photo</p>
+                          <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl cursor-pointer transition-all hover:brightness-110"
+                            style={{ background: `${emptyHex}15`, border: `1px solid ${emptyHex}30`, color: emptyHex }}>
+                            <Upload className="w-4 h-4" />
+                            <span className="text-[11px] font-bold">Upload vers {emptyLabel}</span>
+                            <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" multiple className="hidden" disabled={!!uploadProgress} onChange={(e) => {
+                              const files = e.target.files;
+                              if (!files?.length) return;
+                              Array.from(files).forEach(f => handleUploadToTier(f, contentFolder || "p0"));
+                              e.target.value = "";
+                            }} />
+                          </label>
                         </div>
                       );
                     }
