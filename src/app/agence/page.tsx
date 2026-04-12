@@ -754,7 +754,16 @@ export default function AgenceDashboard() {
               <span className="text-xs text-white/30 shrink-0 hidden sm:inline">{modelInfo?.online ? "en ligne" : "hors ligne"}</span>
             </div>
 
-            <div className="flex-1" />
+            {/* Mobile compact KPI — next to name */}
+            <div className="flex md:hidden items-center gap-1.5 ml-auto shrink-0">
+              <span className="text-[11px] font-black tabular-nums" style={{ color: "#D4AF37" }}>{fmt.format(revenue)}</span>
+              <span className="text-white/10">·</span>
+              <span className="text-[11px] font-bold tabular-nums text-white">{fmtNum.format(uniqueClients)}<span className="text-white/25 text-[9px] ml-0.5">abo</span></span>
+              <span className="text-white/10">·</span>
+              <span className="text-[11px] font-bold tabular-nums text-white">{activeCodes.length}<span className="text-white/25 text-[9px]">/{modelCodes.length}</span></span>
+            </div>
+
+            <div className="flex-1 hidden md:block" />
             {/* KPI inline stats — right side of header */}
             <div className="hidden md:flex items-center gap-0 overflow-x-auto no-scrollbar shrink-0">
               {[
@@ -772,31 +781,14 @@ export default function AgenceDashboard() {
               ))}
             </div>
 
-            {/* Toggle online/offline */}
+            {/* Toggle online/offline — desktop only */}
             <button onClick={handleToggleStatus} disabled={statusUpdating}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all border border-white/[0.06] bg-transparent shrink-0 disabled:opacity-50"
+              className="hidden md:inline-flex px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all border border-white/[0.06] bg-transparent shrink-0 disabled:opacity-50"
               style={{ color: modelInfo?.online ? "#10B981" : "#6B7280" }}>
               {statusUpdating ? "..." : modelInfo?.online ? "En ligne" : "Hors ligne"}
             </button>
           </div>
 
-          {/* KPI BAR — mobile only */}
-          <div className="flex md:hidden items-center gap-0 border-b border-white/[0.06] pb-4 overflow-x-auto no-scrollbar">
-            <div className="flex items-center gap-2 pr-5">
-              <span className="text-xs text-white/30 uppercase tracking-wider font-medium">Revenue</span>
-              <span className="text-base font-bold text-[#D4AF37] tabular-nums">{fmt.format(revenue)}</span>
-            </div>
-            <div className="w-px h-4 bg-white/[0.08] shrink-0" />
-            <div className="flex items-center gap-2 px-5">
-              <span className="text-xs text-white/30 uppercase tracking-wider font-medium">Abonnes</span>
-              <span className="text-base font-bold text-white tabular-nums">{fmtNum.format(uniqueClients)}</span>
-            </div>
-            <div className="w-px h-4 bg-white/[0.08] shrink-0" />
-            <div className="flex items-center gap-2 px-5">
-              <span className="text-xs text-white/30 uppercase tracking-wider font-medium">Codes</span>
-              <span className="text-base font-bold text-white tabular-nums">{activeCodes.length}/{modelCodes.length}</span>
-            </div>
-          </div>
 
           {/* ══ UNDERLINE TABS + shortcuts ══ */}
           <div className="flex items-center gap-7 border-b border-white/[0.06] overflow-x-auto no-scrollbar">
