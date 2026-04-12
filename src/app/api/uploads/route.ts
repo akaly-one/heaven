@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
     // Single upload
     const newUpload: UploadRow = {
       id: body.id || `upl-${Date.now()}`,
-      tier: body.tier ? normalizeTier(body.tier) : "p0",
+      tier: body.tier === "custom" ? "custom" : body.tier ? normalizeTier(body.tier) : "p0",
       type: body.type || "photo",
       label: body.label || "",
       dataUrl: body.dataUrl || "",
@@ -227,7 +227,7 @@ export async function DELETE(req: NextRequest) {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function mapFromDb(row: any): UploadRow {
   return {
-    id: row.id, tier: normalizeTier(row.tier), type: row.type, label: row.label,
+    id: row.id, tier: row.tier === "custom" ? "custom" : normalizeTier(row.tier), type: row.type, label: row.label,
     dataUrl: row.data_url ?? row.dataUrl, uploadedAt: row.created_at ?? row.uploadedAt,
     isNew: row.is_new ?? row.isNew, visibility: row.visibility,
     tokenPrice: row.token_price ?? row.tokenPrice,
@@ -237,7 +237,7 @@ function mapFromDb(row: any): UploadRow {
 }
 function mapToDb(u: any, model: string) {
   return {
-    id: u.id || undefined, model, tier: u.tier ? normalizeTier(u.tier) : "p0", type: u.type || "photo",
+    id: u.id || undefined, model, tier: u.tier === "custom" ? "custom" : u.tier ? normalizeTier(u.tier) : "p0", type: u.type || "photo",
     label: u.label || "", data_url: u.dataUrl || u.data_url || "",
     visibility: u.visibility || "p0", token_price: u.tokenPrice ?? u.token_price ?? 0,
     is_new: u.isNew ?? u.is_new ?? true,
