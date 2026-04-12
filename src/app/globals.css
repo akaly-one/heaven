@@ -525,6 +525,122 @@ html { scroll-behavior: smooth; }
 [data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); }
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
 
+/* ═══ Cockpit theme layer ═══
+   The cockpit page uses hardcoded dark colors (text-white, #0f0f12, rgba(255,255,255,...)).
+   In light mode, this layer remaps those to CSS variable equivalents.
+   In dark mode, the original values work natively. */
+:root .cockpit {
+  --cockpit-fg: var(--text);
+  --cockpit-fg-secondary: var(--text-secondary);
+  --cockpit-fg-muted: var(--text-muted);
+  --cockpit-bg: var(--bg);
+  --cockpit-surface: rgba(0,0,0,0.03);
+  --cockpit-surface-hover: rgba(0,0,0,0.05);
+  --cockpit-border: rgba(0,0,0,0.10);
+  /* Inline style replacements — light mode uses black-based opacity */
+  --w02: rgba(0,0,0,0.02);
+  --w03: rgba(0,0,0,0.03);
+  --w04: rgba(0,0,0,0.04);
+  --w05: rgba(0,0,0,0.05);
+  --w06: rgba(0,0,0,0.06);
+  --w08: rgba(0,0,0,0.08);
+  --w1:  rgba(0,0,0,0.10);
+  --w15: rgba(0,0,0,0.15);
+  --w2:  rgba(0,0,0,0.20);
+  --w25: rgba(0,0,0,0.25);
+  --w3:  rgba(0,0,0,0.30);
+  --w35: rgba(0,0,0,0.35);
+  --w4:  rgba(0,0,0,0.40);
+  --w5:  rgba(0,0,0,0.50);
+  --w6:  rgba(0,0,0,0.60);
+  --w7:  rgba(0,0,0,0.70);
+}
+[data-theme="dark"] .cockpit {
+  --cockpit-fg: #F5F3EF;
+  --cockpit-fg-secondary: #B8B5AE;
+  --cockpit-fg-muted: #8A8780;
+  --cockpit-bg: #0f0f12;
+  --cockpit-surface: rgba(255,255,255,0.03);
+  --cockpit-surface-hover: rgba(255,255,255,0.06);
+  --cockpit-border: rgba(255,255,255,0.08);
+  --w02: rgba(255,255,255,0.02);
+  --w03: rgba(255,255,255,0.03);
+  --w04: rgba(255,255,255,0.04);
+  --w05: rgba(255,255,255,0.05);
+  --w06: rgba(255,255,255,0.06);
+  --w08: rgba(255,255,255,0.08);
+  --w1:  rgba(255,255,255,0.10);
+  --w15: rgba(255,255,255,0.15);
+  --w2:  rgba(255,255,255,0.20);
+  --w25: rgba(255,255,255,0.25);
+  --w3:  rgba(255,255,255,0.30);
+  --w35: rgba(255,255,255,0.35);
+  --w4:  rgba(255,255,255,0.40);
+  --w5:  rgba(255,255,255,0.50);
+  --w6:  rgba(255,255,255,0.60);
+  --w7:  rgba(255,255,255,0.70);
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) .cockpit {
+    --cockpit-fg: #F5F3EF;
+    --cockpit-fg-secondary: #B8B5AE;
+    --cockpit-fg-muted: #8A8780;
+    --cockpit-bg: #0f0f12;
+    --cockpit-surface: rgba(255,255,255,0.03);
+    --cockpit-surface-hover: rgba(255,255,255,0.06);
+    --cockpit-border: rgba(255,255,255,0.08);
+    --w02: rgba(255,255,255,0.02);
+    --w03: rgba(255,255,255,0.03);
+    --w04: rgba(255,255,255,0.04);
+    --w05: rgba(255,255,255,0.05);
+    --w06: rgba(255,255,255,0.06);
+    --w08: rgba(255,255,255,0.08);
+    --w1:  rgba(255,255,255,0.10);
+    --w15: rgba(255,255,255,0.15);
+    --w2:  rgba(255,255,255,0.20);
+    --w25: rgba(255,255,255,0.25);
+    --w3:  rgba(255,255,255,0.30);
+    --w35: rgba(255,255,255,0.35);
+    --w4:  rgba(255,255,255,0.40);
+    --w5:  rgba(255,255,255,0.50);
+    --w6:  rgba(255,255,255,0.60);
+    --w7:  rgba(255,255,255,0.70);
+  }
+}
+
+/* Override Tailwind's text-white inside .cockpit */
+.cockpit .text-white { color: var(--cockpit-fg) !important; }
+.cockpit .text-white\/5 { color: color-mix(in srgb, var(--cockpit-fg) 5%, transparent) !important; }
+.cockpit .text-white\/10 { color: color-mix(in srgb, var(--cockpit-fg) 10%, transparent) !important; }
+.cockpit .text-white\/15 { color: color-mix(in srgb, var(--cockpit-fg) 15%, transparent) !important; }
+.cockpit .text-white\/20 { color: color-mix(in srgb, var(--cockpit-fg) 20%, transparent) !important; }
+.cockpit .text-white\/25 { color: color-mix(in srgb, var(--cockpit-fg) 25%, transparent) !important; }
+.cockpit .text-white\/30 { color: color-mix(in srgb, var(--cockpit-fg) 30%, transparent) !important; }
+.cockpit .text-white\/35 { color: color-mix(in srgb, var(--cockpit-fg) 35%, transparent) !important; }
+.cockpit .text-white\/40 { color: color-mix(in srgb, var(--cockpit-fg) 40%, transparent) !important; }
+.cockpit .text-white\/50 { color: color-mix(in srgb, var(--cockpit-fg) 50%, transparent) !important; }
+.cockpit .text-white\/60 { color: color-mix(in srgb, var(--cockpit-fg) 60%, transparent) !important; }
+.cockpit .text-white\/70 { color: color-mix(in srgb, var(--cockpit-fg) 70%, transparent) !important; }
+.cockpit .text-white\/80 { color: color-mix(in srgb, var(--cockpit-fg) 80%, transparent) !important; }
+
+/* Override bg-white inside .cockpit */
+.cockpit .bg-white\/\[0\.02\] { background: var(--cockpit-surface) !important; }
+.cockpit .bg-white\/\[0\.03\] { background: var(--cockpit-surface) !important; }
+.cockpit .bg-white\/\[0\.04\] { background: var(--cockpit-surface) !important; }
+.cockpit .bg-white\/\[0\.06\] { background: var(--cockpit-surface-hover) !important; }
+.cockpit .bg-white\/\[0\.08\] { background: var(--cockpit-border) !important; }
+.cockpit .bg-transparent { background: transparent !important; }
+
+/* Override border-white inside .cockpit */
+.cockpit .border-white\/\[0\.06\] { border-color: var(--cockpit-border) !important; }
+.cockpit .border-white\/\[0\.08\] { border-color: var(--cockpit-border) !important; }
+.cockpit .border-white\/\[0\.10\] { border-color: var(--cockpit-border) !important; }
+.cockpit .border-white\/\[0\.12\] { border-color: var(--cockpit-border) !important; }
+
+/* Override hover variants */
+.cockpit .hover\:bg-white\/\[0\.06\]:hover { background: var(--cockpit-surface-hover) !important; }
+.cockpit .hover\:bg-white\/\[0\.08\]:hover { background: var(--cockpit-border) !important; }
+
 /* ═══ Locked content — dark overlay instead of blur ═══ */
 .content-locked {
   filter: brightness(0.3);

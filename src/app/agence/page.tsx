@@ -643,7 +643,7 @@ export default function AgenceDashboard() {
   if (!ready) {
     return (
       <OsLayout cpId="agence">
-        <div className="min-h-screen p-4 md:p-6" style={{ background: "#0f0f12" }}>
+        <div className="min-h-screen p-4 md:p-6" style={{ background: "var(--bg)" }}>
           <div className="max-w-[1400px] mx-auto space-y-5">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-8 w-2/3" />
@@ -667,7 +667,7 @@ export default function AgenceDashboard() {
   if (dataLoaded !== modelSlug) {
     return (
       <OsLayout cpId="agence">
-        <div className="min-h-screen p-4 md:p-6" style={{ background: "#0f0f12" }}>
+        <div className="min-h-screen p-4 md:p-6" style={{ background: "var(--bg)" }}>
           <div className="max-w-[1400px] mx-auto space-y-3">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-6 w-48" />
@@ -697,14 +697,14 @@ export default function AgenceDashboard() {
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-3 py-2 rounded-lg text-[11px] font-medium shadow-xl flex items-center gap-2"
           style={{
             background: uploadMsg.type === "error" ? "#DC2626" : uploadMsg.type === "success" ? "#059669" : "#141419",
-            color: "#fff", border: "1px solid rgba(255,255,255,0.08)",
+            color: "#fff", border: "1px solid var(--w08)",
           }}>
-          {uploadMsg.type === "loading" && <div className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(255,255,255,0.15)", borderTopColor: "#D4AF37" }} />}
+          {uploadMsg.type === "loading" && <div className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: "var(--w15)", borderTopColor: "#D4AF37" }} />}
           {uploadMsg.text}
         </div>
       )}
 
-      <div className="min-h-screen p-3 sm:p-4 md:p-6 pb-24 md:pb-6" style={{ background: "#0f0f12" }}>
+      <div className="cockpit min-h-screen p-3 sm:p-4 md:p-6 pb-24 md:pb-6" style={{ background: "var(--bg)" }}>
         <div className="max-w-[1400px] mx-auto space-y-5">
 
           {/* ══ HEADER ══ */}
@@ -742,7 +742,7 @@ export default function AgenceDashboard() {
               </label>
               <button onClick={handleToggleStatus} disabled={statusUpdating}
                 className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full cursor-pointer transition-all border-none p-0 disabled:opacity-50"
-                style={{ background: modelInfo?.online ? "#10B981" : "#6B7280", boxShadow: `0 0 0 2.5px #0f0f12` }} />
+                style={{ background: modelInfo?.online ? "#10B981" : "#6B7280", boxShadow: `0 0 0 2.5px var(--bg)` }} />
             </div>
 
             {/* Name + inline stats */}
@@ -768,10 +768,10 @@ export default function AgenceDashboard() {
             <div className="hidden md:flex items-center gap-0 overflow-x-auto no-scrollbar shrink-0">
               {[
                 { label: "Rev", value: fmt.format(revenue), color: "#D4AF37" },
-                { label: "Abo", value: String(uniqueClients), color: "#fff" },
-                { label: "Posts", value: String(feedPosts.length), color: "#fff" },
-                { label: "Ret", value: `${retentionRate}%`, color: "#fff" },
-                { label: "Codes", value: `${activeCodes.length}/${modelCodes.length}`, color: "#fff" },
+                { label: "Abo", value: String(uniqueClients), color: "var(--text)" },
+                { label: "Posts", value: String(feedPosts.length), color: "var(--text)" },
+                { label: "Ret", value: `${retentionRate}%`, color: "var(--text)" },
+                { label: "Codes", value: `${activeCodes.length}/${modelCodes.length}`, color: "var(--text)" },
               ].map((kpi, i) => (
                 <div key={i} className="flex items-center gap-1.5 px-2.5">
                   {i > 0 && <div className="w-px h-3.5 bg-white/[0.06] mr-1.5" />}
@@ -798,7 +798,7 @@ export default function AgenceDashboard() {
                 return (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                     className="relative pb-3 text-sm font-medium cursor-pointer transition-colors whitespace-nowrap bg-transparent border-none px-0"
-                    style={{ color: isActive ? "#D4AF37" : "rgba(255,255,255,0.35)" }}>
+                    style={{ color: isActive ? "#D4AF37" : "var(--w35)" }}>
                     {tab.label}
                     {isActive && <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ background: "#D4AF37" }} />}
                   </button>
@@ -811,17 +811,17 @@ export default function AgenceDashboard() {
               <a href={`/m/${modelSlug}`} target="_blank" rel="noopener"
                 className="p-1.5 rounded-md no-underline transition-all hover:bg-white/[0.06]"
                 title="Voir profil public">
-                <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
+                <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" style={{ color: "var(--w3)" }} />
               </a>
               <a href={`/m/${modelSlug}?edit=true`} target="_blank" rel="noopener"
                 className="p-1.5 rounded-md no-underline transition-all hover:bg-white/[0.06]"
                 title="Modifier profil">
-                <Pencil className="w-3.5 h-3.5 md:w-4 md:h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
+                <Pencil className="w-3.5 h-3.5 md:w-4 md:h-4" style={{ color: "var(--w3)" }} />
               </a>
               <button onClick={() => window.dispatchEvent(new CustomEvent("heaven:toggle-socials"))}
                 className="p-1.5 rounded-md transition-all hover:bg-white/[0.06] cursor-pointer border-none bg-transparent"
                 title="Liens sociaux">
-                <Link2 className="w-3.5 h-3.5 md:w-4 md:h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
+                <Link2 className="w-3.5 h-3.5 md:w-4 md:h-4" style={{ color: "var(--w3)" }} />
               </button>
             </div>
           </div>
@@ -839,7 +839,7 @@ export default function AgenceDashboard() {
                   <div className="lg:hidden">
                     <button onClick={() => setShowMobileOverview(prev => !prev)}
                       className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl cursor-pointer transition-all"
-                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      style={{ background: "var(--w03)", border: "1px solid var(--w06)" }}>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-black tabular-nums" style={{ color: "#D4AF37" }}>{fmt.format(revenue)}</span>
                         <span className="text-[10px] text-white/30">·</span>
@@ -915,8 +915,8 @@ export default function AgenceDashboard() {
                               className="px-2 py-1 rounded-md text-[10px] font-semibold cursor-pointer shrink-0 transition-all border-none"
                               style={{
                                 background: selected ? t.color : "transparent",
-                                color: selected ? "#fff" : "rgba(255,255,255,0.25)",
-                                outline: `1px solid ${selected ? t.color : "rgba(255,255,255,0.06)"}`,
+                                color: selected ? "#fff" : "var(--w25)",
+                                outline: `1px solid ${selected ? t.color : "var(--w06)"}`,
                               }}>
                               {t.label}
                             </button>
@@ -926,7 +926,7 @@ export default function AgenceDashboard() {
                       {/* Publish */}
                       <button onClick={handleCreatePost} disabled={(!newPostContent.trim() && !newPostImage) || posting}
                         className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:brightness-110 disabled:opacity-20 border-none shrink-0 ml-2"
-                        style={{ background: "#D4AF37", color: "#0f0f12" }}>
+                        style={{ background: "#D4AF37", color: "var(--bg)" }}>
                         <Send className="w-3.5 h-3.5" />
                         {posting ? "..." : "Publier"}
                       </button>
@@ -938,7 +938,7 @@ export default function AgenceDashboard() {
                       {(["feed", "story"] as const).map(type => (
                         <button key={type} onClick={() => setNewPostType(type)}
                           className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium cursor-pointer transition-colors border-none"
-                          style={{ background: newPostType === type ? "rgba(230,51,41,0.15)" : "transparent", color: newPostType === type ? "#E63329" : "rgba(255,255,255,0.3)" }}>
+                          style={{ background: newPostType === type ? "rgba(230,51,41,0.15)" : "transparent", color: newPostType === type ? "#E63329" : "var(--w3)" }}>
                           {type === "feed" ? <Newspaper className="w-3 h-3" /> : <Camera className="w-3 h-3" />}
                           {type === "feed" ? "Feed" : "Story"}
                         </button>
@@ -1175,20 +1175,20 @@ export default function AgenceDashboard() {
                       e.target.value = "";
                     }} />
                   </label>
-                  <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: "var(--w03)", border: "1px solid var(--w06)" }}>
                     <button onClick={() => { setContentLayout("folders"); setContentViewMode("grid"); }}
                       className="px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer border-none transition-all"
-                      style={{ background: contentLayout === "folders" && contentViewMode === "grid" ? `${uploadHex}20` : "transparent", color: contentLayout === "folders" && contentViewMode === "grid" ? uploadHex : "rgba(255,255,255,0.3)" }}>
+                      style={{ background: contentLayout === "folders" && contentViewMode === "grid" ? `${uploadHex}20` : "transparent", color: contentLayout === "folders" && contentViewMode === "grid" ? uploadHex : "var(--w3)" }}>
                       <Grid3x3 className="w-3 h-3 inline mr-0.5" />Dossiers
                     </button>
                     <button onClick={() => setContentLayout("columns")}
                       className="px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer border-none transition-all"
-                      style={{ background: contentLayout === "columns" ? `${uploadHex}20` : "transparent", color: contentLayout === "columns" ? uploadHex : "rgba(255,255,255,0.3)" }}>
+                      style={{ background: contentLayout === "columns" ? `${uploadHex}20` : "transparent", color: contentLayout === "columns" ? uploadHex : "var(--w3)" }}>
                       <Columns className="w-3 h-3 inline mr-0.5" />Colonnes
                     </button>
                     <button onClick={() => { setContentLayout("folders"); setContentViewMode("list"); }}
                       className="px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer border-none transition-all"
-                      style={{ background: contentLayout === "folders" && contentViewMode === "list" ? `${uploadHex}20` : "transparent", color: contentLayout === "folders" && contentViewMode === "list" ? uploadHex : "rgba(255,255,255,0.3)" }}>
+                      style={{ background: contentLayout === "folders" && contentViewMode === "list" ? `${uploadHex}20` : "transparent", color: contentLayout === "folders" && contentViewMode === "list" ? uploadHex : "var(--w3)" }}>
                       Liste
                     </button>
                   </div>
@@ -1201,7 +1201,7 @@ export default function AgenceDashboard() {
               {uploadProgress && (
                 <div className="rounded-xl overflow-hidden transition-all"
                   style={{
-                    background: `color-mix(in srgb, ${TIER_HEX[uploadProgress.tier] || "#D4AF37"} 6%, #0f0f12)`,
+                    background: `color-mix(in srgb, ${TIER_HEX[uploadProgress.tier] || "#D4AF37"} 6%, var(--bg))`,
                     border: `1px solid ${TIER_HEX[uploadProgress.tier] || "#D4AF37"}25`,
                   }}>
                   <div className="flex items-center gap-3 px-4 py-3">
@@ -1221,7 +1221,7 @@ export default function AgenceDashboard() {
                           {uploadProgress.progress}%
                         </span>
                       </div>
-                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--w06)" }}>
                         <div className="h-full rounded-full transition-all duration-300 ease-out" style={{
                           width: `${uploadProgress.progress}%`,
                           background: `linear-gradient(90deg, ${TIER_HEX[uploadProgress.tier] || "#D4AF37"}, ${TIER_HEX[uploadProgress.tier] || "#D4AF37"}cc)`,
@@ -1245,8 +1245,8 @@ export default function AgenceDashboard() {
                       <div key={tier} className="flex flex-col rounded-xl overflow-hidden"
                         style={{
                           minHeight: "calc(100vh - 250px)",
-                          background: isDragOver ? `${hex}08` : "rgba(255,255,255,0.02)",
-                          border: isDragOver ? `2px dashed ${hex}` : "1px solid rgba(255,255,255,0.06)",
+                          background: isDragOver ? `${hex}08` : "var(--w02)",
+                          border: isDragOver ? `2px dashed ${hex}` : "1px solid var(--w06)",
                         }}
                         onDragOver={e => { onDragOverTarget(e); setDragOverTarget(`col-${tier}`); }}
                         onDragLeave={() => setDragOverTarget(null)}
@@ -1266,7 +1266,7 @@ export default function AgenceDashboard() {
                                 onDragEnd={onDragEndItem}
                                 className="relative aspect-square rounded-lg overflow-hidden cursor-grab active:cursor-grabbing group"
                                 style={{
-                                  border: "1px solid rgba(255,255,255,0.06)",
+                                  border: "1px solid var(--w06)",
                                   opacity: dragItem === item.id ? 0.3 : 1,
                                 }}>
                                 <img src={item.url} alt="" className="w-full h-full object-cover" loading="lazy" draggable={false} onClick={() => setZoomUrl(item.url)} />
@@ -1297,25 +1297,25 @@ export default function AgenceDashboard() {
                     <button onClick={() => setContentFolder(null)}
                       className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 w-[62px]"
                       style={{
-                        background: contentFolder === null ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.04)",
-                        border: contentFolder === null ? "1.5px solid rgba(212,175,55,0.4)" : "1px solid rgba(255,255,255,0.06)",
+                        background: contentFolder === null ? "rgba(212,175,55,0.15)" : "var(--w04)",
+                        border: contentFolder === null ? "1.5px solid rgba(212,175,55,0.4)" : "1px solid var(--w06)",
                         boxShadow: contentFolder === null ? "0 2px 8px rgba(212,175,55,0.15)" : "none",
                       }}>
-                      <Grid3x3 className="w-4.5 h-4.5" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.25)" }} />
-                      <span className="text-[9px] font-bold" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.4)" }}>Tout</span>
-                      <span className="text-[9px] tabular-nums" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.2)" }}>{allContent.length}</span>
+                      <Grid3x3 className="w-4.5 h-4.5" style={{ color: contentFolder === null ? "#D4AF37" : "var(--w25)" }} />
+                      <span className="text-[9px] font-bold" style={{ color: contentFolder === null ? "#D4AF37" : "var(--w4)" }}>Tout</span>
+                      <span className="text-[9px] tabular-nums" style={{ color: contentFolder === null ? "#D4AF37" : "var(--w2)" }}>{allContent.length}</span>
                     </button>
                     {/* Public */}
                     <button onClick={() => setContentFolder("p0")}
                       className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 w-[62px]"
                       style={{
-                        background: contentFolder === "p0" ? "rgba(100,116,139,0.18)" : "rgba(255,255,255,0.04)",
-                        border: contentFolder === "p0" ? "1.5px solid rgba(100,116,139,0.4)" : "1px solid rgba(255,255,255,0.06)",
+                        background: contentFolder === "p0" ? "rgba(100,116,139,0.18)" : "var(--w04)",
+                        border: contentFolder === "p0" ? "1.5px solid rgba(100,116,139,0.4)" : "1px solid var(--w06)",
                         boxShadow: contentFolder === "p0" ? "0 2px 8px rgba(100,116,139,0.15)" : "none",
                       }}>
-                      <Eye className="w-4.5 h-4.5" style={{ color: contentFolder === "p0" ? "#94A3B8" : "rgba(255,255,255,0.25)" }} />
-                      <span className="text-[9px] font-bold" style={{ color: contentFolder === "p0" ? "#94A3B8" : "rgba(255,255,255,0.4)" }}>Public</span>
-                      <span className="text-[9px] tabular-nums" style={{ color: contentFolder === "p0" ? "#94A3B8" : "rgba(255,255,255,0.2)" }}>{contentCount("p0")}</span>
+                      <Eye className="w-4.5 h-4.5" style={{ color: contentFolder === "p0" ? "#94A3B8" : "var(--w25)" }} />
+                      <span className="text-[9px] font-bold" style={{ color: contentFolder === "p0" ? "#94A3B8" : "var(--w4)" }}>Public</span>
+                      <span className="text-[9px] tabular-nums" style={{ color: contentFolder === "p0" ? "#94A3B8" : "var(--w2)" }}>{contentCount("p0")}</span>
                     </button>
                     {/* Pack folders */}
                     {packs.filter(p => p.active).map(pack => {
@@ -1328,13 +1328,13 @@ export default function AgenceDashboard() {
                         <button key={pack.id} onClick={() => setContentFolder(pack.id)}
                           className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 w-[62px]"
                           style={{
-                            background: isSelected ? `${hex}20` : "rgba(255,255,255,0.04)",
-                            border: isSelected ? `1.5px solid ${hex}60` : "1px solid rgba(255,255,255,0.06)",
+                            background: isSelected ? `${hex}20` : "var(--w04)",
+                            border: isSelected ? `1.5px solid ${hex}60` : "1px solid var(--w06)",
                             boxShadow: isSelected ? `0 2px 8px ${hex}25` : "none",
                           }}>
                           <span className="text-lg leading-none">{tierMeta?.symbol || "📁"}</span>
-                          <span className="text-[9px] font-bold truncate w-full text-center" style={{ color: isSelected ? hex : "rgba(255,255,255,0.4)" }}>{label}</span>
-                          <span className="text-[9px] tabular-nums" style={{ color: isSelected ? hex : "rgba(255,255,255,0.2)" }}>{contentCount(pack.id)}</span>
+                          <span className="text-[9px] font-bold truncate w-full text-center" style={{ color: isSelected ? hex : "var(--w4)" }}>{label}</span>
+                          <span className="text-[9px] tabular-nums" style={{ color: isSelected ? hex : "var(--w2)" }}>{contentCount(pack.id)}</span>
                         </button>
                       );
                     })}
@@ -1342,13 +1342,13 @@ export default function AgenceDashboard() {
                     <button onClick={() => setContentFolder("custom")}
                       className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 w-[62px]"
                       style={{
-                        background: contentFolder === "custom" ? "rgba(212,175,55,0.18)" : "rgba(255,255,255,0.04)",
-                        border: contentFolder === "custom" ? "1.5px solid rgba(212,175,55,0.4)" : "1px solid rgba(255,255,255,0.06)",
+                        background: contentFolder === "custom" ? "rgba(212,175,55,0.18)" : "var(--w04)",
+                        border: contentFolder === "custom" ? "1.5px solid rgba(212,175,55,0.4)" : "1px solid var(--w06)",
                         boxShadow: contentFolder === "custom" ? "0 2px 8px rgba(212,175,55,0.15)" : "none",
                       }}>
-                      <Sparkles className="w-4.5 h-4.5" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.25)" }} />
-                      <span className="text-[9px] font-bold" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.4)" }}>Custom</span>
-                      <span className="text-[9px] tabular-nums" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.2)" }}>{customCount}</span>
+                      <Sparkles className="w-4.5 h-4.5" style={{ color: contentFolder === "custom" ? "#D4AF37" : "var(--w25)" }} />
+                      <span className="text-[9px] font-bold" style={{ color: contentFolder === "custom" ? "#D4AF37" : "var(--w4)" }}>Custom</span>
+                      <span className="text-[9px] tabular-nums" style={{ color: contentFolder === "custom" ? "#D4AF37" : "var(--w2)" }}>{customCount}</span>
                     </button>
                   </div>
                 </div>
@@ -1366,8 +1366,8 @@ export default function AgenceDashboard() {
                     className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl cursor-pointer transition-all ${contentFolder === null ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}
                     style={dragOverTarget === "all" ? { outline: "2px dashed #D4AF37", outlineOffset: "-2px", background: "rgba(212,175,55,0.05)" } : {}}>
                     <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: contentFolder === null ? "rgba(212,175,55,0.12)" : "rgba(255,255,255,0.04)" }}>
-                      <Grid3x3 className="w-4 h-4" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.3)" }} />
+                      style={{ background: contentFolder === null ? "rgba(212,175,55,0.12)" : "var(--w04)" }}>
+                      <Grid3x3 className="w-4 h-4" style={{ color: contentFolder === null ? "#D4AF37" : "var(--w3)" }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-semibold text-white">Tout le contenu</div>
@@ -1381,8 +1381,8 @@ export default function AgenceDashboard() {
                     className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl cursor-pointer transition-all ${contentFolder === "p0" ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}
                     style={dragOverTarget === "p0" ? { outline: "2px dashed #64748B", outlineOffset: "-2px", background: "rgba(100,116,139,0.05)" } : {}}>
                     <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: contentFolder === "p0" ? "rgba(100,116,139,0.15)" : "rgba(255,255,255,0.04)" }}>
-                      <Eye className="w-4 h-4" style={{ color: contentFolder === "p0" ? "#64748B" : "rgba(255,255,255,0.3)" }} />
+                      style={{ background: contentFolder === "p0" ? "rgba(100,116,139,0.15)" : "var(--w04)" }}>
+                      <Eye className="w-4 h-4" style={{ color: contentFolder === "p0" ? "#64748B" : "var(--w3)" }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-semibold text-white">Public</div>
@@ -1403,7 +1403,7 @@ export default function AgenceDashboard() {
                         className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl cursor-pointer transition-all ${isSelected ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}
                         style={isDragOverThis ? { outline: `2px dashed ${hex}`, outlineOffset: "-2px", background: `${hex}08` } : {}}>
                         <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ background: isSelected ? `${hex}18` : "rgba(255,255,255,0.04)", border: isSelected ? `1px solid ${hex}30` : "1px solid transparent" }}>
+                          style={{ background: isSelected ? `${hex}18` : "var(--w04)", border: isSelected ? `1px solid ${hex}30` : "1px solid transparent" }}>
                           <span className="text-base">{tierMeta?.symbol || "📁"}</span>
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1438,8 +1438,8 @@ export default function AgenceDashboard() {
                     className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl cursor-pointer transition-all ${contentFolder === "custom" ? "bg-white/[0.06]" : "bg-transparent hover:bg-white/[0.03]"}`}
                     style={dragOverTarget === "custom" ? { outline: "2px dashed #D4AF37", outlineOffset: "-2px", background: "rgba(212,175,55,0.05)" } : {}}>
                     <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: contentFolder === "custom" ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.04)" }}>
-                      <Sparkles className="w-4 h-4" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.3)" }} />
+                      style={{ background: contentFolder === "custom" ? "rgba(212,175,55,0.15)" : "var(--w04)" }}>
+                      <Sparkles className="w-4 h-4" style={{ color: contentFolder === "custom" ? "#D4AF37" : "var(--w3)" }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-semibold text-white">Custom</div>
@@ -1498,7 +1498,7 @@ export default function AgenceDashboard() {
 
                     return (
                       <div className="rounded-xl overflow-hidden mb-3 transition-all"
-                        style={{ background: `color-mix(in srgb, ${hex} 4%, #0f0f12)`, border: `1px solid ${hex}20` }}>
+                        style={{ background: `color-mix(in srgb, ${hex} 4%, var(--bg))`, border: `1px solid ${hex}20` }}>
                         {/* Collapsed header */}
                         <div className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-white/[0.02] transition-colors"
                           onClick={() => setExpandedPack(isExpCfg ? null : `cfg-${pack.id}`)}>
@@ -1668,7 +1668,7 @@ export default function AgenceDashboard() {
 
                     return (
                       <div className="rounded-xl overflow-hidden mb-3 transition-all"
-                        style={{ background: `color-mix(in srgb, ${customHex} 4%, #0f0f12)`, border: `1px solid ${customHex}20` }}>
+                        style={{ background: `color-mix(in srgb, ${customHex} 4%, var(--bg))`, border: `1px solid ${customHex}20` }}>
                         {/* Collapsed header */}
                         <div className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-white/[0.02] transition-colors"
                           onClick={() => setExpandedPack(isExpCustom ? null : "cfg-custom")}>
@@ -1732,15 +1732,15 @@ export default function AgenceDashboard() {
 
                                 {/* Stats */}
                                 <div className="grid grid-cols-3 gap-2">
-                                  <div className="rounded-lg px-2.5 py-2 text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                  <div className="rounded-lg px-2.5 py-2 text-center" style={{ background: "var(--w03)", border: "1px solid var(--w05)" }}>
                                     <div className="text-sm font-black tabular-nums text-white">{customItems.length}</div>
                                     <div className="text-[8px] uppercase tracking-wider text-white/25">Photos</div>
                                   </div>
-                                  <div className="rounded-lg px-2.5 py-2 text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                  <div className="rounded-lg px-2.5 py-2 text-center" style={{ background: "var(--w03)", border: "1px solid var(--w05)" }}>
                                     <div className="text-sm font-black tabular-nums" style={{ color: customHex }}>{customSold}</div>
                                     <div className="text-[8px] uppercase tracking-wider text-white/25">Vendues</div>
                                   </div>
-                                  <div className="rounded-lg px-2.5 py-2 text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                  <div className="rounded-lg px-2.5 py-2 text-center" style={{ background: "var(--w03)", border: "1px solid var(--w05)" }}>
                                     <div className="text-sm font-black tabular-nums text-emerald-400">{fmt.format(customRevenue)}</div>
                                     <div className="text-[8px] uppercase tracking-wider text-white/25">Revenus</div>
                                   </div>
@@ -1812,7 +1812,7 @@ export default function AgenceDashboard() {
                             { label: "Clients uniques", value: uniqueClients2, color: "#3B82F6" },
                             { label: "Revenus", value: fmt.format(totalRevenue), color: "#10B981" },
                           ].map((s, i) => (
-                            <div key={i} className="rounded-xl px-3 py-2.5 text-center" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                            <div key={i} className="rounded-xl px-3 py-2.5 text-center" style={{ background: "var(--w02)", border: "1px solid var(--w06)" }}>
                               <div className="text-sm font-black tabular-nums" style={{ color: s.color }}>{s.value}</div>
                               <div className="text-[8px] uppercase tracking-wider text-white/25 mt-0.5">{s.label}</div>
                             </div>
@@ -1828,7 +1828,7 @@ export default function AgenceDashboard() {
                                 {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="aspect-[3/4]" />)}
                               </div>
                             ) : filteredCustomPhotos.length === 0 ? (
-                              <div className="flex flex-col items-center justify-center py-16 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.06)" }}>
+                              <div className="flex flex-col items-center justify-center py-16 rounded-xl" style={{ background: "var(--w02)", border: "1px dashed var(--w06)" }}>
                                 <Sparkles className="w-10 h-10 mb-3 text-white/10" />
                                 <p className="text-sm text-white/25 mb-1">Aucune photo custom</p>
                                 <p className="text-xs text-white/15">Upload des photos ou deplace-en depuis un autre dossier</p>
@@ -1878,12 +1878,12 @@ export default function AgenceDashboard() {
                                             {clientCount > 0 && <span className="text-[9px] text-white/25 ml-1">({clientCount})</span>}
                                           </td>
                                           <td className="px-4 py-2 text-right">
-                                            <span className="text-xs font-bold tabular-nums" style={{ color: photoRev > 0 ? "#D4AF37" : "rgba(255,255,255,0.2)" }}>{fmt.format(photoRev)}</span>
+                                            <span className="text-xs font-bold tabular-nums" style={{ color: photoRev > 0 ? "#D4AF37" : "var(--w2)" }}>{fmt.format(photoRev)}</span>
                                           </td>
                                           <td className="px-4 py-2 text-center">
                                             <button onClick={() => { setAssigningPhoto(assigningPhoto === item.id ? null : item.id); setAssignPrice(""); setClientSearch(""); }}
                                               className="text-[10px] font-medium px-2 py-1 rounded-lg cursor-pointer border-none transition-all hover:bg-white/[0.06]"
-                                              style={{ background: assigningPhoto === item.id ? "rgba(212,175,55,0.15)" : "transparent", color: assigningPhoto === item.id ? "#D4AF37" : "rgba(255,255,255,0.4)" }}>
+                                              style={{ background: assigningPhoto === item.id ? "rgba(212,175,55,0.15)" : "transparent", color: assigningPhoto === item.id ? "#D4AF37" : "var(--w4)" }}>
                                               <UserPlus className="w-3 h-3 inline mr-1" style={{ verticalAlign: "middle" }} />Assigner
                                             </button>
                                           </td>
@@ -1929,7 +1929,7 @@ export default function AgenceDashboard() {
                                             onClick={(e) => { e.stopPropagation(); setExpandedPhotoHistory(expandedPhotoHistory === item.id ? null : item.id); }}
                                             className="text-[8px] font-bold px-1.5 py-0.5 rounded-full cursor-pointer border-none transition-all"
                                             style={{
-                                              background: clientCount > 0 ? (clientCount === 1 ? "rgba(139,92,246,0.85)" : "rgba(59,130,246,0.85)") : "rgba(255,255,255,0.15)",
+                                              background: clientCount > 0 ? (clientCount === 1 ? "rgba(139,92,246,0.85)" : "rgba(59,130,246,0.85)") : "var(--w15)",
                                               color: "#fff",
                                             }}>
                                             {clientCount === 0 ? "0 client" : clientCount === 1 ? "Exclusive" : `${clientCount} clients`}
@@ -1948,7 +1948,7 @@ export default function AgenceDashboard() {
 
                                       {/* Assignment panel — inline below photo */}
                                       {assigningPhoto === item.id && (
-                                        <div className="mt-1.5 rounded-xl p-3 space-y-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)" }}>
+                                        <div className="mt-1.5 rounded-xl p-3 space-y-2" style={{ background: "var(--w03)", border: "1px solid rgba(212,175,55,0.15)" }}>
                                           <div className="flex items-center justify-between mb-1">
                                             <span className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-wider">Assigner a un client</span>
                                             <button onClick={() => setAssigningPhoto(null)} className="p-0.5 cursor-pointer border-none bg-transparent text-white/30 hover:text-white/60">
@@ -1961,7 +1961,7 @@ export default function AgenceDashboard() {
                                             value={clientSearch}
                                             onChange={e => setClientSearch(e.target.value)}
                                             className="w-full px-2.5 py-1.5 rounded-lg text-[11px] text-white placeholder:text-white/25 outline-none"
-                                            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                                            style={{ background: "var(--w04)", border: "1px solid var(--w08)" }}
                                           />
                                           <div className="flex flex-wrap gap-1 max-h-[80px] overflow-y-auto no-scrollbar">
                                             {filteredClients.slice(0, 12).map(c => (
@@ -1971,7 +1971,7 @@ export default function AgenceDashboard() {
                                                   handleAssignToClient(item.id, c.id, price, item.tier);
                                                 }}
                                                 className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer border-none transition-all hover:bg-white/[0.08]"
-                                                style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.7)" }}>
+                                                style={{ background: "var(--w04)", color: "var(--w7)" }}>
                                                 <Users className="w-2.5 h-2.5 text-white/30" />
                                                 {c.nickname || c.pseudo_snap || c.id}
                                               </button>
@@ -1985,7 +1985,7 @@ export default function AgenceDashboard() {
                                                 value={assignPrice}
                                                 onChange={e => setAssignPrice(e.target.value)}
                                                 className="w-full px-2.5 py-1.5 rounded-lg text-[11px] text-white placeholder:text-white/25 outline-none"
-                                                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                                                style={{ background: "var(--w04)", border: "1px solid var(--w08)" }}
                                               />
                                               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/20">EUR</span>
                                             </div>
@@ -1995,7 +1995,7 @@ export default function AgenceDashboard() {
 
                                       {/* Photo history — expandable */}
                                       {expandedPhotoHistory === item.id && photoAccess.length > 0 && (
-                                        <div className="mt-1.5 rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                                        <div className="mt-1.5 rounded-xl overflow-hidden" style={{ background: "var(--w02)", border: "1px solid var(--w06)" }}>
                                           <div className="px-3 py-1.5 border-b border-white/[0.04]">
                                             <span className="text-[9px] font-bold uppercase tracking-wider text-white/30">Historique acces</span>
                                           </div>
@@ -2032,7 +2032,7 @@ export default function AgenceDashboard() {
                                         </div>
                                       )}
                                       {expandedPhotoHistory === item.id && photoAccess.length === 0 && (
-                                        <div className="mt-1.5 rounded-xl px-3 py-2" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                                        <div className="mt-1.5 rounded-xl px-3 py-2" style={{ background: "var(--w02)", border: "1px solid var(--w06)" }}>
                                           <span className="text-[10px] text-white/25">Aucun acces accorde</span>
                                         </div>
                                       )}
@@ -2044,7 +2044,7 @@ export default function AgenceDashboard() {
                           </div>
 
                           {/* RIGHT: Client sidebar */}
-                          <div className="rounded-xl overflow-hidden h-fit" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                          <div className="rounded-xl overflow-hidden h-fit" style={{ background: "var(--w02)", border: "1px solid var(--w06)" }}>
                             <div className="px-3 py-2.5 border-b border-white/[0.04]">
                               <span className="text-[10px] font-bold uppercase tracking-wider text-white/30">Clients</span>
                             </div>
@@ -2055,7 +2055,7 @@ export default function AgenceDashboard() {
                                 value={clientSearch}
                                 onChange={e => setClientSearch(e.target.value)}
                                 className="w-full px-2.5 py-1.5 rounded-lg text-[11px] text-white placeholder:text-white/25 outline-none mb-2"
-                                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                                style={{ background: "var(--w04)", border: "1px solid var(--w08)" }}
                               />
                             </div>
                             <div className="max-h-[400px] overflow-y-auto no-scrollbar">
@@ -2105,7 +2105,7 @@ export default function AgenceDashboard() {
                     const emptyLabel = contentFolder === null ? "Public" : contentFolder === "p0" ? "Public" : TIER_META[contentFolder]?.label || contentFolder;
                     if (filtered.length === 0) {
                       return (
-                        <div className="flex flex-col items-center justify-center py-16 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: `1px dashed ${emptyHex}20` }}>
+                        <div className="flex flex-col items-center justify-center py-16 rounded-xl" style={{ background: "var(--w02)", border: `1px dashed ${emptyHex}20` }}>
                           <FolderOpen className="w-10 h-10 mb-3" style={{ color: `${emptyHex}25` }} />
                           <p className="text-sm text-white/25 mb-1">Aucun contenu</p>
                           <p className="text-xs text-white/15 mb-4">Upload des medias ou publie des posts avec photo</p>
@@ -2137,7 +2137,7 @@ export default function AgenceDashboard() {
                                 onDragEnd={onDragEndItem}
                               className="aspect-[3/4] relative overflow-hidden rounded-xl group cursor-grab active:cursor-grabbing"
                               style={{
-                                border: `1px solid ${isFree ? "rgba(255,255,255,0.06)" : hex + "20"}`,
+                                border: `1px solid ${isFree ? "var(--w06)" : hex + "20"}`,
                                 opacity: dragItem === item.id ? 0.3 : 1,
                                 transform: dragItem === item.id ? "scale(0.9)" : "scale(1)",
                                 transition: "opacity 0.15s, transform 0.15s",
@@ -2193,12 +2193,12 @@ export default function AgenceDashboard() {
                                 <div className="relative">
                                   <button onClick={(e) => { e.stopPropagation(); setMovingUpload(movingUpload === item.id ? null : item.id); }}
                                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all border-none"
-                                    style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }}>
+                                    style={{ background: "var(--w15)", color: "#fff" }}>
                                     <ArrowRight className="w-3 h-3" /> Deplacer
                                   </button>
                                   {movingUpload === item.id && (
                                     <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 z-20 rounded-xl overflow-hidden shadow-2xl min-w-[140px]"
-                                      style={{ background: "#1a1a22", border: "1px solid rgba(255,255,255,0.1)" }}>
+                                      style={{ background: "#1a1a22", border: "1px solid var(--w1)" }}>
                                       <button onClick={() => { handleMoveTier(item.id, "p0"); setMovingUpload(null); }}
                                         disabled={item.tier === "p0"}
                                         className="w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] cursor-pointer border-none transition-colors hover:bg-white/[0.06] disabled:opacity-30"
@@ -2233,7 +2233,7 @@ export default function AgenceDashboard() {
                                     <button onClick={() => item.source === "upload" ? handleDeleteUpload(item.id) : handleDeletePost(item.id)}
                                       className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer border-none" style={{ background: "#DC2626", color: "#fff" }}>Oui</button>
                                     <button onClick={() => setDeletingUpload(null)}
-                                      className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer border-none" style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }}>Non</button>
+                                      className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer border-none" style={{ background: "var(--w15)", color: "#fff" }}>Non</button>
                                   </div>
                                 ) : (
                                   <button onClick={() => setDeletingUpload(item.id)}
@@ -2320,7 +2320,7 @@ export default function AgenceDashboard() {
                                         </button>
                                         {movingUpload === item.id && (
                                           <div className="absolute top-full right-0 mt-1 z-20 rounded-xl overflow-hidden shadow-2xl min-w-[140px]"
-                                            style={{ background: "#1a1a22", border: "1px solid rgba(255,255,255,0.1)" }}>
+                                            style={{ background: "#1a1a22", border: "1px solid var(--w1)" }}>
                                             <button onClick={() => { handleMoveTier(item.id, "p0"); setMovingUpload(null); }}
                                               disabled={item.tier === "p0"}
                                               className="w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] cursor-pointer border-none transition-colors hover:bg-white/[0.06] disabled:opacity-30"
@@ -2352,7 +2352,7 @@ export default function AgenceDashboard() {
                                       {deletingUpload === item.id ? (
                                         <div className="flex items-center gap-1">
                                           <button onClick={() => item.source === "upload" ? handleDeleteUpload(item.id) : handleDeletePost(item.id)} className="p-1 rounded text-[9px] font-bold cursor-pointer border-none" style={{ background: "#DC2626", color: "#fff" }}>✓</button>
-                                          <button onClick={() => setDeletingUpload(null)} className="p-1 rounded text-[9px] cursor-pointer border-none" style={{ background: "rgba(255,255,255,0.1)", color: "#fff" }}>✕</button>
+                                          <button onClick={() => setDeletingUpload(null)} className="p-1 rounded text-[9px] cursor-pointer border-none" style={{ background: "var(--w1)", color: "#fff" }}>✕</button>
                                         </div>
                                       ) : (
                                         <button onClick={() => setDeletingUpload(item.id)}
@@ -2403,7 +2403,7 @@ export default function AgenceDashboard() {
               {/* Zoom lightbox */}
               {zoomUrl && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm cursor-pointer" onClick={() => setZoomUrl(null)}>
-                  <button className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer z-10" style={{ background: "rgba(255,255,255,0.15)", border: "none" }} onClick={() => setZoomUrl(null)}>
+                  <button className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer z-10" style={{ background: "var(--w15)", border: "none" }} onClick={() => setZoomUrl(null)}>
                     <X className="w-4 h-4 text-white" />
                   </button>
                   <img src={zoomUrl} alt="" className="max-w-[92vw] max-h-[92vh] object-contain rounded-lg" style={{ boxShadow: "0 0 60px rgba(0,0,0,0.5)" }} />
