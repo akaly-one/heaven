@@ -1167,13 +1167,11 @@ export default function AgenceDashboard() {
                       ) : (
                         <Upload className="w-3.5 h-3.5" style={{ color: uploadHex }} />
                       )}
-                      <span className="text-[11px] font-bold" style={{ color: uploadHex }}>
-                        {uploadProgress
-                          ? uploadProgress.progress >= 100
-                            ? "Termine !"
-                            : `${uploadProgress.progress}%`
-                          : `Upload → ${folderLabel}`}
-                      </span>
+                      {uploadProgress && (
+                        <span className="text-[11px] font-bold" style={{ color: uploadHex }}>
+                          {uploadProgress.progress >= 100 ? "✓" : `${uploadProgress.progress}%`}
+                        </span>
+                      )}
                     </div>
                     <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" multiple className="hidden" disabled={!!uploadProgress} onChange={(e) => {
                       const files = e.target.files;
@@ -1235,14 +1233,6 @@ export default function AgenceDashboard() {
                           background: `linear-gradient(90deg, ${TIER_HEX[uploadProgress.tier] || "#D4AF37"}, ${TIER_HEX[uploadProgress.tier] || "#D4AF37"}cc)`,
                           boxShadow: `0 0 8px ${TIER_HEX[uploadProgress.tier] || "#D4AF37"}40`,
                         }} />
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[9px] text-white/30">
-                          {uploadProgress.progress < 30 ? "Lecture fichier..." : uploadProgress.progress < 80 ? "Upload vers le cloud..." : uploadProgress.progress < 100 ? "Sauvegarde..." : "Termine !"}
-                        </span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${TIER_HEX[uploadProgress.tier] || "#D4AF37"}15`, color: TIER_HEX[uploadProgress.tier] || "#D4AF37" }}>
-                          → {uploadProgress.tier === "custom" ? "Custom" : uploadProgress.tier === "p0" ? "Public" : TIER_META[uploadProgress.tier]?.label || uploadProgress.tier}
-                        </span>
                       </div>
                     </div>
                   </div>
@@ -1311,26 +1301,26 @@ export default function AgenceDashboard() {
                   <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
                     {/* All */}
                     <button onClick={() => setContentFolder(null)}
-                      className="flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 min-w-[64px]"
+                      className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 w-[62px]"
                       style={{
                         background: contentFolder === null ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.04)",
                         border: contentFolder === null ? "1.5px solid rgba(212,175,55,0.4)" : "1px solid rgba(255,255,255,0.06)",
                         boxShadow: contentFolder === null ? "0 2px 8px rgba(212,175,55,0.15)" : "none",
                       }}>
-                      <Grid3x3 className="w-6 h-6" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.25)" }} />
-                      <span className="text-[10px] font-bold" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.4)" }}>Tout</span>
+                      <Grid3x3 className="w-4.5 h-4.5" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.25)" }} />
+                      <span className="text-[9px] font-bold" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.4)" }}>Tout</span>
                       <span className="text-[9px] tabular-nums" style={{ color: contentFolder === null ? "#D4AF37" : "rgba(255,255,255,0.2)" }}>{allContent.length}</span>
                     </button>
                     {/* Public */}
                     <button onClick={() => setContentFolder("p0")}
-                      className="flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 min-w-[64px]"
+                      className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 w-[62px]"
                       style={{
                         background: contentFolder === "p0" ? "rgba(100,116,139,0.18)" : "rgba(255,255,255,0.04)",
                         border: contentFolder === "p0" ? "1.5px solid rgba(100,116,139,0.4)" : "1px solid rgba(255,255,255,0.06)",
                         boxShadow: contentFolder === "p0" ? "0 2px 8px rgba(100,116,139,0.15)" : "none",
                       }}>
-                      <Eye className="w-6 h-6" style={{ color: contentFolder === "p0" ? "#94A3B8" : "rgba(255,255,255,0.25)" }} />
-                      <span className="text-[10px] font-bold" style={{ color: contentFolder === "p0" ? "#94A3B8" : "rgba(255,255,255,0.4)" }}>Public</span>
+                      <Eye className="w-4.5 h-4.5" style={{ color: contentFolder === "p0" ? "#94A3B8" : "rgba(255,255,255,0.25)" }} />
+                      <span className="text-[9px] font-bold" style={{ color: contentFolder === "p0" ? "#94A3B8" : "rgba(255,255,255,0.4)" }}>Public</span>
                       <span className="text-[9px] tabular-nums" style={{ color: contentFolder === "p0" ? "#94A3B8" : "rgba(255,255,255,0.2)" }}>{contentCount("p0")}</span>
                     </button>
                     {/* Pack folders */}
@@ -1338,30 +1328,32 @@ export default function AgenceDashboard() {
                       const hex = TIER_HEX[pack.id] || pack.color;
                       const tierMeta = TIER_META[pack.id];
                       const isSelected = contentFolder === pack.id;
+                      const shortLabel: Record<string, string> = { "Feet Lovers": "Feets", "VIP Black": "VIP B", "VIP Platinum": "VIP P" };
+                      const label = shortLabel[tierMeta?.label || ""] || tierMeta?.label || pack.name;
                       return (
                         <button key={pack.id} onClick={() => setContentFolder(pack.id)}
-                          className="flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 min-w-[64px]"
+                          className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 w-[62px]"
                           style={{
                             background: isSelected ? `${hex}20` : "rgba(255,255,255,0.04)",
                             border: isSelected ? `1.5px solid ${hex}60` : "1px solid rgba(255,255,255,0.06)",
                             boxShadow: isSelected ? `0 2px 8px ${hex}25` : "none",
                           }}>
-                          <span className="text-2xl leading-none">{tierMeta?.symbol || "📁"}</span>
-                          <span className="text-[10px] font-bold" style={{ color: isSelected ? hex : "rgba(255,255,255,0.4)" }}>{tierMeta?.label || pack.name}</span>
+                          <span className="text-lg leading-none">{tierMeta?.symbol || "📁"}</span>
+                          <span className="text-[9px] font-bold truncate w-full text-center" style={{ color: isSelected ? hex : "rgba(255,255,255,0.4)" }}>{label}</span>
                           <span className="text-[9px] tabular-nums" style={{ color: isSelected ? hex : "rgba(255,255,255,0.2)" }}>{contentCount(pack.id)}</span>
                         </button>
                       );
                     })}
                     {/* Custom */}
                     <button onClick={() => setContentFolder("custom")}
-                      className="flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 min-w-[64px]"
+                      className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl cursor-pointer transition-all shrink-0 w-[62px]"
                       style={{
                         background: contentFolder === "custom" ? "rgba(212,175,55,0.18)" : "rgba(255,255,255,0.04)",
                         border: contentFolder === "custom" ? "1.5px solid rgba(212,175,55,0.4)" : "1px solid rgba(255,255,255,0.06)",
                         boxShadow: contentFolder === "custom" ? "0 2px 8px rgba(212,175,55,0.15)" : "none",
                       }}>
-                      <Sparkles className="w-6 h-6" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.25)" }} />
-                      <span className="text-[10px] font-bold" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.4)" }}>Custom</span>
+                      <Sparkles className="w-4.5 h-4.5" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.25)" }} />
+                      <span className="text-[9px] font-bold" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.4)" }}>Custom</span>
                       <span className="text-[9px] tabular-nums" style={{ color: contentFolder === "custom" ? "#D4AF37" : "rgba(255,255,255,0.2)" }}>{customCount}</span>
                     </button>
                   </div>
