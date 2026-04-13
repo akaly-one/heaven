@@ -1,5 +1,32 @@
 # Heaven — Changelog
 
+## [v0.4.0] — 2026-04-13 — Instagram AI Agent Module
+
+### INSTAGRAM AGENT — Architecture complete
+- **Migration 030** : 3 tables (instagram_config, instagram_conversations, instagram_messages) + indexes + seed YUMI config
+- **lib/openrouter.ts** : Client OpenRouter multi-modele (Claude, GPT, Gemini, Perplexity)
+- **lib/instagram.ts** : Meta Graph API helpers (webhook verify, parse events, send reply)
+- **API /api/instagram/webhook** : GET (Meta verification) + POST (receive messages, dedup, store, agent auto-reply)
+- **API /api/instagram/send** : POST (manual reply from dashboard, auth root/model)
+- **API /api/instagram/conversations** : GET (list) + PATCH (toggle mode, archive, block)
+- **Dashboard /agence/instagram** : Split-pane UI (conversation list + chat view + mode toggle + stats bar)
+- **Composants** : InstagramDashboard, ConversationList, ChatView, ModeToggle, StatsBar (5 fichiers)
+- **Config** : YUMI system prompt pre-configure, mode human par defaut, basculement agent/human par conversation
+- **Securite** : Webhook signature verification (HMAC-SHA256), auth JWT sur send/conversations, fallback human si AI fail
+
+### DOCUMENTATION
+- `docs/os/INSTAGRAM-AGENT.md` : Architecture complete, flow, DB schema, API specs, UX wireframe, phases implementation
+- `docs/os/masterplan/ROADMAP-HEAVEN.md` : Task 7.1 mise a jour (In Progress)
+- `docs/INDEX.md` : Lien vers INSTAGRAM-AGENT.md ajoute
+
+### EN ATTENTE (credentials user)
+- META_APP_ID, META_APP_SECRET, META_PAGE_ACCESS_TOKEN
+- INSTAGRAM_BUSINESS_ACCOUNT_ID (@yumiiiclub)
+- OPENROUTER_API_KEY
+- Meta App Review (permission instagram_manage_messages)
+
+---
+
 ## [v0.3.0] — 2026-03-22 — Socle Securite + Fusion Cockpit
 
 ### SECURITE — Auth JWT Server-Side

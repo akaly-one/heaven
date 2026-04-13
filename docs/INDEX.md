@@ -16,6 +16,7 @@ Confidential client platform. Subscriber-based SaaS without accounts, identity v
 
 - [AUDIT-PLAN.md](os/AUDIT-PLAN.md) -- Full audit plan for Heaven OS
 - [SAFE-UPDATE-PROCESS.md](os/SAFE-UPDATE-PROCESS.md) -- Safe deployment and update protocol
+- [INSTAGRAM-AGENT.md](os/INSTAGRAM-AGENT.md) -- Instagram AI Agent architecture (OpenRouter + Meta webhook + dashboard)
 
 ### Masterplan (os/masterplan/)
 

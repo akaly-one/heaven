@@ -145,7 +145,7 @@
 
 | # | Tache | Status | Date |
 |---|-------|--------|------|
-| 7.1 | BEACON-Agence (DM auto-reply IG) | Pending | - |
+| 7.1 | Instagram AI Agent — @yumiiiclub (OpenRouter + Meta webhook) | In Progress | 13/04 |
 | 7.2 | PILOT-Agence (insights revenue) | Pending | - |
 | 7.3 | n8n workflows Heaven-specifiques | Pending | - |
 | 7.4 | Error tracking (Sentry) | Pending | - |
@@ -156,7 +156,7 @@
 | 7.9 | Email professionnel | Pending | - |
 | 7.10 | Performance monitoring (Web Vitals) | Pending | - |
 
-**Result:** 0/10 — Phase non demarree, depend de Phases 5+6.
+**Result:** 0.5/10 — Instagram Agent module cree (API, UX, DB), en attente credentials Meta.
 
 ---
 
@@ -170,8 +170,8 @@
 | 4 | Securite | 11 | 6 | 55% |
 | 5 | Monetisation | 10 | 2 | 20% |
 | 6 | Scale | 7 | 0 | 0% |
-| 7 | Enterprise | 10 | 0 | 0% |
-| **TOTAL** | | **77** | **43** | **~56%** |
+| 7 | Enterprise | 10 | 0.5 | 5% |
+| **TOTAL** | | **77** | **43.5** | **~56%** |
 
 ---
 
@@ -220,6 +220,7 @@ Ordre d'execution recommande pour la prochaine session:
 | 21/03 | 2.1-2.6, 3.1-3.2 | Profil public V1, dashboard |
 | 22/03 | 1.6-1.9, 3.3-3.8, 4.3-4.6 | Auth, cockpit complet, securite |
 | 07/04 | 2.7-2.15, 3.9-3.11, 4.1-4.2, 5.1-5.2 | Refonte profil, poker cards, stories, payment flow |
+| 13/04 | 7.1 (partial) | Instagram AI Agent: architecture, API routes, lib, UX dashboard, SQL migration. En attente credentials Meta/OpenRouter |
 
 ---
 
