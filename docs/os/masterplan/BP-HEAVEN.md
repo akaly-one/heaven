@@ -37,7 +37,7 @@
 | Produit | SaaS multi-profil de gestion d'abonnements pour creatrices de contenu exclusif |
 | URL Live | heaven-os.vercel.app |
 | Stack | Next.js 15 / React 19 / TypeScript / Tailwind v4 / Supabase / Cloudinary / Vercel |
-| Profils actifs | 2 — YUMI (Greta, @yumiiiclub, `#E84393`) et RUBY (Oceane, `#9B6BFF`) |
+| Profils actifs | YUMI (@yumiiiclub, `#E84393`), RUBY (`#9B6BFF`), PALOMA (à activer) — aucun vrai prenom stocke nulle part |
 | Modele revenue | 25% commission plateforme sur toutes transactions |
 | Marche | Creator economy — $250B TAM |
 | Break-even | ~2 profils en Phase 2 (~45 EUR/mois de charges fixes) |
@@ -603,8 +603,9 @@ Heaven OS                    SQWENSY HQ
 | Role | Contact | Acces |
 |------|---------|-------|
 | Fondateur / Dev | Owner SQWENSY | Full admin |
-| YUMI (Greta) | @yumiiiclub | CP cockpit via code admin |
-| RUBY (Oceane) | - | CP cockpit via code admin (a activer) |
+| YUMI | @yumiiiclub | CP cockpit via code admin |
+| RUBY | - | CP cockpit via code admin (a activer) |
+| PALOMA | (à fournir) | CP cockpit via code admin (a activer) |
 
 ### C. Liens utiles
 
