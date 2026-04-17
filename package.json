@@ -6,7 +6,9 @@
     "dev": "next dev --port 3001 --turbopack",
     "build": "next build",
     "start": "next start --port 3001",
-    "lint": "next lint"
+    "lint": "next lint",
+    "verify": "bash scripts/verify-before-push.sh",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "@paypal/react-paypal-js": "^9.1.0",

@@ -1,0 +1,5 @@
+#!/bin/bash
+# Git hook pre-push — lance la vérification standard avant tout push.
+# Activé via `git config core.hooksPath .githooks` (auto via npm script `prepare`).
+echo "🔒 Pre-push verification..."
+bash scripts/verify-before-push.sh
