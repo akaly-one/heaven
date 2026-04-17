@@ -3,10 +3,10 @@
   "configurations": [
     {
       "name": "heaven",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["next", "dev"],
+      "runtimeExecutable": "/usr/local/bin/npm",
+      "runtimeArgs": ["run", "dev"],
       "port": 3002,
-      "autoPort": false
+      "env": { "PATH": "/usr/local/bin:/usr/bin:/bin", "PORT": "3002" }
     }
   ]
 }
