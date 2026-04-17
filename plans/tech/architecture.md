@@ -15,7 +15,7 @@ heaven/
 │   │   ├── middleware.ts          ← JWT protection /api/*
 │   │   └── src/app/
 │   │       ├── layout.tsx
-│   │       ├── agence/            ← dashboard admin
+│   │       ├── agence/            ← cp
 │   │       ├── login/
 │   │       └── api/               ← toutes les APIs (22 namespaces)
 │   ├── ui/               @heaven/ui  — composants partagés

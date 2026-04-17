@@ -22,8 +22,8 @@ Passer Heaven vers le Standard unique :
   - Suppression leak `SQWENSY_URL`
   - Scrub alias `gret*` des plans + procédures
 - [x] **Phase B — Turborepo Structure** (`d29ad54`)
-  - Monorepo `apps/web` (vitrine + `m/[slug]`)
-  - `apps/cp` (agence dashboard)
+  - Monorepo `apps/web` (web + `m/[slug]`)
+  - `apps/cp` (cp)
   - `apps/ui` (composants partagés)
   - `apps/lib` (helpers + rbac)
   - `config/entities/` (multi-modèle)
