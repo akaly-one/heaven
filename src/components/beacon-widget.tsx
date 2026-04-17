@@ -10,8 +10,8 @@ interface Message {
 }
 
 // ── Constants ──
-const OS_API =
-  process.env.NEXT_PUBLIC_SQWENSY_URL || "https://sqwensy.com";
+// Server-side proxy: never leaks the upstream OS URL in the client bundle.
+const OS_API = "/api/heaven-beacon";
 
 const COLORS = {
   bg: "#0f0f1a",
@@ -144,7 +144,7 @@ export default function BeaconWidget() {
       }
 
       try {
-        const res = await fetch(`${OS_API}/api/beacon/chat`, {
+        const res = await fetch(`${OS_API}/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -174,7 +174,7 @@ export default function BeaconWidget() {
           visitorName &&
           visitorEmail
         ) {
-          fetch(`${OS_API}/api/beacon/lead`, {
+          fetch(`${OS_API}/lead`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

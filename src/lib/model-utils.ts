@@ -4,7 +4,7 @@
 //  Model IDs are POSITIONAL (m1, m2, m3...), NEVER semantic.
 //  Slugs are PUBLIC ALIASES (renameable via CP).
 //  DB + Cloudinary + payments ALWAYS use model IDs internally.
-//  URLs use slugs for SEO: /m/gret → resolves to m1
+//  URLs use slugs for SEO: /m/yumi → resolves to m1
 // ══════════════════════════════════════════════
 
 /** Model ID format: m + number */
@@ -15,9 +15,8 @@ export type ModelId = string; // "m1", "m2", "m3", etc.
  * Will be replaced by DB lookup in production.
  */
 const SLUG_TO_ID: Record<string, string> = {
-  gret: "m1",
-  yumi: "m2",
-  ruby: "m3",
+  yumi: "m1",
+  ruby: "m2",
   paloma: "m4",
 };
 
@@ -35,7 +34,7 @@ export function isModelId(s: string | null | undefined): boolean {
 
 /**
  * Resolve ANY model identifier (slug or model_id) to a model_id.
- * "gret" → "m1", "m1" → "m1", "paloma" → "m4"
+ * "yumi" → "m1", "m1" → "m1", "paloma" → "m4"
  * Returns input unchanged if unknown (for forward compat with new models).
  */
 export function toModelId(slugOrId: string | null | undefined): string {
@@ -47,7 +46,7 @@ export function toModelId(slugOrId: string | null | undefined): string {
 
 /**
  * Resolve a model_id to its current slug (for URLs, display).
- * "m1" → "gret", "m2" → "yumi"
+ * "m1" → "yumi", "m2" → "ruby"
  * Returns input unchanged if unknown.
  */
 export function toSlug(modelId: string | null | undefined): string {

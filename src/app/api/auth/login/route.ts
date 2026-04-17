@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSessionToken } from "@/lib/jwt";
 import { getCorsHeaders } from "@/lib/auth";
 
-const SQWENSY_API = process.env.NEXT_PUBLIC_SQWENSY_URL || "https://sqwensy.com";
+// Server-only: do not expose upstream URL in client bundles.
+const SQWENSY_API = process.env.OS_BEACON_URL || process.env.SQWENSY_URL || "";
 
 export async function POST(req: NextRequest) {
   const cors = getCorsHeaders(req);

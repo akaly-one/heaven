@@ -31,7 +31,7 @@ const ARCHITECTURE: Node[] = [
   // ─── PAGES ───
   {
     id: "login", label: "/login", type: "page", status: "ok",
-    note: "Codes hardcodes Phase 0 (gret1, yumi, ruby)",
+    note: "Codes admin Phase 0 (yumi, ruby, paloma)",
     buttons: [
       { label: "Entrer", action: "sessionStorage.setItem → router.push(/agence)", status: "ok" },
     ],

@@ -34,7 +34,7 @@ Claude Code: "ouvre un worktree pour [nom-feature]"
 ### 3. Checklist avant merge
 - [ ] `npx tsc --noEmit` → 0 erreurs
 - [ ] `npx next build` → build reussi
-- [ ] Page profil `/m/gret` charge correctement
+- [ ] Page profil `/m/yumi` charge correctement
 - [ ] Codes d'acces fonctionnent (login test)
 - [ ] API `/api/packs`, `/api/uploads`, `/api/codes` repondent
 - [ ] Pas de `console.error` dans le navigateur

@@ -5,7 +5,7 @@ export type { HeavenRole } from "@/types/heaven";
 // ── Validation ──
 
 /** Validate model slug OR model ID (mN format): alphanumeric + hyphens, 1-30 chars.
- *  Accepts both slugs ("gret") and generic model IDs ("m1", "m2", etc.) */
+ *  Accepts both slugs ("yumi") and generic model IDs ("m1", "m2", etc.) */
 export function isValidModelSlug(slug: string | null | undefined): slug is string {
   if (!slug) return false;
   // mN format (model IDs) and slugs both match this pattern

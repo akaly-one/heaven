@@ -59,7 +59,7 @@ heaven/
 | Variable | Description |
 |----------|-------------|
 | **HEAVEN_SYNC_SECRET** | Secret partage pour sync bidirectionnelle |
-| **NEXT_PUBLIC_SQWENSY_URL** | https://sqwensy.com (validation codes login) |
+| **OS_BEACON_URL** | URL OS (server-only, validation codes login + proxy BEACON) |
 
 ## Tables DB (16 tables)
 ```
