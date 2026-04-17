@@ -1,0 +1,25 @@
+-- Template RLS policy — Heaven
+-- Pattern : scoping par model_id via auth.jwt() ->> 'model' OR role=admin
+--
+-- Usage :
+--   1. Dupliquer ce fichier en <table_name>.sql
+--   2. Remplacer <TABLE> par le nom réel de la table
+--   3. Adapter le nom de colonne de scoping (model / model_id / owner_model)
+--   4. Appliquer via migration SQL ou Supabase SQL Editor
+--
+-- JWT claims attendus :
+--   - role   : 'admin' | 'model'
+--   - sub    : model_id (pour role=model)
+--
+-- Pattern standard :
+--
+-- ALTER TABLE <TABLE> ENABLE ROW LEVEL SECURITY;
+--
+-- CREATE POLICY <TABLE>_admin_full ON <TABLE>
+--   FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
+--
+-- CREATE POLICY <TABLE>_model_scoped ON <TABLE>
+--   FOR ALL USING (
+--     auth.jwt() ->> 'role' = 'model'
+--     AND model = auth.jwt() ->> 'sub'
+--   );
