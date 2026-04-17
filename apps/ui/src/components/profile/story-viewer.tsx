@@ -44,17 +44,20 @@ export function StoryViewer({ stories, currentIndex, onClose, onNext, onPrev, mo
           <span className="text-xs font-semibold text-white">{model.display_name}</span>
           <span className="text-[10px] text-white/50">{new Date(story.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
         </div>
-        {/* Close */}
-        <button onClick={onClose}
-          className="absolute top-6 right-4 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer"
-          style={{ background: "rgba(255,255,255,0.1)", border: "none" }}>
-          <X className="w-4 h-4 text-white" />
-        </button>
-        {/* Nav — tap left/right halves */}
-        <div className="absolute inset-0 flex">
+        {/* Nav — tap left/right halves (below close button) */}
+        <div className="absolute inset-0 flex z-[1]">
           <div className="flex-1 cursor-pointer" onClick={(e) => { e.stopPropagation(); onPrev(); }} />
           <div className="flex-1 cursor-pointer" onClick={(e) => { e.stopPropagation(); onNext(); }} />
         </div>
+        {/* Close — above nav zones so tap registers */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          className="absolute top-6 right-4 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer z-[2]"
+          style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.2)" }}
+          aria-label="Fermer la story"
+        >
+          <X className="w-4 h-4 text-white" />
+        </button>
       </div>
     </div>
   );

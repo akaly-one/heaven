@@ -35,11 +35,19 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(100, Math.max(1, parseInt(limitParam || "30", 10) || 30));
     const offset = (page - 1) * limit;
 
+    // Story TTL 24h — stories older than 24h are filtered out
+    const STORY_TTL_HOURS = 24;
+    const storyCutoffIso = new Date(
+      Date.now() - STORY_TTL_HOURS * 60 * 60 * 1000
+    ).toISOString();
+    const isStoryQuery = type === "story";
+
     if (paginated) {
       // Paginated mode: return page + total count
       let countQ = supabase.from("agence_posts").select("*", { count: "exact", head: true });
       if (modelParam) countQ = countQ.eq("model", modelParam);
       if (type) countQ = countQ.eq("post_type", type);
+      if (isStoryQuery) countQ = countQ.gte("created_at", storyCutoffIso);
       const { count } = await countQ;
       const total = count ?? 0;
 
@@ -52,6 +60,7 @@ export async function GET(req: NextRequest) {
 
       if (modelParam) q = q.eq("model", modelParam);
       if (type) q = q.eq("post_type", type);
+      if (isStoryQuery) q = q.gte("created_at", storyCutoffIso);
 
       const { data, error } = await q;
       if (error) throw error;
@@ -75,6 +84,7 @@ export async function GET(req: NextRequest) {
 
     if (modelParam) q = q.eq("model", modelParam);
     if (type) q = q.eq("post_type", type);
+    if (isStoryQuery) q = q.gte("created_at", storyCutoffIso);
 
     const { data, error } = await q;
     if (error) throw error;

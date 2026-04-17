@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   MessageCircle, Lock, Check, Key, ShoppingBag,
-  Instagram, Ghost,
+  Instagram, Ghost, LogOut,
 } from "lucide-react";
 import type { ModelInfo, AccessCode, VisitorPlatform } from "@/types/heaven";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -147,6 +147,33 @@ export function ModelHeaderBar({
               </div>
               {/* Tier badge */}
               <ClientBadge tier={unlockedTier || null} size="md" />
+              {/* Déconnexion pseudo — clears session + reload */}
+              {!isModelLoggedIn && (
+                <button
+                  onClick={() => {
+                    try {
+                      // Clear any heaven_* or slug-scoped key from storage.
+                      const keys: string[] = [];
+                      for (let i = 0; i < sessionStorage.length; i++) {
+                        const k = sessionStorage.key(i);
+                        if (k && (k.startsWith("heaven_") || k.includes(slug))) keys.push(k);
+                      }
+                      keys.forEach((k) => sessionStorage.removeItem(k));
+                      for (let i = 0; i < localStorage.length; i++) {
+                        const k = localStorage.key(i);
+                        if (k && k.startsWith("heaven_visitor_")) localStorage.removeItem(k);
+                      }
+                    } catch {}
+                    window.location.reload();
+                  }}
+                  title="Déconnexion"
+                  aria-label="Déconnexion"
+                  className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
+                  style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}
+                >
+                  <LogOut className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                </button>
+              )}
               {/* Order history */}
               <button onClick={() => { setOrderHistoryOpen(!orderHistoryOpen); clearNotifications(); }}
                 className="relative w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
