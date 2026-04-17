@@ -1,0 +1,32 @@
+
+> @heaven/web@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.15
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 3.0s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/5) ...
+   Generating static pages (1/5) 
+   Generating static pages (2/5) 
+   Generating static pages (3/5) 
+ ✓ Generating static pages (5/5)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                      130 B         102 kB
+├ ○ /_not-found                            985 B         103 kB
+├ ○ /icon.svg                                0 B            0 B
+└ ƒ /m/[slug]                            42.2 kB         144 kB
++ First Load JS shared by all             102 kB
+  ├ chunks/18-2d765459f0cd2fba.js          46 kB
+  ├ chunks/87c73c54-24122e7b92478d00.js  54.2 kB
+  └ other shared chunks (total)          1.92 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

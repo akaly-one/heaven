@@ -2,30 +2,23 @@
   "name": "heaven",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
-  "dependencies": {
-    "@paypal/react-paypal-js": "^9.1.0",
-    "@supabase/supabase-js": "^2.99.3",
-    "cloudinary": "^2.9.0",
-    "html-to-image": "^1.11.13",
-    "jose": "^6.2.2",
-    "lucide-react": "^0.577.0",
-    "next": "^15",
-    "react": "^19",
-    "react-dom": "^19"
+    "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=@heaven/web",
+    "dev:cp": "turbo run dev --filter=@heaven/cp",
+    "build": "turbo run build",
+    "build:web": "turbo run build --filter=@heaven/web",
+    "build:cp": "turbo run build --filter=@heaven/cp",
+    "lint": "turbo run lint",
+    "start:web": "turbo run start --filter=@heaven/web",
+    "start:cp": "turbo run start --filter=@heaven/cp"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^22",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "postcss": "^8",
-    "tailwindcss": "^4",
+    "turbo": "^2.5.8",
     "typescript": "^5"
-  }
+  },
+  "packageManager": "npm@10.0.0"
 }

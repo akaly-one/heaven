@@ -1,0 +1,31 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "plugins": [{ "name": "next" }],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/components/*": ["../ui/src/components/*"],
+      "@/lib/*": ["../lib/src/lib/*"],
+      "@/hooks/*": ["../lib/src/hooks/*"],
+      "@/types/*": ["../lib/src/types/*"],
+      "@/constants/*": ["../lib/src/constants/*"],
+      "@/config/*": ["../lib/src/config/*"],
+      "@heaven/ui": ["../ui/src/index.ts"],
+      "@heaven/ui/*": ["../ui/src/*"],
+      "@heaven/lib": ["../lib/src/index.ts"],
+      "@heaven/lib/*": ["../lib/src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "../ui/src/**/*.ts",
+    "../ui/src/**/*.tsx",
+    "../lib/src/**/*.ts",
+    "../lib/src/**/*.tsx"
+  ],
+  "exclude": ["node_modules", ".next"]
+}

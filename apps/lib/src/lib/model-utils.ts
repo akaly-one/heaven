@@ -10,15 +10,14 @@
 /** Model ID format: m + number */
 export type ModelId = string; // "m1", "m2", "m3", etc.
 
+import { ENTITIES } from "../config/entities";
+
 /**
- * Known model mappings (loaded from DB at runtime, this is fallback).
- * Will be replaced by DB lookup in production.
+ * Known model mappings (seeded from entity config; can be extended at runtime via updateModelMap).
  */
-const SLUG_TO_ID: Record<string, string> = {
-  yumi: "m1",
-  ruby: "m2",
-  paloma: "m4",
-};
+const SLUG_TO_ID: Record<string, string> = Object.fromEntries(
+  Object.values(ENTITIES).map((e) => [e.slug, e.model_id])
+);
 
 const ID_TO_SLUG: Record<string, string> = Object.fromEntries(
   Object.entries(SLUG_TO_ID).map(([slug, id]) => [id, slug])
