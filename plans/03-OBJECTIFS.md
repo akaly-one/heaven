@@ -34,5 +34,5 @@ Break-even : ~2 profils actifs (charges fixes ~45 EUR/mois).
 
 1. Paiements — Stripe/Revolut live (KYC creator)
 2. Captation de fuite fans vers Snap pur (churn)
-3. Multi-profil opérationnel (migration gret → m1 déjà faite, reste YUMI/RUBY live)
+3. Multi-profil opérationnel (migration legacy → m1 déjà faite, reste YUMI/RUBY live)
 4. Meta App Review Instagram Agent (permission `instagram_manage_messages`)

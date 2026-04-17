@@ -16,7 +16,7 @@ Cockpit, CRM clients, messages, pipeline, finances, settings, stratégie, automa
 - Pending : fine-grain permissions model role, export CSV finances
 
 ## Phase 4 — Multi-profil (60%)
-- Done : YUMI + RUBY actifs (DB migration 026 `gret → m1`)
+- Done : YUMI + RUBY actifs (DB migration 026 legacy slug → m1)
 - Done : `apps/lib/src/config/entities/` unique source
 - Pending : activation PALOMA (m4), flow onboarding profil (self-serve)
 
