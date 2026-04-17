@@ -16,7 +16,7 @@ Source originale : `docs/os/SAFE-UPDATE-PROCESS.md` (maintenant USER-only).
 - [ ] Codes d'accès fonctionnent (login test)
 - [ ] APIs `/api/packs`, `/api/uploads`, `/api/codes` répondent
 - [ ] Pas de `console.error` navigateur
-- [ ] Grep `Greta|Oceane|greta|oceane|\bgret\b` → vide
+- [ ] Grep civil names patterns (cf. audit script interne) → vide
 
 ### Merge + deploy
 1. PR review obligatoire (même solo — checklist self)
