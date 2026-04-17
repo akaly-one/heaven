@@ -4,7 +4,7 @@
 
 - Projet dédié Heaven (not shared avec JPS/OPearly/SQWENSY)
 - 19 tables scopées par `model_id` (`agence_*` + `instagram_*`)
-- RLS policies par `model_id` (à auditer — voir 09-ROADMAP)
+- RLS policies par `model_id` (à auditer — voir `product/roadmap.md`)
 - Helpers : `apps/lib/src/lib/supabase.ts` (client) + `supabase-server.ts` (service role)
 
 ## Cloudinary

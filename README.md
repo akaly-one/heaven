@@ -21,7 +21,8 @@ npm run build:web  # public only
 
 ## Docs
 
-- `plans/00-MASTERPLAN.md` — index
-- `plans/01-ARCHITECTURE.md` → `10-CONTEXTE-FINANCIER.md`
+- `plans/README.md` — index ergonomique
+- `plans/masterplan.md` — vue globale + pointeurs
+- `plans/{tech,design,security,product,ops,business}/` — sous-dossiers thématiques
 - `plans/models/` — par profil
 - `CHANGELOG.md` — historique versions
