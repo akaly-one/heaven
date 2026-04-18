@@ -1,5 +1,51 @@
 # Heaven — Changelog
 
+## [v1.0.0-plan] — 2026-04-18 — Masterplan Stratégique 2026-2027 + Plan Collaboration Paloma
+
+### STRATÉGIE
+- `plans/HEAVEN-MASTERPLAN-2026.md` créé (Agent G audit multi-agent SQWENSY) — 10 sections, vision Q2 2026 → Q4 2027
+- `plans/PALOMA-COLLABORATION.md` créé (Agent H) — plan complet juridique BE + contrat type + 5 phases évolutives
+- Vision : niche AI premium mode/lifestyle YUMI + hub humain NB profil complémentaire (PALOMA + RUBY)
+- Positionnement défendable vs Aitana Lopez €10k/mois 149k IG, Lil Miquela, Imma, Rozy
+
+### ROADMAP
+- 7 phases trimestrielles avec gates quantifiables
+- Objectif MRR consolidé Q4 2027 : $13 000/mois ($8k YUMI + $5k NB profil)
+- ROI net annuel cible fin 2027 : ~$120k/an après coûts + commissions + %
+
+### STACK IA BUDGÉTÉ
+- Q2 2026 starter : Midjourney + ElevenLabs + Suno = $62/mois
+- Q4 2026 scaling : + HeyGen + Runway + CapCut = $161/mois
+- Q4 2027 pleine : HeyGen Pro + Midjourney Pro + Runway Unlimited + ElevenLabs Pro = $378/mois
+- Paiement via carte virtuelle Wise "Heaven" (cap mensuel gated)
+
+### MODULE IA SOCIAL-MANAGER
+- Spec technique : Claude Sonnet 4.6 + prompt caching -90%
+- 3 phases évolutives : manual review (Q2-Q3) → semi-auto (Q4-Q1) → full-auto (Q2 2027+)
+- DB schema migration 031 : 6 tables (model_chat_memory, model_chat_persona, model_content_calendar, model_revenue_tracking, model_outils_ia_usage, model_chat_audit_log)
+- Safety filter + audit log + kill switch
+
+### CONFORMITÉ AI ACT EU
+- **Enforcement 2 août 2026** : label AI-generated obligatoire bio + tag #AI #Virtual tous posts YUMI
+- €15M amende max si non-compliance
+- Audit mensuel automatisé prévu
+
+### JURIDIQUE PALOMA
+- Tremplin-indépendants 12 mois (juin 2026 → mai 2027) — dispositif applicable car chômeuse au démarrage
+- Activité accessoire art. 48 NON applicable (requiert 3 mois activité avant chômage)
+- Seuil journalier 18,08 €/jour nets confirmé au 01.03.2026
+- Validation obligatoire comptable BE + avocat avant signature
+
+### SÉCURITÉ
+- Confidentialité Heaven ↔ SQWENSY : audit mensuel grep automatisé
+- Aucun vrai prénom dans code/docs/DB/commits (IDs `yumi`, `ruby`, `paloma`)
+- Niveau cible L4 (cf. SECURITY-PLAN-EVOLUTIVE-2026-2027.md SQWENSY)
+
+### CALENDRIER COMMERCIAL HEAVEN
+- Saint-Valentin, été, Halloween, Black Friday, Noël, Nouvel An (ignore Ramadan/Eid scope OPearly)
+
+---
+
 ## [v0.5.0] — 2026-04-17 — Turborepo Restructure + Multi-Entity Config
 
 ### ARCHITECTURE
