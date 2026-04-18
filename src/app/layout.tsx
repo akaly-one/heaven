@@ -5,6 +5,7 @@ import { ModelProvider } from "@/lib/model-context";
 import { ToastProvider } from "@/components/ui/toast";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PostHogProvider } from "@/lib/posthog-init";
+import { Analytics } from "@vercel/analytics/next";
 
 import type { Viewport } from "next";
 
@@ -43,6 +44,7 @@ export default function RootLayout({
             </ModelProvider>
           </AuthGuard>
         </PostHogProvider>
+        <Analytics />
       </body>
     </html>
   );
