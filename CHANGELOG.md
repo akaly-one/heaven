@@ -1,5 +1,21 @@
 # Heaven — Changelog
 
+## [v1.0.1] — 2026-04-18 soir — Vercel Analytics + hygiene standards
+
+### Infrastructure
+- Installé `@vercel/analytics` v2.0.1 (commit `c9c8d80`)
+- Ajouté `<Analytics />` dans `src/app/layout.tsx` (complémentaire au PostHogProvider existant — Web Vitals + page views)
+- PR #1 Vercel bot `vercel/install-vercel-web-analytics-6lz5er` fermée (conflits avec PostHog landed after draft, résolu directement sur main)
+
+### Hygiene repo (cross-CP standard)
+- Script `scripts/check-repo-hygiene.sh` copié (source : sqwensy-os) — détecte duplicats/artefacts/litter/env/vides
+- Cadence maintenance : hebdo/mensuel/trimestriel documentée dans sqwensy-os/docs/STANDARDS-REPO-HYGIENE.md
+
+### Cleanup session 2026-04-18
+- 27 fichiers archive triés (tous obsolètes, aucune restauration requise)
+- Archive `_duplicate-archive-2026-04-18/` à la racine AI-LAB (185 fichiers cross-CPs)
+- Rapport détaillé : `plans/CLEANUP-ARCHIVE-REPORT-2026-04-18.md`
+
 ## [v1.0.0-plan] — 2026-04-18 — Masterplan Stratégique 2026-2027 + Plan Collaboration Paloma
 
 ### STRATÉGIE
