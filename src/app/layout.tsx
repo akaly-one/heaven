@@ -4,6 +4,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import { ModelProvider } from "@/lib/model-context";
 import { ToastProvider } from "@/components/ui/toast";
 import { ThemeProvider } from "@/components/theme-provider";
+import { PostHogProvider } from "@/lib/posthog-init";
 
 import type { Viewport } from "next";
 
@@ -34,12 +35,14 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased min-h-screen">
-        <ThemeProvider />
-        <AuthGuard>
-          <ModelProvider>
-            <ToastProvider>{children}</ToastProvider>
-          </ModelProvider>
-        </AuthGuard>
+        <PostHogProvider>
+          <ThemeProvider />
+          <AuthGuard>
+            <ModelProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </ModelProvider>
+          </AuthGuard>
+        </PostHogProvider>
       </body>
     </html>
   );

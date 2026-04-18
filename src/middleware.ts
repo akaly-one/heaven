@@ -3,6 +3,7 @@ import { verifySessionToken } from "@/lib/jwt";
 
 // ── Public GET routes (no auth required) ──
 const PUBLIC_GET = new Set([
+  "/api/health",
   "/api/models",
   "/api/wall",
   "/api/packs",
