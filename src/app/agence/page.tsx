@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Eye, Pencil, Image as ImageIcon, Heart, MessageCircle, Trash2, X,
@@ -89,7 +89,16 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 // ══════════ MAIN ══════════
-export default function AgenceDashboard() {
+export default function AgencePage() {
+  // Suspense wrapper required by Next.js 15 for pages using useSearchParams()
+  return (
+    <Suspense fallback={null}>
+      <AgenceDashboard />
+    </Suspense>
+  );
+}
+
+function AgenceDashboard() {
   const { currentModel, auth, authHeaders, isRoot, ready } = useModel();
   const _modelSlug = currentModel || auth?.model_slug || null;
   const modelSlug = _modelSlug ?? "";

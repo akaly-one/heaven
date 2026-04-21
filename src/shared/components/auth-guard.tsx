@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import type { HeavenAuth } from "@/types/heaven";
@@ -30,17 +30,12 @@ function isPublicPathname(p: string | null): boolean {
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  // Start checked=true to avoid SSR spinner. If this is a protected route,
-  // the client-side useEffect below flips it to false then redirects.
-  const [checked, setChecked] = useState(true);
 
   useEffect(() => {
-    // Public route : nothing to check
     if (isPublicPathname(pathname)) return;
 
     const raw = sessionStorage.getItem("heaven_auth");
     if (!raw) {
-      setChecked(false);
       router.replace("/m/yumi");
       return;
     }
@@ -49,7 +44,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
       // Block models from root-only pages
       if (auth.role === "model" && ROOT_ONLY_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"))) {
-        setChecked(false);
         router.replace("/agence");
         return;
       }
@@ -58,25 +52,16 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       if (!scope.includes("*")) {
         const allowed = scope.some((s: string) => pathname === s || pathname.startsWith(s + "/"));
         if (!allowed) {
-          setChecked(false);
           router.replace(scope[0] || "/m/yumi");
-          return;
         }
       }
-      // Otherwise authorized — keep checked=true
     } catch {
-      setChecked(false);
       router.replace("/m/yumi");
     }
   }, [pathname, router]);
 
-  if (!checked && !isPublicPathname(pathname)) {
-    return (
-      <div className="flex items-center justify-center min-h-screen" style={{ background: "var(--bg)" }}>
-        <div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(230,51,41,0.2)", borderTopColor: "var(--accent)" }} />
-      </div>
-    );
-  }
-
+  // Always render children. Protected routes redirect client-side via the effect above.
+  // Pages themselves should gate their own content read (via useAuth / sessionStorage)
+  // to avoid any flash of protected content.
   return <>{children}</>;
 }
