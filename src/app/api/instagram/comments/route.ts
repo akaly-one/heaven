@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Graph API error" }, { status: 502 });
   }
   const data = await res.json();
-  return NextResponse.json({ data: data.data || [] });
+  return NextResponse.json({ comments: data.data || [] });
 }
 
 export async function POST(req: NextRequest) {

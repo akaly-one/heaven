@@ -91,11 +91,20 @@ export async function GET(req: NextRequest) {
   }
 
   // Fetch clients (web fallback handle when no fan_id)
-  const clientsMap = new Map<string, { id: string; pseudo: string | null; pseudo_insta: string | null }>();
+  const clientsMap = new Map<
+    string,
+    {
+      id: string;
+      nickname: string | null;
+      firstname: string | null;
+      pseudo_insta: string | null;
+      pseudo_snap: string | null;
+    }
+  >();
   if (clientIds.size > 0) {
     const { data: clients } = await db
       .from("agence_clients")
-      .select("id, pseudo, pseudo_insta")
+      .select("id, nickname, firstname, pseudo_insta, pseudo_snap")
       .in("id", Array.from(clientIds));
     for (const c of clients || []) clientsMap.set(c.id, c);
   }
@@ -148,7 +157,12 @@ export async function GET(req: NextRequest) {
         handle = c?.ig_username ? `@${c.ig_username}` : "Instagram user";
       } else {
         const c = clientsMap.get(gk.key);
-        handle = c?.pseudo || c?.pseudo_insta || "Web visitor";
+        handle =
+          c?.nickname ||
+          c?.firstname ||
+          c?.pseudo_insta ||
+          c?.pseudo_snap ||
+          "Web visitor";
       }
       g = {
         group_id: k,
@@ -183,7 +197,11 @@ export async function GET(req: NextRequest) {
       return {
         fan_id: g.fan_id || `pseudo:${g.display_handle}`,
         pseudo_insta: fan?.pseudo_insta || igConv?.ig_username || null,
-        pseudo_web: fan?.pseudo_web || client?.pseudo || null,
+        pseudo_web:
+          fan?.pseudo_web ||
+          client?.nickname ||
+          client?.firstname ||
+          null,
         pseudo_snap: fan?.pseudo_snap || null,
         fanvue_handle: fan?.fanvue_handle || null,
         display_name: g.display_handle,

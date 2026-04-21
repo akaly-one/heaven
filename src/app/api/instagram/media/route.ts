@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
 
   const data = await res.json();
   return NextResponse.json(
-    { data: data.data || [] },
+    { posts: data.data || [] },
     { headers: { "Cache-Control": "private, max-age=300" } }
   );
 }
