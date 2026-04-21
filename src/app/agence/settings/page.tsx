@@ -5,7 +5,9 @@ import { useModel } from "@/lib/model-context";
 import { toModelId } from "@/lib/model-utils";
 import { OsLayout } from "@/components/os-layout";
 import { SecurityAlerts } from "@/components/cockpit/security-alerts";
-import { Settings, UserPlus, Trash2, Shield, ShieldCheck, Power, Lock, Users, Edit3, GitMerge, Zap, ChevronDown, ChevronUp, Database, Cloud, CreditCard, Server, CheckCircle, AlertCircle, Globe, Monitor, RefreshCw, Hash, UserCheck, Key, DollarSign, FileText } from "lucide-react";
+import { ModelAccessCodes } from "@/components/cockpit/model-access-codes";
+import { PacksEditor } from "@/components/cockpit/packs-editor";
+import { Settings, UserPlus, Trash2, Shield, ShieldCheck, Power, Lock, Users, Edit3, GitMerge, Zap, ChevronDown, ChevronUp, Database, Cloud, CreditCard, Server, CheckCircle, AlertCircle, Globe, Monitor, RefreshCw, Hash, UserCheck, Key, DollarSign, FileText, Package } from "lucide-react";
 
 // ── Types ──
 interface Account {
@@ -15,6 +17,8 @@ interface Account {
 const SECTIONS = [
   { id: "security" as const, label: "Sécurité", icon: Lock },
   { id: "accounts" as const, label: "Comptes", icon: Users },
+  { id: "codes" as const, label: "Codes modèles", icon: Key, agencyAdminOnly: true },
+  { id: "packs" as const, label: "Packs", icon: Package },
   { id: "mode" as const, label: "Mode", icon: Zap },
   { id: "devcenter" as const, label: "Dev Center", icon: Monitor, rootOnly: true },
 ];
@@ -23,7 +27,10 @@ export default function SettingsPage() {
   const { authHeaders, isRoot, auth, currentModel } = useModel();
   const modelSlug = currentModel || auth?.model_slug || "";
 
-  const [section, setSection] = useState<"security" | "accounts" | "mode" | "devcenter">("security");
+  const [section, setSection] = useState<"security" | "accounts" | "codes" | "packs" | "mode" | "devcenter">("security");
+
+  // Yumii Agency admin = NB root OR YUMI (she owns the agency brand)
+  const isAgencyAdmin = isRoot || modelSlug === "yumi";
   const [expandedGuide, setExpandedGuide] = useState<string | null>(null);
   const [purging, setPurging] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -138,12 +145,18 @@ export default function SettingsPage() {
 
           {/* Section tabs */}
           <div className="segmented-control fade-up-1">
-            {SECTIONS.filter(s => !("rootOnly" in s && s.rootOnly) || isRoot).map(s => (
-              <button key={s.id} onClick={() => setSection(s.id)} className={section === s.id ? "active" : ""}>
-                <s.icon className="w-3.5 h-3.5 inline mr-1.5" />
-                {s.label}
-              </button>
-            ))}
+            {SECTIONS
+              .filter(s => {
+                if ("rootOnly" in s && s.rootOnly && !isRoot) return false;
+                if ("agencyAdminOnly" in s && s.agencyAdminOnly && !isAgencyAdmin) return false;
+                return true;
+              })
+              .map(s => (
+                <button key={s.id} onClick={() => setSection(s.id)} className={section === s.id ? "active" : ""}>
+                  <s.icon className="w-3.5 h-3.5 inline mr-1.5" />
+                  {s.label}
+                </button>
+              ))}
           </div>
 
           {/* ═══ SECURITY SECTION ═══ */}
@@ -306,6 +319,24 @@ export default function SettingsPage() {
                   </>)}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ═══ MODEL ACCESS CODES (Yumii Agency admin) ═══ */}
+          {section === "codes" && isAgencyAdmin && (
+            <div className="space-y-4 fade-up-2">
+              <div className="card-premium p-5">
+                <ModelAccessCodes authHeaders={authHeaders} />
+              </div>
+            </div>
+          )}
+
+          {/* ═══ PACKS EDITOR ═══ */}
+          {section === "packs" && (
+            <div className="space-y-4 fade-up-2">
+              <div className="card-premium p-5">
+                <PacksEditor modelSlug={modelSlug} authHeaders={authHeaders} />
+              </div>
             </div>
           )}
 

@@ -16,8 +16,11 @@ export function getHeavenAuth(): HeavenAuth | null {
   }
 }
 
-// Pages reserved for root admin — models cannot access these
-const ROOT_ONLY_ROUTES = ["/agence/finances", "/agence/automation", "/agence/architecture", "/agence/settings"];
+// Pages reserved for root admin — models cannot access these.
+// Note: /agence/settings retiré — YUMI (agency admin) + chaque model ont besoin
+// d'un accès partiel (sa propre Sécurité/Mode/Packs). Sections sensibles
+// (Codes modèles, Dev Center) protégées par section dans la page via isAgencyAdmin/isRoot.
+const ROOT_ONLY_ROUTES = ["/agence/finances", "/agence/automation", "/agence/architecture"];
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
