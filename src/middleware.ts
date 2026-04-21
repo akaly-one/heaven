@@ -78,7 +78,14 @@ function isPublicRoute(pathname: string, method: string): boolean {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Only intercept /api/* routes
+  // Root → redirect to Yumi profile (entry point)
+  if (pathname === "/") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/m/yumi";
+    return NextResponse.redirect(url);
+  }
+
+  // Only intercept /api/* routes beyond this point
   if (!pathname.startsWith("/api")) {
     return NextResponse.next();
   }
@@ -110,5 +117,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/:path*"],
+  matcher: ["/", "/api/:path*"],
 };

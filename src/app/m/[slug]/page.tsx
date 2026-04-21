@@ -12,6 +12,7 @@ import { toModelId } from "@/lib/model-utils";
 import { normalizeTier, tierIncludes } from "@/lib/tier-utils";
 import { ContentProtection } from "@/components/content-protection";
 import { IdentityGate } from "@/components/identity-gate";
+import { AdminAuthModal } from "@/components/admin-auth-modal";
 import { SubscriptionPanel } from "@/components/subscription-panel";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getDeviceFingerprint } from "@/lib/device-fingerprint";
@@ -96,6 +97,9 @@ export default function ModelPage() {
     model, posts, stories, packs, uploads, wallPosts, loading, notFound,
     setModel, setPosts, setUploads, setWallPosts, setPacks,
   } = useModelData(slug);
+
+  // ── Admin auth modal ──
+  const [showAdminModal, setShowAdminModal] = useState(false);
 
   // ── Nav state ──
   const [galleryTier, setGalleryTier] = useState(() => {
@@ -334,8 +338,15 @@ export default function ModelPage() {
     <div className="min-h-screen pb-20 md:pb-8" style={{ background: "var(--bg)", userSelect: "none", WebkitUserSelect: "none" }}>
       {/* Identity Gate */}
       {!visitorRegistered && !isModelLoggedIn && model && (
-        <IdentityGate slug={slug} modelName={model.display_name} onRegistered={handleGateRegistered} onNeedShop={() => setGalleryTier("home")} />
+        <IdentityGate
+          slug={slug}
+          modelName={model.display_name}
+          onRegistered={handleGateRegistered}
+          onNeedShop={() => setGalleryTier("home")}
+          onAdminRequest={() => setShowAdminModal(true)}
+        />
       )}
+      {showAdminModal && <AdminAuthModal onClose={() => setShowAdminModal(false)} />}
       <ProfileStyles />
 
       <div className="relative z-10">

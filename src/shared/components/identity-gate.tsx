@@ -10,10 +10,11 @@ interface IdentityGateProps {
   modelName?: string;
   onRegistered: (client: Record<string, unknown>, platform: Platform, handle: string) => void;
   onNeedShop?: () => void;
+  onAdminRequest?: () => void;
   isLoading?: boolean;
 }
 
-export function IdentityGate({ slug, modelName, onRegistered }: IdentityGateProps) {
+export function IdentityGate({ slug, modelName, onRegistered, onAdminRequest }: IdentityGateProps) {
   const [platform, setPlatform] = useState<"snap" | "insta">("snap");
   const [handle, setHandle] = useState("");
   const [code, setCode] = useState("");
@@ -212,6 +213,24 @@ export function IdentityGate({ slug, modelName, onRegistered }: IdentityGateProp
           style={{ color: "rgba(255,255,255,0.18)" }}>
           {mode === "code" ? "Code fourni par la creatrice" : "Ton vrai pseudo = acces stories privees"}
         </p>
+
+        {onAdminRequest && (
+          <>
+            <div className="mt-5 mb-3 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+            <button
+              type="button"
+              onClick={onAdminRequest}
+              className="w-full py-2 rounded-lg text-[11px] font-medium uppercase tracking-wider transition-all hover:brightness-125"
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                color: "rgba(255,255,255,0.45)",
+                border: "1px solid rgba(255,255,255,0.05)",
+              }}
+            >
+              Accès admin
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

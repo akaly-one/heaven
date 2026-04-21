@@ -5,11 +5,20 @@ import { getCorsHeaders } from "@/lib/auth";
 // Server-only: do not expose upstream URL in client bundles.
 const SQWENSY_API = process.env.OS_BEACON_URL || process.env.SQWENSY_URL || "";
 
+// Fallback login aliases (while SQWENSY verify-code response doesn't return login_aliases).
+// Each entry lists the accepted identifiers for that role/model.
+const LOGIN_ALIASES: Record<string, string[]> = {
+  root: ["admin", "nb", "root", "yumi", "yumiiiclub"],
+  yumi: ["yumi", "yumiiiclub"],
+  paloma: ["paloma"],
+  ruby: ["ruby"],
+};
+
 export async function POST(req: NextRequest) {
   const cors = getCorsHeaders(req);
 
   try {
-    const { code } = await req.json();
+    const { login, code } = await req.json();
 
     if (!code || typeof code !== "string") {
       return NextResponse.json(
@@ -32,6 +41,24 @@ export async function POST(req: NextRequest) {
         { valid: false, error: "Code invalide" },
         { status: 401, headers: cors }
       );
+    }
+
+    // Optional login check (admin auth modal sends login, legacy /login page omits it)
+    if (login && typeof login === "string") {
+      const normalized = login.trim().replace(/^@/, "").toLowerCase();
+      const responseAliases: string[] = Array.isArray(data.login_aliases)
+        ? data.login_aliases.map((a: string) => a.toLowerCase())
+        : [];
+      const slug = (data.model_slug || data.role || "").toLowerCase();
+      const expected = responseAliases.length > 0
+        ? responseAliases
+        : LOGIN_ALIASES[slug] || [slug];
+      if (!expected.includes(normalized)) {
+        return NextResponse.json(
+          { valid: false, error: "Identifiants invalides" },
+          { status: 401, headers: cors }
+        );
+      }
     }
 
     // Create JWT session token

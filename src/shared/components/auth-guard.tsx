@@ -22,13 +22,19 @@ export function getHeavenAuth(): HeavenAuth | null {
 // (Codes modèles, Dev Center) protégées par section dans la page via isAgencyAdmin/isRoot.
 const ROOT_ONLY_ROUTES = ["/agence/finances", "/agence/automation", "/agence/architecture"];
 
+function isPublicPathname(p: string | null): boolean {
+  if (!p) return false;
+  return p === "/" || p === "/login" || p.startsWith("/api/") || p.startsWith("/m/");
+}
+
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [checked, setChecked] = useState(false);
+  // Initial: checked=true if the route is public (skip loader entirely)
+  const [checked, setChecked] = useState(() => isPublicPathname(pathname));
 
   useEffect(() => {
-    if (pathname === "/login" || pathname.startsWith("/api/") || pathname.startsWith("/m/")) {
+    if (isPublicPathname(pathname)) {
       setChecked(true);
       return;
     }
@@ -60,7 +66,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [pathname, router]);
 
-  if (!checked && pathname !== "/login") {
+  if (!checked && !isPublicPathname(pathname)) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{ background: "var(--bg)" }}>
         <div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(230,51,41,0.2)", borderTopColor: "var(--accent)" }} />
