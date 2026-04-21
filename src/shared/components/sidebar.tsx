@@ -15,33 +15,39 @@ import { ThemeToggle } from "./theme-toggle";
 // B7 : « Contacts » retiré — Messagerie absorbe le CRM fans.
 // B9 : Dashboard = index CP (/agence), couronne = raccourci cliquable.
 // Pages dédiées /agence/contenu et /agence/strategie (Phase 2.B les remplira).
+// NAV_MAIN : visible à tous les rôles (paloma/ruby/yumi/root).
+// Settings inclus car chaque rôle a ses propres tabs :
+//  - model (paloma/ruby) : Général + Finances + Agent DM
+//  - admin (root/yumi) : Général + Comptes + Dev Center
+// Le scoping intra-page est géré dans /agence/settings (visibleTabs filter).
 const NAV_MAIN = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/agence", color: "#E63329" },
   { id: "messagerie", label: "Messagerie", icon: MessageCircle, href: "/agence/messagerie", color: "#8B5CF6" },
   { id: "instagram", label: "Instagram", icon: Instagram, href: "/agence/instagram", color: "#E1306C" },
   { id: "contenu", label: "Contenu", icon: Images, href: "/agence/contenu", color: "#D4AF37" },
   { id: "strategie", label: "Stratégie", icon: Target, href: "/agence/strategie", color: "#10B981" },
+  { id: "settings", label: "Paramètres", icon: Settings, href: "/agence/settings", color: "#94A3B8" },
 ] as const;
 
-// Root-only bloc : Ops + Settings (finances/automation/architecture gérés ailleurs).
-// Architecture déplacé dans Settings → Dev Center (Agent 2.C).
+// Root-only bloc : Ops uniquement (destiné à root + yumi admin).
+// Settings migré vers NAV_MAIN ci-dessus (accessible à paloma/ruby pour leurs tabs scopés).
 const NAV_ROOT = [
   { id: "ops", label: "Ops", icon: Activity, href: "/agence/ops", color: "#06B6D4", rootOnly: true },
-  { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings", color: "#94A3B8", rootOnly: true },
 ] as const;
 
-// Mobile bottom nav — alignée avec desktop (5 pages + root tools).
+// Mobile bottom nav — alignée avec desktop.
 const MOBILE_NAV_MAIN = [
   { id: "dashboard", label: "Home", icon: LayoutDashboard, href: "/agence" },
   { id: "messagerie", label: "Messages", icon: MessageCircle, href: "/agence/messagerie" },
   { id: "instagram", label: "Insta", icon: Instagram, href: "/agence/instagram" },
   { id: "contenu", label: "Contenu", icon: Images, href: "/agence/contenu" },
   { id: "strategie", label: "Stratégie", icon: Target, href: "/agence/strategie" },
+  { id: "settings", label: "Paramètres", icon: Settings, href: "/agence/settings" },
 ] as const;
 
+// Mobile root-only : Ops uniquement.
 const MOBILE_NAV_ROOT = [
   { id: "ops", label: "Ops", icon: Activity, href: "/agence/ops" },
-  { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings" },
 ] as const;
 
 function useAuth(): HeavenAuth | null {
