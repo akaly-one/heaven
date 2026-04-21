@@ -3,22 +3,18 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Instagram,
-  MessageCircle,
   Image as ImageIcon,
   MessageSquare,
   Settings,
+  ArrowRight,
 } from "lucide-react";
-import { ConversationList } from "./ig-conversation-list";
-import { ChatView } from "./ig-chat-view";
 import { ModeToggle } from "./ig-mode-toggle";
-import { StatsBar } from "./ig-stats-bar";
 import { InstagramMediaGrid } from "./ig-media-grid";
 import { InstagramCommentsList } from "./ig-comments-list";
 import { InstagramConfigPanel } from "./ig-config-panel";
-import type { IgConversation } from "./ig-stats-bar";
 
 type Mode = "agent" | "human";
-type Tab = "conversations" | "posts" | "comments" | "config";
+type Tab = "posts" | "comments" | "config";
 
 interface ProfileStats {
   username?: string;
@@ -84,38 +80,13 @@ export function InstagramDashboard() {
     return () => clearInterval(t);
   }, []);
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState<Tab>("conversations");
+  // Tab state — default to Posts (conversations moved to unified messagerie)
+  const [activeTab, setActiveTab] = useState<Tab>("posts");
 
-  // Global mode (shared across conversations)
+  // Global mode (kept for future use on posts/comments if needed)
   const [globalMode, setGlobalMode] = useState<Mode>("agent");
 
-  // Conversations state (kept here so unread badge stays accurate across tabs)
-  const [conversations, setConversations] = useState<IgConversation[]>([]);
-  const [conversationsLoaded, setConversationsLoaded] = useState(false);
-
-  const fetchConversations = useCallback(async () => {
-    try {
-      const res = await fetch("/api/instagram/conversations");
-      const data = await res.json();
-      setConversations(data.conversations || []);
-    } catch {
-      // silent fail — will retry on next interval
-    } finally {
-      setConversationsLoaded(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchConversations();
-    const interval = setInterval(fetchConversations, 15_000);
-    return () => clearInterval(interval);
-  }, [fetchConversations]);
-
-  const unreadCount = conversations.filter((c) => c.unread).length;
-
   const tabs: { id: Tab; label: string; icon: typeof Instagram }[] = [
-    { id: "conversations", label: "Conversations", icon: MessageCircle },
     { id: "posts", label: "Posts", icon: ImageIcon },
     { id: "comments", label: "Commentaires", icon: MessageSquare },
     { id: "config", label: "Config", icon: Settings },
@@ -232,6 +203,32 @@ export function InstagramDashboard() {
         </div>
       </div>
 
+      {/* Messagerie CTA — conversations moved to unified inbox */}
+      <div
+        className="px-4 py-2.5 flex-shrink-0"
+        style={{
+          borderBottom: "1px solid var(--border)",
+          background: "var(--surface)",
+        }}
+      >
+        <a
+          href="/agence/messagerie?source=instagram"
+          className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-semibold no-underline transition-all hover:brightness-110"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(131,58,180,0.10), rgba(225,48,108,0.10), rgba(247,119,55,0.08))",
+            border: "1px solid rgba(225,48,108,0.25)",
+            color: "var(--text)",
+          }}
+        >
+          <span className="flex items-center gap-2">
+            <Instagram className="w-3.5 h-3.5" style={{ color: "#E1306C" }} />
+            Voir conversations dans Messagerie
+          </span>
+          <ArrowRight className="w-3.5 h-3.5" style={{ color: "#E1306C" }} />
+        </a>
+      </div>
+
       {/* Tabs */}
       <div
         className="flex gap-1 px-2 py-2 flex-shrink-0 overflow-x-auto scrollbar-hide"
@@ -243,8 +240,6 @@ export function InstagramDashboard() {
       >
         {tabs.map((tab) => {
           const active = tab.id === activeTab;
-          const showBadge =
-            tab.id === "conversations" && unreadCount > 0;
           return (
             <button
               key={tab.id}
@@ -264,17 +259,6 @@ export function InstagramDashboard() {
             >
               <tab.icon className="w-3.5 h-3.5" />
               {tab.label}
-              {showBadge && (
-                <span
-                  className="text-[10px] font-bold text-white rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 tabular-nums"
-                  style={{
-                    background: "#E1306C",
-                    lineHeight: 1,
-                  }}
-                >
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </span>
-              )}
             </button>
           );
         })}
@@ -282,112 +266,9 @@ export function InstagramDashboard() {
 
       {/* Tab content */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        {activeTab === "conversations" && (
-          <ConversationsTab
-            conversations={conversations}
-            loaded={conversationsLoaded}
-            globalMode={globalMode}
-          />
-        )}
         {activeTab === "posts" && <InstagramMediaGrid />}
         {activeTab === "comments" && <InstagramCommentsList />}
         {activeTab === "config" && <InstagramConfigPanel />}
-      </div>
-    </div>
-  );
-}
-
-// ── Conversations tab (preserves existing layout + stats bar) ──
-
-function ConversationsTab({
-  conversations,
-  loaded,
-  globalMode,
-}: {
-  conversations: IgConversation[];
-  loaded: boolean;
-  globalMode: Mode;
-}) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [mobileShowChat, setMobileShowChat] = useState(false);
-  const [convModes, setConvModes] = useState<Record<string, Mode>>({});
-
-  const selected = conversations.find((c) => c.id === selectedId);
-
-  const currentMode = selectedId
-    ? convModes[selectedId] ?? selected?.mode ?? globalMode
-    : globalMode;
-
-  const handleConvModeChange = (mode: Mode) => {
-    if (selectedId) {
-      setConvModes((prev) => ({ ...prev, [selectedId]: mode }));
-    }
-  };
-
-  const handleSelect = (id: string) => {
-    setSelectedId(id);
-    setMobileShowChat(true);
-  };
-
-  const handleBack = () => {
-    setMobileShowChat(false);
-  };
-
-  return (
-    <div className="flex flex-col h-full">
-      {/* Stats bar */}
-      <div
-        className="px-4 py-2 flex-shrink-0"
-        style={{ borderBottom: "1px solid var(--border)" }}
-      >
-        <StatsBar conversations={conversations} />
-      </div>
-
-      {/* Main content — split pane */}
-      <div className="flex flex-1 min-h-0">
-        {!loaded && (
-          <div className="flex-1 flex items-center justify-center">
-            <div
-              className="w-6 h-6 border-2 rounded-full animate-spin"
-              style={{
-                borderColor: "var(--border2)",
-                borderTopColor: "#E1306C",
-              }}
-            />
-          </div>
-        )}
-
-        {loaded && (
-          <>
-            {/* Left panel — conversation list */}
-            <div
-              className={`w-full md:w-[30%] md:min-w-[280px] md:max-w-[360px] flex-shrink-0 ${
-                mobileShowChat ? "hidden md:flex" : "flex"
-              } flex-col`}
-            >
-              <ConversationList
-                conversations={conversations}
-                selectedId={selectedId}
-                onSelect={handleSelect}
-              />
-            </div>
-
-            {/* Right panel — chat view */}
-            <div
-              className={`flex-1 min-w-0 ${
-                !mobileShowChat ? "hidden md:flex" : "flex"
-              } flex-col`}
-            >
-              <ChatView
-                conversationId={selectedId}
-                username={selected?.ig_username}
-                mode={currentMode}
-                onModeChange={handleConvModeChange}
-                onBack={handleBack}
-              />
-            </div>
-          </>
-        )}
       </div>
     </div>
   );

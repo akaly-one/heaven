@@ -95,7 +95,7 @@ export function CodesList({ codes, clients, modelSlug, onCopy, onExtendCode, onG
               {/* Platform dot */}
               <div className="w-4 h-4 rounded-full shrink-0" style={{ background: isSnap ? "#997A00" : "#C13584" }} />
               {/* Pseudo */}
-              <a href="/agence/clients" className="text-[11px] font-bold truncate flex-1 no-underline hover:underline" style={{ color: "var(--text)" }}>
+              <a href="/agence?tab=clients" className="text-[11px] font-bold truncate flex-1 no-underline hover:underline" style={{ color: "var(--text)" }}>
                 @{ci?.pseudo_snap || ci?.pseudo_insta || group.name}
               </a>
 

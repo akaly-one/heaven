@@ -379,7 +379,7 @@ export function ClientsDropdown({
           </>);
         })()}
       </div>
-      <a href="/agence/clients" className="flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold no-underline"
+      <a href="/agence?tab=clients" className="flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold no-underline"
         style={{ color: "var(--accent)", borderTop: "1px solid var(--border)" }}>
         Gestion complete <ArrowRight className="w-3 h-3" />
       </a>

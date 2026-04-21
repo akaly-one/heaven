@@ -15,6 +15,7 @@ import { GenerateModal } from "@/components/cockpit/generate-modal";
 import { OverviewSimulator } from "@/components/cockpit/overview-simulator";
 import { ClientsPanel } from "@/components/cockpit/clients-panel";
 import { StrategiePanel } from "@/components/cockpit/strategie-panel";
+import { InstagramStatsWidget } from "@/components/cockpit/instagram-stats-widget";
 import type { PackConfig, AccessCode, ClientInfo, FeedPost, WallPost, UploadedContent, FeedItem } from "@/types/heaven";
 import { DEFAULT_PACKS } from "@/constants/packs";
 import { toSlot, isFreeSlot } from "@/lib/tier-utils";
@@ -848,6 +849,9 @@ function AgenceDashboard() {
           {/* ══════════ TAB: DASHBOARD — Feed + Overview side by side ══════════ */}
           {activeTab === "dashboard" && (
             <div className="space-y-4">
+              {/* Instagram stats — live snapshot */}
+              <InstagramStatsWidget />
+
               {/* Two-column layout: Feed (left) + Overview (right sticky) */}
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 items-start">
 

@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, ChevronLeft, ChevronRight,
   Crown, Settings, Target, LogOut, DollarSign,
-  Zap, Network, Images, MessageCircle, BookUser, Instagram,
+  Zap, Network, Images, MessageCircle, BookUser, Instagram, Activity,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -23,6 +23,7 @@ const NAV_MAIN = [
 
 const NAV_ROOT = [
   { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances", color: "#22C55E", rootOnly: true },
+  { id: "ops", label: "Ops", icon: Activity, href: "/agence/ops", color: "#06B6D4", rootOnly: true },
   { id: "automation", label: "Automation", icon: Zap, href: "/agence/automation", color: "#EAB308", rootOnly: true },
   { id: "architecture", label: "Architecture", icon: Network, href: "/agence/architecture", color: "#64748B", rootOnly: true },
   { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings", color: "#94A3B8", rootOnly: true },
