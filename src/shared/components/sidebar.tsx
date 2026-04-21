@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, ChevronLeft, ChevronRight,
   Crown, Settings, Target, LogOut, DollarSign,
-  Zap, Network, Images, MessageCircle, BookUser,
+  Zap, Network, Images, MessageCircle, BookUser, Instagram,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -15,6 +15,7 @@ import { ThemeToggle } from "./theme-toggle";
 const NAV_MAIN = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/agence", color: "#E63329" },
   { id: "messagerie", label: "Messagerie", icon: MessageCircle, href: "/agence/messagerie", color: "#8B5CF6" },
+  { id: "instagram", label: "Instagram", icon: Instagram, href: "/agence/instagram", color: "#E1306C" },
   { id: "contacts", label: "Contacts", icon: BookUser, href: "/agence?tab=clients", color: "#F59E0B" },
   { id: "contenu", label: "Contenu", icon: Images, href: "/agence?tab=contenu", color: "#D4AF37" },
   { id: "strategie", label: "Stratégie", icon: Target, href: "/agence?tab=strategie", color: "#10B981" },
@@ -31,6 +32,7 @@ const NAV_ROOT = [
 const MOBILE_NAV_MAIN = [
   { id: "dashboard", label: "Home", icon: LayoutDashboard, href: "/agence" },
   { id: "messagerie", label: "Messages", icon: MessageCircle, href: "/agence/messagerie" },
+  { id: "instagram", label: "Insta", icon: Instagram, href: "/agence/instagram" },
   { id: "contacts", label: "Contacts", icon: BookUser, href: "/agence?tab=clients" },
   { id: "contenu", label: "Contenu", icon: Images, href: "/agence?tab=contenu" },
   { id: "strategie", label: "Stratégie", icon: Target, href: "/agence?tab=strategie" },
