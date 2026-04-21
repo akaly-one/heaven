@@ -1,5 +1,141 @@
 # Heaven — Changelog
 
+## [v1.2.0-strategy] — 2026-04-21 soir — Unification stratégique BP v1 + adaptation Claude Code
+
+### Intégration BP Cowork
+- BP avril 2026 (`plans/business/bp-agence-heaven-2026-04/`) adopté comme **source de vérité business unique** — 4 documents Cowork : BP Word 14 p., modèle financier 24 mois (6 onglets, 1 251 formules), doc paliers rémunération BE, analyse Release Form Fanvue/OF
+- README d'adaptation Claude Code (17 KB) = pont entre BP business et codebase Heaven (data model + CP panels + 7 sprints + P0 constraints + checklist pré-modification)
+
+### Cadre opérationnel nouveau — 3 Modes
+- **Mode A — Studio IA pur** (100 % Sqwensy) : personas IA sur comptes agence Fanvue `yumiclub` + IG `@Yumiiiclub`
+- **Mode B — Hub annexe modèles réelles** (70 % modèle / 30 % Sqwensy) : Release Form DMCA + contrat privé Agence↔Modèle
+- **Mode C — Services B2B** : prestataire tech/stratégique (setup 800-2 500 € + sub 150-500 €/mois + 5-10 % croissance)
+- **2 Plans Identité transversaux** (Modes B + C) : Découverte (visage assumé) ou Shadow (visage caché)
+- **4 Paliers rémunération** : P1 Test (< 1 k€) / P2 Démarrage (1-9 k€) / P3 Structuration (9-20 k€, indép complémentaire OBLIGATOIRE) / P4 Pro (> 20 k€, ±TVA)
+- **Caming = canal d'acquisition primaire** (pas parallèle) : Stripchat/Bongacams/Chaturbate → UTM → PPV Fanvue, attribution J+7
+
+### Plans alignés (9 fichiers mis à jour)
+- `HEAVEN-MASTERPLAN-2026.md` — TL;DR exécutif réécrit autour des 3 Modes + hiérarchie documentaire pointant vers BP. Ancienne vision « YUMI IA + NB profil humain » remplacée.
+- `product/objectifs.md` — KPIs alignés BP §10 (conversion caming→PPV, NPS modèles, abonnés free/sem, panier moyen, heures live, trésorerie)
+- `product/modules.md` — catalogue CP étendu (existants v1.1 + 11 nouveaux modules dérivés BP : Panel Mode, Plan Identité, Palier, Statut initial, DMCA, Contrat, Caming, Commission auto, Alertes palier, Vue par Mode, Scripts par Mode)
+- `product/roadmap.md` — 7 sprints BP S1→S7 (data model → CP panels → DMCA → caming → commission → agent IA différencié → Mode C conditionnel) + matrice trimestres × modes + décisions D-7/D-8
+- `security/roles-entities.md` — rôles étendus (admin / model / dpo futur) + scopes granulaires `dmca:*` `identity:view_legal` `contract:*` `palier:escalate` + workflows escalade
+- `business/contexte-financier.md` — passage modèle SaaS 25 % commission (legacy, archivé) → 3 Modes BP avec exemples chiffrés paliers P1-P4
+- `ROADMAP-MISE-A-NIVEAU-AVRIL-2026.md` — articulation explicite avec BP Cowork (roadmap tech ≠ sprints BP business)
+- `IA-AGENT-SPEC.md` — matrice scripts × Mode × Plan Identité + funnel caming (détection UTM, upsell adapté cam-origin, attribution J+7)
+- `CHANGELOG.md` — cette entrée
+
+### Data model dérivé BP (à implémenter Sprint 1)
+Extension `agence_models` avec : `mode_operation` (enum A/B/C), `identity_plan` (discovery/shadow), `palier_remuneration` (P1-P4), `fiscal_voie`, `statut_initial` (salariée/étudiante/chomage/sans_activite/pensionnée), `statut_initial_verified`, `caming_active`, `caming_platforms` (jsonb), `release_form_status`, `contract_url` (bucket chiffré), `revenue_monthly_avg_3m`.
+
+Nouvelles tables : `agence_releaseform_dossier`, `agence_caming_sessions`, `agence_commission_calcul` (vue matérialisée), `agence_dmca_access_log`, `agence_consent_log`, `agence_identity_plan_changes`, `agence_palier_history`, `agence_contracts_versions`.
+
+### Décisions business nouvelles
+- D-7 : Ouverture Mode B (1ère modèle) — attendre M3 validé Mode A (BP milestone)
+- D-8 : Caming platform prioritaire — Stripchat (meilleur split 50-65 %)
+
+### Règle unifiée pour Claude Code
+Cf. section « Checklist Claude Code » du README Cowork :
+1. Lire section BP concernée avant impl
+2. Vérifier règles P0 (confidentialité, RGPD, Compliance Fanvue)
+3. Aucun vrai prénom stocké
+4. Migration Supabase numérotation continue
+5. Mettre à jour CHANGELOG
+6. `npm run verify` (typecheck + env + build)
+7. Si impact workflow modèle : vérifier docs paliers + Release Form
+
+---
+
+## [v1.1.0] — 2026-04-21 — Messagerie unifiée + IG ops + Meta App Review artifacts
+
+### DB (9 migrations Supabase MCP)
+
+- `030_instagram_agent.sql` — tables `instagram_config` / `instagram_conversations` / `instagram_messages`
+- `032_yumi_unified_messaging.sql` — hierarchy root/model + `agence_fans` + helpers RLS GUC `can_see_model_id()` / `can_write_model_id()` + vue `agence_messages_timeline` (UNION web + IG)
+- `033_realign_model_ids.sql` — **YUMI `m2 → m1`, PALOMA `m4 → m2`** (slug = alias front, mN = backend canonique)
+- `034_realign_agence_accounts.sql` — `agence_accounts` SSOT auth locale + `login_aliases`
+- `035_align_instagram_to_model_id.sql` — scope IG tables à `model_id`
+- `036_sync_model_number.sql` — colonne dérivée tri
+- `037_realign_media_config.sql` — config média par `model_id`
+- `038_yumi_full_ops.sql` — `agence_feed_items` polymorphe (manual/instagram/wall) + `agence_outreach_leads` + `ig_reply_queue` + `agence_ops_metrics` + UNIQUE(`ig_message_id`) + RPC `ig_conv_increment_count`
+- `038b_claim_jobs_rpc.sql` — RPC `claim_ig_reply_jobs` (FOR UPDATE SKIP LOCKED) pour worker multi-tenant
+
+### Backend (API + routes)
+
+- **Webhook IG async < 500ms** : `/api/instagram/webhook` — verify HMAC → dedup UNIQUE → INSERT + RPC increment → enqueue → 200 OK
+- **Unified inbox** : `/api/agence/messaging/inbox` (vue timeline) + `/reply` (dispatch multi-canal)
+- **Fans polymorphes** : `/api/agence/fans/[id]` GET/PATCH + `/merge` (soft-merge) + `/link-instagram` + `/search`
+- **IG routes standardisées shapes** : `/conversations` → `{conversations}`, `/media` → `{posts}`, `/comments` → `{comments}`
+- **Cron workers** :
+  - `/api/cron/sync-instagram` (daily 6h — sync posts/stats)
+  - `/api/cron/process-ig-replies` (worker IA — placeholder jusqu'à clé OpenRouter)
+  - `/api/cron/purge-ops-metrics` (daily 4h — rétention 7j)
+- **Meta App Review callback** : `/api/meta/data-deletion` (HMAC signed_request parse, statut 410 sur fan purgé)
+- **Ops observabilité** : `/api/agence/ops/metrics` (6 KPIs)
+- **Feed public polymorphe** : `/api/feed` (lecture `agence_feed_items`)
+
+### Frontend (pages + composants)
+
+- **Dashboard IG widget** : `src/cp/components/cockpit/instagram-stats-widget.tsx` (followers/médias/dernière sync)
+- **Page IG 3 tabs** : `/agence/instagram` avec `ig-media-grid` / `ig-comments-list` / `ig-config-panel`
+- **Page Ops** : `/agence/ops` (6 KPIs dashboard observabilité)
+- **Page fan consolidée** : `/agence/clients/[fanId]` avec `fan-profile-card` + `fan-timeline` + `fan-handles-manager` + `reply-composer`
+- **Messagerie refactorée** : `/agence/messagerie` (540L) inbox unifiée + fan_id grouping
+- **Modal auth admin** : `admin-auth-modal.tsx` (dismissable X + backdrop click + onAdminRequest callback)
+- **IdentityGate enrichi** : dismissable + bouton admin en dessous
+- **HeaderBar ClientBadge** + bouton Login visible dans profil `/m/yumi`
+- **Error boundaries** : `src/app/agence/error.tsx` + `src/app/m/[slug]/error.tsx`
+- **Pages publiques Meta App Review** :
+  - `/privacy` (RGPD Art. 15-22)
+  - `/terms`
+  - `/data-deletion` + `/data-deletion/status`
+- **AuthGuard whitelist** mise à jour pour pages publiques
+
+### Infrastructure
+
+- **Merge Turborepo → single Next.js** (commit `d32a53f`, 2026-04-19) — bug vendor-chunks récurrent + complexité disproportionnée
+- **Dev switché Webpack** (pas Turbopack) + `predev: rm -rf .next`
+- **Middleware whitelist** : `/api/feed`, `/api/meta/data-deletion`, `/api/instagram/webhook`
+- **Vercel Hobby workaround** : crons réduits à daily (2 slots utilisés / 1 max → limite stricte bientôt à traiter D-6)
+- **Cloudinary edge cache 30j** via `next.config.ts`
+- **Sidebar nav** : ajout items Instagram + Ops
+
+### Meta App Review artifacts livrés
+
+- App Icon SVG 1024×1024 `public/meta/yumi-ai-icon.svg` (gradient rose→violet, lettre Y)
+- Privacy Policy + Terms of Service + Data Deletion workflow
+- Pages publiques déployées prod `heaven-os.vercel.app`
+- Plan Business Verification BE + App Review permissions : `plans/META-APP-PUBLICATION-PLAN.md`
+
+### Plans documentation (roadmap consolidée)
+
+- **`plans/ROADMAP-MISE-A-NIVEAU-AVRIL-2026.md`** créé — roadmap d'exécution courante (P0-P2 défauts + modules A-I + sequencing + garde-fous)
+- **`plans/REFACTOR-NAVIGATION-SPEC.md`** créé — 3 options nav cockpit (D-1/D-2/D-3 décisions NB)
+- **`plans/META-APP-PUBLICATION-PLAN.md`** créé — process Business Verification BE + App Review + screencast guide + justifications permissions
+- **`plans/IA-AGENT-SPEC.md`** créé — persona YUMI flirt classy FR/EN/ES + prompt + coût $0.008/reply + modes review/auto + table `agence_ai_replies`
+- Plans existants synchronisés : `product/roadmap.md`, `tech/architecture.md`, `tech/stack-config.md`, `tech/outils.md`, `HEAVEN-MASTERPLAN-2026.md`, `MIGRATION-2026-04.md`, `MAINTENANCE-PREVENTIVE.md`, `README.md`, `masterplan.md`
+
+### Décisions bloquantes NB (pending)
+
+| Clé | Scope | Défaut recommandé |
+|-----|-------|--------------------|
+| D-1 | Option navigation (1/2/3) | Option 1 sidebar 1:1 pages |
+| D-2 | Rename `/agence` | Garder `/agence` |
+| D-3 | Sidebar par défaut | Expanded + toggle persistant |
+| D-4 | BM Meta | SQWENSY via Business Manager |
+| D-5 | Provider clé IA | OpenRouter Claude Sonnet 4.6 |
+| D-6 | Cron worker infra | Upstash QStash (free tier) |
+
+### Fixes critiques
+
+- Colonne `agence_clients.pseudo` inexistante → SELECT refait (`nickname, firstname, pseudo_insta, pseudo_snap`)
+- Alias `gret1` admin toujours actif → désactivé via UPDATE
+- Dashboard crash client-side (shape API mismatch) → `last_message` nested `{text, source, direction, created_at}`
+- IG dashboard tabs crash (array vs shape) → routes standardisées
+- `ON CONFLICT` partial unique index échec → pattern DELETE+INSERT pour sync 21 posts IG
+- Meta `(#3) Application does not have capability` attendu (Dev Mode — documented in roadmap)
+- Revert commit `b769282` non-autorisé (dual-credential login non sollicité) → fix ciblé : redirect `/` → `/m/yumi` + admin modal + sidebar login button
+
 ## [v1.0.1] — 2026-04-18 soir — Vercel Analytics + hygiene standards
 
 ### Infrastructure

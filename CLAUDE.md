@@ -1,15 +1,46 @@
 # CLAUDE.md — Heaven
 
-Plateforme de gestion profils + abonnements. Turborepo monorepo.
+Plateforme de gestion profils + abonnements. Single Next.js 15 (post merge Turborepo d32a53f, 2026-04-19).
 
-## Structure
-- `apps/web/` — profils publics /m/[slug] + pages publiques
-- `apps/cp/` — admin /agence multi-profils
-- `apps/ui/` — composants partagés
-- `apps/lib/` — config/entities, supabase, auth, rbac
-- `plans/` — docs DEV (masterplan + annexes + models/)
-- `docs/` — docs USER
+## Structure repo
+
+- `src/app/` — routes (m/[slug] public, agence/* CP, api/*)
+- `src/shared/` — composants + lib + hooks cross-domaines
+- `src/cp/` — composants cockpit CP
+- `src/config/` — entities, roles, permissions
+- `plans/` — **docs DEV V2** (structure standard cross-CP, voir `plans/README.md`)
+- `docs/` — docs USER (credentials, access)
 - `supabase/` — migrations + policies RLS (scopées par model_id)
+
+## Plans V2 (avril 2026)
+
+Structure conforme au [`STANDARD-SUIVI-PROJET.md`](./plans/STANDARD-SUIVI-PROJET.md) cross-CP (arc42 + C4 + ADRs + Diátaxis) :
+
+```
+plans/
+├── 00-brief/ 01-strategy/ 02-design/ 03-tech/ 04-ops/   ← couches transverses
+├── business/bp-agence-heaven-2026-04/                    ← source vérité BP Cowork
+├── modules/<nom>/{README, STRATEGY, TECH, DESIGN, DECISIONS, CHANGELOG}
+├── operations/    ← SPECs ponctuelles
+├── plans_01/      ← archive V1 (read-only)
+└── _archive-v1/   ← archives futures V2→V3
+```
+
+Pour travailler : charger d'abord `plans/README.md` (index) puis le module pertinent.
+
+## 🔒 Protocole OBLIGATOIRE mise à jour plans
+
+Dès que NB dit « met à jour le plan » (ou équivalent : « update le plan », « synchronise les plans », « reflète ça dans les plans »), appliquer impérativement le protocole documenté dans [`plans/PROTOCOLE-MISE-A-JOUR.md`](./plans/PROTOCOLE-MISE-A-JOUR.md).
+
+Points non-négociables :
+1. Détecter le CP concerné via CWD + contexte (Heaven par défaut si ambigu ici) ; demander si doute
+2. Analyser la session + diffs pour scoper les fichiers à toucher
+3. Décider versioning (mineur = edit + CHANGELOG / majeur = v<N+1> + archive + ADR)
+4. Proposer le plan d'update à NB avant écriture
+5. Générer un rapport horodaté dans `plans/_reports/UPDATE-REPORT-YYYY-MM-DD-HHMM.md`
+6. Commit git séparé `docs(plans): update report ...`
+
+Aucune improvisation. Toute exception passe par ADR dans `plans/DECISIONS.md`.
 
 ## Stack
 - Next.js 15, TypeScript, Tailwind v4
@@ -31,6 +62,18 @@ Config per-profile : `apps/lib/src/config/entities/{yumi,ruby,paloma}.ts`.
 - **AUCUN alias `gret`** dans src/
 - Projet CONFIDENTIEL — discret, pas de branding externe lié
 - CHANGELOG à jour à chaque patch
+
+## 📘 Source de vérité business (avril 2026)
+
+**Avant toute évolution du CP admin, du data model Supabase ou des workflows modèle :** lire impérativement [`plans/business/bp-agence-heaven-2026-04/README.md`](./plans/business/bp-agence-heaven-2026-04/README.md).
+
+Ce document trace :
+- Les 3 modes de fonctionnement (A=Studio IA / B=Hub annexe modèles / C=Services B2B indépendantes)
+- Les 2 Plans Identité (Découverte / Shadow) applicables aux modèles
+- Les 4 Paliers de rémunération fiscaux BE (P1 Test / P2 Démarrage / P3 Structuration / P4 Pro)
+- Le caming live comme canal d'acquisition **primaire** (pas parallèle)
+- Le mapping concret BP → schémas Supabase, composants CP, routes API, workflows
+- Le plan d'implémentation priorisé en 7 sprints
 
 ---
 
