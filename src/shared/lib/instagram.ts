@@ -73,6 +73,31 @@ export function parseMessagingEvents(body: Record<string, unknown>): IncomingMes
   return messages;
 }
 
+// ═══ Fetch Instagram username for a DM sender ═══
+
+/**
+ * Resolve an Instagram username from its IGSID (sender id).
+ * Requires a page access token with instagram_basic permission.
+ * Returns null on failure — caller should handle missing handle gracefully.
+ */
+export async function fetchInstagramUsername(
+  igsid: string,
+  pageAccessToken: string
+): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v19.0/${encodeURIComponent(igsid)}?fields=username&access_token=${encodeURIComponent(pageAccessToken)}`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const username = typeof data.username === "string" ? data.username : null;
+    return username ? username.toLowerCase() : null;
+  } catch {
+    return null;
+  }
+}
+
 // ═══ Send message via Graph API ═══
 
 export async function sendInstagramReply(

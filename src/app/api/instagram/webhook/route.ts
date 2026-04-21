@@ -5,6 +5,7 @@ import {
   verifyChallenge,
   parseMessagingEvents,
   sendInstagramReply,
+  fetchInstagramUsername,
 } from "@/lib/instagram";
 import { generateReply } from "@/lib/openrouter";
 
@@ -58,6 +59,36 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ received: true, processed: messages.length });
 }
 
+// ═══ Resolve or create fan identity from IG handle ═══
+async function resolveFanId(
+  db: NonNullable<ReturnType<typeof getServerSupabase>>,
+  igUsername: string | null
+): Promise<string | null> {
+  if (!igUsername) return null;
+  const handle = igUsername.toLowerCase();
+
+  // Look up existing fan, following merge chain if needed
+  const { data: existing } = await db
+    .from("agence_fans")
+    .select("id, merged_into_id")
+    .ilike("pseudo_insta", handle)
+    .maybeSingle();
+
+  if (existing) {
+    return existing.merged_into_id || existing.id;
+  }
+
+  // Create a new fan anchored on the IG handle
+  const { data: created, error } = await db
+    .from("agence_fans")
+    .insert({ pseudo_insta: handle })
+    .select("id")
+    .single();
+
+  if (error) return null;
+  return created?.id || null;
+}
+
 // ═══ Process a single incoming message ═══
 async function processMessage(
   db: ReturnType<typeof getServerSupabase>,
@@ -65,8 +96,9 @@ async function processMessage(
 ) {
   if (!db) return;
 
-  // Default model_slug — will be configurable per IG account
-  const modelSlug = "yumi";
+  // Model scoping : post-migration 035, instagram_config.model_slug stores mN.
+  // YUMI = m1. Future : map recipientId → model_slug via ig_business_id lookup.
+  const modelSlug = "m1";
 
   // Dedup check
   const { data: existing } = await db
@@ -77,22 +109,49 @@ async function processMessage(
 
   if (existing) return; // Already processed
 
-  // Upsert conversation
+  // Try to enrich with IG username (for fan linking + display)
+  let igUsername: string | null = null;
+  try {
+    const { data: config } = await db
+      .from("instagram_config")
+      .select("page_access_token")
+      .eq("model_slug", modelSlug)
+      .maybeSingle();
+    if (config?.page_access_token) {
+      igUsername = await fetchInstagramUsername(msg.senderId, config.page_access_token);
+    }
+  } catch {
+    // Non-fatal
+  }
+
+  // Resolve / create fan_id (best-effort ; null is OK)
+  const fanId = await resolveFanId(db, igUsername);
+
+  // Upsert conversation with fan_id + ig_username
+  const upsertPayload: Record<string, unknown> = {
+    model_slug: modelSlug,
+    ig_user_id: msg.senderId,
+    last_message_at: new Date().toISOString(),
+    mode: process.env.INSTAGRAM_DEFAULT_MODE || "human",
+  };
+  if (igUsername) upsertPayload.ig_username = igUsername;
+  if (fanId) upsertPayload.fan_id = fanId;
+
   const { data: conv } = await db
     .from("instagram_conversations")
-    .upsert(
-      {
-        model_slug: modelSlug,
-        ig_user_id: msg.senderId,
-        last_message_at: new Date().toISOString(),
-        mode: process.env.INSTAGRAM_DEFAULT_MODE || "human",
-      },
-      { onConflict: "model_slug,ig_user_id" }
-    )
-    .select("id, mode")
+    .upsert(upsertPayload, { onConflict: "model_slug,ig_user_id" })
+    .select("id, mode, fan_id, ig_username")
     .single();
 
   if (!conv) return;
+
+  // Backfill fan_id / ig_username on existing row if missing
+  const patch: Record<string, unknown> = {};
+  if (!conv.fan_id && fanId) patch.fan_id = fanId;
+  if (!conv.ig_username && igUsername) patch.ig_username = igUsername;
+  if (Object.keys(patch).length > 0) {
+    await db.from("instagram_conversations").update(patch).eq("id", conv.id);
+  }
 
   // Increment message count
   const { data: current } = await db
