@@ -32,6 +32,9 @@ export async function GET(req: NextRequest) {
   if (!["all", "web", "instagram"].includes(source)) {
     return NextResponse.json({ error: "Invalid source" }, { status: 400 });
   }
+  const fanIdParam = params.get("fan_id");
+  // Pseudo-fan keys (when no real fan_id row) : "pseudo:Display Name"
+  const isPseudoFan = fanIdParam?.startsWith("pseudo:");
 
   // Resolve model scope
   const requestedModel = params.get("model");
@@ -162,24 +165,101 @@ export async function GET(req: NextRequest) {
       };
       groups.set(k, g);
     }
-    g.sources.add(row.source);
+    g.sources.add(row.source as string);
     g.message_count += 1;
     if (row.direction === "in" && !row.read_flag) g.unread_count += 1;
     // Timeline already ordered desc — first occurrence is latest
   }
 
-  // Sort by last_at desc, cap at 50
+  // Sort by last_at desc, cap at 50, and shape for the frontend
   const conversations = Array.from(groups.values())
-    .map((g) => ({
-      ...g,
-      sources: Array.from(g.sources),
-    }))
     .sort((a, b) => (a.last_at < b.last_at ? 1 : -1))
-    .slice(0, 50);
+    .slice(0, 50)
+    .map((g) => {
+      const fan = g.fan_id ? fansMap.get(g.fan_id) : null;
+      const igConv = g.ig_conversation_id ? igConvMap.get(g.ig_conversation_id) : null;
+      const client = g.client_id ? clientsMap.get(g.client_id) : null;
+      const sourcesArr = Array.from(g.sources) as ("web" | "instagram")[];
+      return {
+        fan_id: g.fan_id || `pseudo:${g.display_handle}`,
+        pseudo_insta: fan?.pseudo_insta || igConv?.ig_username || null,
+        pseudo_web: fan?.pseudo_web || client?.pseudo || null,
+        pseudo_snap: fan?.pseudo_snap || null,
+        fanvue_handle: fan?.fanvue_handle || null,
+        display_name: g.display_handle,
+        avatar_url: null,
+        sources: sourcesArr,
+        last_message: {
+          text: g.last_text,
+          source: sourcesArr[0] || "web",
+          direction: g.last_direction,
+          created_at: g.last_at,
+        },
+        unread_count: g.unread_count,
+        last_message_at: g.last_at,
+        tier: null,
+        message_count: g.message_count,
+      };
+    });
+
+  // If a specific fan_id was requested, return its full thread + fan info
+  let messages: Array<{
+    id: string;
+    source: "web" | "instagram";
+    direction: "in" | "out";
+    text: string;
+    created_at: string;
+    media_url: string | null;
+  }> = [];
+  let fanInfo: {
+    id: string;
+    pseudo_insta: string | null;
+    pseudo_web: string | null;
+    sources: ("web" | "instagram")[];
+    avatar_url: string | null;
+    display_name: string | null;
+  } | null = null;
+
+  if (fanIdParam && !isPseudoFan) {
+    const { data: fan } = await db
+      .from("agence_fans")
+      .select("id, pseudo_insta, pseudo_web, pseudo_snap, fanvue_handle")
+      .eq("id", fanIdParam)
+      .maybeSingle();
+    if (fan) {
+      const { data: thread } = await db
+        .from("agence_messages_timeline")
+        .select("source, id, text, direction, created_at")
+        .eq("model", modelId)
+        .eq("fan_id", fanIdParam)
+        .order("created_at", { ascending: true })
+        .limit(200);
+      messages = (thread || []).map((m) => ({
+        id: String(m.id),
+        source: m.source as "web" | "instagram",
+        direction: m.direction as "in" | "out",
+        text: m.text,
+        created_at: m.created_at,
+        media_url: null,
+      }));
+      const sourcesSet = new Set<"web" | "instagram">();
+      for (const m of messages) sourcesSet.add(m.source);
+      fanInfo = {
+        id: fan.id,
+        pseudo_insta: fan.pseudo_insta,
+        pseudo_web: fan.pseudo_web,
+        sources: Array.from(sourcesSet),
+        avatar_url: null,
+        display_name: fan.pseudo_web || fan.pseudo_insta || null,
+      };
+    }
+  }
 
   return NextResponse.json({
     model: modelId,
     source,
     conversations,
+    messages,
+    fan: fanInfo,
   });
 }
