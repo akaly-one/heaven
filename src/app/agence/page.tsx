@@ -16,6 +16,7 @@ import { OverviewSimulator } from "@/components/cockpit/overview-simulator";
 import { ClientsPanel } from "@/components/cockpit/clients-panel";
 import { StrategiePanel } from "@/components/cockpit/strategie-panel";
 import { InstagramStatsWidget } from "@/components/cockpit/instagram-stats-widget";
+import { PackComposer, type PackComposerMode, type ComposerContentItem } from "@/components/cockpit/contenu/pack-composer";
 import type { PackConfig, AccessCode, ClientInfo, FeedPost, WallPost, UploadedContent, FeedItem } from "@/types/heaven";
 import { DEFAULT_PACKS } from "@/constants/packs";
 import { toSlot, isFreeSlot } from "@/lib/tier-utils";
@@ -1171,8 +1172,52 @@ function AgenceDashboard() {
             const tierSlots = ["p0", "p1", "p2", "p3", "p4", "p5", "custom"];
             const activeTiers = tierSlots.filter(t => allContent.some(c => c.tier === t));
 
+            // Phase 5.A — Extracted PackComposer opt-in via ?composer=new
+            // Phase 2 will replace the monolithic views below with the composer entirely.
+            const useNewComposer = searchParams.get("composer") === "new";
+            const composerMode: PackComposerMode =
+              contentLayout === "columns" ? "columns" : contentViewMode === "list" ? "list" : "folders";
+            const composerItems: ComposerContentItem[] = allContent.map(c => ({
+              id: c.id,
+              url: c.url,
+              tier: c.tier,
+              source: c.source,
+              visibility: c.visibility,
+              date: c.date,
+              type: c.type,
+              postContent: c.postContent,
+            }));
+            const handleComposerMove = (itemId: string, source: "upload" | "post" | "instagram" | "wall", targetTier: string) => {
+              if (source === "upload") handleMoveTier(itemId, targetTier);
+              else if (source === "post") handleChangePostTier(itemId, targetTier);
+            };
+            const handleComposerModeChange = (m: PackComposerMode) => {
+              if (m === "columns") setContentLayout("columns");
+              else if (m === "list") { setContentLayout("folders"); setContentViewMode("list"); }
+              else { setContentLayout("folders"); setContentViewMode("grid"); }
+            };
+
             return (
             <div className="space-y-4">
+
+              {useNewComposer && (
+                <div className="rounded-xl p-3" style={{ background: "rgba(212,175,55,0.04)", border: "1px dashed rgba(212,175,55,0.25)" }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-3 h-3" style={{ color: "#D4AF37" }} />
+                    <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: "#D4AF37" }}>Composer preview (Phase 5.A)</span>
+                  </div>
+                  <PackComposer
+                    mode={composerMode}
+                    onModeChange={handleComposerModeChange}
+                    packs={packs}
+                    items={composerItems}
+                    selectedFolder={contentFolder}
+                    onSelectFolder={setContentFolder}
+                    onMoveItem={handleComposerMove}
+                    onZoom={setZoomUrl}
+                  />
+                </div>
+              )}
 
               {/* ── Layout toggle header ── */}
               {(() => {
