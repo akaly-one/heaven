@@ -365,6 +365,7 @@ export default function ModelPage() {
           codeSheetOpen={codeSheetOpen} setCodeSheetOpen={setCodeSheetOpen}
           handleCodeValidation={handleCodeValidation} modelId={modelId} slug={slug}
           galleryTier={galleryTier} setGalleryTier={setGalleryTier}
+          onReopenGate={() => setGateDismissed(false)}
         />
 
         {/* ═══ HERO SECTION ═══ */}
@@ -675,7 +676,7 @@ export default function ModelPage() {
 // ═══════════════════════════════════════════
 
 // ── Header Bar ──
-function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, visitorPlatform, visitorHandle, visitorVerified, unlockedTier, activeCode, chatOpen, setChatOpen, chatUnread, newNotifications, orderHistoryOpen, setOrderHistoryOpen, clearNotifications, codeSheetOpen, setCodeSheetOpen, handleCodeValidation, modelId, slug, galleryTier, setGalleryTier }: {
+function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, visitorPlatform, visitorHandle, visitorVerified, unlockedTier, activeCode, chatOpen, setChatOpen, chatUnread, newNotifications, orderHistoryOpen, setOrderHistoryOpen, clearNotifications, codeSheetOpen, setCodeSheetOpen, handleCodeValidation, modelId, slug, galleryTier, setGalleryTier, onReopenGate }: {
   model: ModelInfo; displayModel: ModelInfo | null; isModelLoggedIn: boolean;
   visitorRegistered: boolean; visitorPlatform: VisitorPlatform | null; visitorHandle: string; visitorVerified: boolean;
   unlockedTier: string | null; activeCode: AccessCode | null;
@@ -685,6 +686,7 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, vi
   handleCodeValidation: (code: string, input?: HTMLInputElement) => Promise<boolean>;
   modelId: string; slug: string;
   galleryTier: string; setGalleryTier: (v: string) => void;
+  onReopenGate?: () => void;
 }) {
   return (
     <div className="sticky top-0 left-0 right-0 z-40 px-3 sm:px-5 md:px-8 lg:px-12 py-2"
@@ -775,6 +777,19 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, vi
             </>
           )}
           <ThemeToggle size="sm" />
+          {!visitorRegistered && !isModelLoggedIn && onReopenGate && (
+            <button
+              onClick={onReopenGate}
+              className="px-3 py-1.5 rounded-xl text-[11px] font-semibold uppercase tracking-wider cursor-pointer transition-all hover:brightness-110 active:scale-95 shrink-0"
+              style={{
+                background: "linear-gradient(135deg, var(--accent), #A78BFA)",
+                color: "#fff",
+                boxShadow: "0 2px 12px rgba(230,51,41,0.25)",
+              }}
+            >
+              Login
+            </button>
+          )}
         </div>
       </div>
     </div>
