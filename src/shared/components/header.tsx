@@ -342,26 +342,30 @@ export function Header() {
       style={{ background: "var(--surface)",
         borderBottom: "1px solid var(--border)" }}>
 
-      {/* Left — Model + page */}
+      {/* Left — Model + page
+          NB 2026-04-21 : « le cp selector doit tranformer le pseado du cp en
+          bouton selector tout simplement » → le pseudo du CP EST le selector
+          pour root (variant inline), un simple span pour les modèles. */}
       <div className="flex items-center gap-2.5 flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
           <div className="w-2 h-2 rounded-full shrink-0"
             style={{ background: modelInfo?.online ? "#10B981" : "#EF4444",
               boxShadow: modelInfo?.online ? "0 0 6px rgba(16,185,129,0.4)" : "none" }} />
-          <span className="text-xs font-bold truncate" style={{ color: "var(--text)" }}>
-            {modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase() || "HEAVEN"}
-          </span>
+          {auth?.role === "root" ? (
+            <RootCpSelector
+              variant="inline"
+              fallbackLabel={modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase() || "HEAVEN"}
+            />
+          ) : (
+            <span className="text-xs font-bold truncate" style={{ color: "var(--text)" }}>
+              {modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase() || "HEAVEN"}
+            </span>
+          )}
         </div>
         {pageTitle && <>
           <span className="text-[10px]" style={{ color: "var(--text-muted)", opacity: 0.4 }}>/</span>
           <span className="text-xs font-medium truncate capitalize" style={{ color: "var(--text-muted)" }}>{pageTitle}</span>
         </>}
-      </div>
-
-      {/* Root CP selector — visible uniquement pour compte root (NB dev SQWENSY)
-          permet de switcher entre m1/m2/m3 pour debug / impersonation */}
-      <div className="shrink-0">
-        <RootCpSelector />
       </div>
 
       {/* Theme toggle — mobile */}

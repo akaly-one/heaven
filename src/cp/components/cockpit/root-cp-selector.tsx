@@ -19,7 +19,18 @@ import { useState, useRef, useEffect } from "react";
 import { ChevronDown, Eye } from "lucide-react";
 import { useModel } from "@/lib/model-context";
 
-export function RootCpSelector() {
+interface RootCpSelectorProps {
+  /**
+   * - "badge" (défaut) : bouton pill rouge/ambre "Root view X" (legacy)
+   * - "inline" : bouton minimal intégré au breadcrumb — remplace le pseudo du CP
+   *   avec juste le display_name + chevron discret (NB 2026-04-21)
+   */
+  variant?: "badge" | "inline";
+  /** Fallback label quand pas de selection (mode inline) */
+  fallbackLabel?: string;
+}
+
+export function RootCpSelector({ variant = "badge", fallbackLabel = "HEAVEN" }: RootCpSelectorProps = {}) {
   const { auth, models, currentModel, setCurrentModel, ready } = useModel();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -46,13 +57,23 @@ export function RootCpSelector() {
   // Pas de fallback : active peut être null si root n'a pas encore choisi.
   const active = currentModel ? models.find(m => m.slug === currentModel) ?? null : null;
 
+  // Variant "inline" : rendu discret qui remplace le pseudo du CP dans le breadcrumb
+  // (NB 2026-04-21 : « le cp selector doit tranformer le pseado du cp en bouton
+  //  selector tout simplement sinon les 2 se chevauchent »).
+  const triggerLabel = active?.display_name || fallbackLabel;
+  const isInline = variant === "inline";
+
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-        style={{
+        className={isInline
+          ? "inline-flex items-center gap-1 text-xs font-bold truncate cursor-pointer bg-transparent border-none px-0 py-0"
+          : "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"}
+        style={isInline ? {
+          color: active ? "var(--text)" : "#F59E0B",
+        } : {
           background: active
             ? "linear-gradient(135deg, rgba(220,38,38,0.12), rgba(232,67,147,0.08))"
             : "rgba(245,158,11,0.1)",
@@ -60,13 +81,18 @@ export function RootCpSelector() {
           color: "var(--text)",
         }}
         aria-label="Sélectionner le CP à afficher (mode root)"
+        title={isInline ? "Basculer vers un autre CP (root)" : undefined}
       >
-        <Eye className="w-3.5 h-3.5" style={{ color: active ? "#DC2626" : "#F59E0B" }} />
-        <span className="hidden sm:inline uppercase tracking-wider text-[10px] font-bold" style={{ color: active ? "#DC2626" : "#F59E0B" }}>
-          Root view
-        </span>
-        <span className="font-semibold">{active?.display_name || "Aucun CP"}</span>
-        <ChevronDown className="w-3.5 h-3.5" />
+        {!isInline && (
+          <>
+            <Eye className="w-3.5 h-3.5" style={{ color: active ? "#DC2626" : "#F59E0B" }} />
+            <span className="hidden sm:inline uppercase tracking-wider text-[10px] font-bold" style={{ color: active ? "#DC2626" : "#F59E0B" }}>
+              Root view
+            </span>
+          </>
+        )}
+        <span className={isInline ? "truncate" : "font-semibold"}>{triggerLabel}</span>
+        <ChevronDown className={isInline ? "w-3 h-3 opacity-60" : "w-3.5 h-3.5"} />
       </button>
 
       {open && (
