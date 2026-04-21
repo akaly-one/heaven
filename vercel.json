@@ -6,12 +6,8 @@
   "installCommand": "npm install",
   "crons": [
     {
-      "path": "/api/cron/process-ig-replies",
-      "schedule": "* * * * *"
-    },
-    {
       "path": "/api/cron/sync-instagram",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 6 * * *"
     },
     {
       "path": "/api/cron/purge-ops-metrics",
