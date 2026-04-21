@@ -30,16 +30,17 @@ function isPublicPathname(p: string | null): boolean {
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  // Initial: checked=true if the route is public (skip loader entirely)
-  const [checked, setChecked] = useState(() => isPublicPathname(pathname));
+  // Start checked=true to avoid SSR spinner. If this is a protected route,
+  // the client-side useEffect below flips it to false then redirects.
+  const [checked, setChecked] = useState(true);
 
   useEffect(() => {
-    if (isPublicPathname(pathname)) {
-      setChecked(true);
-      return;
-    }
+    // Public route : nothing to check
+    if (isPublicPathname(pathname)) return;
+
     const raw = sessionStorage.getItem("heaven_auth");
     if (!raw) {
+      setChecked(false);
       router.replace("/m/yumi");
       return;
     }
@@ -48,6 +49,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
       // Block models from root-only pages
       if (auth.role === "model" && ROOT_ONLY_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"))) {
+        setChecked(false);
         router.replace("/agence");
         return;
       }
@@ -56,12 +58,14 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       if (!scope.includes("*")) {
         const allowed = scope.some((s: string) => pathname === s || pathname.startsWith(s + "/"));
         if (!allowed) {
+          setChecked(false);
           router.replace(scope[0] || "/m/yumi");
           return;
         }
       }
-      setChecked(true);
+      // Otherwise authorized — keep checked=true
     } catch {
+      setChecked(false);
       router.replace("/m/yumi");
     }
   }, [pathname, router]);

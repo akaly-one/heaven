@@ -101,6 +101,9 @@ export default function ModelPage() {
   // ── Admin auth modal ──
   const [showAdminModal, setShowAdminModal] = useState(false);
 
+  // ── Gate dismissed : visiteur anonyme peut voir le profil (publics only, le reste flouté) ──
+  const [gateDismissed, setGateDismissed] = useState(false);
+
   // ── Nav state ──
   const [galleryTier, setGalleryTier] = useState(() => {
     if (typeof window !== "undefined") {
@@ -336,14 +339,15 @@ export default function ModelPage() {
 
   return (
     <div className="min-h-screen pb-20 md:pb-8" style={{ background: "var(--bg)", userSelect: "none", WebkitUserSelect: "none" }}>
-      {/* Identity Gate */}
-      {!visitorRegistered && !isModelLoggedIn && model && (
+      {/* Identity Gate — dismissible (X ou backdrop) pour voir le profil en visiteur anonyme (public only) */}
+      {!visitorRegistered && !isModelLoggedIn && !gateDismissed && model && (
         <IdentityGate
           slug={slug}
           modelName={model.display_name}
           onRegistered={handleGateRegistered}
           onNeedShop={() => setGalleryTier("home")}
           onAdminRequest={() => setShowAdminModal(true)}
+          onDismiss={() => setGateDismissed(true)}
         />
       )}
       {showAdminModal && <AdminAuthModal onClose={() => setShowAdminModal(false)} />}

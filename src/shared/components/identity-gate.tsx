@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Ghost, Instagram, KeyRound } from "lucide-react";
+import { Ghost, Instagram, KeyRound, X } from "lucide-react";
 
 type Platform = "snap" | "insta" | "phone" | "pseudo";
 
@@ -11,10 +11,11 @@ interface IdentityGateProps {
   onRegistered: (client: Record<string, unknown>, platform: Platform, handle: string) => void;
   onNeedShop?: () => void;
   onAdminRequest?: () => void;
+  onDismiss?: () => void;
   isLoading?: boolean;
 }
 
-export function IdentityGate({ slug, modelName, onRegistered, onAdminRequest }: IdentityGateProps) {
+export function IdentityGate({ slug, modelName, onRegistered, onAdminRequest, onDismiss }: IdentityGateProps) {
   const [platform, setPlatform] = useState<"snap" | "insta">("snap");
   const [handle, setHandle] = useState("");
   const [code, setCode] = useState("");
@@ -109,15 +110,29 @@ export function IdentityGate({ slug, modelName, onRegistered, onAdminRequest }: 
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-5"
-      style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }}>
+      style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }}
+      onClick={onDismiss ? () => onDismiss() : undefined}>
 
-      <div className="w-full max-w-[340px] rounded-2xl px-6 py-7"
+      <div className="w-full max-w-[340px] rounded-2xl px-6 py-7 relative"
         style={{
           background: "linear-gradient(180deg, rgba(28,28,32,0.98), rgba(18,18,22,0.99))",
           border: "1px solid rgba(255,255,255,0.06)",
           boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
           animation: "fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both",
-        }}>
+        }}
+        onClick={(e) => e.stopPropagation()}>
+
+        {onDismiss && (
+          <button
+            type="button"
+            onClick={onDismiss}
+            aria-label="Fermer (voir le profil en visiteur)"
+            title="Voir le profil en visiteur"
+            className="absolute top-3 right-3 p-1 rounded-lg opacity-40 hover:opacity-100 transition-opacity"
+          >
+            <X className="w-4 h-4" style={{ color: "#fff" }} />
+          </button>
+        )}
 
         {/* Model name */}
         <h2 className="text-center text-lg font-medium uppercase tracking-[0.2em] mb-6"
