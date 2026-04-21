@@ -207,3 +207,25 @@ Rollback DB migration-by-migration : les 9 migrations du batch sont additives (C
 ## Flags en attente (post-batch)
 - Business Verification SQWENSY (BCE docs) — bloque App Review Meta
 - Rotation clés Supabase leakées historique git (cf. MEMORY alerte 18 avril)
+
+---
+
+## Partie 5 — Phase 7 migration 048 (2026-04-21 21:00)
+
+### Migrations
+
+| # | Fichier | Agent | Description | Status |
+|---|---------|-------|-------------|--------|
+| 048 | `048_portal_tokens_releaseform.sql` | **7.B** | `agence_portal_tokens` (32-byte hex UNIQUE, expire 7j, partial-index on used_at IS NULL) + 3 fonctions SECURITY DEFINER (`generate_portal_token`, `verify_portal_token`, `consume_portal_token` atomique) + 3 policies RLS | ✅ |
+
+### Buckets Supabase créés
+
+| Bucket | Type | RLS |
+|---|---|---|
+| `dmca-dossiers` | Privé, 20 MB, MIME PDF/JPEG/PNG/WebP | 2 policies (`dmca_bucket_read` scope `dmca:read`/`dmca:write`/`*`, `dmca_bucket_insert` scope `dmca:write`/`*`) |
+| `contracts-private` | Privé | 2 policies scope `contract:view` |
+
+### Points clés
+- Pattern token-gated sans JWT (ADR-016) : workflow modèle sans compte Heaven
+- Audit trail via `agence_consent_log` (migration 045)
+- Ajout scope `identity_plan:switch` au compte yumi

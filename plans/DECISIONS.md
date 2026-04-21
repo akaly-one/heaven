@@ -321,4 +321,90 @@ S'applique uniquement aux décisions de navigation. D-4/D-5/D-6/D-7/D-8 restent 
 
 ---
 
-_ADRs append-only. Nouvelle décision → ADR-014, jamais d'édit rétroactif sauf "Superseded by ADR-N"._
+## ADR-014 — Avatar priorité 3-niveau (meta_live > cloudinary < 24h > fallback_initial)
+
+**Date** : 2026-04-21
+**Status** : Accepted
+
+### Context
+Brief B9 : photo profil Yumi sync avec photo profil compte Instagram. Besoin d'une source d'avatar fiable + fallback si Meta API down.
+
+### Decision
+Helper `src/shared/lib/avatar-source.ts` avec priorité :
+1. **Meta Graph live** (si `META_PAGE_ACCESS_TOKEN` + `INSTAGRAM_BUSINESS_ACCOUNT_ID` dispo) — TTL 1h cache in-memory
+2. **Cloudinary mirror** (lecture `agence_media_config.avatar_ig_url`, sync par cron sync-instagram daily)
+3. **Fallback initial** lettre majuscule du pseudo
+
+### Consequences
+- ✅ Toujours une image (jamais throw)
+- ✅ Résout P0-12 (sync IG jamais) visible via badge temps
+- ✅ Résilience si Meta API ratée
+- ⚠️ TTL 1h in-memory : redis ou edge cache future possible
+
+---
+
+## ADR-015 — Templates contrats stockés localement uniquement
+
+**Date** : 2026-04-21
+**Status** : Accepted
+
+### Context
+Brief B6 : générer contrats types selon Mode/Plan/Palier/Statut. Risque de fuite de templates juridiques si exposés externes.
+
+### Decision
+Templates stockés dans `src/shared/templates/contract-templates/index.ts` (TypeScript, compilé avec le code). Placeholders `{{PSEUDO}}`, `{{MODE}}`, `{{PALIER}}`, etc. Remplis côté serveur uniquement. Jamais exposé via API publique. Confidentialité P0 respectée.
+
+### Consequences
+- ✅ Zéro exposition externe des templates juridiques
+- ✅ Versioning via git (historique templates)
+- ⚠️ Modification nécessite redeploy (pas d'édit runtime depuis admin UI)
+- ℹ️ Pour futurs templates dynamiques : envisager Supabase row + chiffrement pgsodium
+
+---
+
+## ADR-016 — Portail modèle token-gated sans auth JWT
+
+**Date** : 2026-04-21
+**Status** : Accepted
+
+### Context
+Brief B6 : Release Form Fanvue **pré-remplissable par la modèle**. Si on force auth JWT, la modèle doit avoir un compte Heaven. Alternative : token unique à usage unique.
+
+### Decision
+Route `/portal/release-form/[token]` **sans auth** mais token-gated via table `agence_portal_tokens` (migration 048). Token :
+- 32-byte hex (UNIQUE)
+- Expire 7 jours
+- Usage unique (`consume_portal_token` atomique via SECURITY DEFINER)
+- Purpose enum (`release_form`, `contract`, `onboarding`)
+
+Middleware : whitelist `/api/portal` dans `SELF_AUTHED_PREFIXES`. Rate limit in-memory (1 submit/10s, 10 uploads/60s par token).
+
+### Consequences
+- ✅ Modèle n'a pas besoin de compte Heaven pour pré-remplir
+- ✅ Sécurité : token 2^256 espace + expiration + usage unique
+- ✅ Audit trail via `agence_consent_log`
+- ⚠️ Rate limit in-memory ne survit pas restart Vercel → à upgrade Redis si scale
+- ⚠️ Token dans URL = visible logs serveurs → TLS obligatoire (déjà via HTTPS Vercel)
+
+---
+
+## ADR-017 — clients-panel.tsx décomposition reportée
+
+**Date** : 2026-04-21
+**Status** : Accepted
+
+### Context
+Phase 2.B devait décomposer `clients-panel.tsx` (1351L). Agent 2.B a identifié que le composant est self-contained (propres `useState`/`useEffect`, zéro prop drilling depuis `page.tsx`), avec dépendances circulaires de state (`selected`/`expandedClient`/`chatClient`/`mergeModal`).
+
+### Decision
+Décomposition reportée. Le composant reste à 1351L mais fonctionne correctement. Une décomposition partielle aurait créé plus de boilerplate (context providers, prop drilling) que de clarté.
+
+### Consequences
+- ✅ Aucune régression
+- ✅ Le composant est déjà "modulaire" conceptuellement (internal state cohérent)
+- ⚠️ Reste monolithique en taille, peut être attaqué dans sprint dédié
+- ℹ️ Note : le `contacts-drawer.tsx` (Phase 4.B, 823L) fait partiellement l'office de ce que clients-panel aurait pu devenir
+
+---
+
+_ADRs append-only. Nouvelle décision → ADR-018, jamais d'édit rétroactif sauf "Superseded by ADR-N"._
