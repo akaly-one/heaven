@@ -74,15 +74,23 @@ export async function GET(req: NextRequest) {
       }, { headers: cors });
     }
 
-    // Legacy mode: return all (backward compat)
+    // Cloisonnement strict (règle NB 2026-04-21) : `?model=` OBLIGATOIRE en mode
+    // non-paginé. Retourner toutes les posts de tous les modèles = fuite inter-CP.
+    if (!modelParam) {
+      return NextResponse.json(
+        { error: "model parameter required (legacy mode disabled for cross-CP isolation)", posts: [] },
+        { status: 400, headers: cors },
+      );
+    }
+
     let q = supabase
       .from("agence_posts")
       .select("*")
+      .eq("model", modelParam)
       .order("pinned", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(50);
 
-    if (modelParam) q = q.eq("model", modelParam);
     if (type) q = q.eq("post_type", type);
     if (isStoryQuery) q = q.gte("created_at", storyCutoffIso);
 

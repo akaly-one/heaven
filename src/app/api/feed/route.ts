@@ -45,8 +45,17 @@ type PackVisibilityRow = {
 
 export async function GET(req: NextRequest) {
   const cors = getCorsHeaders(req);
-  const rawModel = req.nextUrl.searchParams.get("model") || "yumi";
+  // Cloisonnement strict (règle NB 2026-04-21) : `?model=` obligatoire (slug ou
+  // model_id). Fallback "yumi" retiré — masquait les bugs de scope inter-CP.
+  const rawModel = req.nextUrl.searchParams.get("model");
   const fanId = req.nextUrl.searchParams.get("fan_id") || null;
+
+  if (!rawModel) {
+    return NextResponse.json(
+      { error: "model parameter required (slug or model_id)", items: [] },
+      { status: 400, headers: cors },
+    );
+  }
 
   if (!isValidModelSlug(rawModel)) {
     return NextResponse.json({ error: "invalid model" }, { status: 400, headers: cors });

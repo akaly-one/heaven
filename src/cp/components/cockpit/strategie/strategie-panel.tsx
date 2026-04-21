@@ -60,8 +60,11 @@ function modeToPlan(mode: ModeOp): PlanTab {
 }
 
 function useStrategiePermissions() {
-  const { auth, isRoot } = useModel();
-  const slug = auth?.model_slug;
+  const { auth, isRoot, currentModel } = useModel();
+  // Cloisonnement CP (règle NB 2026-04-21) : slug actif = currentModel (override
+  // via RootCpSelector) sinon model_slug du JWT session. Jamais de fallback yumi
+  // hardcodé qui masquerait un état incohérent.
+  const slug = currentModel || auth?.model_slug || null;
   const isAdmin = isRoot || slug === "yumi";
   const [mode, setMode] = useState<ModeOp>(null);
 

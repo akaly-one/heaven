@@ -89,8 +89,11 @@ interface LiveData {
 }
 
 export function MilestonesTracker({ modelId, milestone }: Props) {
-  const { currentModel, authHeaders, models } = useModel();
-  const slug = modelId || currentModel || "yumi";
+  const { currentModel, auth, authHeaders, models } = useModel();
+  // Cloisonnement CP : prop explicite > currentModel (root selector) > session.
+  // Pas de fallback yumi hardcodé — si aucun slug résolvable, on affiche un
+  // état "no model".
+  const slug = modelId || currentModel || auth?.model_slug || null;
   const target = MILESTONE_TARGETS[milestone];
 
   const [data, setData] = useState<LiveData>({
@@ -103,6 +106,11 @@ export function MilestonesTracker({ modelId, milestone }: Props) {
 
   useEffect(() => {
     let cancel = false;
+    if (!slug) {
+      // Pas de modèle actif → afficher état vide (pas de fetch fallback sur yumi)
+      setData({ subscribers: 0, revenueCumulative: 0, monthlyRevenue: 0, activeModelsB: 0, loading: false });
+      return;
+    }
     const headers = authHeaders();
     const mid = toModelId(slug);
     const safe = (url: string) =>

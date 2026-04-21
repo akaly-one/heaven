@@ -172,7 +172,7 @@ export default function MessagingPage() {
 }
 
 function MessagingPageInner() {
-  const { auth } = useModel();
+  const { auth, currentModel } = useModel();
   const searchParams = useSearchParams();
 
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
@@ -299,8 +299,11 @@ function MessagingPageInner() {
   }, [currentFanId]);
 
   // Fetch own model avatar
+  // Cloisonnement strict : currentModel (root selector) OU model_slug session.
+  // Pas de fallback "yumi" hardcodé : si aucun slug, on skip l'appel.
   useEffect(() => {
-    const slug = (auth?.model_slug || "yumi").toLowerCase();
+    const slug = (currentModel || auth?.model_slug || "").toLowerCase();
+    if (!slug) { setModelSelf(null); return; }
     fetch(`/api/models/photo?login=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
       .then((d) => {
@@ -313,7 +316,7 @@ function MessagingPageInner() {
         }
       })
       .catch(() => {});
-  }, [auth?.display_name, auth?.model_slug]);
+  }, [auth?.display_name, auth?.model_slug, currentModel]);
 
   // Search filter
   const filteredConversations = useMemo(() => {
