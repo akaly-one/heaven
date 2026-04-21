@@ -5,21 +5,11 @@ import { getCorsHeaders } from "@/lib/auth";
 // Server-only: do not expose upstream URL in client bundles.
 const SQWENSY_API = process.env.OS_BEACON_URL || process.env.SQWENSY_URL || "";
 
-// Fallback login aliases — kept in sync with agence_model_profiles.login_aliases in DB.
-// Used ONLY when SQWENSY verify-code response doesn't include login_aliases
-// (e.g. before SQWENSY prod is redeployed with the DB-backed route).
-// After redeploy, the DB becomes sole source of truth.
-const MODEL_LOGIN_ALIASES: Record<string, string[]> = {
-  yumi: ["yumi", "yumiiiclub"],
-  ruby: ["ruby", "rubyyyclub"],
-  paloma: ["paloma", "palomaaclub"],
-};
-
 export async function POST(req: NextRequest) {
   const cors = getCorsHeaders(req);
 
   try {
-    const { login, code } = await req.json();
+    const { code } = await req.json();
 
     if (!code || typeof code !== "string") {
       return NextResponse.json(
@@ -28,61 +18,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!login || typeof login !== "string") {
-      return NextResponse.json(
-        { error: "Identifiant requis" },
-        { status: 400, headers: cors }
-      );
-    }
-
-    const normalizedLogin = login.trim().replace(/^@/, "").toLowerCase();
-
-    // Verify code + login via SQWENSY OS (SSOT — reads agence_model_profiles.login_aliases)
+    // Verify code via SQWENSY OS (source of truth)
     const res = await fetch(`${SQWENSY_API}/api/agence/verify-code`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: code.trim(), login: normalizedLogin }),
+      body: JSON.stringify({ code: code.trim() }),
     });
 
     const data = await res.json();
 
     if (!data.valid) {
       return NextResponse.json(
-        { valid: false, error: "Identifiants invalides" },
-        { status: 401, headers: cors }
-      );
-    }
-
-    // Prefer DB aliases from response (SSOT). Fallback to hardcoded map for retro-compat
-    // (in case SQWENSY prod hasn't been redeployed yet with the enriched route).
-    const responseAliases: string[] = Array.isArray(data.login_aliases)
-      ? data.login_aliases.map((a: string) => a.toLowerCase())
-      : [];
-
-    if (data.role === "root") {
-      const rootAliases = responseAliases.length > 0
-        ? responseAliases
-        : ["admin", "nb", "root"];
-      if (!rootAliases.includes(normalizedLogin)) {
-        return NextResponse.json(
-          { valid: false, error: "Identifiants invalides" },
-          { status: 401, headers: cors }
-        );
-      }
-    } else if (data.role === "model") {
-      const expectedSlug = (data.model_slug || "").toLowerCase();
-      const aliases = responseAliases.length > 0
-        ? responseAliases
-        : MODEL_LOGIN_ALIASES[expectedSlug] ?? [expectedSlug];
-      if (!expectedSlug || !aliases.includes(normalizedLogin)) {
-        return NextResponse.json(
-          { valid: false, error: "Identifiants invalides" },
-          { status: 401, headers: cors }
-        );
-      }
-    } else {
-      return NextResponse.json(
-        { valid: false, error: "Identifiants invalides" },
+        { valid: false, error: "Code invalide" },
         { status: 401, headers: cors }
       );
     }
