@@ -295,4 +295,30 @@ Pas de nouvelle colonne SQL ajoutée. Idempotence via check `source_payload.ig.i
 
 ---
 
-_ADRs append-only. Nouvelle décision → ADR-013, jamais d'édit rétroactif sauf "Superseded by ADR-N"._
+## ADR-013 — Adoption défauts D-1 / D-2 / D-3 en mode autonome (navigation)
+
+**Date** : 2026-04-21
+**Status** : Accepted (revisable)
+
+### Context
+NB a passé en mode autonome (`<<autonomous-loop-dynamic>>`) et demandé « merge et continue ». Phase 2 du plan multi-agent nécessite les décisions D-1/D-2/D-3 pour démarrer. Ces décisions étaient en attente de validation explicite NB depuis la création du plan.
+
+### Decision
+Adoption des défauts recommandés du plan (`plans/operations/ROADMAP-multiagent-execution-v1.2026-04-21.md` §Phase 0) :
+- **D-1 : Option 1 — Sidebar 1:1 avec pages** (URLs dédiées par section, middleware redirect `/agence?tab=X` → `/agence/X` pour backcompat)
+- **D-2 : Garder `/agence`** (pas de renaming racine URL — évite casser bookmarks externes + Vercel config)
+- **D-3 : Sidebar expanded default + toggle persistant** (localStorage, meilleure discoverability)
+
+### Consequences
+- ✅ Phase 2 peut démarrer sans attendre validation manuelle
+- ✅ Choix conformes aux recommandations documentées
+- ✅ Backcompat préservée via middleware redirect
+- ⚠️ NB peut superseder cette ADR plus tard s'il veut l'Option 2 ou autre
+- ⚠️ Toggle localStorage nécessite hydration SSR correcte (à vérifier par Agent 2.A)
+
+### Scope
+S'applique uniquement aux décisions de navigation. D-4/D-5/D-6/D-7/D-8 restent en attente NB (impliquent actions externes : Business Verif, clé IA, infra cron, modèle Mode B, platform caming).
+
+---
+
+_ADRs append-only. Nouvelle décision → ADR-014, jamais d'édit rétroactif sauf "Superseded by ADR-N"._

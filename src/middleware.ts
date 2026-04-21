@@ -91,6 +91,31 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // ── Backcompat sidebar D-1 (ADR-013) : /agence?tab=X → /agence/X ──
+  // Bookmarks et liens profonds existants (`?tab=clients|contenu|strategie`)
+  // sont redirigés vers les nouvelles routes dédiées. `clients` va vers
+  // messagerie?view=contacts (B7). `contenu` et `strategie` vont vers leurs
+  // pages dédiées (shells redirigeant vers le monolithe en attendant Phase 2.B).
+  if (pathname === "/agence") {
+    const tab = req.nextUrl.searchParams.get("tab");
+    if (tab && ["clients", "contenu", "strategie"].includes(tab)) {
+      // Garde-fou : si on vient déjà d'un shell `_from=route`, on NE redirige PAS
+      // (évite boucle infinie shell → middleware → shell).
+      const fromRoute = req.nextUrl.searchParams.get("_from") === "route";
+      if (!fromRoute) {
+        const url = req.nextUrl.clone();
+        if (tab === "clients") {
+          url.pathname = "/agence/messagerie";
+          url.searchParams.set("view", "contacts");
+        } else {
+          url.pathname = `/agence/${tab}`;
+        }
+        url.searchParams.delete("tab");
+        return NextResponse.redirect(url);
+      }
+    }
+  }
+
   // Only intercept /api/* routes beyond this point
   if (!pathname.startsWith("/api")) {
     return NextResponse.next();
@@ -123,5 +148,7 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/api/:path*"],
+  // `/agence` ajouté pour intercepter les liens legacy `?tab=X` (ADR-013 backcompat).
+  // Les sous-routes `/agence/...` ne sont PAS matchées — seule l'URL exacte `/agence`.
+  matcher: ["/", "/agence", "/api/:path*"],
 };

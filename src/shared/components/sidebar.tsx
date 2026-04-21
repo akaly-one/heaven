@@ -1,48 +1,46 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, ChevronLeft, ChevronRight,
-  Crown, Settings, Target, LogOut, DollarSign,
-  Zap, Network, Images, MessageCircle, Instagram, Activity,
+  Crown, Settings, LogOut,
+  MessageCircle, Instagram, Images, Target, Activity,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { HeavenAuth } from "./auth-guard";
 import { ThemeToggle } from "./theme-toggle";
 
-// ── Navigation — 5 model pages + root tools ──
-// B7 : « Contacts » retiré — la Messagerie absorbe le CRM fans.
+// ── Navigation — D-1 Option 1 (sidebar 1:1 pages) ──
+// B1 : Architecture retiré du top-level (déplacé dans Settings/Dev Center — Agent 2.C)
+// B7 : « Contacts » retiré — Messagerie absorbe le CRM fans.
+// B9 : Dashboard = index CP (/agence), couronne = raccourci cliquable.
+// Pages dédiées /agence/contenu et /agence/strategie (Phase 2.B les remplira).
 const NAV_MAIN = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/agence", color: "#E63329" },
   { id: "messagerie", label: "Messagerie", icon: MessageCircle, href: "/agence/messagerie", color: "#8B5CF6" },
   { id: "instagram", label: "Instagram", icon: Instagram, href: "/agence/instagram", color: "#E1306C" },
-  { id: "contenu", label: "Contenu", icon: Images, href: "/agence?tab=contenu", color: "#D4AF37" },
-  { id: "strategie", label: "Stratégie", icon: Target, href: "/agence?tab=strategie", color: "#10B981" },
+  { id: "contenu", label: "Contenu", icon: Images, href: "/agence/contenu", color: "#D4AF37" },
+  { id: "strategie", label: "Stratégie", icon: Target, href: "/agence/strategie", color: "#10B981" },
 ] as const;
 
+// Root-only bloc : Ops + Settings (finances/automation/architecture gérés ailleurs).
+// Architecture déplacé dans Settings → Dev Center (Agent 2.C).
 const NAV_ROOT = [
-  { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances", color: "#22C55E", rootOnly: true },
   { id: "ops", label: "Ops", icon: Activity, href: "/agence/ops", color: "#06B6D4", rootOnly: true },
-  { id: "automation", label: "Automation", icon: Zap, href: "/agence/automation", color: "#EAB308", rootOnly: true },
-  { id: "architecture", label: "Architecture", icon: Network, href: "/agence/architecture", color: "#64748B", rootOnly: true },
   { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings", color: "#94A3B8", rootOnly: true },
 ] as const;
 
-// Mobile bottom nav — all pages in horizontal scroll
-// B7 : « Contacts » retiré — Messagerie seule pour fans + inbox.
+// Mobile bottom nav — alignée avec desktop (5 pages + root tools).
 const MOBILE_NAV_MAIN = [
   { id: "dashboard", label: "Home", icon: LayoutDashboard, href: "/agence" },
   { id: "messagerie", label: "Messages", icon: MessageCircle, href: "/agence/messagerie" },
   { id: "instagram", label: "Insta", icon: Instagram, href: "/agence/instagram" },
-  { id: "contenu", label: "Contenu", icon: Images, href: "/agence?tab=contenu" },
-  { id: "strategie", label: "Stratégie", icon: Target, href: "/agence?tab=strategie" },
+  { id: "contenu", label: "Contenu", icon: Images, href: "/agence/contenu" },
+  { id: "strategie", label: "Stratégie", icon: Target, href: "/agence/strategie" },
 ] as const;
 
 const MOBILE_NAV_ROOT = [
-  { id: "finances", label: "Finances", icon: DollarSign, href: "/agence/finances" },
-  { id: "automation", label: "Auto", icon: Zap, href: "/agence/automation" },
-  { id: "architecture", label: "Archi", icon: Network, href: "/agence/architecture" },
+  { id: "ops", label: "Ops", icon: Activity, href: "/agence/ops" },
   { id: "settings", label: "Settings", icon: Settings, href: "/agence/settings" },
 ] as const;
 
@@ -57,13 +55,47 @@ function useAuth(): HeavenAuth | null {
   return auth;
 }
 
+// ── D-3 : expanded default + toggle persistant via localStorage ──
+// Key : heaven_sidebar_expanded (true/false). SSR safe via useEffect hydration.
+const SIDEBAR_LS_KEY = "heaven_sidebar_expanded";
+const DEFAULT_EXPANDED = true;
+
+function usePersistentExpanded(): [boolean, (next: boolean) => void] {
+  // Start collapsed = false (= expanded), puis corrige après hydration si LS diffère.
+  // NOTE : on initialise à DEFAULT_EXPANDED pour éviter flash ; un mismatch SSR/CSR
+  // peut apparaître si LS contient "false" mais React 18 tolère ce type de mismatch
+  // sur un attribut visuel non critique. Pour éviter warning : on hydrate dans useEffect.
+  const [expanded, setExpandedState] = useState<boolean>(DEFAULT_EXPANDED);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(SIDEBAR_LS_KEY);
+      if (raw === "true" || raw === "false") {
+        setExpandedState(raw === "true");
+      }
+    } catch {}
+    setHydrated(true);
+  }, []);
+
+  const setExpanded = useCallback((next: boolean) => {
+    setExpandedState(next);
+    try {
+      window.localStorage.setItem(SIDEBAR_LS_KEY, String(next));
+    } catch {}
+  }, []);
+
+  // Avant hydration on garde DEFAULT_EXPANDED (évite flash).
+  return [hydrated ? expanded : DEFAULT_EXPANDED, setExpanded];
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const auth = useAuth();
   const isRoot = auth?.role === "root";
-  const isAdmin = (auth?.scope || ["*"]).includes("*");
-  const [collapsed, setCollapsed] = useState(true);
+  const [expanded, setExpanded] = usePersistentExpanded();
+  const collapsed = !expanded;
 
   const handleLogout = () => {
     // Clear ALL heaven_* keys from both storages
@@ -81,19 +113,20 @@ export function Sidebar() {
   const visibleRoot = isRoot ? NAV_ROOT : [];
 
   const renderNavItem = (item: { id: string; label: string; icon: any; href: string; color: string }) => {
-    const hasTabParam = item.href.includes("tab=");
-    const isActive = !hasTabParam && (pathname === item.href || (item.href !== "/agence" && pathname.startsWith(item.href)));
-    const isDashActive = item.href === "/agence" && pathname === "/agence" && !hasTabParam;
-    const active = isActive || isDashActive;
+    // Active = pathname strict ou prefix (sauf /agence qui doit être exact pour ne pas s'activer partout)
+    const isDashboard = item.href === "/agence";
+    const isActive = isDashboard
+      ? pathname === "/agence"
+      : pathname === item.href || pathname.startsWith(item.href + "/");
     return (
       <a key={item.id} href={item.href}
         className="flex items-center gap-3 px-2.5 py-2.5 rounded-lg transition-all no-underline"
         style={{
-          background: active ? "rgba(230,51,41,0.10)" : "transparent",
-          color: active ? "var(--accent)" : "var(--text-muted)",
+          background: isActive ? "rgba(230,51,41,0.10)" : "transparent",
+          color: isActive ? "var(--accent)" : "var(--text-muted)",
         }}
-        onMouseEnter={e => { if (!active) (e.currentTarget.style.background = "rgba(0,0,0,0.05)"); }}
-        onMouseLeave={e => { if (!active) (e.currentTarget.style.background = "transparent"); }}>
+        onMouseEnter={e => { if (!isActive) (e.currentTarget.style.background = "rgba(0,0,0,0.05)"); }}
+        onMouseLeave={e => { if (!isActive) (e.currentTarget.style.background = "transparent"); }}>
         <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
         {!collapsed && <span className="text-[13px] font-medium">{item.label}</span>}
       </a>
@@ -111,9 +144,14 @@ export function Sidebar() {
           boxShadow: collapsed ? "none" : "4px 0 24px rgba(0,0,0,0.06)",
         }}>
 
-        {/* Logo */}
-        <div className="flex items-center justify-center mb-5">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#E63329" }}>
+        {/* Logo — B9 : couronne cliquable → raccourci /agence */}
+        <a
+          href="/agence"
+          aria-label="Accueil dashboard"
+          className="flex items-center justify-center mb-5 no-underline"
+          style={{ cursor: "pointer" }}
+        >
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform hover:scale-105" style={{ background: "#E63329" }}>
             <Crown className="w-4 h-4" style={{ color: "#fff" }} />
           </div>
           {!collapsed && (
@@ -121,7 +159,7 @@ export function Sidebar() {
               HEAVEN
             </span>
           )}
-        </div>
+        </a>
 
         {/* Model badge */}
         {!collapsed && auth && (
@@ -133,13 +171,13 @@ export function Sidebar() {
           </div>
         )}
 
-        {/* Nav — Main (model pages) */}
+        {/* Nav — Main (5 pages CP) */}
         <nav className="flex-1 flex flex-col px-2 overflow-y-auto">
           <div className="flex flex-col gap-0.5">
             {NAV_MAIN.map(renderNavItem)}
           </div>
 
-          {/* Nav — Root tools */}
+          {/* Nav — Root tools (Ops + Settings) */}
           {visibleRoot.length > 0 && (
             <div className="flex flex-col gap-0.5 mt-4">
               {!collapsed && (
@@ -168,7 +206,11 @@ export function Sidebar() {
           <ThemeToggle size="sm" />
         </div>
 
-        <button onClick={() => setCollapsed(!collapsed)}
+        {/* Toggle expanded/collapsed — persisté via localStorage */}
+        <button
+          onClick={() => setExpanded(!expanded)}
+          aria-label={collapsed ? "Déplier sidebar" : "Replier sidebar"}
+          aria-pressed={!collapsed}
           className="mx-auto w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
           style={{ color: "var(--text-muted)", background: "rgba(0,0,0,0.04)" }}
           onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,0,0,0.08)")}
@@ -177,24 +219,24 @@ export function Sidebar() {
         </button>
       </aside>
 
-      {/* Desktop overlay when expanded */}
+      {/* Desktop overlay when expanded : click-out referme UNIQUEMENT sans persister.
+          On ne touche pas au LS ici pour respecter l'intention « toggle persistant » = toggle manuel bouton.
+          Comportement : click-out ferme temporairement ; prochaine session garde la préférence LS. */}
       {!collapsed && (
         <div className="fixed inset-0 z-30 hidden md:block"
-          onClick={() => setCollapsed(true)}
+          onClick={() => setExpanded(false)}
           style={{ background: "rgba(0,0,0,0.04)" }} />
       )}
 
-      {/* Mobile bottom nav — centered, spread across full width */}
+      {/* Mobile bottom nav — 5 pages + root tools si root */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden safe-area-bottom"
         style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
         <div className="flex items-center justify-evenly py-2">
           {MOBILE_NAV_MAIN.map((item) => {
-            const hasTab = item.href.includes("tab=");
-            const active = hasTab
-              ? false // tab params handle active via dashboard state
-              : item.href === "/agence"
-                ? pathname === "/agence"
-                : pathname.startsWith(item.href);
+            const isDashboard = item.href === "/agence";
+            const active = isDashboard
+              ? pathname === "/agence"
+              : pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <a key={item.id} href={item.href}
                 className="flex flex-col items-center gap-0.5 py-1 rounded-lg no-underline transition-colors"
@@ -208,9 +250,9 @@ export function Sidebar() {
               </a>
             );
           })}
-          {/* Root pages inline (no separator) */}
-          {isRoot && MOBILE_NAV_ROOT.slice(0, 2).map((item) => {
-            const active = pathname.startsWith(item.href);
+          {/* Root tools inline */}
+          {isRoot && MOBILE_NAV_ROOT.map((item) => {
+            const active = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <a key={item.id} href={item.href}
                 className="flex flex-col items-center gap-0.5 py-1 rounded-lg no-underline transition-colors"
