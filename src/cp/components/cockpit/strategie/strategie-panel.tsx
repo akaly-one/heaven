@@ -44,34 +44,62 @@ const ALL_TABS: TabDef[] = [
 /* ─────────────────────────────────────────
    Permissions helpers
    ─────────────────────────────────────────
-   - isAdmin = isRoot OR model_slug === "yumi" (YUMI = admin agence fusionné)
-   - hasViewRevenueSelf = always true si connecté (revenue self visible)
-   - modèles Plan B (paloma, ruby) → uniquement Plan B
+   Règle NB (2026-04-21) : chaque modèle choisit une stratégie (mode_operation
+   A/B/C en DB) et ne voit que celle-là. Yumi = agence IA → voit toutes les
+   stratégies.
+   - isAdmin = isRoot OR model_slug === "yumi" → voit les 3 plans
+   - modèle non-admin → voit uniquement son plan selon mode_operation DB
+   Fallback (mode non chargé) : plan selon slug connu, sinon plan-a par défaut.
  */
+type ModeOp = "A" | "B" | "C" | null;
+
+function modeToPlan(mode: ModeOp): PlanTab {
+  if (mode === "B") return "plan-b";
+  if (mode === "C") return "plan-c";
+  return "plan-a";
+}
+
 function useStrategiePermissions() {
   const { auth, isRoot } = useModel();
   const slug = auth?.model_slug;
   const isAdmin = isRoot || slug === "yumi";
-  const isPlanBModel = slug === "paloma" || slug === "ruby";
-  const hasViewRevenueSelf = !!auth; // connecté = peut voir son propre revenu
-  return { isAdmin, isPlanBModel, hasViewRevenueSelf };
+  const [mode, setMode] = useState<ModeOp>(null);
+
+  // Fetch mode_operation du modèle courant (non-admin)
+  useEffect(() => {
+    if (!slug || isAdmin) { setMode(null); return; }
+    let aborted = false;
+    fetch(`/api/agence/models/${encodeURIComponent(slug)}`, {
+      headers: { "Content-Type": "application/json" },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (aborted || !d) return;
+        const m = (d.model?.mode_operation ?? d.mode_operation) as ModeOp;
+        if (m === "A" || m === "B" || m === "C") setMode(m);
+      })
+      .catch(() => {});
+    return () => { aborted = true; };
+  }, [slug, isAdmin]);
+
+  const hasViewRevenueSelf = !!auth;
+  return { isAdmin, mode, hasViewRevenueSelf };
 }
 
 export function StrategiePanel() {
   const { auth } = useModel();
-  const { isAdmin, isPlanBModel } = useStrategiePermissions();
+  const { isAdmin, mode } = useStrategiePermissions();
 
   const tabs = useMemo<TabDef[]>(() => {
     if (isAdmin) return ALL_TABS;
-    if (isPlanBModel) return ALL_TABS.filter((t) => t.id === "plan-b");
-    // autres cas : fallback sur Plan A seul
-    return ALL_TABS.filter((t) => t.id === "plan-a");
-  }, [isAdmin, isPlanBModel]);
+    const ownPlan = modeToPlan(mode);
+    return ALL_TABS.filter((t) => t.id === ownPlan);
+  }, [isAdmin, mode]);
 
   const defaultTab: PlanTab = useMemo(() => {
-    if (isPlanBModel) return "plan-b";
+    if (!isAdmin) return modeToPlan(mode);
     return "plan-a";
-  }, [isPlanBModel]);
+  }, [isAdmin, mode]);
 
   const [tab, setTab] = useState<PlanTab>(defaultTab);
 

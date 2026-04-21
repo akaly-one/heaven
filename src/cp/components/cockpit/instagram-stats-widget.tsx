@@ -85,7 +85,10 @@ export function InstagramStatsWidget() {
     return () => clearInterval(t);
   }, []);
 
-  const username = profile?.username || "yumiiiclub";
+  // Username = celui retourné par l'API profile-stats (scope model_id).
+  // Jamais de fallback hardcodé yumiiiclub — si pas d'IG configurée pour ce modèle,
+  // on affiche "—" (cf. Paloma/Ruby qui n'ont pas encore d'instagram_config).
+  const username = profile?.username || null;
   const followers = profile?.followers_count;
   const following = profile?.follows_count;
   const posts = profile?.media_count;
@@ -107,7 +110,7 @@ export function InstagramStatsWidget() {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={profile.profile_picture_url}
-              alt={username}
+              alt={username || "Instagram profile"}
               className="w-11 h-11 md:w-12 md:h-12 rounded-full object-cover flex-shrink-0"
               style={{
                 border: "2px solid transparent",
@@ -137,7 +140,7 @@ export function InstagramStatsWidget() {
                 className="text-sm md:text-[15px] font-bold leading-tight truncate"
                 style={{ color: "var(--text)" }}
               >
-                @{username}
+                {username ? `@${username}` : "Instagram non configuré"}
               </h3>
             </div>
             <div

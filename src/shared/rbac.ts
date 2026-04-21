@@ -6,8 +6,19 @@
 // permissions (cf. SECURITY-v1.2026-04-21.md). isAdmin() retourne true
 // pour `'root'` ET `'admin'` afin que les helpers fonctionnent quel que
 // soit le claim emis.
+//
+// Extension (Agent 10.B Phase 10 — B5 4 modes d'accès):
+// Helpers `getMode`/`isDevMode`/`isAgenceMode`/`isModelMode` branchés sur
+// `lib/access-mode.ts` (source de vérité unique de la résolution du mode).
 import { can, type Permission } from "./config/permissions";
 import type { RoleSlug } from "./config/roles";
+import {
+  getAccessMode,
+  type AccessMode,
+  canAccessCP,
+  canAccessDevCenter,
+  canAccessAgenceAggregates,
+} from "./lib/access-mode";
 
 export type HeavenSession = {
   sub: string; // model_slug or "root"
@@ -70,3 +81,50 @@ export function hasScope(
   if (granted.includes("*")) return true;
   return granted.includes(scope);
 }
+
+// ══════════════════════════════════════════════
+//  4 modes d'accès (Phase 10 Agent 10.B — B5)
+//  Wrapper autour de lib/access-mode.ts pour consistance API RBAC.
+// ══════════════════════════════════════════════
+
+/**
+ * Retourne le mode d'accès (`dev`|`agence`|`model`|`public`) de la session.
+ * Wrapper compact sur getAccessMode() importé de lib/access-mode.
+ */
+export function getMode(session: HeavenSession | null | undefined): AccessMode {
+  return getAccessMode(session);
+}
+
+/** True si la session est en mode Dev Root (compte root sans model_id). */
+export function isDevMode(session: HeavenSession | null | undefined): boolean {
+  return getMode(session) === "dev";
+}
+
+/** True si la session est en mode Agence (yumi admin fusion, model_id='m1'). */
+export function isAgenceMode(session: HeavenSession | null | undefined): boolean {
+  return getMode(session) === "agence";
+}
+
+/** True si la session est en mode Modèle (paloma/ruby — scope own profile). */
+export function isModelMode(session: HeavenSession | null | undefined): boolean {
+  return getMode(session) === "model";
+}
+
+/** True si le mode courant peut accéder au cockpit `/agence/*`. */
+export function canAccessMode(
+  session: HeavenSession | null | undefined,
+  target: AccessMode
+): boolean {
+  const mode = getMode(session);
+  // Exact match
+  if (mode === target) return true;
+  // Dev a accès à tous les modes admin-like
+  if (mode === "dev") return true;
+  // Agence peut accéder aux vues model (gestion) mais pas dev center
+  if (mode === "agence" && target === "model") return true;
+  return false;
+}
+
+// Re-exports helpers de mode pour consistance (tous via rbac.ts)
+export { canAccessCP, canAccessDevCenter, canAccessAgenceAggregates };
+export type { AccessMode };

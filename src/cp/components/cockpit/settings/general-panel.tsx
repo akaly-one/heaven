@@ -164,7 +164,7 @@ export function GeneralPanel({ modelSlug, isRoot, authHeaders }: Props) {
             <input
               value={info.handle ?? ""}
               onChange={(e) => setInfo({ ...info, handle: e.target.value })}
-              placeholder="@yumiiiclub"
+              placeholder="@pseudo_instagram"
               className="w-full mt-1 px-3 py-2 rounded-lg text-xs outline-none"
               style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }}
             />

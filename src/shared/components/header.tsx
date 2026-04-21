@@ -11,6 +11,7 @@ import { TIER_CONFIG } from "@/constants/tiers";
 import { MessagesDropdown } from "@/components/header/messages-dropdown";
 import { ClientsDropdown } from "@/components/header/clients-dropdown";
 import { SocialsDropdown } from "@/components/header/socials-dropdown";
+import { RootCpSelector } from "@/components/cockpit/root-cp-selector";
 
 // ── Page titles ──
 const PAGE_TITLES: Record<string, string> = {
@@ -355,6 +356,12 @@ export function Header() {
           <span className="text-[10px]" style={{ color: "var(--text-muted)", opacity: 0.4 }}>/</span>
           <span className="text-xs font-medium truncate capitalize" style={{ color: "var(--text-muted)" }}>{pageTitle}</span>
         </>}
+      </div>
+
+      {/* Root CP selector — visible uniquement pour compte root (NB dev SQWENSY)
+          permet de switcher entre m1/m2/m3 pour debug / impersonation */}
+      <div className="shrink-0">
+        <RootCpSelector />
       </div>
 
       {/* Theme toggle — mobile */}

@@ -92,7 +92,9 @@ export function InstagramDashboard() {
     { id: "config", label: "Config", icon: Settings },
   ];
 
-  const handle = profileStats?.username || "yumiiiclub";
+  // Handle provient de l'API IG profile-stats scopée par model_slug.
+  // Pas de fallback hardcodé yumiiiclub — si pas d'IG configurée, on affiche "—".
+  const handle: string | null = profileStats?.username || null;
   const followers = profileStats?.followers_count;
   const following = profileStats?.follows_count;
   const mediaCount = profileStats?.media_count;
@@ -116,7 +118,7 @@ export function InstagramDashboard() {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={profileStats.profile_picture_url}
-              alt={handle}
+              alt={handle || "Instagram profile"}
               className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
               style={{
                 border: "2px solid transparent",
@@ -142,7 +144,7 @@ export function InstagramDashboard() {
               className="text-sm font-bold leading-tight truncate"
               style={{ color: "var(--text)" }}
             >
-              Instagram · @{handle}
+              {handle ? `Instagram · @${handle}` : "Instagram non configuré"}
             </h1>
             <div
               className="flex items-center gap-2 flex-wrap mt-0.5 text-[11px]"

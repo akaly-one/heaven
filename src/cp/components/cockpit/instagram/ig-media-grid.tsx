@@ -90,7 +90,7 @@ export function InstagramMediaGrid() {
             {posts.length > 0 ? `${posts.length} derniers posts` : "Derniers posts"}
           </h2>
           <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-            Contenu publié sur @yumiiiclub
+            Contenu publié sur Instagram
           </p>
         </div>
         <button

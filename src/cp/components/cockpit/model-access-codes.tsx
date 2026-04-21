@@ -245,7 +245,7 @@ export function ModelAccessCodes({ authHeaders }: { authHeaders: () => HeadersIn
                             background: "rgba(0,0,0,0.3)",
                             border: "1px solid rgba(201,168,76,0.2)",
                           }}
-                          placeholder="yumi, yumiiiclub"
+                          placeholder={p.handle ? `${p.handle}, alias2, alias3` : "handle, alias, alias"}
                         />
                       </div>
                     </div>

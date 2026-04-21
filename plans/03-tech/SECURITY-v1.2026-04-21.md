@@ -26,7 +26,56 @@ Configurés dans `src/config/roles/`.
 |------|-------|-------|
 | `admin` | Admin Master (root) | Tous profils, paramètres, finances, purge, DMCA, DPO |
 | `model` | Modèle | Son propre profil uniquement (+ accès read-only revenus, tier, PPV, KPIs) |
+| `dev` | Dev Root | Override scope, Dev Center (Architecture map, env vars, migrations log) |
+| `public` | Visiteur | Lecture page profil selon Plan Identité — pas d'accès CP |
 | `dpo` *(futur)* | Data Protection Officer | Accès bucket chiffré DMCA + logs RGPD (pas les finances) |
+
+---
+
+## 4 modes d'accès (Phase 10 Agent 10.B — B5)
+
+La matrice des rôles DB (`root`/`model`) reste la source de vérité JWT, mais
+l'UX distingue 4 **modes d'accès** dérivés de `(role, model_id)` :
+
+| Mode | Qui | Détection | JWT attendu | Badge UI |
+|------|-----|-----------|-------------|----------|
+| **dev** | Dev SQWENSY (root) | `role='root' && !model_id` | `scopes=['*']` | Rouge `#DC2626` |
+| **agence** | Yumi admin (fusion) | `role='root' && model_id='m1'` | `scopes=['*']` ou explicites | Gradient Heaven |
+| **model** | Paloma (m2), Ruby (m3) | `role='model'` | `scopes=['contract:view','caming:operate','view_revenue_self']` | Couleur modèle |
+| **public** | Visiteur | Pas de JWT | — | Pas de badge (anti-leak) |
+
+Implémentation :
+- `src/shared/lib/access-mode.ts` — `getAccessMode(session)` (source de vérité)
+- `src/shared/rbac.ts` — `getMode()`, `isDevMode()`, `isAgenceMode()`, `isModelMode()`, `canAccessMode()`
+- `src/shared/config/permissions.ts` — `MODE_PERMISSIONS` matrice orientée mode + `modeCan()`
+- `src/shared/components/mode-badge.tsx` — `<ModeBadge compact? />` (null en mode public)
+
+Matrice `MODE_PERMISSIONS` :
+
+| Permission | dev | agence | model | public |
+|---|:-:|:-:|:-:|:-:|
+| `*` (override) | ✅ | ❌ | ❌ | ❌ |
+| `manage_entities` | ✅ | ✅ | ❌ | ❌ |
+| `view_all_models` | ✅ | ✅ | ❌ | ❌ |
+| `activate_modules` | ✅ | ✅ | ❌ | ❌ |
+| `manage_finance` | ✅ | ✅ | ❌ | ❌ |
+| `dmca:*` | ✅ | ✅ | ❌ | ❌ |
+| `contract:view` | ✅ | ✅ | ✅ own | ❌ |
+| `caming:operate` | ✅ | ✅ | ✅ own | ❌ |
+| `view_revenue_self` | ✅ | ✅ | ✅ own | ❌ |
+| `post_wall` | ✅ | ✅ | ✅ | ❌ |
+| `send_messages` | ✅ | ✅ | ✅ | ❌ |
+| `manage_packs` | ✅ | ✅ | ✅ own | ❌ |
+| `dev:architecture_map` | ✅ | ❌ | ❌ | ❌ |
+| `dev:env_vars` | ✅ | ❌ | ❌ | ❌ |
+| `dev:migrations_log` | ✅ | ❌ | ❌ | ❌ |
+
+**Règle P0 anti-leak** : `ModeBadge` ne s'affiche JAMAIS en mode `public`
+(aucune indication côté UI à un visiteur qu'un mode admin existe).
+
+**Enforcement** : le scope est vérifié côté serveur via JWT (`hasScope`,
+`authorize`) — `modeCan()` sert de garde-fou UX complémentaire, pas de
+source de vérité sécurité.
 
 ---
 
