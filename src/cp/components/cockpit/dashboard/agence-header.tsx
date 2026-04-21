@@ -70,30 +70,46 @@ export function AgenceHeader(p: AgenceHeaderProps) {
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(p.lastSyncAtOverride ?? null);
   const [, tick] = useState(0);
 
-  const fetchIg = useCallback(async () => {
+  // Cloisonnement CP : passer ?model=<slug> explicite et reset quand le slug
+  // change (via RootCpSelector). Sinon leak data du modèle précédent.
+  const fetchIg = useCallback(async (slug: string | null) => {
+    if (!slug) { setIgProfile(null); setLastSyncAt(null); return; }
     try {
+      const qs = `?model=${encodeURIComponent(slug)}`;
       const [pRes, dRes] = await Promise.all([
-        fetch("/api/instagram/profile-stats", { cache: "no-store" }),
-        fetch("/api/instagram/daily-stats", { cache: "no-store" }),
+        fetch(`/api/instagram/profile-stats${qs}`, { cache: "no-store" }),
+        fetch(`/api/instagram/daily-stats${qs}`, { cache: "no-store" }),
       ]);
+      if (pRes.status === 404) {
+        // IG non configuré pour ce modèle (Paloma, Ruby) → empty state propre
+        setIgProfile(null);
+        setLastSyncAt(null);
+        return;
+      }
       if (pRes.ok) {
         const json = (await pRes.json()) as IgProfileSnapshot;
         setIgProfile(json);
+      } else {
+        setIgProfile(null);
       }
       if (dRes.ok) {
         const json = (await dRes.json()) as { last_sync_at: string | null };
         setLastSyncAt(json.last_sync_at);
+      } else {
+        setLastSyncAt(null);
       }
     } catch {
-      /* silent — header still renders from props */
+      setIgProfile(null);
     }
   }, []);
 
   useEffect(() => {
-    fetchIg();
-    const poll = setInterval(fetchIg, 60_000);
+    // Reset immédiat pour éviter flash du modèle précédent
+    setIgProfile(null);
+    fetchIg(p.modelSlug || null);
+    const poll = setInterval(() => fetchIg(p.modelSlug || null), 60_000);
     return () => clearInterval(poll);
-  }, [fetchIg]);
+  }, [fetchIg, p.modelSlug]);
 
   // If the parent surfaces a sync override (e.g. KpiStrip already fetched it) adopt it.
   useEffect(() => {

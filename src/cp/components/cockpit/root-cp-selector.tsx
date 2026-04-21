@@ -43,7 +43,8 @@ export function RootCpSelector() {
 
   if (!models || models.length === 0) return null;
 
-  const active = models.find(m => m.slug === currentModel) || models[0];
+  // Pas de fallback : active peut être null si root n'a pas encore choisi.
+  const active = currentModel ? models.find(m => m.slug === currentModel) ?? null : null;
 
   return (
     <div ref={ref} className="relative">
@@ -52,23 +53,25 @@ export function RootCpSelector() {
         onClick={() => setOpen(o => !o)}
         className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
         style={{
-          background: "linear-gradient(135deg, rgba(220,38,38,0.12), rgba(232,67,147,0.08))",
-          border: "1px solid rgba(220,38,38,0.35)",
+          background: active
+            ? "linear-gradient(135deg, rgba(220,38,38,0.12), rgba(232,67,147,0.08))"
+            : "rgba(245,158,11,0.1)",
+          border: active ? "1px solid rgba(220,38,38,0.35)" : "1px solid rgba(245,158,11,0.4)",
           color: "var(--text)",
         }}
         aria-label="Sélectionner le CP à afficher (mode root)"
       >
-        <Eye className="w-3.5 h-3.5" style={{ color: "#DC2626" }} />
-        <span className="hidden sm:inline uppercase tracking-wider text-[10px] font-bold" style={{ color: "#DC2626" }}>
+        <Eye className="w-3.5 h-3.5" style={{ color: active ? "#DC2626" : "#F59E0B" }} />
+        <span className="hidden sm:inline uppercase tracking-wider text-[10px] font-bold" style={{ color: active ? "#DC2626" : "#F59E0B" }}>
           Root view
         </span>
-        <span className="font-semibold">{active.display_name}</span>
+        <span className="font-semibold">{active?.display_name || "Aucun CP"}</span>
         <ChevronDown className="w-3.5 h-3.5" />
       </button>
 
       {open && (
         <div
-          className="absolute top-full right-0 mt-1 min-w-[180px] rounded-lg shadow-lg z-50 overflow-hidden"
+          className="absolute top-full right-0 mt-1 min-w-[200px] rounded-lg shadow-lg z-50 overflow-hidden"
           style={{
             background: "var(--bg2)",
             border: "1px solid var(--border2)",
@@ -77,6 +80,21 @@ export function RootCpSelector() {
           <div className="px-3 py-1.5 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border2)" }}>
             Basculer vers le CP de…
           </div>
+          {/* Option "Aucun CP" (skeleton vide — compte root brut) */}
+          <button
+            type="button"
+            onClick={() => { setCurrentModel(null); setOpen(false); }}
+            className="w-full px-3 py-2 flex items-center justify-between text-xs hover:bg-white/5 transition-colors"
+            style={{
+              background: !currentModel ? "rgba(245,158,11,0.08)" : "transparent",
+              color: "var(--text-muted)",
+              borderLeft: !currentModel ? "2px solid #F59E0B" : "2px solid transparent",
+              borderBottom: "1px solid var(--border2)",
+            }}
+          >
+            <span className="font-medium">Aucun CP (root brut)</span>
+            <span className="text-[10px] italic">vide</span>
+          </button>
           {models.map(m => (
             <button
               key={m.slug}

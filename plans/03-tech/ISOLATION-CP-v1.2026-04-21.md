@@ -222,6 +222,36 @@ Rendu profil Paloma scopé m2
 | 2026-04-21 | `/api/instagram/*` fallback `userSlug || "yumi"` → `toModelId("root")="root"` → 404 | → Fallback direct `"yumi"` si role=root (profile-stats, comments, media, config) | — |
 | 2026-04-21 | Dashboard IG continuait à afficher Yumi stats après switch root → paloma (state pas réinitialisé) | → Re-fetch sur change de `activeSlug` + passage `?model=` explicite + reset state | — |
 | 2026-04-21 | Settings tabs Comptes/Dev Center visibles pour Paloma/Ruby | → Scope tabs : `scope="admin"` (Comptes/Dev Center) vs `scope="model"` (Finances/Agent DM) | — |
+| 2026-04-21 | `/api/models` ordonnée `display_name` alphabétique → Paloma premier → ModelContext auto-select Paloma → root arrive sur CP Paloma par défaut | → `/api/models` order par `model_id` ASC + filter non-null + ModelContext **PAS** d'auto-select pour root (doit choisir via selector) | 0916f96+ |
+| 2026-04-21 | Root login → nav click Dashboard → atterrit sur un autre modèle (saut) | → `currentModel` null default pour root + persistance `localStorage.heaven_root_viewing_cp` | 0916f96+ |
+| 2026-04-21 | Root sans selection → skeleton avec leak (ModelContext `toModelId("") = "m1"`) | → `modelId` = "" si pas de slug résolu (pas de fallback m1 silencieux) | 0916f96+ |
+| 2026-04-21 | Agence header (Dashboard home) : Paloma breadcrumb mais handle `@yumiiiclub` + 4993 followers affichés | → `agence-header.tsx` refetch IG sur change `modelSlug` prop + `?model=` explicite + empty state 404 | 0916f96+ |
+| 2026-04-21 | Ruby pas visible dans models list (is_active=false DB) | → UPDATE agence_models SET is_active=true WHERE model_id='m3' | — |
+
+### Patterns AJOUTÉS 2026-04-21 soir
+
+**ModelContext — persistance localStorage (root)** :
+```ts
+const ROOT_VIEWING_CP_LS_KEY = "heaven_root_viewing_cp";
+
+// Lecture mount : lire choix persistant (root-only)
+if (parsed.role === "root") {
+  const persisted = localStorage.getItem(ROOT_VIEWING_CP_LS_KEY);
+  return { auth: parsed, currentModel: persisted, ready: true };
+}
+
+// Écriture via setCurrentModel
+if (slug) localStorage.setItem(ROOT_VIEWING_CP_LS_KEY, slug);
+else localStorage.removeItem(ROOT_VIEWING_CP_LS_KEY);
+```
+
+**Règle "root sans CP = vide"** (NB 2026-04-21) :
+> « pour root ca doit afficher le meme skeleton mais vide »
+
+- `currentModel` default = `null` pour root (pas auto-select Yumi/Paloma)
+- `modelId` retourne `""` si pas de slug résolu
+- Toutes les pages doivent gérer `null slug` → empty state (pas de fallback model)
+- RootCpSelector affiche « Aucun CP (root brut) » + option pour clear la selection
 
 ---
 

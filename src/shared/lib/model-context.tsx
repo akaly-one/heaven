@@ -33,13 +33,28 @@ interface AuthState {
   ready: boolean;
 }
 
+// Clé localStorage pour persister la sélection root via RootCpSelector.
+// Règle NB (2026-04-21) : root n'a pas de CP attribué, donc sa "vue" est un
+// override volontaire, pas un défaut automatique.
+const ROOT_VIEWING_CP_LS_KEY = "heaven_root_viewing_cp";
+
 function readSessionAuth(): AuthState {
   try {
     const raw = sessionStorage.getItem("heaven_auth");
     if (raw) {
       const parsed: HeavenAuth = JSON.parse(raw);
-      const model = (parsed.role === "model" && parsed.model_slug) ? parsed.model_slug : null;
-      return { auth: parsed, currentModel: model, ready: true };
+      // Role=model : son propre modèle, non-overridable.
+      if (parsed.role === "model" && parsed.model_slug) {
+        return { auth: parsed, currentModel: parsed.model_slug, ready: true };
+      }
+      // Role=root : lire sélection persistée dans localStorage si existe,
+      // sinon null (root sans CP sélectionné → skeleton vide partout).
+      if (parsed.role === "root") {
+        let persisted: string | null = null;
+        try { persisted = localStorage.getItem(ROOT_VIEWING_CP_LS_KEY); } catch { /* noop */ }
+        return { auth: parsed, currentModel: persisted, ready: true };
+      }
+      return { auth: parsed, currentModel: null, ready: true };
     }
   } catch { /* corrupt */ }
   return { auth: null, currentModel: null, ready: true };
@@ -67,12 +82,19 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
 
   const { auth, currentModel, ready } = state;
 
-  // Allow external model switching (root)
+  // Allow external model switching (root). Persist choice in localStorage.
   const setCurrentModel = useCallback((slug: string | null) => {
     setState(prev => ({ ...prev, currentModel: slug }));
+    try {
+      if (slug) localStorage.setItem(ROOT_VIEWING_CP_LS_KEY, slug);
+      else localStorage.removeItem(ROOT_VIEWING_CP_LS_KEY);
+    } catch { /* noop */ }
   }, []);
 
   // Load active models from API (root only)
+  // Règle NB (2026-04-21) : PAS d'auto-selection du premier modèle pour root.
+  // Root doit explicitement choisir via RootCpSelector. Sans sélection → null
+  // (skeleton vide partout, pas de fuite des données Yumi/Paloma/Ruby).
   useEffect(() => {
     if (!ready || auth?.role !== "root") return;
     fetch("/api/models")
@@ -83,26 +105,25 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
             slug: m.slug || m.model_slug,
             display_name: m.display_name,
           })));
-          // Update runtime model map for slug<->id resolution
           const mapEntries = data.models
             .filter((m: any) => m.model_id && (m.slug || m.model_slug))
             .map((m: any) => ({ slug: m.slug || m.model_slug, model_id: m.model_id }));
           if (mapEntries.length > 0) updateModelMap(mapEntries);
-          if (!currentModel && data.models.length > 0) {
-            const first = data.models[0];
-            setCurrentModel(first.slug || first.model_slug);
-          }
+          // PAS de setCurrentModel automatique — attendu que root choisisse via selector
+          // (persistance localStorage `heaven_root_viewing_cp` déjà lue au mount).
         }
       })
       .catch(() => {});
-  }, [ready, auth?.role]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready, auth?.role]);
 
   const isRoot = auth?.role === "root";
 
-  const modelId = useMemo(
-    () => toModelId(currentModel || auth?.model_slug || ""),
-    [currentModel, auth?.model_slug]
-  );
+  // Cloisonnement : pas de fallback m1 silencieux quand aucun slug résolu.
+  // Root sans selection via RootCpSelector → modelId = "" (skeleton vide).
+  const modelId = useMemo(() => {
+    const slug = currentModel || auth?.model_slug || null;
+    return slug ? toModelId(slug) : "";
+  }, [currentModel, auth?.model_slug]);
 
   const authHeaders = useCallback(() => {
     return { "Content-Type": "application/json" };
