@@ -85,13 +85,14 @@ export async function POST(req: NextRequest) {
       model_id: string | null;
       display_name: string | null;
       scope: string[];
+      scopes: string[];
       login_aliases: string[];
     } | null = null;
 
     if (supabase) {
       const { data: account } = await supabase
         .from("agence_accounts")
-        .select("role, model_slug, model_id, display_name, active, login_aliases")
+        .select("role, model_slug, model_id, display_name, active, login_aliases, scopes")
         .eq("code", code.trim())
         .eq("active", true)
         .maybeSingle();
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest) {
           model_id: account.model_id,
           display_name: account.display_name,
           scope: ["/agence"],
+          scopes: Array.isArray(account.scopes) ? account.scopes : [],
           login_aliases: Array.isArray(account.login_aliases) ? account.login_aliases : [],
         };
         // Update last_login (best-effort, non-blocking)
@@ -130,6 +132,7 @@ export async function POST(req: NextRequest) {
             model_id: data.model_id || null,
             display_name: data.display_name || null,
             scope: data.scope || ["/agence"],
+            scopes: Array.isArray(data.scopes) ? data.scopes : [],
             login_aliases: Array.isArray(data.login_aliases) ? data.login_aliases : [],
           };
         }
@@ -164,13 +167,16 @@ export async function POST(req: NextRequest) {
     // Success : reset rate limit for this IP
     attempts.delete(ip);
 
-    // Create JWT session token
+    // Create JWT session token (Agent 1.B: hydrate model_id + scopes from DB)
     const narrowedRole: "root" | "model" = verified.role === "root" ? "root" : "model";
     const token = await createSessionToken({
       sub: verified.model_slug || "root",
       role: narrowedRole,
       scope: verified.scope,
       display_name: verified.display_name || verified.role,
+      model_id: verified.model_id,
+      model_slug: verified.model_slug,
+      scopes: verified.scopes,
     });
 
     // Build response with user info (never echo secrets or raw code)
@@ -179,18 +185,20 @@ export async function POST(req: NextRequest) {
         valid: true,
         role: verified.role,
         scope: verified.scope,
+        model_id: verified.model_id,
         model_slug: verified.model_slug,
         display_name: verified.display_name,
+        scopes: verified.scopes,
         redirect: "/agence",
       },
       { status: 200, headers: cors }
     );
 
-    // Set HttpOnly cookie
+    // Set HttpOnly cookie (Strict per SECURITY-v1)
     response.cookies.set("heaven_session", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       path: "/",
       maxAge: 60 * 60 * 24, // 24h
     });
