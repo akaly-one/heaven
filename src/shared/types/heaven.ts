@@ -115,6 +115,32 @@ export interface FeedPost {
 // Alias — same shape, used in m/[slug]
 export type Post = FeedPost;
 
+// ── Unified Feed (agence_feed_items — manual + wall + instagram) ──
+
+export type FeedSource = "manual" | "wall" | "instagram";
+
+export interface FeedItem {
+  id: string;
+  model: string;
+  source_type: FeedSource;
+  external_id: string | null;
+  external_url: string | null;
+  media_type: string | null;
+  media_url: string | null;
+  thumbnail_url: string | null;
+  caption: string | null;
+  tier: string | null;
+  pinned: boolean;
+  like_count: number;
+  comment_count: number;
+  posted_at: string;
+  synced_at: string | null;
+  deleted_at: string | null;
+  source_payload: Record<string, unknown> | null;
+  author_pseudo: string | null;
+  author_client_id: string | null;
+}
+
 // ── Wall ──
 
 export interface WallPost {

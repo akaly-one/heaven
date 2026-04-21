@@ -7,7 +7,7 @@ import {
   Newspaper, Camera, RefreshCw, Users, Key, DollarSign, TrendingUp,
   Copy, Check, Plus, Search, Shield, BarChart3, Clock, Zap, Settings,
   ChevronDown, Lock, EyeOff, Send, Pin, FolderOpen, Upload, ArrowRight, Grid3x3, GripVertical, Columns, Sparkles,
-  UserPlus, Ban, AlertTriangle, List, Link2,
+  UserPlus, Ban, AlertTriangle, List, Link2, Instagram,
 } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
@@ -15,7 +15,7 @@ import { GenerateModal } from "@/components/cockpit/generate-modal";
 import { OverviewSimulator } from "@/components/cockpit/overview-simulator";
 import { ClientsPanel } from "@/components/cockpit/clients-panel";
 import { StrategiePanel } from "@/components/cockpit/strategie-panel";
-import type { PackConfig, AccessCode, ClientInfo, FeedPost, WallPost, UploadedContent } from "@/types/heaven";
+import type { PackConfig, AccessCode, ClientInfo, FeedPost, WallPost, UploadedContent, FeedItem } from "@/types/heaven";
 import { DEFAULT_PACKS } from "@/constants/packs";
 import { toSlot, isFreeSlot } from "@/lib/tier-utils";
 import { toModelId } from "@/lib/model-utils";
@@ -152,6 +152,9 @@ function AgenceDashboard() {
 
   // Contenu tab
   const [contentFolder, setContentFolder] = useState<string | null>(null); // null = all, or pack id
+  // ── Unified feed (agence_feed_items) — drives the Contenu source filter ──
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
+  const [contentSourceFilter, setContentSourceFilter] = useState<"all" | "manual" | "instagram" | "wall">("all");
   const [movingUpload, setMovingUpload] = useState<string | null>(null);
   const [uploadingToTier, setUploadingToTier] = useState<string | null>(null);
   const [contentViewMode, setContentViewMode] = useState<"grid" | "list">("grid");
@@ -229,7 +232,8 @@ function AgenceDashboard() {
       safeFetch(`/api/posts?model=${mid}`),
       safeFetch(`/api/wall?model=${mid}`),
       safeFetch(`/api/uploads?model=${mid}`),
-    ]).then(([codesData, clientsData, packsData, modelData, postsData, wallData, uploadsData]) => {
+      safeFetch(`/api/feed?model=${mid}`),
+    ]).then(([codesData, clientsData, packsData, modelData, postsData, wallData, uploadsData, feedData]) => {
       if (codesData?.codes) setCodes(codesData.codes);
       if (clientsData?.clients) setClients(clientsData.clients);
       if (packsData?.packs?.length > 0) setPacks(packsData.packs);
@@ -237,6 +241,7 @@ function AgenceDashboard() {
       if (postsData?.posts) setFeedPosts(postsData.posts);
       if (wallData?.posts) setWallPosts(wallData.posts.slice(0, 20));
       if (uploadsData?.uploads) setUploads(uploadsData.uploads);
+      if (feedData?.items) setFeedItems(feedData.items);
       setDataLoaded(modelSlug);
       setRefreshing(false);
     }).catch(() => {
@@ -550,7 +555,12 @@ function AgenceDashboard() {
   }, [modelSlug, authHeaders]);
 
   // ── Drag & Drop handlers (stable refs) ──
-  const onDragStartItem = useCallback((e: React.DragEvent, itemId: string, source: "upload" | "post") => {
+  const onDragStartItem = useCallback((e: React.DragEvent, itemId: string, source: "upload" | "post" | "instagram" | "wall") => {
+    // External sources (Instagram, Wall) are read-only — cannot be reorganized across tiers.
+    if (source !== "upload" && source !== "post") {
+      e.preventDefault();
+      return;
+    }
     e.dataTransfer.setData("application/json", JSON.stringify({ id: itemId, source }));
     e.dataTransfer.effectAllowed = "move";
     // Need a small timeout so the drag image renders before opacity change
@@ -1114,9 +1124,9 @@ function AgenceDashboard() {
 
           {/* ══════════ TAB: CONTENU — Folder-based upload manager ══════════ */}
           {activeTab === "contenu" && (() => {
-            // Merge uploads + posts with media into unified content items
-            type ContentItem = { id: string; url: string; tier: string; source: "upload" | "post"; visibility?: string; date: string; type: string; postContent?: string; groupLabel?: string | null; clientId?: string | null };
-            const allContent: ContentItem[] = [
+            // Merge uploads + posts + unified feed (instagram + wall) with media into content items
+            type ContentItem = { id: string; url: string; tier: string; source: "upload" | "post" | "instagram" | "wall"; visibility?: string; date: string; type: string; postContent?: string; groupLabel?: string | null; clientId?: string | null; externalUrl?: string | null };
+            const allContentUnfiltered: ContentItem[] = [
               ...uploads.filter(u => u.dataUrl).map(u => ({
                 id: u.id, url: u.dataUrl, tier: u.tier || "p0", source: "upload" as const,
                 visibility: u.visibility, date: u.uploadedAt || "", type: u.type || "photo",
@@ -1127,7 +1137,31 @@ function AgenceDashboard() {
                 visibility: isFreeSlot(p.tier_required) ? "promo" : "pack", date: p.created_at,
                 type: "photo", postContent: p.content || undefined, groupLabel: null, clientId: null,
               })),
+              // Instagram posts from agence_feed_items — always public, rendered with IG badge
+              ...feedItems.filter(it => it.source_type === "instagram" && (it.media_url || it.thumbnail_url)).map(it => ({
+                id: `ig-${it.id}`, url: it.media_url || it.thumbnail_url!, tier: "p0",
+                source: "instagram" as const, visibility: "public",
+                date: it.posted_at, type: (it.media_type || "").toLowerCase() === "video" ? "video" : "photo",
+                postContent: it.caption || undefined, groupLabel: null, clientId: null,
+                externalUrl: it.external_url || null,
+              })),
+              // Wall posts with photos from agence_feed_items
+              ...feedItems.filter(it => it.source_type === "wall" && it.media_url).map(it => ({
+                id: `wall-${it.id}`, url: it.media_url!, tier: "p0",
+                source: "wall" as const, visibility: "public",
+                date: it.posted_at, type: "photo",
+                postContent: it.caption || undefined, groupLabel: null, clientId: it.author_client_id,
+              })),
             ];
+            // Apply source filter (manual = upload+post legacy, instagram = IG, wall = visitor wall)
+            const sourceMatch = (it: ContentItem) => {
+              if (contentSourceFilter === "all") return true;
+              if (contentSourceFilter === "manual") return it.source === "upload" || it.source === "post";
+              if (contentSourceFilter === "instagram") return it.source === "instagram";
+              if (contentSourceFilter === "wall") return it.source === "wall";
+              return true;
+            };
+            const allContent: ContentItem[] = allContentUnfiltered.filter(sourceMatch);
             const contentCount = (tier: string | null) => tier === null ? allContent.length : allContent.filter(c => c.tier === tier).length;
             const customCount = allContent.filter(c => c.tier === "custom").length;
             const tierSlots = ["p0", "p1", "p2", "p3", "p4", "p5", "custom"];
@@ -1203,6 +1237,43 @@ function AgenceDashboard() {
                   </div>
                 </div>
               </div>
+                );
+              })()}
+
+              {/* ── Source filter strip (Tous / Manuel / Instagram / Wall) ── */}
+              {(() => {
+                const counts = {
+                  all: allContentUnfiltered.length,
+                  manual: allContentUnfiltered.filter(i => i.source === "upload" || i.source === "post").length,
+                  instagram: allContentUnfiltered.filter(i => i.source === "instagram").length,
+                  wall: allContentUnfiltered.filter(i => i.source === "wall").length,
+                };
+                const opts: { id: typeof contentSourceFilter; label: string; icon?: React.ReactNode; hex: string }[] = [
+                  { id: "all", label: "Tous", hex: "#94a3b8" },
+                  { id: "manual", label: "Manuel", hex: "#D4AF37" },
+                  { id: "instagram", label: "Instagram", icon: <Instagram className="w-3 h-3" />, hex: "#dc2743" },
+                  { id: "wall", label: "Wall", hex: "#6366f1" },
+                ];
+                return (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {opts.map(opt => {
+                      const isActive = contentSourceFilter === opt.id;
+                      const count = counts[opt.id];
+                      return (
+                        <button key={opt.id} onClick={() => setContentSourceFilter(opt.id)}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold cursor-pointer transition-all border"
+                          style={{
+                            background: isActive ? `${opt.hex}20` : "transparent",
+                            color: isActive ? opt.hex : "var(--w3)",
+                            borderColor: isActive ? `${opt.hex}40` : "var(--w06)",
+                          }}>
+                          {opt.icon}
+                          {opt.label}
+                          <span className="text-[9px] tabular-nums opacity-70">{count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 );
               })()}
 
