@@ -717,7 +717,7 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, vi
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {visitorRegistered && (
             <>
-              {/* Unified identity badge: @pseudo + status */}
+              {/* Unified identity badge: @pseudo + status + tier ClientBadge */}
               {!isModelLoggedIn && (
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg min-w-0"
                   style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}>
@@ -731,10 +731,8 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, vi
                     style={{ background: visitorVerified ? "#10B981" : "#EF4444" }}>
                     {visitorVerified ? <Check className="w-2 h-2 text-white" /> : <Lock className="w-2 h-2 text-white" />}
                   </div>
-                  <span className="text-[9px] font-bold uppercase tracking-wide shrink-0 hidden sm:inline"
-                    style={{ color: visitorVerified ? "#10B981" : "var(--text-muted)" }}>
-                    {visitorVerified ? "Verifie" : "Visiteur"}{unlockedTier && <span style={{ color: TIER_HEX[unlockedTier] || "var(--text-muted)" }}>{" / "}{TIER_META[unlockedTier]?.label || "Custom"}</span>}
-                  </span>
+                  {/* Tier badge proéminent (PLATINUM/GOLD/SILVER...) */}
+                  <ClientBadge tier={unlockedTier} size="sm" />
                 </div>
               )}
               <button onClick={() => { setOrderHistoryOpen(!orderHistoryOpen); clearNotifications(); }}
