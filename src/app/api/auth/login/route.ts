@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSessionToken } from "@/lib/jwt";
 import { getCorsHeaders } from "@/lib/auth";
+import { getServerSupabase } from "@/lib/supabase-server";
 
-// Server-only: do not expose upstream URL in client bundles.
+// Server-only: SQWENSY is a fallback verifier when the code isn't found locally.
 const SQWENSY_API = process.env.OS_BEACON_URL || process.env.SQWENSY_URL || "";
 
-// Fallback login aliases (while SQWENSY verify-code response doesn't return login_aliases).
-// Each entry lists the accepted identifiers for that role/model.
-const LOGIN_ALIASES: Record<string, string[]> = {
+// Hardcoded fallback aliases — used only when agence_accounts.login_aliases is empty
+// AND SQWENSY verify-code response doesn't include login_aliases.
+const FALLBACK_LOGIN_ALIASES: Record<string, string[]> = {
   root: ["admin", "nb", "root", "yumi", "yumiiiclub"],
   yumi: ["yumi", "yumiiiclub"],
   paloma: ["paloma"],
@@ -76,16 +77,66 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify code via SQWENSY OS (source of truth)
-    const res = await fetch(`${SQWENSY_API}/api/agence/verify-code`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: code.trim() }),
-    });
+    // ── 1) Verify locally against agence_accounts (primary source) ─────
+    const supabase = getServerSupabase();
+    let verified: {
+      role: string;
+      model_slug: string | null;
+      model_id: string | null;
+      display_name: string | null;
+      scope: string[];
+      login_aliases: string[];
+    } | null = null;
 
-    const data = await res.json().catch(() => ({ valid: false }));
+    if (supabase) {
+      const { data: account } = await supabase
+        .from("agence_accounts")
+        .select("role, model_slug, model_id, display_name, active, login_aliases")
+        .eq("code", code.trim())
+        .eq("active", true)
+        .maybeSingle();
 
-    if (!data.valid) {
+      if (account) {
+        verified = {
+          role: account.role,
+          model_slug: account.model_slug,
+          model_id: account.model_id,
+          display_name: account.display_name,
+          scope: ["/agence"],
+          login_aliases: Array.isArray(account.login_aliases) ? account.login_aliases : [],
+        };
+        // Update last_login (best-effort, non-blocking)
+        supabase
+          .from("agence_accounts")
+          .update({ last_login: new Date().toISOString() })
+          .eq("code", code.trim())
+          .then(() => { /* ignore */ });
+      }
+    }
+
+    // ── 2) Fallback : SQWENSY verify-code (legacy path) ─────────────────
+    if (!verified && SQWENSY_API) {
+      try {
+        const res = await fetch(`${SQWENSY_API}/api/agence/verify-code`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: code.trim() }),
+        });
+        const data = await res.json().catch(() => ({ valid: false }));
+        if (data.valid) {
+          verified = {
+            role: data.role,
+            model_slug: data.model_slug || null,
+            model_id: data.model_id || null,
+            display_name: data.display_name || null,
+            scope: data.scope || ["/agence"],
+            login_aliases: Array.isArray(data.login_aliases) ? data.login_aliases : [],
+          };
+        }
+      } catch { /* SQWENSY unreachable — fall through to 401 */ }
+    }
+
+    if (!verified) {
       recordAttempt(ip);
       return NextResponse.json(
         { valid: false, error: INVALID_CREDENTIALS },
@@ -93,16 +144,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Optional login check (admin modal sends it; legacy single-credential omits)
+    // ── 3) Login alias check (if login was provided) ─────────────────────
     if (login && typeof login === "string") {
       const normalized = login.trim().replace(/^@/, "").toLowerCase();
-      const responseAliases: string[] = Array.isArray(data.login_aliases)
-        ? data.login_aliases.map((a: string) => a.toLowerCase())
-        : [];
-      const slug = (data.model_slug || data.role || "").toLowerCase();
-      const expected = responseAliases.length > 0
-        ? responseAliases
-        : LOGIN_ALIASES[slug] || [slug];
+      const slugKey = (verified.model_slug || verified.role || "").toLowerCase();
+      const dbAliases = verified.login_aliases.map((a: string) => a.toLowerCase());
+      const expected = dbAliases.length > 0
+        ? dbAliases
+        : FALLBACK_LOGIN_ALIASES[slugKey] || [slugKey];
       if (!expected.includes(normalized)) {
         recordAttempt(ip);
         return NextResponse.json(
@@ -116,22 +165,23 @@ export async function POST(req: NextRequest) {
     attempts.delete(ip);
 
     // Create JWT session token
+    const narrowedRole: "root" | "model" = verified.role === "root" ? "root" : "model";
     const token = await createSessionToken({
-      sub: data.model_slug || "root",
-      role: data.role,
-      scope: data.scope || [],
-      display_name: data.display_name || data.role,
+      sub: verified.model_slug || "root",
+      role: narrowedRole,
+      scope: verified.scope,
+      display_name: verified.display_name || verified.role,
     });
 
     // Build response with user info (never echo secrets or raw code)
     const response = NextResponse.json(
       {
         valid: true,
-        role: data.role,
-        scope: data.scope,
-        model_slug: data.model_slug,
-        display_name: data.display_name,
-        redirect: data.redirect,
+        role: verified.role,
+        scope: verified.scope,
+        model_slug: verified.model_slug,
+        display_name: verified.display_name,
+        redirect: "/agence",
       },
       { status: 200, headers: cors }
     );
