@@ -100,6 +100,37 @@ export async function fetchInstagramUsername(
 
 // ═══ Send message via Graph API ═══
 
+/**
+ * Thrown when Meta Graph API returns a rate-limit error.
+ * Graph error codes we treat as rate-limit:
+ *   - 4    : application request limit reached
+ *   - 17   : user request limit reached
+ *   - 32   : page request limit reached
+ *   - 613  : calls to messaging API exceeded
+ *   - 429  : HTTP too-many-requests (non-Graph path)
+ * The worker should re-queue the job and back off.
+ */
+export class MetaRateLimitError extends Error {
+  code: number | null;
+  constructor(message: string, code: number | null = null) {
+    super(message);
+    this.name = "MetaRateLimitError";
+    this.code = code;
+  }
+}
+
+type GraphError = {
+  code?: number;
+  error_subcode?: number;
+  message?: string;
+  type?: string;
+};
+
+function isRateLimitCode(code: number | undefined): boolean {
+  if (code === undefined || code === null) return false;
+  return code === 4 || code === 17 || code === 32 || code === 429 || code === 613;
+}
+
 export async function sendInstagramReply(
   recipientId: string,
   text: string
@@ -126,8 +157,24 @@ export async function sendInstagramReply(
   );
 
   if (!res.ok) {
-    const err = await res.text();
-    return { success: false, error: `Graph API ${res.status}: ${err}` };
+    const errText = await res.text();
+    // Try to parse as Graph error for structured handling.
+    let parsed: GraphError | undefined;
+    try {
+      const json = JSON.parse(errText);
+      parsed = (json?.error || json) as GraphError;
+    } catch {
+      parsed = undefined;
+    }
+
+    if (res.status === 429 || isRateLimitCode(parsed?.code)) {
+      throw new MetaRateLimitError(
+        parsed?.message || `Graph API rate-limited (${res.status})`,
+        parsed?.code ?? res.status
+      );
+    }
+
+    return { success: false, error: `Graph API ${res.status}: ${errText}` };
   }
 
   const data = await res.json();
