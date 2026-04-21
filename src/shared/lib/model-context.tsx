@@ -47,12 +47,17 @@ function readSessionAuth(): AuthState {
       if (parsed.role === "model" && parsed.model_slug) {
         return { auth: parsed, currentModel: parsed.model_slug, ready: true };
       }
-      // Role=root : lire sélection persistée dans localStorage si existe,
-      // sinon null (root sans CP sélectionné → skeleton vide partout).
+      // Role=root : deux cas distincts (NB 2026-04-21) :
+      //  - Root FUSION (yumi admin+IA, role=root + model_slug="yumi") :
+      //    CP par défaut = son propre modèle (yumi/m1), override possible via selector
+      //  - Root PUR (dev SQWENSY, role=root + model_slug=null) :
+      //    CP par défaut = NULL (skeleton vide), doit choisir via selector
       if (parsed.role === "root") {
         let persisted: string | null = null;
         try { persisted = localStorage.getItem(ROOT_VIEWING_CP_LS_KEY); } catch { /* noop */ }
-        return { auth: parsed, currentModel: persisted, ready: true };
+        // Priorité : localStorage > auth.model_slug (fusion) > null (root pur)
+        const effective = persisted || parsed.model_slug || null;
+        return { auth: parsed, currentModel: effective, ready: true };
       }
       return { auth: parsed, currentModel: null, ready: true };
     }

@@ -114,7 +114,7 @@ export function InstagramStatsWidget() {
         backdropFilter: "blur(12px)",
       }}
     >
-      <div className="flex items-center gap-3 md:gap-4 p-3 md:p-4 flex-wrap">
+      <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 p-3 md:p-4">
         {/* Avatar */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
           {profile?.profile_picture_url ? (
@@ -155,20 +155,20 @@ export function InstagramStatsWidget() {
               </h3>
             </div>
             <div
-              className="flex items-center gap-2 flex-wrap mt-0.5 text-[11px] md:text-xs"
+              className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 text-[11px] md:text-xs"
               style={{ color: "var(--text-muted)" }}
             >
-              <span className="tabular-nums">
+              <span className="tabular-nums whitespace-nowrap">
                 <b style={{ color: "var(--text)" }}>{formatNumber(followers)}</b>{" "}
-                followers
+                fol.
               </span>
-              <span>·</span>
-              <span className="tabular-nums">
+              <span className="opacity-50">·</span>
+              <span className="tabular-nums whitespace-nowrap">
                 <b style={{ color: "var(--text)" }}>{formatNumber(following)}</b>{" "}
-                following
+                sub.
               </span>
-              <span>·</span>
-              <span className="tabular-nums">
+              <span className="opacity-50">·</span>
+              <span className="tabular-nums whitespace-nowrap">
                 <b style={{ color: "var(--text)" }}>{formatNumber(posts)}</b>{" "}
                 posts
               </span>
@@ -189,8 +189,8 @@ export function InstagramStatsWidget() {
           </div>
         </div>
 
-        {/* DM counters + CTA */}
-        <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+        {/* DM counters + CTA — pleine largeur mobile (stack sous l'avatar), inline desktop */}
+        <div className="flex items-center gap-2 md:gap-3 flex-wrap justify-start md:justify-end">
           <div
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
             style={{

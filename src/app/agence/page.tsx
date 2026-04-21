@@ -60,10 +60,12 @@ function Skeleton({ className = "", style }: { className?: string; style?: React
 }
 
 // ── Tab definitions ──
+// Brief NB B7 (2026-04-21) : tab "Clients" supprimée — les contacts/fans sont
+// gérés dans la Messagerie (drawer). Redirect /agence?tab=clients → middleware
+// middleware.ts → /agence/messagerie?view=contacts.
 const TABS = [
   { id: "dashboard", label: "Dashboard" },
   { id: "contenu", label: "Contenu" },
-  { id: "clients", label: "Clients" },
   { id: "strategie", label: "Stratégie" },
 ] as const;
 
@@ -832,7 +834,7 @@ function AgenceDashboard() {
             />
           )}
 
-          {activeTab === "clients" && <ClientsPanel />}
+          {/* Tab "clients" supprimée (B7 2026-04-21) — migrée vers /agence/messagerie?view=contacts */}
 
           {activeTab === "strategie" && (
             <StrategiePanel realData={{

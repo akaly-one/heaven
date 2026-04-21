@@ -234,10 +234,13 @@ export function Sidebar() {
           style={{ background: "rgba(0,0,0,0.04)" }} />
       )}
 
-      {/* Mobile bottom nav — 5 pages + root tools si root */}
+      {/* Mobile bottom nav — scroll horizontal pour accommoder 6-8 items sans déformation */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden safe-area-bottom"
         style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
-        <div className="flex items-center justify-evenly py-2">
+        <div
+          className="flex items-center gap-0.5 py-1.5 overflow-x-auto scroll-smooth snap-x snap-mandatory px-2"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
           {MOBILE_NAV_MAIN.map((item) => {
             const isDashboard = item.href === "/agence";
             const active = isDashboard
@@ -245,14 +248,14 @@ export function Sidebar() {
               : pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <a key={item.id} href={item.href}
-                className="flex flex-col items-center gap-0.5 py-1 rounded-lg no-underline transition-colors"
+                className="flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg no-underline transition-colors flex-shrink-0 snap-start"
                 style={{
                   color: active ? "var(--accent)" : "var(--text-muted)",
                   background: active ? "rgba(230,51,41,0.08)" : "transparent",
-                  minWidth: 52,
+                  minWidth: 58,
                 }}>
                 <item.icon className="w-5 h-5" />
-                <span className="text-[10px] font-semibold">{item.label}</span>
+                <span className="text-[10px] font-semibold leading-none whitespace-nowrap">{item.label}</span>
               </a>
             );
           })}
@@ -261,23 +264,23 @@ export function Sidebar() {
             const active = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <a key={item.id} href={item.href}
-                className="flex flex-col items-center gap-0.5 py-1 rounded-lg no-underline transition-colors"
+                className="flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg no-underline transition-colors flex-shrink-0 snap-start"
                 style={{
                   color: active ? "var(--accent)" : "var(--text-muted)",
                   background: active ? "rgba(230,51,41,0.08)" : "transparent",
-                  minWidth: 52,
+                  minWidth: 58,
                 }}>
                 <item.icon className="w-5 h-5" />
-                <span className="text-[10px] font-semibold">{item.label}</span>
+                <span className="text-[10px] font-semibold leading-none whitespace-nowrap">{item.label}</span>
               </a>
             );
           })}
           {/* Logout */}
           <button onClick={handleLogout}
-            className="flex flex-col items-center gap-0.5 py-1 rounded-lg transition-colors cursor-pointer"
-            style={{ color: "var(--text-muted)", background: "none", border: "none", minWidth: 52 }}>
+            className="flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg transition-colors cursor-pointer flex-shrink-0 snap-start"
+            style={{ color: "var(--text-muted)", background: "none", border: "none", minWidth: 58 }}>
             <LogOut className="w-5 h-5" />
-            <span className="text-[10px] font-semibold">Quitter</span>
+            <span className="text-[10px] font-semibold leading-none whitespace-nowrap">Quitter</span>
           </button>
         </div>
       </nav>
