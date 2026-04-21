@@ -28,7 +28,8 @@ function resolveModelId(
 ): string {
   const slug = String(userSub || "").toLowerCase();
   if (userRole === "root") {
-    return toModelId(requested || slug || "yumi");
+    // user.sub="root" n'est pas un slug de modèle valide → fallback direct yumi (m1).
+    return toModelId(requested || "yumi");
   }
   return toModelId(slug);
 }

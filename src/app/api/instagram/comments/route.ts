@@ -31,9 +31,10 @@ async function resolveToken(
 
   const queryModel = req.nextUrl.searchParams.get("model");
   const userSlug = String(user.sub || "").toLowerCase();
+  // Root: user.sub="root" n'est pas un slug de modèle valide → fallback direct yumi (m1).
   const modelId =
     user.role === "root"
-      ? toModelId(queryModel || allowBodyModel || userSlug || "yumi")
+      ? toModelId(queryModel || allowBodyModel || "yumi")
       : toModelId(userSlug);
 
   if (

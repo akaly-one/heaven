@@ -219,6 +219,9 @@ Rendu profil Paloma scopé m2
 | 2026-04-21 | `/api/posts` legacy mode retournait tous modèles mélangés | → 400 si `?model=` absent | — |
 | 2026-04-21 | `/api/feed` default `"yumi"` | → 400 si `?model=` absent | — |
 | 2026-04-21 | Ordre `accounts-table` : model avant root | → Root → Yumi → Paloma → Ruby (role DESC) | 6c24bf0 |
+| 2026-04-21 | `/api/instagram/*` fallback `userSlug || "yumi"` → `toModelId("root")="root"` → 404 | → Fallback direct `"yumi"` si role=root (profile-stats, comments, media, config) | — |
+| 2026-04-21 | Dashboard IG continuait à afficher Yumi stats après switch root → paloma (state pas réinitialisé) | → Re-fetch sur change de `activeSlug` + passage `?model=` explicite + reset state | — |
+| 2026-04-21 | Settings tabs Comptes/Dev Center visibles pour Paloma/Ruby | → Scope tabs : `scope="admin"` (Comptes/Dev Center) vs `scope="model"` (Finances/Agent DM) | — |
 
 ---
 

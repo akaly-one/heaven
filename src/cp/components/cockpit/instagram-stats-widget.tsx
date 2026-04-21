@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Instagram, ArrowRight, RefreshCw, MessageCircle, Send } from "lucide-react";
+import { useActiveModelSlug } from "@/lib/use-active-model";
 
 interface ProfileStats {
   username?: string;
@@ -54,30 +55,40 @@ export function InstagramStatsWidget() {
   const [daily, setDaily] = useState<DailyStats | null>(null);
   const [offline, setOffline] = useState(false);
   const [, tick] = useState(0);
+  const activeSlug = useActiveModelSlug();
 
-  const fetchAll = useCallback(async () => {
+  const fetchAll = useCallback(async (slug: string | null) => {
+    if (!slug) { setProfile(null); setDaily(null); setOffline(true); return; }
     try {
+      const qs = `?model=${encodeURIComponent(slug)}`;
       const [pRes, dRes] = await Promise.all([
-        fetch("/api/instagram/profile-stats"),
-        fetch("/api/instagram/daily-stats"),
+        fetch(`/api/instagram/profile-stats${qs}`),
+        fetch(`/api/instagram/daily-stats${qs}`),
       ]);
       if (pRes.ok) {
         setProfile(await pRes.json());
         setOffline(false);
+      } else if (pRes.status === 404) {
+        setProfile(null);
+        setOffline(true);
       } else {
         setOffline(true);
       }
       if (dRes.ok) setDaily(await dRes.json());
+      else setDaily(null);
     } catch {
       setOffline(true);
     }
   }, []);
 
   useEffect(() => {
-    fetchAll();
-    const poll = setInterval(fetchAll, 60_000);
+    // Reset stale pour éviter flash du modèle précédent
+    setProfile(null);
+    setDaily(null);
+    fetchAll(activeSlug);
+    const poll = setInterval(() => fetchAll(activeSlug), 60_000);
     return () => clearInterval(poll);
-  }, [fetchAll]);
+  }, [fetchAll, activeSlug]);
 
   // Refresh "il y a Xm" display every 30 s
   useEffect(() => {

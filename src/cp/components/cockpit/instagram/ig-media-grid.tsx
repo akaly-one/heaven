@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   Video,
 } from "lucide-react";
+import { useActiveModelSlug } from "@/lib/use-active-model";
 
 interface IgMedia {
   id: string;
@@ -44,13 +45,15 @@ export function InstagramMediaGrid() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<IgMedia | null>(null);
+  const activeSlug = useActiveModelSlug();
 
-  const fetchPosts = useCallback(async (silent = false) => {
+  const fetchPosts = useCallback(async (slug: string | null, silent = false) => {
+    if (!slug) { setPosts([]); setError("not_configured"); setLoading(false); return; }
     if (!silent) setLoading(true);
     else setRefreshing(true);
     setError(null);
     try {
-      const res = await fetch("/api/instagram/media");
+      const res = await fetch(`/api/instagram/media?model=${encodeURIComponent(slug)}`);
       if (res.status === 404) {
         setError("not_configured");
         setPosts([]);
@@ -68,9 +71,11 @@ export function InstagramMediaGrid() {
     }
   }, []);
 
+  // Refetch au mount et à chaque changement de slug actif (root selector)
   useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+    setPosts([]);
+    fetchPosts(activeSlug);
+  }, [fetchPosts, activeSlug]);
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -94,7 +99,7 @@ export function InstagramMediaGrid() {
           </p>
         </div>
         <button
-          onClick={() => fetchPosts(true)}
+          onClick={() => fetchPosts(activeSlug, true)}
           disabled={refreshing || loading}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none outline-none transition-all"
           style={{

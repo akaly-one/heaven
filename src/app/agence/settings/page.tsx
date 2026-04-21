@@ -2,27 +2,36 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Settings, User, Users, Zap } from "lucide-react";
+import { Settings, User, Users, Zap, DollarSign, MessageSquare } from "lucide-react";
 import { useModel } from "@/lib/model-context";
 import { OsLayout } from "@/components/os-layout";
 import { GeneralPanel } from "@/components/cockpit/settings/general-panel";
 import { ComptesPanel } from "@/components/cockpit/settings/comptes-panel";
 import { DevCenterPanel } from "@/components/cockpit/settings/dev-center-panel";
+import { FinancesOwnPanel } from "@/components/cockpit/settings/finances-own-panel";
+import { AgentDmRequestPanel } from "@/components/cockpit/settings/agent-dm-request-panel";
 
-type TabId = "general" | "comptes" | "dev-center";
+type TabId = "general" | "comptes" | "dev-center" | "finances" | "agent-dm";
 
 type DevSection = "architecture" | "config" | "migrations" | "ops";
 
-const TABS: { id: TabId; label: string; icon: typeof Settings; adminOnly?: boolean }[] = [
-  { id: "general", label: "Général", icon: User },
-  { id: "comptes", label: "Comptes", icon: Users },
-  { id: "dev-center", label: "Dev Center", icon: Zap, adminOnly: true },
+// Scope par rôle (règle NB 2026-04-21) :
+//  - "all"   : visible pour tous les rôles (sauf visiteur bloqué par auth-guard)
+//  - "admin" : root dev + yumi agence uniquement (Comptes, Dev Center)
+//  - "model" : paloma, ruby uniquement (Finances own, Agent DM request)
+const TABS: { id: TabId; label: string; icon: typeof Settings; scope: "all" | "admin" | "model" }[] = [
+  { id: "general", label: "Général", icon: User, scope: "all" },
+  { id: "comptes", label: "Comptes", icon: Users, scope: "admin" },
+  { id: "dev-center", label: "Dev Center", icon: Zap, scope: "admin" },
+  { id: "finances", label: "Finances", icon: DollarSign, scope: "model" },
+  { id: "agent-dm", label: "Agent DM", icon: MessageSquare, scope: "model" },
 ];
 
 function SettingsInner() {
   const { authHeaders, isRoot, auth, currentModel } = useModel();
   const modelSlug = currentModel || auth?.model_slug || "";
   const isAgencyAdmin = isRoot || modelSlug === "yumi";
+  const isModelRole = auth?.role === "model";
   const searchParams = useSearchParams();
 
   // Initial tab from ?tab=... query param (supports /agence/settings?tab=dev-center&section=architecture)
@@ -31,14 +40,20 @@ function SettingsInner() {
 
   const devSectionParam = (searchParams.get("section") as DevSection | null) ?? undefined;
 
-  // If deep-link requests dev-center but user is not admin, fall back to general
+  // Guard : si deep-link pointe sur un tab hors scope, fallback à "general"
   useEffect(() => {
-    if (tab === "dev-center" && !isAgencyAdmin) {
-      setTab("general");
-    }
-  }, [tab, isAgencyAdmin]);
+    const currentTabDef = TABS.find((t) => t.id === tab);
+    if (!currentTabDef) return;
+    if (currentTabDef.scope === "admin" && !isAgencyAdmin) setTab("general");
+    if (currentTabDef.scope === "model" && !isModelRole) setTab("general");
+  }, [tab, isAgencyAdmin, isModelRole]);
 
-  const visibleTabs = TABS.filter((t) => !t.adminOnly || isAgencyAdmin);
+  const visibleTabs = TABS.filter((t) => {
+    if (t.scope === "all") return true;
+    if (t.scope === "admin") return isAgencyAdmin;
+    if (t.scope === "model") return isModelRole;
+    return false;
+  });
 
   return (
     <OsLayout cpId="agence">
@@ -86,6 +101,12 @@ function SettingsInner() {
             )}
             {tab === "dev-center" && isAgencyAdmin && (
               <DevCenterPanel authHeaders={authHeaders} initialSection={devSectionParam} />
+            )}
+            {tab === "finances" && isModelRole && (
+              <FinancesOwnPanel authHeaders={authHeaders} />
+            )}
+            {tab === "agent-dm" && isModelRole && (
+              <AgentDmRequestPanel authHeaders={authHeaders} />
             )}
           </div>
         </div>

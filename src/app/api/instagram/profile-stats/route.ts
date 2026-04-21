@@ -25,9 +25,13 @@ export async function GET(req: NextRequest) {
 
   const params = req.nextUrl.searchParams;
   const userSlug = String(user.sub || "").toLowerCase();
+  // Resolution scope modèle :
+  //  - role=root : si ?model explicite → celui-ci, sinon fallback "yumi" (m1)
+  //    car root.sub = "root" n'est pas un slug valide de modèle
+  //  - role=model : toujours son propre modèle (ignore ?model si différent → 403 ci-dessous)
   const modelId =
     user.role === "root"
-      ? toModelId(params.get("model") || userSlug || "yumi")
+      ? toModelId(params.get("model") || "yumi")
       : toModelId(userSlug);
 
   if (user.role === "model" && params.get("model") && toModelId(params.get("model")!) !== modelId) {

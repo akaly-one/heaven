@@ -25,9 +25,10 @@ export async function GET(req: NextRequest) {
 
   const params = req.nextUrl.searchParams;
   const userSlug = String(user.sub || "").toLowerCase();
+  // Root: user.sub="root" n'est pas un slug de modèle valide → fallback direct yumi (m1).
   const modelId =
     user.role === "root"
-      ? toModelId(params.get("model") || userSlug || "yumi")
+      ? toModelId(params.get("model") || "yumi")
       : toModelId(userSlug);
 
   if (user.role === "model" && params.get("model") && toModelId(params.get("model")!) !== modelId) {

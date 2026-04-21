@@ -11,6 +11,7 @@ import {
 import { ModeToggle } from "./ig-mode-toggle";
 import { InstagramMediaGrid } from "./ig-media-grid";
 import { InstagramCommentsList } from "./ig-comments-list";
+import { useActiveModelSlug } from "@/lib/use-active-model";
 import { InstagramConfigPanel } from "./ig-config-panel";
 
 type Mode = "agent" | "human";
@@ -45,16 +46,30 @@ function formatSyncTime(d: Date | null): string {
 }
 
 export function InstagramDashboard() {
-  // Profile stats (header live)
+  // Profile stats (header live) — scope sur currentModel (root selector) sinon
+  // session owner. Si pas d'IG configuré pour ce modèle → empty state.
   const [profileStats, setProfileStats] = useState<ProfileStats | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [, forceRerender] = useState(0);
+  const activeSlug = useActiveModelSlug();
 
-  const fetchProfileStats = useCallback(async () => {
+  const fetchProfileStats = useCallback(async (slug: string | null) => {
+    if (!slug) {
+      setProfileStats(null);
+      setProfileError("not_configured");
+      return;
+    }
     try {
-      const res = await fetch("/api/instagram/profile-stats");
+      const res = await fetch(`/api/instagram/profile-stats?model=${encodeURIComponent(slug)}`);
+      if (res.status === 404) {
+        // Instagram non configuré pour ce modèle (Paloma, Ruby)
+        setProfileStats(null);
+        setProfileError("not_configured");
+        return;
+      }
       if (!res.ok) {
+        setProfileStats(null);
         setProfileError("unavailable");
         return;
       }
@@ -63,16 +78,20 @@ export function InstagramDashboard() {
       setProfileError(null);
       setLastSync(new Date());
     } catch {
+      setProfileStats(null);
       setProfileError("unavailable");
     }
   }, []);
 
-  // Mount + 60s polling
+  // Refetch quand slug actif change + polling 60s
   useEffect(() => {
-    fetchProfileStats();
-    const interval = setInterval(fetchProfileStats, 60_000);
+    // Reset immédiat pour éviter flash des stats du modèle précédent
+    setProfileStats(null);
+    setProfileError(null);
+    fetchProfileStats(activeSlug);
+    const interval = setInterval(() => fetchProfileStats(activeSlug), 60_000);
     return () => clearInterval(interval);
-  }, [fetchProfileStats]);
+  }, [fetchProfileStats, activeSlug]);
 
   // Rerender every 30s so "il y a X min" stays fresh
   useEffect(() => {
@@ -99,6 +118,39 @@ export function InstagramDashboard() {
   const following = profileStats?.follows_count;
   const mediaCount = profileStats?.media_count;
   const isOnline = !profileError;
+
+  // Empty state : Instagram n'est pas configuré pour ce modèle.
+  // NB (2026-04-21) : « le module instagram est actif que pour yumi donc dans les
+  // autres cp standard ca doit apparaitre vide car yen a pas pour eux ».
+  if (profileError === "not_configured") {
+    return (
+      <div
+        className="flex flex-col h-full items-center justify-center p-8 text-center"
+        style={{ background: "var(--bg)" }}
+      >
+        <div
+          className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+          style={{
+            background: "linear-gradient(135deg, rgba(131,58,180,0.15), rgba(225,48,108,0.1))",
+            border: "1px solid rgba(225,48,108,0.25)",
+          }}
+        >
+          <Instagram className="w-8 h-8" style={{ color: "#E1306C" }} />
+        </div>
+        <h2 className="text-base font-semibold mb-2" style={{ color: "var(--text)" }}>
+          Instagram non configuré
+        </h2>
+        <p className="text-xs max-w-md" style={{ color: "var(--text-muted)" }}>
+          {activeSlug
+            ? `Aucun compte Instagram Business n'est associé au modèle ${activeSlug}. Actuellement seul le profil Yumi (@yumiiiclub) est configuré.`
+            : "Aucun modèle actif sélectionné."}
+        </p>
+        <p className="text-[10px] mt-4" style={{ color: "var(--text-muted)" }}>
+          Pour activer Instagram : lier un compte via Settings → Dev Center (admin).
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div
