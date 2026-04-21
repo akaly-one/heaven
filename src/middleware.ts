@@ -15,6 +15,7 @@ const PUBLIC_GET = new Set([
   "/api/messages",
   "/api/system/status",
   "/api/credits/balance",
+  "/api/feed",
 ]);
 
 // Public GET with dynamic segments
