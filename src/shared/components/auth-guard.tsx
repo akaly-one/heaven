@@ -24,7 +24,15 @@ const ROOT_ONLY_ROUTES = ["/agence/finances", "/agence/automation", "/agence/arc
 
 function isPublicPathname(p: string | null): boolean {
   if (!p) return false;
-  return p === "/" || p === "/login" || p.startsWith("/api/") || p.startsWith("/m/");
+  return (
+    p === "/" ||
+    p === "/login" ||
+    p === "/privacy" ||
+    p === "/terms" ||
+    p.startsWith("/data-deletion") ||
+    p.startsWith("/api/") ||
+    p.startsWith("/m/")
+  );
 }
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {

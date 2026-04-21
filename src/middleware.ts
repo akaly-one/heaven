@@ -54,6 +54,8 @@ const SELF_AUTHED_PREFIXES = [
   // Instagram webhook — Meta validates via hub.verify_token (GET) and
   // X-Hub-Signature (POST). Must be publicly reachable for Meta to call.
   "/api/instagram/webhook",
+  // Meta data deletion callback — GET (health) + POST (Meta signed_request or manual ig_username)
+  "/api/meta/data-deletion",
 ];
 
 function isPublicRoute(pathname: string, method: string): boolean {
