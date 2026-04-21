@@ -70,6 +70,24 @@ export async function GET(req: NextRequest) {
     /* non-blocking — already have best-effort modelId from toModelId */
   }
 
+  // Public-safe : surface the IG handle for CTAs on /m/{slug} (B9).
+  // Only `ig_handle` is selected — tokens and internal ids stay server-side.
+  let instagramHandle: string | null = null;
+  let instagramActive = false;
+  try {
+    const { data: igCfg } = await db
+      .from("instagram_config")
+      .select("ig_handle, is_active")
+      .eq("model_slug", modelId)
+      .maybeSingle();
+    if (igCfg?.ig_handle) {
+      instagramHandle = String(igCfg.ig_handle).replace(/^@/, "");
+      instagramActive = Boolean(igCfg.is_active);
+    }
+  } catch {
+    /* non-blocking — CTAs will simply not render without a handle */
+  }
+
   try {
     const { data, error } = await db
       .from("agence_feed_items")
@@ -85,7 +103,12 @@ export async function GET(req: NextRequest) {
       const msg = error.message || "";
       if (msg.includes("does not exist") || msg.includes("relation")) {
         return NextResponse.json(
-          { items: [], fallback: "table_missing" },
+          {
+            items: [],
+            fallback: "table_missing",
+            instagram_handle: instagramHandle,
+            instagram_active: instagramActive,
+          },
           { headers: { ...cors, "Cache-Control": "public, max-age=30" } }
         );
       }
@@ -151,7 +174,13 @@ export async function GET(req: NextRequest) {
       .filter((item) => item.visibility_computed.visible);
 
     return NextResponse.json(
-      { items: enriched, model: modelId, fan_resolved: !!fan },
+      {
+        items: enriched,
+        model: modelId,
+        fan_resolved: !!fan,
+        instagram_handle: instagramHandle,
+        instagram_active: instagramActive,
+      },
       { headers: { ...cors, "Cache-Control": "public, max-age=60" } }
     );
   } catch (err) {

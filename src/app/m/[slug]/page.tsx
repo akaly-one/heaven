@@ -6,7 +6,7 @@ import {
   Heart, MessageCircle, Send, Lock, Newspaper, ShoppingBag,
   Coins, Camera, X, Check,
   Instagram, Ghost, Key, Sparkles, AlertTriangle, Eye, Trash2,
-  Edit3, Plus, ToggleLeft, ToggleRight, RotateCcw, Save,
+  Edit3, Plus, ToggleLeft, ToggleRight, RotateCcw, Save, Shield,
 } from "lucide-react";
 import { toModelId } from "@/lib/model-utils";
 import { normalizeTier, tierIncludes } from "@/lib/tier-utils";
@@ -38,8 +38,12 @@ import { StoryViewer } from "@/components/profile/story-viewer";
 import { PackDetailModal } from "@/components/profile/pack-detail-modal";
 import { ProfileStyles } from "@/components/profile/profile-styles";
 
+// ── CP-domain profile components (Phase 3 Agent 3.B) ──
+import { FeedItemCard } from "@cp/components/profile/feed-item-card";
+import { ProfileCta } from "@cp/components/profile/profile-cta";
+
 // ── Types & Constants ──
-import type { ModelInfo, Post, PackConfig, UploadedContent, WallPost, AccessCode, VisitorPlatform } from "@/types/heaven";
+import type { ModelInfo, Post, PackConfig, UploadedContent, WallPost, AccessCode, VisitorPlatform, FeedItem } from "@/types/heaven";
 import { TIER_META, TIER_HEX } from "@/constants/tiers";
 
 // ── Utility functions ──
@@ -166,6 +170,9 @@ export default function ModelPage() {
   const [orderHistoryOpen, setOrderHistoryOpen] = useState(false);
   const [codeSheetOpen, setCodeSheetOpen] = useState(false);
   const [storyViewIdx, setStoryViewIdx] = useState<number | null>(null);
+  // Instagram handle for public CTA (B9). Fetched lazily from /api/feed
+  // (which surfaces instagram_config.ig_handle publicly).
+  const [instagramHandle, setInstagramHandle] = useState<string | null>(null);
 
   const activeStories = stories.filter(s => s.media_url);
   const subscriberUsername = visitorHandle || clientId?.slice(0, 8) || "visitor";
@@ -214,6 +221,23 @@ export default function ModelPage() {
       const stored = sessionStorage.getItem(`heaven_purchases_${slug}`);
       if (stored) setPurchasedItems(new Set(JSON.parse(stored)));
     } catch {}
+  }, [slug]);
+
+  // ── Fetch Instagram handle (public) for CTA buttons in the hero (B9). ──
+  // The feed route is public and safely returns only the handle + active flag,
+  // never tokens. We ignore errors — CTAs simply won't render without a handle.
+  useEffect(() => {
+    if (!slug) return;
+    let aborted = false;
+    fetch(`/api/feed?model=${encodeURIComponent(slug)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!aborted && d && typeof d.instagram_handle === "string") {
+          setInstagramHandle(d.instagram_handle);
+        }
+      })
+      .catch(() => { /* silent — CTA just won't render */ });
+    return () => { aborted = true; };
   }, [slug]);
 
   // ── Screenshot detection ──
@@ -366,6 +390,7 @@ export default function ModelPage() {
           handleCodeValidation={handleCodeValidation} modelId={modelId} slug={slug}
           galleryTier={galleryTier} setGalleryTier={setGalleryTier}
           onReopenGate={() => setGateDismissed(false)}
+          onAdminLogin={() => setShowAdminModal(true)}
         />
 
         {/* ═══ HERO SECTION ═══ */}
@@ -376,6 +401,7 @@ export default function ModelPage() {
           chatOpen={chatOpen} setChatOpen={setChatOpen} chatUnread={chatUnread}
           activeStories={activeStories} setStoryViewIdx={setStoryViewIdx}
           edit={edit}
+          instagramHandle={instagramHandle}
         />
 
         {/* ═══ EXPIRED CODE BANNER ═══ */}
@@ -676,7 +702,7 @@ export default function ModelPage() {
 // ═══════════════════════════════════════════
 
 // ── Header Bar ──
-function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, visitorPlatform, visitorHandle, visitorVerified, unlockedTier, activeCode, chatOpen, setChatOpen, chatUnread, newNotifications, orderHistoryOpen, setOrderHistoryOpen, clearNotifications, codeSheetOpen, setCodeSheetOpen, handleCodeValidation, modelId, slug, galleryTier, setGalleryTier, onReopenGate }: {
+function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, visitorPlatform, visitorHandle, visitorVerified, unlockedTier, activeCode, chatOpen, setChatOpen, chatUnread, newNotifications, orderHistoryOpen, setOrderHistoryOpen, clearNotifications, codeSheetOpen, setCodeSheetOpen, handleCodeValidation, modelId, slug, galleryTier, setGalleryTier, onReopenGate, onAdminLogin }: {
   model: ModelInfo; displayModel: ModelInfo | null; isModelLoggedIn: boolean;
   visitorRegistered: boolean; visitorPlatform: VisitorPlatform | null; visitorHandle: string; visitorVerified: boolean;
   unlockedTier: string | null; activeCode: AccessCode | null;
@@ -687,6 +713,8 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, vi
   modelId: string; slug: string;
   galleryTier: string; setGalleryTier: (v: string) => void;
   onReopenGate?: () => void;
+  /** Opens AdminAuthModal — always rendered on /m/{slug} unless admin session is active. */
+  onAdminLogin?: () => void;
 }) {
   return (
     <div className="sticky top-0 left-0 right-0 z-40 px-3 sm:px-5 md:px-8 lg:px-12 py-2"
@@ -775,6 +803,8 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, vi
             </>
           )}
           <ThemeToggle size="sm" />
+          {/* Login button: for anonymous visitors, re-open the identity gate.
+              Resolves P0-10: Access admin / Login toujours visible sur /m/{slug}. */}
           {!visitorRegistered && !isModelLoggedIn && onReopenGate && (
             <button
               onClick={onReopenGate}
@@ -788,6 +818,24 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, vi
               Login
             </button>
           )}
+          {/* Admin access: small shield icon, always visible for non-admin users.
+              Opens the AdminAuthModal — dedicated path for yumi/paloma/ruby/root. */}
+          {!isModelLoggedIn && onAdminLogin && (
+            <button
+              type="button"
+              onClick={onAdminLogin}
+              title="Accès admin"
+              aria-label="Accès admin"
+              className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid var(--border)",
+                color: "var(--text-muted)",
+              }}
+            >
+              <Shield className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -795,12 +843,14 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, vi
 }
 
 // ── Hero Section ──
-function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierView, contentUnlocked, visitorRegistered, isEditMode, isModelLoggedIn, chatOpen, setChatOpen, chatUnread, activeStories, setStoryViewIdx, edit }: {
+function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierView, contentUnlocked, visitorRegistered, isEditMode, isModelLoggedIn, chatOpen, setChatOpen, chatUnread, activeStories, setStoryViewIdx, edit, instagramHandle }: {
   model: ModelInfo; displayModel: ModelInfo | null; posts: Post[]; uploads: UploadedContent[]; wallPosts: WallPost[];
   isTierView: boolean; contentUnlocked: boolean; visitorRegistered: boolean; isEditMode: boolean;
   isModelLoggedIn: boolean; chatOpen: boolean; setChatOpen: (v: boolean) => void; chatUnread: number;
   activeStories: Post[]; setStoryViewIdx: (v: number | null) => void;
   edit: ReturnType<typeof useEditMode>;
+  /** Instagram handle for CTA buttons (B9). Null/undefined → CTAs hidden. */
+  instagramHandle?: string | null;
 }) {
   const latestImagePost = posts.find(p => p.media_url);
   const bannerUrl = displayModel?.banner || latestImagePost?.media_url || null;
@@ -862,6 +912,12 @@ function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierVie
             </div>
               {displayModel?.bio && <p className="profile-stagger-3 text-sm sm:text-base mt-2 sm:mt-3 line-clamp-2 leading-relaxed max-w-lg" style={{ color: "rgba(255,255,255,0.7)" }}>{displayModel.bio}</p>}
               {displayModel?.status_text && !isEditMode && <p className="text-sm sm:text-base mt-2 max-w-md" style={{ color: "rgba(255,255,255,0.8)", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>{displayModel.status_text}</p>}
+              {/* Instagram CTAs (B9) — follow + DM native links. Hidden if no handle. */}
+              {!isEditMode && !isModelLoggedIn && instagramHandle && (
+                <div className="profile-stagger-3 mt-3 sm:mt-4">
+                  <ProfileCta handle={instagramHandle} size="sm" />
+                </div>
+              )}
               <div className="profile-stagger-4 flex items-center gap-6 sm:gap-8 mt-3 sm:mt-4">
                 <span className="text-xs sm:text-sm" style={{ color: "rgba(255,255,255,0.5)" }}><span className="font-semibold tabular-nums" style={{ color: "rgba(255,255,255,0.9)" }}>{posts.length}</span> posts</span>
                 <span className="text-xs sm:text-sm" style={{ color: "rgba(255,255,255,0.5)" }}><span className="font-semibold tabular-nums" style={{ color: "rgba(255,255,255,0.9)" }}>{wallPosts.length}</span> fans</span>
@@ -1038,6 +1094,36 @@ function FeedView({ model, displayModel, posts, uploads, wallPosts, wallContent,
   setLightboxUrl: (v: string | null) => void; setGalleryTier: (v: string) => void;
   setWallPosts: React.Dispatch<React.SetStateAction<WallPost[]>>; setPosts: React.Dispatch<React.SetStateAction<Post[]>>;
 }) {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Unified feed (Phase 3 Agent 3.B + Phase 5.B) — loads polymorphic items from
+  // `agence_feed_items` (manual + wall + instagram) with visibility_computed.
+  // Falls back to the legacy merge (posts[] + wallPosts[]) when the unified
+  // endpoint returns nothing (table missing / empty).
+  // Resolves P0-6 : IG posts visible on /m/yumi.
+  // ═══════════════════════════════════════════════════════════════════════════
+  const [feedItems, setFeedItems] = useState<FeedItem[] | null>(null);
+  const [igExpanded, setIgExpanded] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    let aborted = false;
+    const params = new URLSearchParams();
+    params.set("model", slug || modelId);
+    if (clientId) params.set("fan_id", clientId);
+    fetch(`/api/feed?${params.toString()}`)
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((d) => {
+        if (!aborted) setFeedItems(Array.isArray(d.items) ? d.items : []);
+      })
+      .catch(() => {
+        if (!aborted) setFeedItems([]);
+      });
+    return () => {
+      aborted = true;
+    };
+  }, [slug, modelId, clientId]);
+
+  const useUnified = (feedItems?.length || 0) > 0;
+
   const quickPost = async (content: string) => {
     const pseudo = visitorHandle || "Anonyme";
     try {
@@ -1050,6 +1136,7 @@ function FeedView({ model, displayModel, posts, uploads, wallPosts, wallContent,
     } catch {}
   };
 
+  // Legacy merge (kept for fallback when agence_feed_items is empty).
   const visitorPosts = wallPosts.filter(w => !w.content?.includes("#post-") && w.pseudo !== "SYSTEM").map(w => ({ type: "wall" as const, id: w.id, created_at: w.created_at, data: w }));
   const filteredModelPosts = contentUnlocked ? posts : posts.filter(p => {
     const tier = normalizeTier(p.tier_required || "public");
@@ -1058,7 +1145,21 @@ function FeedView({ model, displayModel, posts, uploads, wallPosts, wallContent,
     return false;
   });
   const modelPosts = filteredModelPosts.map(p => ({ type: "post" as const, id: p.id, created_at: p.created_at, data: p }));
-  const allItems = [...visitorPosts, ...modelPosts].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const legacyItems = [...visitorPosts, ...modelPosts].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  // Unified items (IG = public, wall = public, manual = tier-gated via card).
+  const unifiedItems = useMemo(() => {
+    if (!useUnified || !feedItems) return [];
+    return feedItems.filter((it) => {
+      if (it.source_type === "instagram") return true;
+      if (it.source_type === "wall") return true;
+      const t = normalizeTier(it.tier || "public");
+      if (!t || t === "p0") return true;
+      if (contentUnlocked) return true;
+      if (unlockedTier && tierIncludes(unlockedTier, t)) return true;
+      return false;
+    });
+  }, [feedItems, useUnified, contentUnlocked, unlockedTier]);
 
   return (
     <div className="fade-up">
@@ -1082,13 +1183,40 @@ function FeedView({ model, displayModel, posts, uploads, wallPosts, wallContent,
             </div>
           )}
 
-          {/* Posts */}
-          {allItems.length === 0 ? (
-            <div className="text-center py-20 sm:py-24">
-              <Newspaper className="w-10 h-10 mx-auto mb-4" style={{ color: "var(--text-muted)", opacity: 0.5 }} />
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>Pas encore de publications</p>
-            </div>
-          ) : allItems.map((item, idx) => {
+          {/* ═══ UNIFIED FEED RENDERING ═══ */}
+          {useUnified ? (
+            unifiedItems.length === 0 ? (
+              <div className="text-center py-20 sm:py-24">
+                <Newspaper className="w-10 h-10 mx-auto mb-4" style={{ color: "var(--text-muted)", opacity: 0.5 }} />
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>Pas encore de publications</p>
+              </div>
+            ) : (
+              unifiedItems.map((item, idx) => (
+                <FeedItemCard
+                  key={`${item.source_type}-${item.id}`}
+                  item={item}
+                  model={model}
+                  unlockedTier={unlockedTier}
+                  isModelLoggedIn={isModelLoggedIn}
+                  purchasedItems={purchasedItems}
+                  subscriberUsername={subscriberUsername}
+                  hasSubscriberIdentity={hasSubscriberIdentity}
+                  onOpenLightbox={(url) => setLightboxUrl(url)}
+                  onNavigateTier={(t) => setGalleryTier(t)}
+                  index={idx}
+                  captionExpanded={!!igExpanded[item.id]}
+                  onToggleCaption={() => setIgExpanded((p) => ({ ...p, [item.id]: true }))}
+                />
+              ))
+            )
+          ) : (
+            // ═══ LEGACY FALLBACK ═══
+            legacyItems.length === 0 ? (
+              <div className="text-center py-20 sm:py-24">
+                <Newspaper className="w-10 h-10 mx-auto mb-4" style={{ color: "var(--text-muted)", opacity: 0.5 }} />
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>Pas encore de publications</p>
+              </div>
+            ) : legacyItems.map((item, idx) => {
             if (item.type === "wall") {
               const w = item.data as WallPost;
               return (
@@ -1173,7 +1301,8 @@ function FeedView({ model, displayModel, posts, uploads, wallPosts, wallContent,
                 </div>
               </div>
             );
-          })}
+          })
+          )}
         </div>
 
         {/* Right sidebar — recent photos (desktop) */}

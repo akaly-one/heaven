@@ -56,6 +56,9 @@ const SELF_AUTHED_PREFIXES = [
   "/api/instagram/webhook",
   // Meta data deletion callback — GET (health) + POST (Meta signed_request or manual ig_username)
   "/api/meta/data-deletion",
+  // Portal routes (token-gated, no JWT) — release form pre-fill, contracts, onboarding.
+  // Each route verifies a one-shot token against `agence_portal_tokens`.
+  "/api/portal",
 ];
 
 function isPublicRoute(pathname: string, method: string): boolean {

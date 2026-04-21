@@ -17,8 +17,10 @@
 import { Newspaper, Camera, Image as ImageIcon, Send, Trash2, Pin, Lock, Heart, MessageCircle, Eye, X, ChevronDown } from "lucide-react";
 import { InstagramStatsWidget } from "@/components/cockpit/instagram-stats-widget";
 import { OverviewSimulator } from "@/components/cockpit/overview-simulator";
+import { KpiStrip } from "@/components/cockpit/dashboard/kpi-strip";
 import type { AccessCode, ClientInfo, FeedPost, PackConfig, WallPost } from "@/types/heaven";
 import { isFreeSlot } from "@/lib/tier-utils";
+import { toModelId } from "@/lib/model-utils";
 
 const surface = "bg-white/[0.03] border border-white/[0.06] rounded-xl";
 const fmt = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
@@ -85,9 +87,14 @@ export function HomePanel(props: HomePanelProps) {
     onCreatePost, onDeletePost, onPostImageChange,
   } = props;
 
+  const modelId = toModelId(modelSlug);
+
   return (
     <div className="space-y-4">
-      {/* Instagram stats — live snapshot */}
+      {/* Phase 3 Agent 3.A — 6-card KPI strip (Revenus/Abo/Conv/Panier/IG followers/IG posts) */}
+      <KpiStrip modelId={modelId} period={30} />
+
+      {/* Instagram stats — live snapshot (kept below the KPI strip) */}
       <InstagramStatsWidget />
 
       {/* Two-column layout: Feed (left) + Overview (right sticky) */}

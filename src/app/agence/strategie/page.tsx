@@ -1,14 +1,22 @@
-import { redirect } from "next/navigation";
+"use client";
 
 /**
- * Phase 2 — Agent 2.A (D-1 Option 1 sidebar 1:1 pages).
+ * /agence/strategie — Phase 7 Agent 7.A (B6)
  *
- * Shell temporaire pour la route dédiée « Stratégie ». Contenu actuel
- * rendu par le monolithe `/agence/page.tsx` sur l'état `tab=strategie`.
- * Sera remplacé quand Phase 2.B aura extrait le panel en composant.
+ * Rendu réel de la page Stratégie 3 Plans (A/B/C).
+ * Remplace le redirect Phase 2.A vers `/agence?tab=strategie`.
  *
- * Flag `_from=route` : empêche le middleware de renvoyer ici en boucle.
+ * - Admin (root + yumi) : 3 onglets Plan A / B / C
+ * - Modèles Plan B (paloma/ruby) : uniquement Plan B (leur propre scope)
  */
+
+import { OsLayout } from "@/components/os-layout";
+import StrategiePanel from "@/components/cockpit/strategie/strategie-panel";
+
 export default function StrategiePage() {
-  redirect("/agence?tab=strategie&_from=route");
+  return (
+    <OsLayout cpId="agence">
+      <StrategiePanel />
+    </OsLayout>
+  );
 }
