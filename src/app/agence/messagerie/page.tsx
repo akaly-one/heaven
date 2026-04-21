@@ -1,117 +1,108 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useModel } from "@/lib/model-context";
 import { OsLayout } from "@/components/os-layout";
-import { MessageCircle, Send, Instagram, Globe, Heart, Zap, ChevronDown, Search, Sparkles, DollarSign, Tag, TrendingUp, Edit3, Save, X, Music2 } from "lucide-react";
+import {
+  MessageCircle,
+  Instagram,
+  Search,
+  Users,
+  ExternalLink,
+  Loader2,
+} from "lucide-react";
+import { FanTimeline, type TimelineItem } from "@/components/cockpit/fan-timeline";
+import { ReplyComposer, type ReplyChannel } from "@/components/cockpit/reply-composer";
 
-interface Thread {
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type SourceFilter = "all" | "web" | "instagram";
+
+interface InboxConversation {
+  fan_id: string;
+  pseudo_insta?: string | null;
+  pseudo_web?: string | null;
+  pseudo_snap?: string | null;
+  fanvue_handle?: string | null;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  sources: ("web" | "instagram")[]; // channels present for this fan
+  last_message: {
+    text: string;
+    source: "web" | "instagram";
+    direction: "in" | "out";
+    created_at: string;
+  } | null;
+  unread_count: number;
+  last_message_at: string;
+  tier?: string | null;
+}
+
+interface InboxThreadMessage {
   id: string;
-  modelId: string;
-  clientId: string;
-  primaryPlatform: "web" | "instagram" | "fanvue" | "snap";
-  lastMessageAt: string;
-  unreadCount: number;
-  status: string;
-  lastMessage: { content: string | null; direction: string; platform: string } | null;
-  client: {
+  source: "web" | "instagram";
+  direction: "in" | "out";
+  text: string;
+  created_at: string;
+  media_url?: string | null;
+}
+
+interface InboxResponse {
+  conversations?: InboxConversation[];
+  messages?: InboxThreadMessage[];
+  fan?: {
     id: string;
-    name: string | null;
-    contact_name: string | null;
-    instagram_username: string | null;
-    fanvue_username: string | null;
-    tags: string[];
-    lifetime_value_eur: number;
-    funnel_stage: string;
-    tier: string;
-  };
+    pseudo_insta?: string | null;
+    pseudo_web?: string | null;
+    sources?: ("web" | "instagram")[];
+    avatar_url?: string | null;
+    display_name?: string | null;
+  } | null;
 }
 
 interface ModelSelf {
-  name: string;
-  handle: string;
-  avatarUrl: string | null;
   slug: string;
+  name: string;
+  avatarUrl: string | null;
 }
 
-interface ThreadMessage {
-  id: string;
-  thread_id: string;
-  platform: "web" | "instagram" | "fanvue" | "snap";
-  direction: "inbound" | "outbound";
-  content: string | null;
-  media_urls: string[] | null;
-  ai_generated: boolean;
-  ai_draft_variants: unknown | null;
-  human_validated: boolean;
-  sent_at: string;
-  read_at: string | null;
-}
-
-interface Client {
-  id: string;
-  name: string | null;
-  contact_name: string | null;
-  instagram_username: string | null;
-  fanvue_username: string | null;
-  snapchat_username: string | null;
-  tiktok_username: string | null;
-  primary_handle: string | null;
-  primary_platform: string | null;
-  tags: string[];
-  lifetime_value_eur: number;
-  funnel_stage: string;
-  tier: string;
-  preferences: Record<string, unknown>;
-  agent_context: Record<string, unknown>;
-  purchases_summary: unknown[];
-  last_contact_at: string | null;
-}
-
-const PLATFORM_META = {
-  web: { icon: Globe, label: "Web", color: "#6B7280", bg: "rgba(107,114,128,0.15)" },
-  instagram: { icon: Instagram, label: "Instagram", color: "#E1306C", bg: "rgba(225,48,108,0.15)" },
-  fanvue: { icon: Heart, label: "Fanvue", color: "#C9A84C", bg: "rgba(201,168,76,0.18)" },
-  snap: { icon: Zap, label: "Snap", color: "#FFFC00", bg: "rgba(255,252,0,0.12)" },
-} as const;
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mn = Math.floor(diff / 60000);
   if (mn < 1) return "à l'instant";
-  if (mn < 60) return `il y a ${mn}m`;
+  if (mn < 60) return `${mn}m`;
   const h = Math.floor(mn / 60);
-  if (h < 24) return `il y a ${h}h`;
+  if (h < 24) return `${h}h`;
   const d = Math.floor(h / 24);
-  return `il y a ${d}j`;
+  return `${d}j`;
 }
 
-function PlatformBadge({ platform }: { platform: keyof typeof PLATFORM_META }) {
-  const meta = PLATFORM_META[platform];
-  const Icon = meta.icon;
-  return (
-    <span
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] rounded uppercase tracking-wider font-semibold"
-      style={{ background: meta.bg, color: meta.color }}
-    >
-      <Icon className="w-2.5 h-2.5" />
-      {meta.label}
-    </span>
-  );
+function truncate(text: string, max: number): string {
+  if (!text) return "";
+  return text.length > max ? text.slice(0, max) + "…" : text;
+}
+
+function primaryHandle(c: InboxConversation): string {
+  if (c.pseudo_insta) return `@${c.pseudo_insta}`;
+  if (c.pseudo_web) return c.pseudo_web;
+  if (c.pseudo_snap) return c.pseudo_snap;
+  if (c.fanvue_handle) return c.fanvue_handle;
+  return c.fan_id.slice(0, 8);
 }
 
 function Avatar({
   url,
   name,
-  size = 36,
-  ring = false,
+  size = 40,
 }: {
   url?: string | null;
   name: string;
   size?: number;
-  ring?: boolean;
 }) {
-  const initial = (name || "?").slice(0, 1).toUpperCase();
+  const initial = (name || "?").replace(/^@/, "").slice(0, 1).toUpperCase();
   const style: React.CSSProperties = {
     width: size,
     height: size,
@@ -125,9 +116,6 @@ function Avatar({
     justifyContent: "center",
     fontWeight: 700,
     fontSize: size * 0.42,
-    ...(ring && {
-      boxShadow: "0 0 0 2px #0A0A0C, 0 0 0 3px rgba(201,168,76,0.6)",
-    }),
   };
   if (url) {
     return (
@@ -140,683 +128,608 @@ function Avatar({
   return <div style={style}>{initial}</div>;
 }
 
+function SourceDots({ sources }: { sources: ("web" | "instagram")[] }) {
+  return (
+    <div className="flex items-center gap-1">
+      {sources.includes("web") && (
+        <span
+          className="w-4 h-4 rounded-full flex items-center justify-center"
+          style={{ background: "rgba(107,114,128,0.18)" }}
+          title="Web"
+        >
+          <MessageCircle className="w-2.5 h-2.5" style={{ color: "#9CA3AF" }} />
+        </span>
+      )}
+      {sources.includes("instagram") && (
+        <span
+          className="w-4 h-4 rounded-full flex items-center justify-center"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(131,58,180,0.22), rgba(225,48,108,0.22), rgba(247,119,55,0.22))",
+          }}
+          title="Instagram"
+        >
+          <Instagram className="w-2.5 h-2.5" style={{ color: "#E1306C" }} />
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 export default function MessagingPage() {
-  const { authHeaders, auth } = useModel();
-  const [threads, setThreads] = useState<Thread[]>([]);
-  const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ThreadMessage[]>([]);
-  const [client, setClient] = useState<Client | null>(null);
-  const [modelSelf, setModelSelf] = useState<ModelSelf | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { auth } = useModel();
+
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const [conversations, setConversations] = useState<InboxConversation[]>([]);
+  const [currentFanId, setCurrentFanId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<InboxThreadMessage[]>([]);
+  const [currentFan, setCurrentFan] = useState<InboxResponse["fan"] | null>(null);
+  const [loadingList, setLoadingList] = useState(true);
+  const [loadingThread, setLoadingThread] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [composerText, setComposerText] = useState("");
-  const [sendPlatform, setSendPlatform] = useState<"web" | "instagram" | "fanvue">("web");
-  const [sending, setSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [modelSelf, setModelSelf] = useState<ModelSelf | null>(null);
+  const [mobileShowThread, setMobileShowThread] = useState(false);
 
-  // Contact edit state
-  const [editingContact, setEditingContact] = useState(false);
-  const [savingContact, setSavingContact] = useState(false);
-  const [contactError, setContactError] = useState<string | null>(null);
-  const [editContact, setEditContact] = useState({
-    contact_name: "",
-    instagram_username: "",
-    snapchat_username: "",
-    tiktok_username: "",
-    fanvue_username: "",
-    tags: "",
-  });
+  const listAbortRef = useRef<AbortController | null>(null);
+  const threadAbortRef = useRef<AbortController | null>(null);
 
-  const load = async (threadId?: string) => {
-    setLoading(true);
+  // Load inbox (conversations + optional thread)
+  const loadInbox = async (fanId?: string | null, filter?: SourceFilter) => {
+    const activeFilter = filter ?? sourceFilter;
+    listAbortRef.current?.abort();
+    const abort = new AbortController();
+    listAbortRef.current = abort;
+
     try {
-      const qs = new URLSearchParams();
-      if (threadId) qs.set("thread_id", threadId);
-      const res = await fetch(`/api/agence/messaging/inbox?${qs}`, {
-        headers: authHeaders(),
+      const qs = new URLSearchParams({ source: activeFilter });
+      if (fanId) qs.set("fan_id", fanId);
+      const res = await fetch(`/api/agence/messaging/inbox?${qs.toString()}`, {
+        signal: abort.signal,
       });
-      const data = await res.json();
-      setThreads(data.threads || []);
-      setMessages(data.messages || []);
-      setClient(data.client || null);
-      if (!currentThreadId && data.currentThread) {
-        setCurrentThreadId(data.currentThread.id);
+      if (!res.ok) return;
+      const data: InboxResponse = await res.json();
+
+      // Conversations
+      if (Array.isArray(data.conversations)) {
+        setConversations(data.conversations);
       }
+      // Messages + current fan (if fanId requested)
+      if (fanId) {
+        if (Array.isArray(data.messages)) setMessages(data.messages);
+        if (data.fan) setCurrentFan(data.fan);
+      }
+    } catch (err) {
+      if ((err as { name?: string }).name === "AbortError") return;
     } finally {
-      setLoading(false);
+      setLoadingList(false);
     }
   };
 
+  // Load thread only (lighter fetch on selection)
+  const loadThread = async (fanId: string) => {
+    threadAbortRef.current?.abort();
+    const abort = new AbortController();
+    threadAbortRef.current = abort;
+    setLoadingThread(true);
+    try {
+      const qs = new URLSearchParams({
+        source: sourceFilter,
+        fan_id: fanId,
+      });
+      const res = await fetch(`/api/agence/messaging/inbox?${qs.toString()}`, {
+        signal: abort.signal,
+      });
+      if (!res.ok) return;
+      const data: InboxResponse = await res.json();
+      if (Array.isArray(data.messages)) setMessages(data.messages);
+      if (data.fan) setCurrentFan(data.fan);
+    } catch (err) {
+      if ((err as { name?: string }).name === "AbortError") return;
+    } finally {
+      setLoadingThread(false);
+    }
+  };
+
+  // Initial load + poll every 15s
   useEffect(() => {
-    load();
-    // Fetch own model profile (for header avatar + composer)
+    loadInbox();
+    const interval = setInterval(() => {
+      // Keep current selection intact; refresh list + thread together
+      loadInbox(currentFanId);
+    }, 15000);
+    return () => {
+      clearInterval(interval);
+      listAbortRef.current?.abort();
+      threadAbortRef.current?.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Reload list when filter changes
+  useEffect(() => {
+    setLoadingList(true);
+    loadInbox(currentFanId, sourceFilter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceFilter]);
+
+  // Load thread when fan changes
+  useEffect(() => {
+    if (currentFanId) loadThread(currentFanId);
+    else {
+      setMessages([]);
+      setCurrentFan(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentFanId]);
+
+  // Fetch own model avatar
+  useEffect(() => {
     const slug = (auth?.model_slug || "yumi").toLowerCase();
     fetch(`/api/models/photo?login=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
       .then((d) => {
-        if (d.slug) {
+        if (d?.slug) {
           setModelSelf({
             slug: d.slug,
-            avatarUrl: d.url,
+            avatarUrl: d.url || null,
             name: (auth?.display_name || d.slug).toUpperCase(),
-            handle: "@" + d.slug,
           });
         }
       })
       .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [auth?.display_name, auth?.model_slug]);
 
-  useEffect(() => {
-    if (currentThreadId) load(currentThreadId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentThreadId]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  // Default send platform = primary platform of current thread
-  useEffect(() => {
-    const t = threads.find((x) => x.id === currentThreadId);
-    if (t && (t.primaryPlatform === "web" || t.primaryPlatform === "instagram" || t.primaryPlatform === "fanvue")) {
-      setSendPlatform(t.primaryPlatform);
-    }
-  }, [currentThreadId, threads]);
-
-  const filteredThreads = threads.filter((t) => {
-    if (!searchQuery) return true;
+  // Search filter
+  const filteredConversations = useMemo(() => {
+    if (!searchQuery) return conversations;
     const q = searchQuery.toLowerCase();
-    return (
-      t.client?.contact_name?.toLowerCase().includes(q) ||
-      t.client?.name?.toLowerCase().includes(q) ||
-      t.client?.instagram_username?.toLowerCase().includes(q) ||
-      t.lastMessage?.content?.toLowerCase().includes(q)
-    );
-  });
-
-  const startEditContact = () => {
-    if (!client) return;
-    setEditContact({
-      contact_name: client.contact_name || "",
-      instagram_username: client.instagram_username || "",
-      snapchat_username: client.snapchat_username || "",
-      tiktok_username: client.tiktok_username || "",
-      fanvue_username: client.fanvue_username || "",
-      tags: (client.tags || []).join(", "),
+    return conversations.filter((c) => {
+      return (
+        c.pseudo_insta?.toLowerCase().includes(q) ||
+        c.pseudo_web?.toLowerCase().includes(q) ||
+        c.pseudo_snap?.toLowerCase().includes(q) ||
+        c.display_name?.toLowerCase().includes(q) ||
+        c.last_message?.text?.toLowerCase().includes(q)
+      );
     });
-    setContactError(null);
-    setEditingContact(true);
+  }, [conversations, searchQuery]);
+
+  const currentConversation = useMemo(
+    () => conversations.find((c) => c.fan_id === currentFanId) || null,
+    [conversations, currentFanId]
+  );
+
+  // Channel context for composer
+  const availableChannels: ReplyChannel[] = useMemo(() => {
+    const fromFan = currentFan?.sources || currentConversation?.sources || [];
+    return (fromFan.filter((s) => s === "web" || s === "instagram") as ReplyChannel[]) || [];
+  }, [currentFan, currentConversation]);
+
+  const defaultChannel: ReplyChannel = useMemo(() => {
+    const last = messages[messages.length - 1];
+    if (last?.source === "web" || last?.source === "instagram") return last.source;
+    return availableChannels[0] || "web";
+  }, [messages, availableChannels]);
+
+  // Timeline mapping — messages are sorted asc (oldest first) in thread.
+  // FanTimeline internally sorts desc by default — pass items as-is for cross-day grouping.
+  const timelineItems: TimelineItem[] = useMemo(
+    () =>
+      messages.map((m) => ({
+        id: m.id,
+        source: m.source,
+        direction: m.direction,
+        text: m.text,
+        created_at: m.created_at,
+        media_url: m.media_url,
+      })),
+    [messages]
+  );
+
+  // Handlers
+  const handleSelect = (fanId: string) => {
+    setCurrentFanId(fanId);
+    setMobileShowThread(true);
   };
 
-  const cancelEditContact = () => {
-    setEditingContact(false);
-    setContactError(null);
+  const handleBack = () => {
+    setMobileShowThread(false);
   };
 
-  const saveContact = async () => {
-    if (!client) return;
-    setSavingContact(true);
-    setContactError(null);
-    try {
-      const tags = editContact.tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean);
-
-      const res = await fetch(`/api/agence/messaging/contact?id=${client.id}`, {
-        method: "PATCH",
-        headers: { ...authHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contact_name: editContact.contact_name,
-          instagram_username: editContact.instagram_username,
-          snapchat_username: editContact.snapchat_username,
-          tiktok_username: editContact.tiktok_username,
-          fanvue_username: editContact.fanvue_username,
-          tags,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (res.status === 409 && data.conflicts) {
-          const fields = Object.keys(data.conflicts).join(", ");
-          setContactError(
-            `Handle déjà utilisé sur un autre contact (${fields}). Fusionne plutôt.`
-          );
-        } else {
-          setContactError(data.error || "Erreur");
-        }
-        return;
-      }
-
-      setEditingContact(false);
-      if (currentThreadId) await load(currentThreadId);
-    } finally {
-      setSavingContact(false);
+  const handleSent = () => {
+    if (currentFanId) {
+      loadInbox(currentFanId);
     }
   };
 
-  const sendMessage = async () => {
-    if (!composerText.trim() || !currentThreadId || sending) return;
-    setSending(true);
-    try {
-      await fetch("/api/agence/messaging/inbox", {
-        method: "POST",
-        headers: { ...authHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({
-          thread_id: currentThreadId,
-          platform: sendPlatform,
-          content: composerText.trim(),
-        }),
-      });
-      setComposerText("");
-      await load(currentThreadId);
-    } finally {
-      setSending(false);
-    }
-  };
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <OsLayout>
-      <div className="flex" style={{ height: "calc(100vh - 48px)" }}>
-        {/* COL 1 — Conversations list */}
-        <aside
-          className="w-[320px] border-r flex flex-col shrink-0"
-          style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(15,15,18,0.4)" }}
+    <OsLayout cpId="agence">
+      <div
+        className="flex flex-col"
+        style={{ height: "calc(100vh - 48px)", background: "var(--bg)" }}
+      >
+        {/* Top bar — source filter */}
+        <div
+          className="flex items-center justify-between px-3 md:px-4 py-2.5 shrink-0 gap-2"
+          style={{
+            borderBottom: "1px solid var(--border)",
+            background: "var(--surface)",
+          }}
         >
-          <div className="p-4 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-            <div className="flex items-center gap-2 mb-3">
-              <MessageCircle className="w-4 h-4" style={{ color: "#C9A84C" }} />
-              <h2 className="text-sm font-semibold">Messagerie</h2>
-              <span className="text-[10px] opacity-50 ml-auto">
-                {threads.length} conversation{threads.length > 1 ? "s" : ""}
-              </span>
+          <div className="flex items-center gap-2 min-w-0">
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+              style={{
+                background: "linear-gradient(135deg, #E6C974, #9E7C1F)",
+              }}
+            >
+              <MessageCircle className="w-3.5 h-3.5" style={{ color: "#0A0A0C" }} />
             </div>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 opacity-50" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Rechercher fan…"
-                className="w-full pl-8 pr-3 py-2 text-xs rounded"
-                style={{
-                  background: "rgba(0,0,0,0.3)",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  color: "var(--text)",
-                }}
-              />
+            <div className="min-w-0">
+              <h1
+                className="text-sm font-bold leading-tight truncate"
+                style={{ color: "var(--text)" }}
+              >
+                Messagerie unifiée
+              </h1>
+              <p
+                className="text-[10px] truncate"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Web + Instagram · {conversations.length} conversation
+                {conversations.length > 1 ? "s" : ""}
+              </p>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
-            {loading && threads.length === 0 && (
-              <div className="p-6 text-center text-xs opacity-50">Chargement…</div>
-            )}
-            {filteredThreads.map((t) => {
-              const isActive = t.id === currentThreadId;
-              const name = t.client?.contact_name || t.client?.name || t.client?.instagram_username || "Sans nom";
+          {/* Segmented filter */}
+          <div
+            className="inline-flex rounded-lg p-0.5 shrink-0"
+            style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}
+          >
+            {(["all", "web", "instagram"] as const).map((f) => {
+              const active = sourceFilter === f;
+              const label =
+                f === "all" ? "Tous" : f === "web" ? "Web" : "Instagram";
               return (
                 <button
-                  key={t.id}
-                  onClick={() => setCurrentThreadId(t.id)}
-                  className="w-full text-left px-4 py-3 border-b transition-colors"
+                  key={f}
+                  type="button"
+                  onClick={() => setSourceFilter(f)}
+                  className="px-2.5 md:px-3 py-1 rounded text-[10px] md:text-[11px] font-semibold transition-colors"
                   style={{
-                    background: isActive ? "rgba(201,168,76,0.1)" : "transparent",
-                    borderColor: "rgba(255,255,255,0.04)",
+                    background: active
+                      ? f === "instagram"
+                        ? "rgba(225,48,108,0.15)"
+                        : f === "web"
+                        ? "rgba(107,114,128,0.18)"
+                        : "linear-gradient(135deg, #E6C974, #C9A84C)"
+                      : "transparent",
+                    color: active
+                      ? f === "instagram"
+                        ? "#E1306C"
+                        : f === "web"
+                        ? "#9CA3AF"
+                        : "#0A0A0C"
+                      : "var(--text-muted)",
                   }}
                 >
-                  <div className="flex items-start gap-3">
-                    <Avatar name={name} size={40} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-medium truncate">{name}</span>
-                        {t.unreadCount > 0 && (
-                          <span
-                            className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold"
-                            style={{ background: "#C9A84C", color: "#0A0A0C" }}
-                          >
-                            {t.unreadCount}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <PlatformBadge platform={t.primaryPlatform} />
-                        {t.client?.tier && t.client.tier !== "free" && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded uppercase" style={{ background: "rgba(201,168,76,0.15)", color: "#E6C974" }}>
-                            {t.client.tier}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] opacity-60 truncate">
-                        {t.lastMessage?.direction === "outbound" ? "✓ " : ""}
-                        {t.lastMessage?.content || "—"}
-                      </p>
-                    </div>
-                    <span className="text-[10px] opacity-40 shrink-0 self-start mt-1">
-                      {timeAgo(t.lastMessageAt)}
-                    </span>
-                  </div>
+                  {label}
                 </button>
               );
             })}
-
-            {!loading && filteredThreads.length === 0 && (
-              <div className="p-6 text-center text-xs opacity-50">Aucune conversation</div>
-            )}
           </div>
-        </aside>
+        </div>
 
-        {/* COL 2 — Conversation thread */}
-        <section className="flex-1 flex flex-col" style={{ background: "rgba(10,10,12,0.25)" }}>
-          {currentThreadId && client ? (
-            <>
+        {/* Main split */}
+        <div className="flex flex-1 min-h-0">
+          {/* LIST — left column */}
+          <aside
+            className={`w-full md:w-[320px] md:min-w-[280px] md:max-w-[360px] shrink-0 flex flex-col ${
+              mobileShowThread ? "hidden md:flex" : "flex"
+            }`}
+            style={{
+              background: "var(--surface)",
+              borderRight: "1px solid var(--border)",
+            }}
+          >
+            <div
+              className="p-3 shrink-0"
+              style={{ borderBottom: "1px solid var(--border2)" }}
+            >
               <div
-                className="px-6 py-4 border-b flex items-center gap-3"
-                style={{ borderColor: "rgba(255,255,255,0.06)" }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}
               >
-                <Avatar name={client.contact_name || client.name || "?"} size={44} />
-                <div className="flex-1">
-                  <h3 className="text-sm font-semibold">
-                    {client.contact_name || client.name}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-0.5 text-[11px] opacity-60">
-                    {client.instagram_username && (
-                      <span className="inline-flex items-center gap-1">
-                        <Instagram className="w-3 h-3" /> @{client.instagram_username}
-                      </span>
-                    )}
-                    {client.fanvue_username && (
-                      <span className="inline-flex items-center gap-1">
-                        <Heart className="w-3 h-3" /> {client.fanvue_username}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {modelSelf && (
-                  <div className="flex items-center gap-2 opacity-80">
-                    <span className="text-[10px] uppercase tracking-wider opacity-60">Toi</span>
-                    <Avatar url={modelSelf.avatarUrl} name={modelSelf.name} size={32} ring />
-                  </div>
-                )}
+                <Search
+                  className="w-3.5 h-3.5 shrink-0"
+                  style={{ color: "var(--text-muted)" }}
+                />
+                <input
+                  type="text"
+                  placeholder="Rechercher un fan…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-transparent border-none outline-none text-xs w-full placeholder:opacity-50"
+                  style={{ color: "var(--text)" }}
+                />
               </div>
+            </div>
 
-              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-                {messages.map((m) => {
-                  const isOut = m.direction === "outbound";
-                  const avatarName = isOut
-                    ? modelSelf?.name || "YUMI"
-                    : client.contact_name || client.name || "?";
-                  const avatarUrl = isOut ? modelSelf?.avatarUrl : null;
-                  return (
-                    <div
-                      key={m.id}
-                      className={`flex items-end gap-2 ${isOut ? "justify-end" : "justify-start"}`}
-                    >
-                      {!isOut && <Avatar name={avatarName} size={28} />}
-                      <div className="max-w-[62%]">
-                        <div
-                          className="flex items-center gap-1.5 mb-1 text-[9px] opacity-60"
-                          style={{ justifyContent: isOut ? "flex-end" : "flex-start" }}
-                        >
-                          <PlatformBadge platform={m.platform} />
-                          <span>{timeAgo(m.sent_at)}</span>
-                        </div>
-                        <div
-                          className="px-4 py-2.5 text-sm rounded-2xl"
-                          style={{
-                            background: isOut
-                              ? "linear-gradient(135deg, #C9A84C, #9E7C1F)"
-                              : "rgba(255,255,255,0.06)",
-                            color: isOut ? "#0A0A0C" : "var(--text)",
-                            borderBottomRightRadius: isOut ? "4px" : "16px",
-                            borderBottomLeftRadius: isOut ? "16px" : "4px",
-                          }}
-                        >
-                          {m.content}
-                        </div>
-                      </div>
-                      {isOut && <Avatar url={avatarUrl} name={avatarName} size={28} />}
-                    </div>
-                  );
-                })}
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Composer */}
-              <div
-                className="px-6 py-4 border-t"
-                style={{ borderColor: "rgba(255,255,255,0.06)" }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] opacity-60 uppercase tracking-wider">Envoyer via</span>
-                  {(["web", "instagram", "fanvue"] as const).map((p) => {
-                    const meta = PLATFORM_META[p];
-                    const Icon = meta.icon;
-                    const active = sendPlatform === p;
-                    return (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setSendPlatform(p)}
-                        className="text-[10px] px-2 py-1 rounded inline-flex items-center gap-1 transition-all"
-                        style={{
-                          background: active ? meta.bg : "transparent",
-                          color: active ? meta.color : "rgba(255,255,255,0.4)",
-                          border: `1px solid ${active ? meta.color + "66" : "rgba(255,255,255,0.08)"}`,
-                        }}
-                      >
-                        <Icon className="w-3 h-3" />
-                        {meta.label}
-                      </button>
-                    );
-                  })}
+            <div className="flex-1 overflow-y-auto">
+              {loadingList && conversations.length === 0 && (
+                <div
+                  className="flex items-center justify-center py-10 text-xs"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Chargement…
                 </div>
-                <div className="flex gap-2">
-                  <textarea
-                    value={composerText}
-                    onChange={(e) => setComposerText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        sendMessage();
-                      }
-                    }}
-                    placeholder="Tape ton message…"
-                    rows={2}
-                    className="flex-1 px-4 py-2.5 rounded-xl text-sm resize-none"
-                    style={{
-                      background: "rgba(0,0,0,0.3)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      color: "var(--text)",
-                    }}
-                  />
+              )}
+
+              {!loadingList && filteredConversations.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3"
+                    style={{ background: "var(--bg3)" }}
+                  >
+                    <Users
+                      className="w-5 h-5"
+                      style={{ color: "var(--text-muted)" }}
+                    />
+                  </div>
+                  <p
+                    className="text-xs font-medium"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    Aucune conversation
+                  </p>
+                  <p
+                    className="text-[10px] mt-1"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    {searchQuery
+                      ? "Aucun résultat pour cette recherche"
+                      : sourceFilter === "all"
+                      ? "Les conversations apparaîtront ici"
+                      : `Aucune conversation ${
+                          sourceFilter === "instagram" ? "Instagram" : "Web"
+                        }`}
+                  </p>
+                </div>
+              )}
+
+              {filteredConversations.map((conv) => {
+                const active = conv.fan_id === currentFanId;
+                const title = primaryHandle(conv);
+                return (
                   <button
+                    key={conv.fan_id}
                     type="button"
-                    onClick={sendMessage}
-                    disabled={!composerText.trim() || sending}
-                    className="px-4 rounded-xl text-sm font-semibold flex items-center gap-1.5 disabled:opacity-40"
+                    onClick={() => handleSelect(conv.fan_id)}
+                    className="w-full text-left px-3 py-3 transition-colors cursor-pointer border-none outline-none"
                     style={{
-                      background: "linear-gradient(135deg, #E6C974, #C9A84C)",
-                      color: "#0A0A0C",
+                      background: active ? "var(--bg2)" : "transparent",
+                      borderLeft: active
+                        ? "3px solid #C9A84C"
+                        : "3px solid transparent",
+                      borderBottom: "1px solid var(--border2)",
                     }}
                   >
-                    <Send className="w-3.5 h-3.5" />
-                    {sending ? "…" : "Envoyer"}
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center opacity-50 text-sm">
-              Sélectionne une conversation
-            </div>
-          )}
-        </section>
-
-        {/* COL 3 — Fan profile sidebar */}
-        <aside
-          className="w-[320px] border-l overflow-y-auto"
-          style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(15,15,18,0.4)" }}
-        >
-          {client ? (
-            <div className="p-5 space-y-5">
-              <div>
-                <div className="flex items-start justify-between mb-3">
-                  <Avatar name={client.contact_name || client.name || "?"} size={56} />
-                  {!editingContact && (
-                    <button
-                      type="button"
-                      onClick={startEditContact}
-                      className="text-[10px] px-2 py-1 rounded inline-flex items-center gap-1 opacity-70 hover:opacity-100"
-                      style={{
-                        background: "rgba(201,168,76,0.08)",
-                        color: "#E6C974",
-                        border: "1px solid rgba(201,168,76,0.25)",
-                      }}
-                    >
-                      <Edit3 className="w-3 h-3" /> Éditer
-                    </button>
-                  )}
-                </div>
-
-                {editingContact ? (
-                  <div className="space-y-2">
-                    <input
-                      type="text"
-                      value={editContact.contact_name}
-                      onChange={(e) => setEditContact({ ...editContact, contact_name: e.target.value })}
-                      placeholder="Nom contact"
-                      className="w-full px-3 py-2 text-sm rounded"
-                      style={{
-                        background: "rgba(0,0,0,0.3)",
-                        border: "1px solid rgba(201,168,76,0.2)",
-                        color: "var(--text)",
-                      }}
-                    />
-                    <div className="text-[9px] uppercase tracking-wider opacity-60 mt-3 mb-1">
-                      Handles plateformes
-                    </div>
-                    {([
-                      ["instagram_username", "Instagram", Instagram, "#E1306C"],
-                      ["snapchat_username", "Snap", Zap, "#FFFC00"],
-                      ["tiktok_username", "TikTok", Music2, "#FF0050"],
-                      ["fanvue_username", "Fanvue", Heart, "#C9A84C"],
-                    ] as const).map(([field, label, Icon, color]) => (
-                      <div key={field} className="flex items-center gap-2">
-                        <Icon className="w-3 h-3 shrink-0" style={{ color }} />
-                        <input
-                          type="text"
-                          value={editContact[field] as string}
-                          onChange={(e) => setEditContact({ ...editContact, [field]: e.target.value })}
-                          placeholder={`@${label.toLowerCase()}`}
-                          className="flex-1 px-2 py-1.5 text-[11px] rounded"
-                          style={{
-                            background: "rgba(0,0,0,0.3)",
-                            border: "1px solid rgba(255,255,255,0.08)",
-                            color: "var(--text)",
-                          }}
-                        />
+                    <div className="flex items-start gap-3">
+                      <Avatar
+                        url={conv.avatar_url}
+                        name={conv.display_name || title}
+                        size={40}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span
+                            className="text-xs font-semibold truncate"
+                            style={{ color: "var(--text)" }}
+                          >
+                            {title}
+                          </span>
+                          {conv.unread_count > 0 && (
+                            <span
+                              className="text-[9px] px-1.5 py-0.5 rounded-full font-bold shrink-0"
+                              style={{ background: "#C9A84C", color: "#0A0A0C" }}
+                            >
+                              {conv.unread_count}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <SourceDots sources={conv.sources || []} />
+                          {conv.tier && conv.tier !== "free" && (
+                            <span
+                              className="text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold"
+                              style={{
+                                background: "rgba(201,168,76,0.15)",
+                                color: "#E6C974",
+                              }}
+                            >
+                              {conv.tier}
+                            </span>
+                          )}
+                        </div>
+                        <p
+                          className="text-[11px] truncate"
+                          style={{ color: "var(--text-muted)" }}
+                        >
+                          {conv.last_message?.direction === "out" ? "✓ " : ""}
+                          {truncate(conv.last_message?.text || "—", 48)}
+                        </p>
                       </div>
-                    ))}
-                    <div className="text-[9px] uppercase tracking-wider opacity-60 mt-3 mb-1">
-                      Tags (virgule entre)
-                    </div>
-                    <input
-                      type="text"
-                      value={editContact.tags}
-                      onChange={(e) => setEditContact({ ...editContact, tags: e.target.value })}
-                      placeholder="fan-chaud, regulier"
-                      className="w-full px-3 py-2 text-xs rounded"
-                      style={{
-                        background: "rgba(0,0,0,0.3)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        color: "var(--text)",
-                      }}
-                    />
-                    {contactError && (
-                      <div
-                        className="text-[11px] px-3 py-2 rounded"
-                        style={{
-                          background: "rgba(220,38,38,0.08)",
-                          color: "#F87171",
-                          border: "1px solid rgba(220,38,38,0.25)",
-                        }}
-                      >
-                        {contactError}
-                      </div>
-                    )}
-                    <div className="flex gap-2 mt-3">
-                      <button
-                        type="button"
-                        onClick={saveContact}
-                        disabled={savingContact}
-                        className="flex-1 text-[11px] py-2 rounded font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
-                        style={{
-                          background: "linear-gradient(135deg, #E6C974, #C9A84C)",
-                          color: "#0A0A0C",
-                        }}
-                      >
-                        <Save className="w-3 h-3" />
-                        Enregistrer
-                      </button>
-                      <button
-                        type="button"
-                        onClick={cancelEditContact}
-                        className="text-[11px] px-3 py-2 rounded"
-                        style={{ border: "1px solid rgba(255,255,255,0.12)" }}
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <h3 className="text-base font-semibold">
-                      {client.contact_name || client.name || <span className="opacity-40">Sans nom</span>}
-                    </h3>
-                    {client.primary_handle && (
-                      <div className="text-[10px] opacity-50 mt-0.5">
-                        Alias principal : {client.primary_handle} ({client.primary_platform})
-                      </div>
-                    )}
-                    <div className="text-[11px] opacity-70 mt-2 space-y-1">
-                      {client.instagram_username && (
-                        <div className="flex items-center gap-1.5">
-                          <Instagram className="w-3 h-3" style={{ color: "#E1306C" }} />
-                          @{client.instagram_username}
-                        </div>
-                      )}
-                      {client.snapchat_username && (
-                        <div className="flex items-center gap-1.5">
-                          <Zap className="w-3 h-3" style={{ color: "#FFFC00" }} />
-                          {client.snapchat_username}
-                        </div>
-                      )}
-                      {client.tiktok_username && (
-                        <div className="flex items-center gap-1.5">
-                          <Music2 className="w-3 h-3" style={{ color: "#FF0050" }} />
-                          @{client.tiktok_username}
-                        </div>
-                      )}
-                      {client.fanvue_username && (
-                        <div className="flex items-center gap-1.5">
-                          <Heart className="w-3 h-3" style={{ color: "#C9A84C" }} />
-                          {client.fanvue_username}
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* KPIs */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-2.5 rounded" style={{ background: "rgba(201,168,76,0.08)" }}>
-                  <div className="flex items-center gap-1 text-[9px] opacity-60 uppercase tracking-wider">
-                    <DollarSign className="w-3 h-3" /> LTV
-                  </div>
-                  <div className="text-sm font-bold mt-1">
-                    {client.lifetime_value_eur.toFixed(0)}€
-                  </div>
-                </div>
-                <div className="p-2.5 rounded" style={{ background: "rgba(124,58,237,0.08)" }}>
-                  <div className="flex items-center gap-1 text-[9px] opacity-60 uppercase tracking-wider">
-                    <TrendingUp className="w-3 h-3" /> Stage
-                  </div>
-                  <div className="text-[11px] font-semibold mt-1 capitalize">
-                    {client.funnel_stage}
-                  </div>
-                </div>
-              </div>
-
-              {/* Tags */}
-              {client.tags && client.tags.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-1 text-[9px] opacity-60 uppercase tracking-wider mb-2">
-                    <Tag className="w-3 h-3" /> Tags
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {client.tags.map((tag) => (
                       <span
-                        key={tag}
-                        className="text-[10px] px-2 py-0.5 rounded"
-                        style={{
-                          background: "rgba(201,168,76,0.1)",
-                          color: "#E6C974",
-                        }}
+                        className="text-[10px] tabular-nums shrink-0 mt-0.5"
+                        style={{ color: "var(--text-muted)" }}
                       >
-                        {tag}
+                        {timeAgo(conv.last_message_at)}
                       </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
 
-              {/* Préférences apprises */}
-              {client.preferences && Object.keys(client.preferences).length > 0 && (
-                <div>
-                  <div className="flex items-center gap-1 text-[9px] opacity-60 uppercase tracking-wider mb-2">
-                    <Sparkles className="w-3 h-3" /> Préférences IA
-                  </div>
-                  <div className="text-[11px] space-y-1 opacity-80">
-                    {Object.entries(client.preferences).map(([k, v]) => (
-                      <div key={k}>
-                        <span className="opacity-60">{k}:</span>{" "}
-                        {Array.isArray(v) ? v.join(", ") : String(v)}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Actions suggérées */}
-              <div>
-                <div className="text-[9px] opacity-60 uppercase tracking-wider mb-2">
-                  Actions suggérées
-                </div>
-                <div className="space-y-1.5">
+          {/* THREAD — right column */}
+          <section
+            className={`flex-1 flex flex-col min-w-0 ${
+              !mobileShowThread ? "hidden md:flex" : "flex"
+            }`}
+            style={{ background: "var(--bg)" }}
+          >
+            {currentFanId && currentConversation ? (
+              <>
+                {/* Thread header */}
+                <div
+                  className="flex items-center gap-3 px-4 md:px-5 py-3 shrink-0"
+                  style={{
+                    borderBottom: "1px solid var(--border)",
+                    background: "var(--surface)",
+                  }}
+                >
                   <button
-                    className="w-full text-[11px] py-2 rounded text-left px-3"
+                    type="button"
+                    onClick={handleBack}
+                    className="md:hidden p-1.5 rounded-lg border-none shrink-0"
+                    style={{ background: "var(--bg2)", color: "var(--text)" }}
+                    aria-label="Retour"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
+                  </button>
+                  <Avatar
+                    url={currentConversation.avatar_url || currentFan?.avatar_url}
+                    name={primaryHandle(currentConversation)}
+                    size={40}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p
+                        className="text-sm font-semibold truncate"
+                        style={{ color: "var(--text)" }}
+                      >
+                        {primaryHandle(currentConversation)}
+                      </p>
+                      <SourceDots sources={currentConversation.sources || []} />
+                    </div>
+                    <p
+                      className="text-[10px]"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {currentConversation.sources.length > 1
+                        ? "Thread unifié web + Instagram"
+                        : currentConversation.sources[0] === "instagram"
+                        ? "Conversation Instagram"
+                        : "Conversation web"}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/agence/clients/${currentFanId}`}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold shrink-0"
                     style={{
-                      background: "rgba(201,168,76,0.08)",
+                      background: "rgba(201,168,76,0.1)",
                       color: "#E6C974",
                       border: "1px solid rgba(201,168,76,0.25)",
                     }}
                   >
-                    🔥 Proposer Pack Premium 40€
-                  </button>
-                  <button
-                    className="w-full text-[11px] py-2 rounded text-left px-3"
-                    style={{
-                      background: "rgba(124,58,237,0.08)",
-                      color: "#A78BFA",
-                      border: "1px solid rgba(124,58,237,0.25)",
-                    }}
-                  >
-                    ✨ Générer draft IA
-                  </button>
-                  <button
-                    className="w-full text-[11px] py-2 rounded text-left px-3"
-                    style={{
-                      background: "rgba(255,255,255,0.04)",
-                      color: "rgba(255,255,255,0.6)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                    }}
-                  >
-                    ⭐ Marquer VIP
-                  </button>
+                    <ExternalLink className="w-3 h-3" />
+                    <span className="hidden sm:inline">Fiche fan</span>
+                  </Link>
                 </div>
+
+                {/* Thread body */}
+                <div
+                  className="flex-1 overflow-y-auto px-4 md:px-6 py-4"
+                  style={{ background: "var(--bg)" }}
+                >
+                  {loadingThread && messages.length === 0 ? (
+                    <div
+                      className="flex items-center justify-center py-10 text-xs"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Chargement des messages…
+                    </div>
+                  ) : (
+                    <FanTimeline
+                      items={timelineItems}
+                      emptyLabel="Aucun message pour cette conversation"
+                      outAvatarUrl={modelSelf?.avatarUrl}
+                      outAvatarName={modelSelf?.name || "YUMI"}
+                      inAvatarName={primaryHandle(currentConversation)}
+                    />
+                  )}
+                </div>
+
+                {/* Composer */}
+                <div
+                  className="px-3 md:px-5 py-3 shrink-0"
+                  style={{
+                    borderTop: "1px solid var(--border)",
+                    background: "var(--surface)",
+                  }}
+                >
+                  <ReplyComposer
+                    fanId={currentFanId}
+                    availableChannels={
+                      availableChannels.length > 0
+                        ? availableChannels
+                        : ["web"]
+                    }
+                    defaultChannel={defaultChannel}
+                    onSent={handleSent}
+                  />
+                </div>
+              </>
+            ) : (
+              <div
+                className="flex-1 flex flex-col items-center justify-center"
+                style={{ background: "var(--bg)" }}
+              >
+                <div
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+                  style={{ background: "var(--bg3)" }}
+                >
+                  <MessageCircle
+                    className="w-7 h-7"
+                    style={{ color: "var(--text-muted)" }}
+                  />
+                </div>
+                <p
+                  className="text-sm font-medium"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  Sélectionne une conversation
+                </p>
+                <p
+                  className="text-[11px] mt-1"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Les messages web et Instagram apparaîtront ici
+                </p>
               </div>
-            </div>
-          ) : (
-            <div className="p-6 text-xs opacity-50 text-center">
-              Sélectionne un fan pour voir son profil
-            </div>
-          )}
-        </aside>
+            )}
+          </section>
+        </div>
       </div>
     </OsLayout>
   );
