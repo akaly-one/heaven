@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useModel } from "@/lib/model-context";
 import { OsLayout } from "@/components/os-layout";
 import {
@@ -9,11 +9,15 @@ import {
   Instagram,
   Search,
   Users,
-  ExternalLink,
   Loader2,
+  BookUser,
+  ChevronRight,
 } from "lucide-react";
 import { FanTimeline, type TimelineItem } from "@/components/cockpit/fan-timeline";
-import { ReplyComposer, type ReplyChannel } from "@/components/cockpit/reply-composer";
+import { type ReplyChannel } from "@/components/cockpit/reply-composer";
+import { ContactsDrawer } from "@/components/cockpit/messagerie/contacts-drawer";
+import { Meta24hTimer } from "@/components/cockpit/messagerie/meta-24h-timer";
+import { MultiChannelReply } from "@/components/cockpit/messagerie/multi-channel-reply";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -159,7 +163,17 @@ function SourceDots({ sources }: { sources: ("web" | "instagram")[] }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function MessagingPage() {
+  // Suspense wrapper required by Next.js 15 for pages using useSearchParams()
+  return (
+    <Suspense fallback={null}>
+      <MessagingPageInner />
+    </Suspense>
+  );
+}
+
+function MessagingPageInner() {
   const { auth } = useModel();
+  const searchParams = useSearchParams();
 
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [conversations, setConversations] = useState<InboxConversation[]>([]);
@@ -171,6 +185,11 @@ export default function MessagingPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [modelSelf, setModelSelf] = useState<ModelSelf | null>(null);
   const [mobileShowThread, setMobileShowThread] = useState(false);
+  // Contacts view mode — when true, list groups-by-fan view (via B7 button).
+  // Kept simple : view=contacts from query param opens the drawer instead
+  // of changing the list layout (which is already fan-grouped).
+  const [drawerFanId, setDrawerFanId] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const listAbortRef = useRef<AbortController | null>(null);
   const threadAbortRef = useRef<AbortController | null>(null);
@@ -247,6 +266,21 @@ export default function MessagingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // B7 : `?view=contacts` — surface the fan drawer on the first conversation
+  // loaded (used when redirected from `/agence/clients`).
+  useEffect(() => {
+    const view = searchParams?.get("view");
+    if (view === "contacts" && conversations.length > 0 && !drawerOpen) {
+      const first = conversations[0];
+      if (first?.fan_id && !first.fan_id.startsWith("pseudo:")) {
+        setCurrentFanId(first.fan_id);
+        setDrawerFanId(first.fan_id);
+        setDrawerOpen(true);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, conversations.length]);
+
   // Reload list when filter changes
   useEffect(() => {
     setLoadingList(true);
@@ -301,17 +335,38 @@ export default function MessagingPage() {
     [conversations, currentFanId]
   );
 
-  // Channel context for composer
-  const availableChannels: ReplyChannel[] = useMemo(() => {
-    const fromFan = currentFan?.sources || currentConversation?.sources || [];
-    return (fromFan.filter((s) => s === "web" || s === "instagram") as ReplyChannel[]) || [];
-  }, [currentFan, currentConversation]);
+  // Last IG inbound message timestamp — drives the Meta 24h window timer.
+  const lastIgInboundAt: string | null = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.source === "instagram" && m.direction === "in") return m.created_at;
+    }
+    return null;
+  }, [messages]);
 
-  const defaultChannel: ReplyChannel = useMemo(() => {
+  // Whether the current fan has each channel (drives MultiChannelReply).
+  const fanChannels = useMemo(() => {
+    const fan = currentFan || currentConversation;
+    return {
+      hasWeb:
+        !!(currentConversation?.pseudo_web) ||
+        !!currentConversation?.sources?.includes("web") ||
+        !!fan?.pseudo_web,
+      hasInstagram:
+        !!(currentConversation?.pseudo_insta) ||
+        !!currentConversation?.sources?.includes("instagram") ||
+        !!fan?.pseudo_insta,
+      hasSnap: !!currentConversation?.pseudo_snap,
+      hasFanvue: !!currentConversation?.fanvue_handle,
+    };
+  }, [currentConversation, currentFan]);
+
+  // Last message source in the thread (auto-select reply channel).
+  const lastMessageSource: ReplyChannel | null = useMemo(() => {
     const last = messages[messages.length - 1];
     if (last?.source === "web" || last?.source === "instagram") return last.source;
-    return availableChannels[0] || "web";
-  }, [messages, availableChannels]);
+    return null;
+  }, [messages]);
 
   // Timeline mapping — messages are sorted asc (oldest first) in thread.
   // FanTimeline internally sorts desc by default — pass items as-is for cross-day grouping.
@@ -341,6 +396,31 @@ export default function MessagingPage() {
   const handleSent = () => {
     if (currentFanId) {
       loadInbox(currentFanId);
+    }
+  };
+
+  const openDrawer = (fanId: string | null) => {
+    if (!fanId || fanId.startsWith("pseudo:")) return;
+    setDrawerFanId(fanId);
+    setDrawerOpen(true);
+  };
+
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+  };
+
+  const openContactsView = () => {
+    // The list is already a fan-grouped conversation list — toggling the
+    // contacts button simply opens the drawer on the current or first fan.
+    if (currentFanId) {
+      openDrawer(currentFanId);
+      return;
+    }
+    const firstReal = conversations.find((c) => !c.fan_id.startsWith("pseudo:"));
+    if (firstReal) {
+      setCurrentFanId(firstReal.fan_id);
+      setMobileShowThread(true);
+      openDrawer(firstReal.fan_id);
     }
   };
 
@@ -438,9 +518,31 @@ export default function MessagingPage() {
             }}
           >
             <div
-              className="p-3 shrink-0"
+              className="p-3 shrink-0 space-y-2"
               style={{ borderBottom: "1px solid var(--border2)" }}
             >
+              {/* Contacts toggle — opens fan drawer for the selected / first fan (B7) */}
+              <button
+                type="button"
+                onClick={openContactsView}
+                className="w-full inline-flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors"
+                style={{
+                  background: drawerOpen
+                    ? "rgba(201,168,76,0.15)"
+                    : "rgba(245,158,11,0.08)",
+                  color: drawerOpen ? "#E6C974" : "#F59E0B",
+                  border: `1px solid ${
+                    drawerOpen ? "rgba(201,168,76,0.3)" : "rgba(245,158,11,0.2)"
+                  }`,
+                }}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <BookUser className="w-3.5 h-3.5" />
+                  Contacts
+                </span>
+                <ChevronRight className="w-3 h-3 opacity-60" />
+              </button>
+
               <div
                 className="flex items-center gap-2 px-3 py-2 rounded-lg"
                 style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}
@@ -578,7 +680,7 @@ export default function MessagingPage() {
             </div>
           </aside>
 
-          {/* THREAD — right column */}
+          {/* THREAD — center column */}
           <section
             className={`flex-1 flex flex-col min-w-0 ${
               !mobileShowThread ? "hidden md:flex" : "flex"
@@ -622,7 +724,7 @@ export default function MessagingPage() {
                     size={40}
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p
                         className="text-sm font-semibold truncate"
                         style={{ color: "var(--text)" }}
@@ -630,6 +732,9 @@ export default function MessagingPage() {
                         {primaryHandle(currentConversation)}
                       </p>
                       <SourceDots sources={currentConversation.sources || []} />
+                      {currentConversation.sources.includes("instagram") && (
+                        <Meta24hTimer lastInboundAt={lastIgInboundAt} compact />
+                      )}
                     </div>
                     <p
                       className="text-[10px]"
@@ -642,19 +747,49 @@ export default function MessagingPage() {
                         : "Conversation web"}
                     </p>
                   </div>
-                  <Link
-                    href={`/agence/clients/${currentFanId}`}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold shrink-0"
+                  <button
+                    type="button"
+                    onClick={() =>
+                      currentFanId && !currentFanId.startsWith("pseudo:")
+                        ? openDrawer(currentFanId)
+                        : undefined
+                    }
+                    disabled={!currentFanId || currentFanId.startsWith("pseudo:")}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{
                       background: "rgba(201,168,76,0.1)",
                       color: "#E6C974",
                       border: "1px solid rgba(201,168,76,0.25)",
                     }}
                   >
-                    <ExternalLink className="w-3 h-3" />
+                    <BookUser className="w-3 h-3" />
                     <span className="hidden sm:inline">Fiche fan</span>
-                  </Link>
+                  </button>
                 </div>
+
+                {/* Meta 24h alert banner — full width when expired */}
+                {currentConversation.sources.includes("instagram") &&
+                  lastIgInboundAt &&
+                  (() => {
+                    const expiredMs =
+                      Date.now() -
+                      new Date(lastIgInboundAt).getTime() -
+                      24 * 60 * 60 * 1000;
+                    if (expiredMs <= 0) return null;
+                    return (
+                      <div
+                        className="px-4 md:px-5 py-2 text-[11px] font-medium shrink-0"
+                        style={{
+                          background: "rgba(220,38,38,0.08)",
+                          color: "#F87171",
+                          borderBottom: "1px solid rgba(220,38,38,0.22)",
+                        }}
+                      >
+                        Fenêtre Meta 24h expirée — reply IG bloquée. Utilise le canal Web si le fan
+                        en a un, ou Message Tag (hors scope actuel).
+                      </div>
+                    );
+                  })()}
 
                 {/* Thread body */}
                 <div
@@ -680,7 +815,7 @@ export default function MessagingPage() {
                   )}
                 </div>
 
-                {/* Composer */}
+                {/* Composer — multi-channel aware (IG 24h gate, Snap/Fanvue locks) */}
                 <div
                   className="px-3 md:px-5 py-3 shrink-0"
                   style={{
@@ -688,14 +823,11 @@ export default function MessagingPage() {
                     background: "var(--surface)",
                   }}
                 >
-                  <ReplyComposer
+                  <MultiChannelReply
                     fanId={currentFanId}
-                    availableChannels={
-                      availableChannels.length > 0
-                        ? availableChannels
-                        : ["web"]
-                    }
-                    defaultChannel={defaultChannel}
+                    fanChannels={fanChannels}
+                    lastMessageSource={lastMessageSource}
+                    lastIgInboundAt={lastIgInboundAt}
                     onSent={handleSent}
                   />
                 </div>
@@ -729,6 +861,13 @@ export default function MessagingPage() {
               </div>
             )}
           </section>
+
+          {/* DRAWER — right column (fan profile, handles, context) */}
+          <ContactsDrawer
+            fanId={drawerFanId}
+            open={drawerOpen}
+            onClose={closeDrawer}
+          />
         </div>
       </div>
     </OsLayout>
