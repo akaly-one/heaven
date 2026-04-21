@@ -40,7 +40,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
     const raw = sessionStorage.getItem("heaven_auth");
     if (!raw) {
-      router.replace("/login");
+      router.replace("/m/yumi");
       return;
     }
     try {
@@ -56,13 +56,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       if (!scope.includes("*")) {
         const allowed = scope.some((s: string) => pathname === s || pathname.startsWith(s + "/"));
         if (!allowed) {
-          router.replace(scope[0] || "/login");
+          router.replace(scope[0] || "/m/yumi");
           return;
         }
       }
       setChecked(true);
     } catch {
-      router.replace("/login");
+      router.replace("/m/yumi");
     }
   }, [pathname, router]);
 
