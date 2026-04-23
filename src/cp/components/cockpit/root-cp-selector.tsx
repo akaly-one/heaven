@@ -97,7 +97,9 @@ export function RootCpSelector({ variant = "badge", fallbackLabel = "HEAVEN" }: 
 
       {open && (
         <div
-          className="absolute top-full right-0 mt-1 min-w-[200px] rounded-lg shadow-lg z-50 overflow-hidden"
+          className={isInline
+            ? "absolute top-full left-0 mt-1 min-w-[200px] rounded-lg shadow-lg z-50 overflow-hidden"
+            : "absolute top-full right-0 mt-1 min-w-[200px] rounded-lg shadow-lg z-50 overflow-hidden"}
           style={{
             background: "var(--bg2)",
             border: "1px solid var(--border2)",
