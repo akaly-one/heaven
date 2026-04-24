@@ -16,7 +16,7 @@ export function useModelSession(slug: string): ModelAuth | null {
 
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem("heaven_auth");
+      const raw = localStorage.getItem("heaven_auth") || sessionStorage.getItem("heaven_auth");
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed.role === "root" || parsed.model_slug === slug) setAuth(parsed);

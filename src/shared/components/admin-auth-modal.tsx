@@ -35,7 +35,10 @@ export function AdminAuthModal({ onClose }: AdminAuthModalProps) {
         setSubmitting(false);
         return;
       }
-      sessionStorage.setItem(
+      // NB 2026-04-24 : localStorage (persiste 24h cross-onglets) — sessionStorage
+      // se vidait par onglet et causait des déconnexions aléatoires. Le cookie
+      // httpOnly `heaven_session` (serveur) reste la source de vérité côté back.
+      localStorage.setItem(
         "heaven_auth",
         JSON.stringify({
           role: data.role,

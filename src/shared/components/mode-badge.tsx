@@ -44,7 +44,7 @@ function useAccessMode(): AccessMode {
   useEffect(() => {
     const read = () => {
       try {
-        const raw = sessionStorage.getItem("heaven_auth");
+        const raw = localStorage.getItem("heaven_auth") || sessionStorage.getItem("heaven_auth");
         if (!raw) {
           setMode("public");
           return;

@@ -18,11 +18,15 @@ import { type ReplyChannel } from "@/components/cockpit/reply-composer";
 import { ContactsDrawer } from "@/components/cockpit/messagerie/contacts-drawer";
 import { Meta24hTimer } from "@/components/cockpit/messagerie/meta-24h-timer";
 import { MultiChannelReply } from "@/components/cockpit/messagerie/multi-channel-reply";
+// NB 2026-04-24 : tab Agent IA dédié pour persona + playground + logs.
+import { AgentIAPanel } from "@/components/cockpit/messagerie/agent-ia-panel";
+import { Bot } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type SourceFilter = "all" | "web" | "instagram";
 type OrderMode = "recent" | "oldest" | "unread";
+type MessagerieView = "messages" | "agent-ia";
 
 interface InboxConversation {
   fan_id: string;
@@ -178,6 +182,7 @@ function MessagingPageInner() {
 
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [orderMode, setOrderMode] = useState<OrderMode>("recent");
+  const [view, setView] = useState<MessagerieView>("messages");
   const [conversations, setConversations] = useState<InboxConversation[]>([]);
   const [currentFanId, setCurrentFanId] = useState<string | null>(null);
   const [messages, setMessages] = useState<InboxThreadMessage[]>([]);
@@ -474,19 +479,49 @@ function MessagingPageInner() {
                 className="text-sm font-bold leading-tight truncate"
                 style={{ color: "var(--text)" }}
               >
-                Messagerie unifiée
+                {view === "agent-ia" ? "Agent IA" : "Messagerie unifiée"}
               </h1>
               <p
                 className="text-[10px] truncate"
                 style={{ color: "var(--text-muted)" }}
               >
-                Web + Instagram · {conversations.length} conversation
-                {conversations.length > 1 ? "s" : ""}
+                {view === "agent-ia"
+                  ? "Persona · playground · logs"
+                  : `Web + Instagram · ${conversations.length} conversation${conversations.length > 1 ? "s" : ""}`}
               </p>
             </div>
           </div>
 
-          {/* Ordre — NB 2026-04-24 */}
+          {/* View switch : Messages | Agent IA — NB 2026-04-24 */}
+          <div
+            className="inline-flex rounded-lg p-0.5 shrink-0"
+            style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}
+          >
+            {([
+              { id: "messages" as MessagerieView, label: "Messages", icon: MessageCircle },
+              { id: "agent-ia" as MessagerieView, label: "Agent IA", icon: Bot },
+            ]).map(({ id, label, icon: Icon }) => {
+              const active = view === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setView(id)}
+                  className="inline-flex items-center gap-1.5 px-2.5 md:px-3 py-1 rounded text-[10px] md:text-[11px] font-semibold transition-colors"
+                  style={{
+                    background: active ? (id === "agent-ia" ? "rgba(167,139,250,0.18)" : "rgba(212,175,55,0.18)") : "transparent",
+                    color: active ? (id === "agent-ia" ? "#A78BFA" : "#D4AF37") : "var(--text-muted)",
+                  }}
+                >
+                  <Icon className="w-3 h-3" />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Ordre — visible seulement sur vue Messages */}
+          {view === "messages" && (
           <div
             className="inline-flex rounded-lg p-0.5 shrink-0"
             style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}
@@ -510,8 +545,10 @@ function MessagingPageInner() {
               );
             })}
           </div>
+          )}
 
-          {/* Filtre source (web / instagram) */}
+          {/* Filtre source (web / instagram) — visible seulement sur vue Messages */}
+          {view === "messages" && (
           <div
             className="inline-flex rounded-lg p-0.5 shrink-0"
             style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}
@@ -548,9 +585,15 @@ function MessagingPageInner() {
               );
             })}
           </div>
+          )}
         </div>
 
-        {/* Main split */}
+        {/* Main split — uniquement en vue Messages, sinon AgentIAPanel */}
+        {view === "agent-ia" ? (
+          <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "var(--bg)" }}>
+            <AgentIAPanel />
+          </div>
+        ) : (
         <div className="flex flex-1 min-h-0">
           {/* LIST — left column */}
           <aside
@@ -914,6 +957,7 @@ function MessagingPageInner() {
             onClose={closeDrawer}
           />
         </div>
+        )}
       </div>
     </OsLayout>
   );

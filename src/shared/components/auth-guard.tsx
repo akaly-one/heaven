@@ -8,7 +8,9 @@ export type { HeavenAuth };
 
 export function getHeavenAuth(): HeavenAuth | null {
   try {
-    const raw = sessionStorage.getItem("heaven_auth");
+    // NB 2026-04-24 : lecture localStorage (persiste 24h cross-onglets).
+    // Fallback sessionStorage pour compat sessions existantes avant migration.
+    const raw = localStorage.getItem("heaven_auth") || sessionStorage.getItem("heaven_auth");
     if (!raw) return null;
     return JSON.parse(raw);
   } catch {
@@ -42,7 +44,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isPublicPathname(pathname)) return;
 
-    const raw = sessionStorage.getItem("heaven_auth");
+    const raw = localStorage.getItem("heaven_auth") || sessionStorage.getItem("heaven_auth");
     if (!raw) {
       router.replace("/m/yumi");
       return;

@@ -16,6 +16,8 @@ const PUBLIC_GET = new Set([
   "/api/system/status",
   "/api/credits/balance",
   "/api/feed",
+  // NB 2026-04-24 : diag santé agent IA (env booléens + stats, jamais secrets)
+  "/api/agence/ai/health",
 ]);
 
 // Public GET with dynamic segments

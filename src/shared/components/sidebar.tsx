@@ -54,7 +54,7 @@ function useAuth(): HeavenAuth | null {
   const [auth, setAuth] = useState<HeavenAuth | null>(null);
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem("heaven_auth");
+      const raw = localStorage.getItem("heaven_auth") || sessionStorage.getItem("heaven_auth");
       if (raw) setAuth(JSON.parse(raw));
     } catch {}
   }, []);

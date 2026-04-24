@@ -40,7 +40,7 @@ const ROOT_VIEWING_CP_LS_KEY = "heaven_root_viewing_cp";
 
 function readSessionAuth(): AuthState {
   try {
-    const raw = sessionStorage.getItem("heaven_auth");
+    const raw = localStorage.getItem("heaven_auth") || sessionStorage.getItem("heaven_auth");
     if (raw) {
       const parsed: HeavenAuth = JSON.parse(raw);
       // Role=model : son propre modèle, non-overridable.

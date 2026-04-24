@@ -21,7 +21,9 @@ import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { GenerateModal } from "@/components/cockpit/generate-modal";
 import { ClientsPanel } from "@/components/cockpit/clients-panel";
-import { StrategiePanel } from "@/components/cockpit/strategie-panel";
+// NB 2026-04-24 : StrategiePanel legacy (monolithe ~660L avec realData props) remplacé
+// par la version 3-plans A/B/C utilisée aussi dans /agence/strategie (unification).
+import StrategiePanel from "@/components/cockpit/strategie/strategie-panel";
 import { HomePanel } from "@/components/cockpit/dashboard/home-panel";
 import { AgenceHeader } from "@/components/cockpit/dashboard/agence-header";
 import { ContenuPanel, type ContenuContentItem } from "@/components/cockpit/contenu/contenu-panel";
@@ -606,7 +608,7 @@ function AgenceDashboard() {
   useEffect(() => {
     if (ready && !modelSlug && !isRoot) {
       const t = setTimeout(() => {
-        const raw = sessionStorage.getItem("heaven_auth");
+        const raw = localStorage.getItem("heaven_auth") || sessionStorage.getItem("heaven_auth");
         if (raw) window.location.reload();
       }, 1000);
       return () => clearTimeout(t);
@@ -1006,16 +1008,8 @@ function AgenceDashboard() {
           {/* Tab "clients" supprimée (B7 2026-04-21) — migrée vers /agence/messagerie?view=contacts */}
 
           {activeTab === "strategie" && (
-            <StrategiePanel realData={{
-              revenue,
-              activeCodes,
-              modelCodes,
-              packs,
-              clients,
-              uniqueClients,
-              retentionRate,
-              stories,
-            }} />
+            // NB 2026-04-24 : version 3-plans (Plan A/B/C) — fetch interne, pas de props.
+            <StrategiePanel />
           )}
 
           {/* ── Generate Modal ── */}
