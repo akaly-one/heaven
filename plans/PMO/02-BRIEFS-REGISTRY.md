@@ -31,13 +31,15 @@
 | BRIEF-2026-04-24-10 | 2026-04-24 | Privacy Policy + Age Gate + Accès hiérarchisé (sensuel vs explicite) | feature + légal + sécu | P0 (bloquant explicite/packs) | DB, BE, FE, Legal, QA, Doc | 🟢 partial (11/13 tickets livrés — Phase 1 AG01-AG03 + Phase 2 AG04-AG11, reste AG12-AG13 audit log/tests Playwright) | [briefs/BRIEF-2026-04-24-10-privacy-age-gate-tiered-access.md](./briefs/BRIEF-2026-04-24-10-privacy-age-gate-tiered-access.md) |
 | BRIEF-2026-04-24-11 | 2026-04-24 | Usage meters stack + alertes upgrade (Groq/Vercel/Cloudinary/Supabase) | feature + DevOps + monitoring | P1 | DB, BE, FE, DevOps, Doc | 🟠 cadré (4 questions tokens + fréquence en attente) | [briefs/BRIEF-2026-04-24-11-stack-usage-meters-upgrade-alerts.md](./briefs/BRIEF-2026-04-24-11-stack-usage-meters-upgrade-alerts.md) |
 | BRIEF-2026-04-24-12 | 2026-04-24 | Détection langue + adaptation multilingue agent IA (FR/EN/ES MVP) | feature + IA prompting + i18n | P1 | AI, DB, BE, FE, QA, Doc | 🟠 cadré (4 questions langues/UI en attente) | [briefs/BRIEF-2026-04-24-12-ai-language-detection-multilingual.md](./briefs/BRIEF-2026-04-24-12-ai-language-detection-multilingual.md) |
-| BRIEF-2026-04-24-13 | 2026-04-24 | Unification Clients & Codes ↔ Messages + flow self-verification IP-matched | feature majeure + refactor data | P1 | DB, BE, FE, QA, Doc, DevOps | 🟠 cadré (8 questions simplification en attente) | [briefs/BRIEF-2026-04-24-13-unified-client-self-verification-flow.md](./briefs/BRIEF-2026-04-24-13-unified-client-self-verification-flow.md) |
+| BRIEF-2026-04-24-13 | 2026-04-24 | Unification Clients & Codes ↔ Messages + flow self-verification IP-matched | feature majeure + refactor data | P1 | DB, BE, FE, QA, Doc, DevOps | 🟢 partial (4/20 UV01-UV04 livrés Phase 2.2, RBAC fix C3) | [briefs/BRIEF-2026-04-24-13-unified-client-self-verification-flow.md](./briefs/BRIEF-2026-04-24-13-unified-client-self-verification-flow.md) |
+| BRIEF-2026-04-24-14 | 2026-04-24 | Domaine yumii.club + uniformisation handles Yumi + sync Chrome extension | feature infra + refactor + tooling | P1 | Doc, FE, BE, DevOps | 🟠 cadré (5 questions en attente) | [briefs/BRIEF-2026-04-24-14-domain-yumii-club-uniformisation.md](./briefs/BRIEF-2026-04-24-14-domain-yumii-club-uniformisation.md) |
+| BRIEF-2026-04-24-15 | 2026-04-24 | Messagerie UX polish + fiche fan accessible + sync pseudo + UI admin validation + régressions R2 | UX + bugs + DB | P0 | FE, BE, DB, DevOps | 🟢 dispatched (4 agents CORRECTIF parallèles) | [briefs/BRIEF-2026-04-24-15-messagerie-ux-polish-phase25.md](./briefs/BRIEF-2026-04-24-15-messagerie-ux-polish-phase25.md) |
 
 ---
 
 ## Compteur
 
-- Total reçus : 13
+- Total reçus : 15
 - En attente consolidation : 9
 - Consolidés dans plan global : 2
 - En exécution : 0
