@@ -30,6 +30,9 @@ import { MODE_LABELS, type AgentMode } from "@/lib/ai-agent/modes";
 import { Radio, GraduationCap, UserRound, Sparkles } from "lucide-react";
 // NB 2026-04-24 : utilisé pour mark_read payload normalisation model_id
 import { toModelId } from "@/lib/model-utils";
+// BRIEF-02 TICKET-M03 — source unique avatars shared
+// FanTimeline garde son MiniAvatar interne pour l'instant (refactor M05.1 Phase 3).
+import { ConversationAvatar } from "@/components/messaging/ConversationAvatar";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -100,40 +103,9 @@ function primaryHandle(c: InboxConversation): string {
   return getConversationPseudo(c);
 }
 
-function Avatar({
-  url,
-  name,
-  size = 40,
-}: {
-  url?: string | null;
-  name: string;
-  size?: number;
-}) {
-  const initial = (name || "?").replace(/^@/, "").slice(0, 1).toUpperCase();
-  const style: React.CSSProperties = {
-    width: size,
-    height: size,
-    borderRadius: "50%",
-    overflow: "hidden",
-    flexShrink: 0,
-    background: "linear-gradient(135deg, #E6C974, #9E7C1F)",
-    color: "#0A0A0C",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontWeight: 700,
-    fontSize: size * 0.42,
-  };
-  if (url) {
-    return (
-      <div style={style}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-      </div>
-    );
-  }
-  return <div style={style}>{initial}</div>;
-}
+// NB 2026-04-24 BRIEF-02 M03 : fonction <Avatar> locale supprimée — remplacée par
+// <ConversationAvatar> (fans) et <ConversationAvatarModel> (modèle) de
+// src/shared/components/messaging/ConversationAvatar.tsx. Source unique cross-CP.
 
 function SourceDots({ sources }: { sources: ("web" | "instagram")[] }) {
   return (
@@ -807,10 +779,11 @@ function MessagingPageInner() {
                     }}
                   >
                     <div className="flex items-start gap-3">
-                      <Avatar
-                        url={conv.avatar_url}
-                        name={conv.display_name || title}
-                        size={40}
+                      <ConversationAvatar
+                        conversation={conv}
+                        size="lg"
+                        hasUnread={conv.unread_count > 0}
+                        touchTargetPx={0}
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-0.5">
@@ -902,10 +875,13 @@ function MessagingPageInner() {
                       />
                     </svg>
                   </button>
-                  <Avatar
-                    url={currentConversation.avatar_url || currentFan?.avatar_url}
-                    name={primaryHandle(currentConversation)}
-                    size={40}
+                  <ConversationAvatar
+                    conversation={{
+                      ...currentConversation,
+                      avatar_url: currentConversation.avatar_url || currentFan?.avatar_url,
+                    }}
+                    size="lg"
+                    touchTargetPx={0}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">

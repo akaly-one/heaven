@@ -60,6 +60,15 @@
   /* Tier complementary */
   --tier-free: #64748B;
   --tier-public: var(--text-muted);
+
+  /* iMessage-inspired messaging bubbles (BRIEF-02 M05 — 2026-04-24) */
+  --imessage-green: #30D158;      /* Web outbound */
+  --imessage-blue: #0A84FF;       /* Instagram outbound */
+  --imessage-gray: var(--bg);     /* Inbound tous canaux */
+
+  /* Dark mode OKLCH equivalents (luminosité stable) */
+  --imessage-green-dark: oklch(75% 0.18 150);
+  --imessage-blue-dark: oklch(70% 0.20 245);
 }
 
 /* ═══ Dark mode — luxury dark ═══ */
@@ -108,6 +117,11 @@
   /* Gradient tokens — dark */
   --gradient-gold: linear-gradient(135deg, #C9A84C, #D4B85C);
   --gradient-accent: linear-gradient(135deg, var(--accent), #818CF8);
+
+  /* iMessage tokens — dark mode (OKLCH stable) */
+  --imessage-green: oklch(75% 0.18 150);
+  --imessage-blue: oklch(70% 0.20 245);
+  --imessage-gray: var(--bg);
 }
 
 /* Auto dark mode when no explicit theme is set */
@@ -151,6 +165,9 @@
     --shadow-accent: 0 4px 24px rgba(230,51,41,0.3);
     --gradient-gold: linear-gradient(135deg, #C9A84C, #D4B85C);
     --gradient-accent: linear-gradient(135deg, var(--accent), #818CF8);
+    --imessage-green: oklch(75% 0.18 150);
+    --imessage-blue: oklch(70% 0.20 245);
+    --imessage-gray: var(--bg);
   }
 }
 

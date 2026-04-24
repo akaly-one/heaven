@@ -1,13 +1,13 @@
 "use client";
 
-import { useRef } from "react";
-import { X, ArrowLeft, ExternalLink, Send, ArrowRight, Ghost, Instagram, Globe } from "lucide-react";
+import { X, ArrowLeft, ExternalLink, Send, ArrowRight } from "lucide-react";
 import {
   getConversationPseudo,
-  getAvatarStyle,
   getExternalUrl,
   formatConversationTime,
 } from "@/lib/messaging/conversation-display";
+// Source unique avatars shared — BRIEF-02 TICKET-M03 (2026-04-24)
+import { ConversationAvatar } from "@/components/messaging/ConversationAvatar";
 
 interface MessageItem {
   id: string; client_id: string; content: string; created_at: string;
@@ -39,29 +39,6 @@ interface MessagesDropdownProps {
   replyInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
-/* ── Platform avatar helper — délègue à conversation-display.ts (source unique) ── */
-function PlatformAvatar({ client, pseudo, size = "md", hasUnread = false }: {
-  client?: ClientItem | null; pseudo?: string; size?: "sm" | "md"; hasUnread?: boolean;
-}) {
-  const style = getAvatarStyle(client || {}, { hasUnread });
-  const s = size === "sm" ? "w-6 h-6" : "w-8 h-8";
-  const iconSize = size === "sm" ? "w-3 h-3" : "w-4 h-4";
-
-  return (
-    <div className={`${s} rounded-full flex items-center justify-center shrink-0`}
-      style={{ background: style.bg, color: style.color }}>
-      {style.iconKey === "snap" ? <Ghost className={iconSize} />
-        : style.iconKey === "insta" ? <Instagram className={iconSize} />
-        : style.iconKey === "web" ? <Globe className={iconSize} />
-        : (
-          <span className={size === "sm" ? "text-[9px] font-bold" : "text-[11px] font-bold"}>
-            {(pseudo || "?").charAt(0).toUpperCase()}
-          </span>
-        )}
-    </div>
-  );
-}
-
 export function MessagesDropdown({
   dropdownBox, dropdownStyle,
   activeChat, chatMessages, replyText, sending,
@@ -82,7 +59,19 @@ export function MessagesDropdown({
             </button>
             {(() => {
               const cl = clients.find(c => c.id === activeChat.clientId);
-              return <PlatformAvatar client={cl} pseudo={activeChat.pseudo} size="sm" />;
+              return (
+                <ConversationAvatar
+                  conversation={{
+                    fan_id: cl?.id,
+                    pseudo_snap: cl?.pseudo_snap,
+                    pseudo_insta: cl?.pseudo_insta,
+                    pseudo_web: cl?.pseudo_web,
+                    display_name: activeChat.pseudo,
+                  }}
+                  size="sm"
+                  touchTargetPx={0}
+                />
+              );
             })()}
             <span className="text-xs font-bold truncate" style={{ color: "var(--text)" }}>@{activeChat.pseudo}</span>
             {(() => {
@@ -113,7 +102,17 @@ export function MessagesDropdown({
               return (
                 <div key={m.id} className={`flex gap-1.5 ${m.sender_type === "model" ? "justify-end" : "justify-start"}`}>
                   {m.sender_type === "client" && (
-                    <PlatformAvatar client={chatClient} pseudo={activeChat.pseudo} size="sm" />
+                    <ConversationAvatar
+                      conversation={{
+                        fan_id: chatClient?.id,
+                        pseudo_snap: chatClient?.pseudo_snap,
+                        pseudo_insta: chatClient?.pseudo_insta,
+                        pseudo_web: chatClient?.pseudo_web,
+                        display_name: activeChat.pseudo,
+                      }}
+                      size="sm"
+                      touchTargetPx={0}
+                    />
                   )}
                   <div className="max-w-[75%] px-3 py-2 rounded-2xl" style={{
                     background: m.sender_type === "model" ? "var(--accent)" : "var(--bg)",
@@ -190,7 +189,18 @@ export function MessagesDropdown({
                   <button key={conv.clientId} onClick={() => onOpenChat(conv.clientId, conv.pseudo)}
                     className="flex items-start gap-2.5 px-4 py-3 w-full text-left cursor-pointer transition-colors hover:brightness-95"
                     style={{ background: conv.unread > 0 ? "rgba(230,51,41,0.04)" : "transparent", border: "none", borderBlockEnd: "1px solid var(--border)" }}>
-                    <PlatformAvatar client={cl} pseudo={conv.pseudo} hasUnread={conv.unread > 0} />
+                    <ConversationAvatar
+                      conversation={{
+                        fan_id: cl?.id,
+                        pseudo_snap: cl?.pseudo_snap,
+                        pseudo_insta: cl?.pseudo_insta,
+                        pseudo_web: cl?.pseudo_web,
+                        display_name: conv.pseudo,
+                      }}
+                      size="md"
+                      hasUnread={conv.unread > 0}
+                      touchTargetPx={0}
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] font-bold truncate" style={{ color: "var(--text)" }}>@{conv.pseudo}</span>

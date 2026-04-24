@@ -66,9 +66,9 @@ Tickets (7 total) :
 - [x] M01 part (hotfix) — Ordre ASC messages + mark_read auto (livré `528bdea`)
 - [x] M01 full — UI-STANDARDS-v1.2026-04-24.md (doc complet) — livré 2026-04-24 par Agent DEV #2
 - [x] M02 — Fix `getConversationPseudo` règle unique + test Vitest — livré 2026-04-24 par Agent DEV #2 (31 cases)
-- [ ] M03 — `<ConversationAvatar>` shared + refactor 2 sites
-- [ ] M04 — `<ConversationRow>` shared + refactor 2 sites
-- [ ] M05 — `<MessageBubble>` shared avec styling iMessage (vert/bleu/gris) + avatar modèle
+- [x] M03 — `<ConversationAvatar>` shared + refactor 2 sites — livré Phase 2.1 (DEV #1)
+- [x] M04 — `<ConversationRow>` shared + AgentModeChip intégré — livré Phase 2.1 (DEV #1)
+- [x] M05 — `<MessageBubble>` shared avec styling iMessage (vert/bleu/gris) + avatar modèle + tokens CSS — livré Phase 2.1 (DEV #1)
 - [ ] M06 — Mode chip dans row + dropdown + PUT /mode
 - [ ] M07 — Snapshot tests Playwright cohérence 3 vues + axe-core a11y
 

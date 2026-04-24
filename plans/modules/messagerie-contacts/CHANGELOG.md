@@ -1,5 +1,117 @@
 # Messagerie + Contacts — Changelog
 
+## 2026-04-24 (v4 — Phase 2.1) — BRIEF-02 tickets M03 + M04 + M05 livrés
+
+> Auteur : Agent DEV Phase 2 #1 · Tickets : M03 + M04 + M05 · Brief parent : [BRIEF-2026-04-24-02](../../PMO/briefs/BRIEF-2026-04-24-02-messenger-ui-standards.md)
+
+### Composants shared messenger + styling iMessage
+
+3 composants React partagés livrés pour unifier le rendu messagerie cross-vues (header dropdown + page /agence/messagerie + futurs consommateurs). Tokens CSS iMessage ajoutés dans `globals.css` (vert outbound web, bleu outbound Instagram), avec override dark mode OKLCH pour luminosité stable.
+
+### M03 — `<ConversationAvatar>` shared (`src/shared/components/messaging/ConversationAvatar.tsx`, 269 lignes)
+
+- Props : `conversation: ConversationLike & { avatar_url? }`, `size: "sm"|"md"|"lg"|"xl"` (24/32/40/56px), `hasUnread?`, `showPlatformBadge?`, `touchTargetPx?` (WCAG 2.5.8 — par défaut 44px, passable à 0 dans une row cliquable qui porte déjà le hit-area).
+- Rendu délégué à `getAvatarStyle` (source unique) : icônes `Ghost` / `Instagram` / `Globe` selon plateforme, photo upload si `avatar_url` + platform=unknown, initiale gradient or en ultime fallback.
+- A11y : `role="img"` + `aria-label` avec pseudo + platform label, icônes lucide `aria-hidden`.
+- Export complémentaire `<ConversationAvatarModel>` pour bulles outbound (photo modèle `avatarSrc` + initiale fallback + badge plateforme optionnel).
+- Variantes : `showPlatformBadge` ajoute un micro-badge coin bas-droit (bg surface + icône mini).
+
+### M04 — `<ConversationRow>` shared (`src/shared/components/messaging/ConversationRow.tsx`, 376 lignes)
+
+- Props : `conversation: ConversationListLike` (fan_id + last_message + unread_count + last_message_at + tier + sources + agent_mode), `active?`, `onClick?`, `onModeChange?`, `variant: "default"|"compact"`.
+- Layout : avatar gauche + pseudo + unread pill + mode chip + source dots + tier badge + preview 40ch + time ago (via `formatConversationTime`).
+- A11y : `role="option"` + `aria-selected={active}` + roving tabindex (`tabIndex={active ? 0 : -1}`) + border-left accent si active + touch target 56px row.
+- **AgentModeChip intégré** (bonus M06 partiel) : pill Radio/GraduationCap/UserRound selon mode, popover 3 choix + "Retour au défaut persona" (mode=null), stopPropagation pour ne pas trigger onClick row.
+- Variant `compact` (dropdown header) : padding 10/12, min-h 48, avatar sm.
+- `data-testid` + `data-fan-id` préparés pour Playwright M07.
+
+### M05 — `<MessageBubble>` shared + styling iMessage (`src/shared/components/messaging/MessageBubble.tsx`, 372 lignes)
+
+- Discriminator `actor: "fan"|"model_web"|"model_instagram"|"agent_ai"|"agent_draft"|"system"`.
+- Couleurs exactes UI-STANDARDS §4 :
+  - `fan` → bg `var(--bg)`, border 1px, text `var(--text)`, align gauche
+  - `model_web` → bg `var(--imessage-green)` `#30D158`, text white, align droite
+  - `model_instagram` → bg `var(--imessage-blue)` `#0A84FF`, text white, align droite + badge IG mini coin sup-droit
+  - `agent_ai` → même couleur que `model_{canal}` + icône `Sparkles` coin sup-droit
+  - `agent_draft` → bg transparent + border dashed `var(--text-muted)` + icône `Bot` + label "Brouillon IA", opacity 0.75
+  - `system` → ligne centrée sans bulle, text muted, italique
+- Layout : rounded 16px (4px coin tail du côté actor), max-width 75%, padding 10/14, avatar 28px inbound (gauche) OU outbound (droite).
+- Avatars : `<ConversationAvatarModel>` pour outbound (photo modèle + initiale fallback), div spacer invisible si `showAvatar=false` (cluster middle/end).
+- Actions bulle : `onCopy` (clipboard natif par défaut) + `onRetry` (pour agent_ai régénération) avec touch targets 24px min et `aria-label` explicites.
+- `mediaUrl` : `<img>` rendu au-dessus du texte avec border-radius 12px.
+- `aiRunId` : exposé via `data-ai-run-id` + mini badge `#xxx` pour trace ai_runs.
+- Timestamp : `<time dateTime>` avec `title` full date (tooltip hover).
+- **Helper `isClusterStart(prev, curr)`** exporté — détection cluster (même actor + gap < 5 min).
+
+### Types partagés — `src/shared/lib/messaging/types.ts` (70 lignes)
+
+- `MessageActor` union type strict (6 valeurs).
+- `ConversationListLike` étend `ConversationLike` avec fan_id + last_message + unread + sources + agent_mode.
+- `deriveActor({ sender_type, source, ai_run_id, sent })` : helper DB → UI ; prioritise `ai_run_id` → `agent_draft` (si `sent=false`) ou `agent_ai`, sinon `model_{canal}` ou `fan`.
+
+### Tokens CSS iMessage — `src/app/globals.css`
+
+Ajoutés dans `:root` (light), `[data-theme="dark"]` et `@media (prefers-color-scheme: dark)` :
+
+```css
+--imessage-green: #30D158;   /* light */
+--imessage-blue: #0A84FF;
+--imessage-gray: var(--bg);
+--imessage-green-dark: oklch(75% 0.18 150);   /* dark fallback stable */
+--imessage-blue-dark: oklch(70% 0.20 245);
+```
+
+### Refactor 2 sites consommateurs
+
+1. **`src/app/agence/messagerie/page.tsx`** :
+   - Fonction `Avatar` locale supprimée (remplacée par `<ConversationAvatar>` size="lg").
+   - Appliqué à la liste gauche (row) + thread header.
+   - `<FanTimeline>` conservé (refactor vers `<MessageBubble>` → ticket M05.1 Phase 3).
+   - **Hotfix 528bdea préservé intact** : ordre ASC dans fan-timeline + mark_read + CustomEvent `heaven:messages-read`.
+2. **`src/shared/components/header/messages-dropdown.tsx`** :
+   - `PlatformAvatar` local supprimé (remplacé par `<ConversationAvatar>` size "sm" pour thread header, "md" pour row).
+   - Import `Ghost/Instagram/Globe` retiré (plus nécessaire, délégué au composant shared).
+   - `useRef` import mort retiré (nettoyage incident).
+
+### Tests — `src/shared/components/messaging/__tests__/MessageBubble.test.tsx` (203 lignes, 17 cases)
+
+Format Vitest + `@testing-library/react` (aligné avec `conversation-display.test.ts`). Vitest pas encore installé dans `package.json` (TICKET-M07 Phase 3 ajoutera la dépendance) — tests prêts pour branchement immédiat.
+
+Couvre :
+- 6 actors (fan/model_web/model_instagram/agent_ai/agent_draft/system) styling discrimination
+- `showAvatar` true/false
+- `mediaUrl` rendering
+- `aiRunId` data-attribute
+- `isClusterStart` (4 cas : premier msg, actor change, gap <5min, gap >5min)
+- `deriveActor` (6 cas : client, model+source, ai_run_id+sent variants, admin)
+
+### Fichiers touchés
+
+- `src/shared/components/messaging/ConversationAvatar.tsx` (créé, 269 lignes)
+- `src/shared/components/messaging/ConversationRow.tsx` (créé, 376 lignes)
+- `src/shared/components/messaging/MessageBubble.tsx` (créé, 372 lignes)
+- `src/shared/components/messaging/__tests__/MessageBubble.test.tsx` (créé, 203 lignes)
+- `src/shared/lib/messaging/types.ts` (créé, 70 lignes)
+- `src/app/globals.css` (tokens `--imessage-*` ajoutés light + dark + auto-dark)
+- `src/app/agence/messagerie/page.tsx` (Avatar local → ConversationAvatar, hotfix 528bdea intact)
+- `src/shared/components/header/messages-dropdown.tsx` (PlatformAvatar → ConversationAvatar)
+- `plans/PMO/03-ROADMAP-MASTER.md` (3 cases cochées M03/M04/M05)
+- `plans/modules/messagerie-contacts/CHANGELOG.md` (cette entry v4)
+
+### Vérification
+
+- `npx tsc --noEmit` → **exit 0** (strict, zero `any`, aligné `ConversationLike`)
+- Hotfix 528bdea vérifié : `fan-timeline.tsx` non modifié (sort ASC conservé), `mark_read` + dispatch `heaven:messages-read` intacts dans `page.tsx`.
+- Préserve règle Charte §1.4 DEV → DEBUG → CORRECTIF : composants prêts pour vérif visuelle par DEBUG (preview manuel /agence/messagerie + header dropdown).
+
+### Prochains tickets (Phase 3)
+
+- M05.1 : migrer `<FanTimeline>` vers `<MessageBubble>` (scope important — refactor indépendant)
+- M06 : câbler `<AgentModeChip>` aux 3 points d'entrée restants (thread header page messagerie déjà câblé, dropdown header reste à faire)
+- M07 : snapshot Playwright cohérence 4 vues + axe-core 0 critical + installer Vitest
+
+---
+
 ## 2026-04-24 (v3 — Phase 2.2) — BRIEF-13 tickets UV01 + UV02 + UV03 + UV04 livrés
 
 > Auteur : Agent DEV Phase 2 #2 · Tickets : UV01 + UV02 + UV03 + UV04 · Brief parent : [BRIEF-2026-04-24-13](../../PMO/briefs/) (Unification Clients & Codes + Self-verification)
