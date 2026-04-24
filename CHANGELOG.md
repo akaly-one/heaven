@@ -1,5 +1,68 @@
 # Heaven — Changelog
 
+## [v1.4.0] — 2026-04-24 — Messagerie unifiée + Agent IA 3 modes + per-conversation override
+
+> Rapport détaillé : [plans/_reports/UPDATE-REPORT-2026-04-24-1112-messagerie-copilot-per-conversation.md](plans/_reports/UPDATE-REPORT-2026-04-24-1112-messagerie-copilot-per-conversation.md)
+
+### Agent IA — 3 modes opérationnels (aligné Intercom Fin / Zendesk Agent Assist / GitHub Copilot)
+- `auto` : l'agent répond seul (défaut)
+- `copilot` : toi tu écris + envoies, l'agent génère en parallèle un draft (`ai_runs.sent=false`) et apprend de tes corrections
+- `user` : 100% humain, l'agent est désactivé
+- Fusion des ébauches précédentes `shadow` + `learning` → un seul mode `copilot` (HITL avec feedback loop)
+- Migration `055_agent_persona_modes` + `056_merge_shadow_learning_into_copilot` appliquées
+- Helper `src/shared/lib/ai-agent/modes.ts` expose `decideForMode()` + `MODE_LABELS`
+- Backward-compat frontend : anciennes valeurs `shadow`/`learning` normalisées en `copilot` à la lecture
+
+### Agent IA — mode par conversation (override persona)
+- Migration `057_per_conversation_agent_mode` : colonne `agent_mode` sur `agence_fans`, `agence_clients`, `instagram_conversations` (NULL = défaut persona)
+- API `/api/agence/messaging/mode` GET/PUT, parse `fan_id` UUID direct ou `pseudo:<client_id|ig_conv_id>`
+- Worker IG + web `triggerWebAutoReply` honorent l'override AVANT le persona default
+- UI : chip mode cliquable dans le header de thread avec popover 3 choix + "Retour au défaut persona"
+
+### Agent IA — configuration dédiée dans messagerie
+- Nouveau tab `[Messages] [Agent IA]` dans `/agence/messagerie`
+- Panel `agent-ia-panel.tsx` : Status (Groq / persona / runs 24h / état) · Mode d'opération · Persona editor · Playground sans envoi · 15 derniers runs
+- API complète :
+  - `GET/PUT /api/agence/ai/settings` — persona + runs + provider_status
+  - `POST /api/agence/ai/test` — playground Groq
+  - `GET /api/agence/ai/health` (public) — diag env booléens + file d'attente IG
+
+### Messagerie — standards d'affichage unifiés (source unique)
+- Nouveau helper `src/shared/lib/messaging/conversation-display.ts` : `getConversationPseudo` · `getAvatarStyle` · `getExternalUrl` · `conversationSortKey` · `formatConversationTime`
+- Header dropdown et page messagerie appellent les MÊMES fonctions → plus de divergence pseudo entre les deux vues
+- Header = raccourci messagerie, pas un univers séparé
+- Avatar visiteur web = icône Globe neutre (plus de faux tag Instagram/Snap)
+- Lien externe (`ExternalLink`) uniquement pour Snap/Insta upgradés
+- Lien "Voir tous les messages →" en bas du dropdown header pointe directement `/agence/messagerie` (plus via `?tab=clients`)
+
+### Messagerie — sync header ↔ inbox unifié
+- `header.tsx fetchMessages()` switch vers `/api/agence/messaging/inbox?source=all` (même endpoint que `/agence/messagerie`)
+- Fallback legacy `/api/messages` si inbox 401/500
+- Pseudo-fan key = `pseudo:<UUID>` (`client_id` ou `ig_conversation_id`) au lieu de `display_handle` (fin des collisions si 2 clients ont le même nickname)
+- Thread fetch pour pseudo-fans : tente `agence_messages` par `client_id`, fallback `instagram_messages` par `ig_conversation_id`
+- Pseudos `visiteur-NNN` cohérents partout (header dropdown · messagerie list · thread header · profil)
+
+### Visiteurs web — upgrade path
+- Bouton "LOGIN" du header `/m/[slug]` renommé → "Upgrade", tooltip "Ajouter ton Insta/Snap → stories privées & promos Fanvue"
+- Nouveau bandeau dans `ChatPanel` pour visiteurs anonymes → rouvre `IdentityGate` pour lier un handle
+
+### Dashboard — Stratégie tab unifiée
+- Dashboard tab "Stratégie" utilise maintenant la version 3-plans (Plan A Yumi IA / B Modèles / C Consultance) au lieu du monolithe legacy (~660L avec `realData` props)
+- Même composant pour la tab dashboard et la page dédiée `/agence/strategie`
+
+### Auth — persistance cross-onglets
+- `heaven_auth` migré `sessionStorage` → `localStorage` dans 7 fichiers lecture
+- Fallback lecture sessionStorage pour compat sessions existantes
+- Fin des déconnexions aléatoires à la fermeture d'onglet / reload preview / nouveau tab
+- Logout nettoie déjà les 2 stores
+
+### Infrastructure
+- `vercel.json` — cron `/api/cron/process-ig-replies` déclaré (`*/2 * * * *`)
+- `.env.example` — `INSTAGRAM_PAGE_ACCESS_TOKEN` documenté
+- `middleware.ts` — `/api/agence/ai/health` whitelist en GET public (diag sans auth)
+
+---
+
 ## [v1.3.0] — 2026-04-24 — ROOT CP m0 + Sécurité Phase 1 + Hiérarchie comptes
 
 > Rapport détaillé : [plans/_reports/UPDATE-REPORT-2026-04-24-0707-root-cp-m0-security-phase1.md](plans/_reports/UPDATE-REPORT-2026-04-24-0707-root-cp-m0-security-phase1.md)

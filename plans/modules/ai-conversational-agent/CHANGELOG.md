@@ -1,5 +1,73 @@
 # CHANGELOG — Module AI Conversational Agent
 
+## [v0.6.0] — 2026-04-24 (late morning) — 3 modes opérationnels + per-conversation override
+
+> Lien livraison globale Heaven v1.4.0 : [plans/_reports/UPDATE-REPORT-2026-04-24-1112-messagerie-copilot-per-conversation.md](../../_reports/UPDATE-REPORT-2026-04-24-1112-messagerie-copilot-per-conversation.md)
+
+### Modes opérationnels (finalisation 3-modes)
+
+Refonte itérée dans la même journée :
+- **v0.5.1 (itération 1)** — introduction 4 modes (`auto` / `user` / `shadow` / `learning`), migration 055
+- **v0.6.0 (finale)** — fusion `shadow`+`learning` → `copilot` (un seul mode HITL), migration 056
+
+Rationale : dans le contexte creator agency, `shadow` (draft-review) et `learning` (feedback-loop) se recoupent fonctionnellement dès qu'on capture les corrections humaines. Un seul mode `copilot` couvre les deux — aligné avec Intercom Fin "Suggest replies", Zendesk Agent Assist, GitHub Copilot.
+
+**3 modes finaux** :
+- `auto` — agent répond seul aux inbounds (défaut)
+- `copilot` — user écrit + envoie, agent génère en parallèle (`ai_runs.sent=false`) et apprend des corrections via `ai_feedback`
+- `user` — 100% humain, agent skip entièrement
+
+### Mode par conversation (override persona)
+
+Migration `057_per_conversation_agent_mode` :
+- Colonne `agent_mode TEXT CHECK (null | auto | copilot | user)` sur `agence_fans`, `agence_clients`, `instagram_conversations`
+- `NULL` = hérite du `persona.mode` global
+- Index partiels `WHERE agent_mode IS NOT NULL`
+
+API `/api/agence/messaging/mode` :
+- `GET ?fan_id=xxx` retourne `{ mode, override, source: "override" | "persona_default" }`
+- `PUT { fan_id, mode }` override conversation, `mode: null` remove l'override
+- Parse fan_id UUID direct ou `pseudo:<client_id|ig_conv_id>`
+
+Worker wiring :
+- `/api/cron/process-ig-replies` lit `instagram_conversations.agent_mode` → fallback persona
+- `/api/messages POST → triggerWebAutoReply` lit `agence_clients.agent_mode` → fallback persona
+
+UI (chip cliquable thread header) :
+- Popover 3 choix Auto/Copilote/Manuel + option "Retour au défaut persona" si override présent
+- Label = short mode + `(défaut)` si héritage
+- Icônes Radio / GraduationCap / UserRound selon mode
+
+### Helper partagé `src/shared/lib/ai-agent/modes.ts`
+
+- `type AgentMode = "auto" | "copilot" | "user"`
+- `decideForMode(mode)` → `{ generate, send, learning, reason }`
+  - `auto` : `{ generate: true, send: true, learning: false }`
+  - `copilot` : `{ generate: true, send: false, learning: true }` — génère draft, n'envoie pas
+  - `user` : `{ generate: false, send: false, learning: false }`
+- `MODE_LABELS` : labels/descriptions/couleurs UI
+- Backward-compat `shadow`/`learning` → normalisés en `copilot`
+
+### UI dédiée — tab Agent IA dans messagerie
+
+Nouveau tab `[Messages] [Agent IA]` dans `/agence/messagerie` (panel `messagerie/agent-ia-panel.tsx`) :
+- Status strip : Provider Groq OK · Persona v1 · Runs 24h · État (Actif/Inactif)
+- Mode d'opération : 3 cards cliquables avec description + couleur + icône
+- Persona editor : prompt système · emojis favoris · fermetures signature · toggle Actif
+- Playground test (POST `/api/agence/ai/test`)
+- 15 derniers runs (`ai_runs` logs avec source/tokens/latency/error)
+
+API ajoutées :
+- `GET/PUT /api/agence/ai/settings` — persona (normalisation arrays emojis/endings ↔ strings UI)
+- `POST /api/agence/ai/test` — playground Groq direct
+- `GET /api/agence/ai/health` (public) — diag env booléens + stats `ai_runs` 24h/1h + file IG
+
+### Phase precedent (v0.5.0) toujours valable
+
+(voir entrée v0.5.0 ci-dessous)
+
+---
+
 ## [v0.5.0-plan] — 2026-04-24 soir — Ajustement phases après livraison Phase 3 partielle + sécurité
 
 > Lien avec livraison globale Heaven v1.3.0 : [plans/_reports/UPDATE-REPORT-2026-04-24-0707-root-cp-m0-security-phase1.md](../../_reports/UPDATE-REPORT-2026-04-24-0707-root-cp-m0-security-phase1.md)
