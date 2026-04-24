@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { Bot, Sparkles, Zap, Send, CheckCircle2, AlertTriangle, Loader2, Save, Radio, UserRound, EyeOff, GraduationCap } from "lucide-react";
+import { Bot, Sparkles, Zap, Send, CheckCircle2, AlertTriangle, Loader2, Save, Radio, UserRound, GraduationCap } from "lucide-react";
 import { useModel } from "@/lib/model-context";
 import { MODE_LABELS, type AgentMode } from "@/lib/ai-agent/modes";
 
@@ -89,7 +89,10 @@ export function AgentIAPanel() {
         setEmojis(d.persona.favorite_emojis || "");
         setEndings(d.persona.favorite_endings || "");
         setIsActive(!!d.persona.is_active);
-        setMode((d.persona.mode || "auto") as AgentMode);
+        // Backward-compat : anciens shadow/learning → copilot
+        const raw = (d.persona.mode || "auto") as string;
+        const normalized: AgentMode = ["shadow", "learning"].includes(raw) ? "copilot" : (raw as AgentMode);
+        setMode(normalized);
       }
     } finally {
       setLoading(false);
@@ -228,10 +231,10 @@ export function AgentIAPanel() {
             {MODE_LABELS[mode].short}
           </span>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {(["auto", "user", "shadow", "learning"] as AgentMode[]).map((m) => {
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          {(["auto", "copilot", "user"] as AgentMode[]).map((m) => {
             const meta = MODE_LABELS[m];
-            const Icon = m === "auto" ? Radio : m === "user" ? UserRound : m === "shadow" ? EyeOff : GraduationCap;
+            const Icon = m === "auto" ? Radio : m === "copilot" ? GraduationCap : UserRound;
             const selected = mode === m;
             return (
               <button

@@ -42,6 +42,8 @@ interface MessageItem {
 }
 interface ClientItem {
   id: string; pseudo_snap: string | null; pseudo_insta: string | null;
+  // NB 2026-04-24 : pseudo_web séparé (visiteur-NNN, guest-xxx) → pas d'IG/Snap link.
+  pseudo_web?: string | null;
   model: string; tier: string | null; last_active: string | null; created_at: string;
   verified_status?: string | null; lead_source?: string | null;
 }
@@ -274,11 +276,15 @@ export function Header() {
           read: c.unread_count === 0,
         }));
 
-      // Transform → ClientItem[] enrichi (pseudo résolu)
+      // Transform → ClientItem[] enrichi.
+      // NB 2026-04-24 : on ne MIX pas pseudo_web avec pseudo_insta — sinon la
+      // PlatformAvatar affiche l'icône Instagram pour un visiteur web qui n'a
+      // pas d'IG. Le pseudo_web reste dans son champ dédié → avatar Globe.
       const synthClients: ClientItem[] = convs.map((c) => ({
         id: c.fan_id,
         pseudo_snap: c.pseudo_snap || null,
-        pseudo_insta: c.pseudo_insta || c.pseudo_web || c.display_name || null,
+        pseudo_insta: c.pseudo_insta || null,
+        pseudo_web: c.pseudo_web || c.display_name || null,
         model: toModelId(modelSlug),
         tier: null,
         last_active: c.last_message_at,

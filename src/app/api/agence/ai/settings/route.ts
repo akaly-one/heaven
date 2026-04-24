@@ -106,8 +106,8 @@ export async function PUT(req: NextRequest) {
   if (typeof body.trait_warmth === "number") updates.trait_warmth = body.trait_warmth;
   if (typeof body.trait_flirt === "number") updates.trait_flirt = body.trait_flirt;
   if (typeof body.is_active === "boolean") updates.is_active = body.is_active;
-  // Mode : auto | user | shadow | learning (NB 2026-04-24)
-  if (typeof body.mode === "string" && ["auto", "user", "shadow", "learning"].includes(body.mode)) {
+  // Mode : auto | copilot | user (NB 2026-04-24 — 3 modes après refonte 056)
+  if (typeof body.mode === "string" && ["auto", "copilot", "user"].includes(body.mode)) {
     updates.mode = body.mode;
   }
 

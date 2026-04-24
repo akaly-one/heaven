@@ -1,5 +1,9 @@
 /**
- * Modes de fonctionnement agent IA — NB 2026-04-24.
+ * Modes de fonctionnement agent IA — NB 2026-04-24 (refonte 3 modes).
+ *
+ * Aligné sur les standards industrie (Intercom Fin / Zendesk Agent Assist /
+ * GitHub Copilot) : un mode pleinement autonome, un mode copilote HITL
+ * (human-in-the-loop) avec apprentissage, un mode manuel.
  *
  * Source de vérité : colonne `agent_personas.mode`.
  * Utilisé par :
@@ -7,7 +11,7 @@
  *  - /api/messages POST → triggerWebAutoReply (web chat)
  */
 
-export type AgentMode = "auto" | "user" | "shadow" | "learning";
+export type AgentMode = "auto" | "copilot" | "user";
 
 export interface ModeDecision {
   generate: boolean;   // doit-on appeler le LLM pour produire une réponse
@@ -17,14 +21,17 @@ export interface ModeDecision {
 }
 
 export function decideForMode(mode: AgentMode | string | null | undefined): ModeDecision {
-  const m = (mode || "auto") as AgentMode;
+  // Backward-compat : anciens enum values "shadow"/"learning" → copilot
+  const raw = (mode || "auto").toString();
+  const m = (["shadow", "learning"].includes(raw) ? "copilot" : raw) as AgentMode;
   switch (m) {
     case "user":
       return { generate: false, send: false, learning: false, reason: "mode_user_skip_ai" };
-    case "shadow":
-      return { generate: true, send: false, learning: false, reason: "mode_shadow_draft_only" };
-    case "learning":
-      return { generate: true, send: true, learning: true, reason: "mode_learning_with_feedback" };
+    case "copilot":
+      // Agent génère en parallèle (sent=false) pour capturer le draft
+      // → le human tape + envoie depuis la messagerie, la différence entre
+      //   draft agent et reply humain alimente le dataset de feedback.
+      return { generate: true, send: false, learning: true, reason: "mode_copilot_hitl" };
     case "auto":
     default:
       return { generate: true, send: true, learning: false, reason: "mode_auto" };
@@ -35,25 +42,19 @@ export const MODE_LABELS: Record<AgentMode, { label: string; short: string; desc
   auto: {
     label: "Auto",
     short: "Auto",
-    description: "L'agent répond automatiquement aux messages entrants. Mode par défaut.",
+    description: "L'agent répond automatiquement aux messages entrants. Mode par défaut pour volume / vitesse.",
     color: "#22C55E",
   },
-  user: {
-    label: "User",
-    short: "Humain",
-    description: "Agent désactivé. Toutes les réponses sont tapées manuellement depuis la messagerie.",
-    color: "#6B7280",
-  },
-  shadow: {
-    label: "Shadow",
-    short: "Proposition",
-    description: "L'agent prépare des propositions de réponses visibles côté cockpit, mais rien n'est envoyé. Tu valides/édites avant envoi.",
-    color: "#F59E0B",
-  },
-  learning: {
-    label: "Apprentissage",
-    short: "Learn",
-    description: "L'agent répond automatiquement ET capture tes corrections pour un futur fine-tuning dédié.",
+  copilot: {
+    label: "Copilote",
+    short: "Copilote",
+    description: "Toi tu écris et envoies, l'agent génère en parallèle un draft silencieux et apprend de tes corrections. Aligné Intercom Fin / Zendesk Agent Assist.",
     color: "#A78BFA",
+  },
+  user: {
+    label: "Manuel",
+    short: "Manuel",
+    description: "Agent complètement désactivé. 100% humain — utile si le ton doit rester ultra perso.",
+    color: "#6B7280",
   },
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { X, ArrowLeft, ExternalLink, Send, ArrowRight, Ghost, Instagram } from "lucide-react";
+import { X, ArrowLeft, ExternalLink, Send, ArrowRight, Ghost, Instagram, Globe } from "lucide-react";
 
 interface MessageItem {
   id: string; client_id: string; content: string; created_at: string;
@@ -9,6 +9,8 @@ interface MessageItem {
 }
 interface ClientItem {
   id: string; pseudo_snap: string | null; pseudo_insta: string | null;
+  // NB 2026-04-24 : pseudo_web = visiteur-NNN / guest-xxx → affichage Globe, jamais de lien externe.
+  pseudo_web?: string | null;
   model: string; tier: string | null; last_active: string | null; created_at: string;
   verified_status?: string | null; lead_source?: string | null;
 }
@@ -31,12 +33,15 @@ interface MessagesDropdownProps {
   replyInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
-/* ── Platform avatar helper ── */
+/* ── Platform avatar helper ──
+   Web visitor (pseudo_web présent, pas d'IG/Snap) → icône Globe neutre.
+   Pas de lien externe possible tant qu'ils n'ont pas upgrade leur pseudo. */
 function PlatformAvatar({ client, pseudo, size = "md", hasUnread = false }: {
   client?: ClientItem | null; pseudo?: string; size?: "sm" | "md"; hasUnread?: boolean;
 }) {
   const isSnap = !!client?.pseudo_snap;
   const isInsta = !isSnap && !!client?.pseudo_insta;
+  const isWeb = !isSnap && !isInsta && !!client?.pseudo_web;
   const s = size === "sm" ? "w-6 h-6" : "w-8 h-8";
   const iconSize = size === "sm" ? "w-3 h-3" : "w-4 h-4";
 
@@ -48,6 +53,10 @@ function PlatformAvatar({ client, pseudo, size = "md", hasUnread = false }: {
   } else if (isInsta) {
     bg = "rgba(193,53,132,0.12)";
     color = "#C13584";
+  } else if (isWeb) {
+    // Visiteur web — neutre, pas de branding réseau social.
+    bg = "rgba(156,163,175,0.12)";
+    color = "#9CA3AF";
   } else {
     bg = hasUnread ? "rgba(230,51,41,0.12)" : "rgba(0,0,0,0.06)";
     color = hasUnread ? "var(--accent)" : "var(--text-muted)";
@@ -56,11 +65,14 @@ function PlatformAvatar({ client, pseudo, size = "md", hasUnread = false }: {
   return (
     <div className={`${s} rounded-full flex items-center justify-center shrink-0`}
       style={{ background: bg, color }}>
-      {isSnap ? <Ghost className={iconSize} /> : isInsta ? <Instagram className={iconSize} /> : (
-        <span className={size === "sm" ? "text-[9px] font-bold" : "text-[11px] font-bold"}>
-          {(pseudo || "?").charAt(0).toUpperCase()}
-        </span>
-      )}
+      {isSnap ? <Ghost className={iconSize} />
+        : isInsta ? <Instagram className={iconSize} />
+        : isWeb ? <Globe className={iconSize} />
+        : (
+          <span className={size === "sm" ? "text-[9px] font-bold" : "text-[11px] font-bold"}>
+            {(pseudo || "?").charAt(0).toUpperCase()}
+          </span>
+        )}
     </div>
   );
 }
@@ -164,7 +176,8 @@ export function MessagesDropdown({
                 const isNewer = !existing || new Date(m.created_at).getTime() > new Date(existing.lastMsg.created_at).getTime();
                 if (isNewer || !existing) {
                   const cl = clients.find(c => c.id === cid);
-                  const pseudo = cl ? (cl.pseudo_snap || cl.pseudo_insta || cid.slice(0, 8)) : cid.slice(0, 10);
+                  // Priorité snap > insta > pseudo_web (visiteur-NNN) > fallback id truncated
+                  const pseudo = cl ? (cl.pseudo_snap || cl.pseudo_insta || cl.pseudo_web || cid.slice(0, 8)) : cid.slice(0, 10);
                   convMap.set(cid, {
                     clientId: cid,
                     pseudo,

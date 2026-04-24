@@ -576,7 +576,9 @@ export default function ModelPage() {
         {/* Chat Panel */}
         {!isModelLoggedIn && model && chatOpen && (
           <ChatPanel model={model} chatMessages={chatMessages} chatInput={chatInput} setChatInput={setChatInput}
-            sendMessage={sendMessage} chatEndRef={chatEndRef} setChatOpen={setChatOpen} />
+            sendMessage={sendMessage} chatEndRef={chatEndRef} setChatOpen={setChatOpen}
+            isGuest={!visitorRegistered}
+            onUpgrade={() => setGateDismissed(false)} />
         )}
 
         {/* Order History */}
@@ -808,6 +810,7 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, vi
           {!visitorRegistered && !isModelLoggedIn && onReopenGate && (
             <button
               onClick={onReopenGate}
+              title="Ajouter ton Insta/Snap → accès stories privées & promos Fanvue"
               className="px-3 py-1.5 rounded-xl text-[11px] font-semibold uppercase tracking-wider cursor-pointer transition-all hover:brightness-110 active:scale-95 shrink-0"
               style={{
                 background: "linear-gradient(135deg, var(--accent), #A78BFA)",
@@ -815,7 +818,7 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, vi
                 boxShadow: "0 2px 12px rgba(230,51,41,0.25)",
               }}
             >
-              Login
+              Upgrade
             </button>
           )}
           {/* Admin access: small shield icon, always visible for non-admin users.
@@ -1504,10 +1507,11 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
 }
 
 // ── Chat Panel ──
-function ChatPanel({ model, chatMessages, chatInput, setChatInput, sendMessage, chatEndRef, setChatOpen }: {
+function ChatPanel({ model, chatMessages, chatInput, setChatInput, sendMessage, chatEndRef, setChatOpen, isGuest = false, onUpgrade }: {
   model: ModelInfo; chatMessages: { id: string; sender_type: string; content: string; created_at: string }[];
   chatInput: string; setChatInput: (v: string) => void; sendMessage: () => Promise<void>;
   chatEndRef: React.RefObject<HTMLDivElement | null>; setChatOpen: (v: boolean) => void;
+  isGuest?: boolean; onUpgrade?: () => void;
 }) {
   return (
     <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-[380px] z-50 rounded-2xl overflow-hidden shadow-2xl"
@@ -1522,6 +1526,27 @@ function ChatPanel({ model, chatMessages, chatInput, setChatInput, sendMessage, 
         </div>
         <button onClick={() => setChatOpen(false)} className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform" style={{ background: "rgba(255,255,255,0.05)" }}><X className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} /></button>
       </div>
+      {/* NB 2026-04-24 : bandeau upgrade pour visiteurs anonymes (pas d'IG/Snap lié).
+          Click → rouvre IdentityGate pour ajouter un pseudo Insta/Snap → remplace
+          visiteur-NNN par le vrai handle + unlock stories privées + promos Fanvue. */}
+      {isGuest && onUpgrade && (
+        <button
+          type="button"
+          onClick={onUpgrade}
+          className="w-full flex items-start gap-2 px-4 py-2.5 cursor-pointer transition-all hover:brightness-110 text-left"
+          style={{
+            background: "linear-gradient(90deg, rgba(167,139,250,0.12), rgba(230,51,41,0.08))",
+            borderBottom: "1px solid var(--border2)",
+            color: "var(--text)",
+          }}
+        >
+          <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: "#A78BFA" }} />
+          <span className="text-[11px] leading-snug flex-1">
+            Ajoute ton <strong style={{ color: "#A78BFA" }}>Insta</strong> ou <strong style={{ color: "#FFFC00" }}>Snap</strong> → stories privées, promos Fanvue
+          </span>
+          <span className="text-[10px] font-bold shrink-0" style={{ color: "var(--accent)" }}>→</span>
+        </button>
+      )}
       <div className="overflow-y-auto p-3 space-y-2" style={{ height: "min(320px, 45vh)" }}>
         {chatMessages.length === 0 ? (
           <div className="text-center py-8"><MessageCircle className="w-6 h-6 mx-auto mb-2" style={{ color: "var(--text-muted)" }} /><p className="text-[11px]" style={{ color: "var(--text-muted)" }}>Envoie un message a {model.display_name}</p></div>
