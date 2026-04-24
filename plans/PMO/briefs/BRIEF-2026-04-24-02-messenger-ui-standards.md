@@ -43,14 +43,58 @@
 ## Scope
 
 ### IN
-- **Standard documenté** (fichier unique source de vérité) : règles pseudo, avatar, bulle row, bulle chat, mode agent placement
+- **Standard documenté** (fichier unique source de vérité) : règles pseudo, avatar, bulle row, bulle chat, mode agent placement, **ordre chronologique**, **couleurs bulle par canal**, **avatar modèle dans bulle**
 - **Helper corrigé** `getConversationPseudo` : règle unique et cohérente
 - **Composants shared** nouveaux :
-  - `<ConversationAvatar>` (remplace `<Avatar>` page + `PlatformAvatar` dropdown)
+  - `<ConversationAvatar>` (remplace `<Avatar>` page + `PlatformAvatar` dropdown + `clients-dropdown` — cf. BRIEF-13)
   - `<ConversationRow>` (remplace rendering inline page + dropdown)
   - `<MessageBubble>` (remplace bulles inline thread)
 - **Mode chip** ajouté dans `<ConversationRow>` + dropdown header
 - **Tests** : snapshot Playwright cohérence header vs page vs profil
+
+### IN (ajouts NB 2026-04-24 ~20:00)
+
+#### Ordre chronologique des messages (✅ hotfix partiel livré `528bdea`)
+- Standard : **oldest first → newest bottom** (iMessage/WhatsApp/Slack)
+- Scroll auto vers le bas au chargement du thread
+- Scroll auto vers le bas quand un nouveau message arrive pendant que la conversation est ouverte
+- Scroll preservation : si l'user scrolle vers le haut (lecture historique), ne PAS forcer scroll bottom auto sur nouveau message (afficher badge "1 nouveau message ↓" à la place)
+
+#### Styling bulles par canal (iMessage-inspired)
+Trois variants selon le canal et l'acteur :
+
+| Acteur | Canal | Bulle background | Texte | Alignement | Avatar |
+|---|---|---|---|---|---|
+| **Modèle** (Yumi/Paloma/Ruby) | Web | Vert iMessage `#30D158` (ou `var(--imessage-green)`) | Blanc | Droite | Photo profil modèle (cercle 32px à gauche de la bulle) |
+| **Modèle** | Instagram | Bleu iMessage `#0A84FF` (ou `var(--imessage-blue)`) | Blanc | Droite | Photo profil modèle + badge IG discret |
+| **Agent IA** (auto/copilot) | Tous | Même vert/bleu que modèle + sparkle icon ✨ coin supérieur | Blanc | Droite | Photo modèle + badge bot discret |
+| **Visiteur web** | Web | Gris neutre `var(--bg)` + border `var(--border)` | `var(--text)` | Gauche | Avatar `<ConversationAvatar>` Globe ou initiale |
+| **Fan Instagram** | IG | Gris neutre + border subtle IG accent | `var(--text)` | Gauche | Avatar Instagram icon |
+
+**Tokens CSS ajouts** (Tailwind `@theme` ou CSS vars) :
+```
+--imessage-green: #30D158;   /* Web outbound */
+--imessage-blue: #0A84FF;    /* IG outbound */
+--imessage-gray: var(--bg);  /* Inbound tous canaux */
+```
+
+Dark mode : `oklch` équivalents pour luminosité stable.
+
+**Avatar modèle dans bulle** :
+- Source : `modelSelf.avatarUrl` (photo réelle modèle depuis `/api/models/photo`)
+- Fallback : initiale majuscule sur gradient or (existant)
+- Visible sur le PREMIER message d'un "cluster" seulement (plusieurs messages consécutifs du même acteur = 1 avatar affiché)
+- Taille 28-32px, placement à gauche de la bulle (même aligné à droite que la bulle)
+
+#### Compteur messages non-lus — temps réel (✅ hotfix partiel livré `528bdea`)
+- Dès qu'une conversation est ouverte → mark_read automatique
+- Compteur header se décrémente instantanément (CustomEvent `heaven:messages-read`)
+- Polling 15s reste en fallback mais UX = instant
+- Extension : si plusieurs conversations non-lues, header affiche total + bulle rouge
+- Badge bulle row passe de "3 non lus" → 0 dès ouverture
+
+#### Cohérence bouton header "Clients & Codes" avec pseudos messagerie
+Intégré dans BRIEF-13 TICKET-UV10 (refactor `clients-dropdown.tsx` pour consommer helpers shared).
 
 ### OUT
 - Refonte complète du module messagerie (hors scope de ce brief, cf. ROADMAP-multiagent-execution B7)

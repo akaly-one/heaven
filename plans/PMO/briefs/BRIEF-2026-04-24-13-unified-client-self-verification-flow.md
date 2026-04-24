@@ -81,7 +81,27 @@ NB : "ce flow de vérification me paraît correct, étudie-le et regarde si il y
 
 ## Scope
 
-### IN
+### NB 2026-04-24 ~20:00 — Clarification dynamic pseudo update live
+
+Règle métier additionnelle NB :
+
+> Quand un visiteur anonyme (`visiteur-XXXX`) ajoute un handle Snap/IG, le pseudo doit être remplacé PARTOUT instantanément :
+> - Dans la messagerie (row + thread header)
+> - Dans le dropdown header "Clients & Codes"
+> - Dans la box conversationnelle du profil visiteur
+> - Dans tout rendu qui fait référence à ce client
+>
+> La **SEULE chose qui attend la validation** = le badge "vérifié ✅" à côté du pseudo.
+> Donc :
+> - Pseudo change immédiat (ex: `visiteur-73d5` → `@jnoske`)
+> - Badge reste ⏳ "en attente" jusqu'à validation admin via le flow IP match
+> - Une fois validé, badge passe à ✅ "vérifié"
+
+**Implications techniques** :
+- Le pseudo affiché doit être **recalculé dynamiquement** par `getConversationPseudo(client)` — helper unique
+- Supabase Realtime subscription sur `agence_clients` pour les vues ouvertes (messagerie, dropdown, drawer fan)
+- Event `heaven:client-handle-updated` dispatched quand un handle est modifié → toutes les vues refresh leur pseudo
+- Le badge `<VerificationBadge>` reste indépendant (pseudo ≠ verified_status)
 
 #### Volet A — Migration DB (~1h)
 
@@ -171,29 +191,37 @@ NB : "ce flow de vérification me paraît correct, étudie-le et regarde si il y
     - Input code 6 chiffres (si fan préfère entrer code plutôt que lien direct)
     - Feedback visuel temps réel
 
-#### Volet E — Notifications temps réel (~45 min)
+#### Volet E — Notifications temps réel (~1h)
 
 16. `TICKET-UV16` Supabase Realtime sur `agence_clients.verified_at`
     - Dès qu'un client est validé → push temps réel vers admin dashboard
     - Badge qui passe de ⏳ à ✅ sans refresh
     - Counter "à valider" qui décrémente
 
+17. `TICKET-UV17` **Dynamic pseudo update live** (ajout 2026-04-24 ~20:00)
+    - Supabase Realtime sur `agence_clients.pseudo_snap` / `pseudo_insta` / `pseudo_web`
+    - Quand un de ces champs change → event `heaven:client-handle-updated` dispatched
+    - Les vues ouvertes (messagerie, dropdown, drawer, profil) re-fetch leurs rows
+    - `getConversationPseudo(client)` recalcule le pseudo affiché à partir des nouveaux champs
+    - Le badge `<VerificationBadge>` reste indépendant (verification_status pas lié au pseudo)
+    - Exemple : visiteur `visiteur-73d5` ajoute pseudo_insta='jnoske' → toutes vues affichent `@jnoske` + badge ⏳ "en attente" → admin valide → badge passe ✅
+
 #### Volet F — Tests + Doc (~1h)
 
-17. `TICKET-UV17` Tests Playwright e2e scénario complet :
+18. `TICKET-UV18` Tests Playwright e2e scénario complet :
     - Visiteur anonyme → envoi message → username visiteur-XXXX visible
     - Visiteur ajoute pseudo_snap → row `agence_client_verifications` créé
     - Admin voit demande → clique "générer lien" → copy lien
     - Admin ouvre nouvel onglet simulant fan Snap → clique lien → validation success
     - Admin dashboard → badge ✅ apparaît, access_level → validated, BRIEF-10 débloque niveau 3
 
-18. `TICKET-UV18` Tests scénarios edge :
+19. `TICKET-UV19` Tests scénarios edge :
     - IP different subnet (mobile → wifi) → rejeté avec message explicite
     - Link expired → message + bouton régénérer
     - Token réutilisé (déjà validé) → idempotent "Tu es déjà vérifié"
     - Brute force codes → rate limit 10/heure par IP
 
-19. `TICKET-UV19` Runbook `plans/PMO/standards/OPS.md` section "Verification flow"
+20. `TICKET-UV20` Runbook `plans/PMO/standards/OPS.md` section "Verification flow"
     - Procédure admin pour valider un fan
     - Troubleshooting : "pourquoi le lien ne valide pas ?"
     - FAQ fan (à intégrer à support public)
