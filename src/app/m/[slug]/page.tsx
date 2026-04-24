@@ -117,16 +117,28 @@ export default function ModelPage() {
   const [gateDismissed, setGateDismissed] = useState(false);
 
   // ── Nav state ──
-  const [galleryTier, setGalleryTier] = useState(() => {
-    if (typeof window !== "undefined") {
-      const hash = window.location.hash.replace("#", "");
-      if (["feed", "p1", "p2", "p3", "p4", "p5", "custom"].includes(hash)) return hash;
-      const mapped = TIER_ALIASES[hash]; if (mapped) return mapped;
-      if (hash === "all" || hash === "public" || hash === "gallery" || hash === "shootings") return "feed";
-      if (hash === "shop") return "custom";
+  // SSR-safe: always start with "home" on server + first client render, then sync to hash after mount (fixes React #418 hydration mismatch).
+  const [galleryTier, setGalleryTier] = useState<string>("home");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash.replace("#", "");
+    if (!hash) return;
+    if (["feed", "p1", "p2", "p3", "p4", "p5", "custom"].includes(hash)) {
+      setGalleryTier(hash);
+      return;
     }
-    return "home";
-  });
+    const mapped = TIER_ALIASES[hash];
+    if (mapped) {
+      setGalleryTier(mapped);
+      return;
+    }
+    if (hash === "all" || hash === "public" || hash === "gallery" || hash === "shootings") {
+      setGalleryTier("feed");
+      return;
+    }
+    if (hash === "shop") setGalleryTier("custom");
+  }, []);
 
   // ── Access code ──
   const {
@@ -479,7 +491,14 @@ export default function ModelPage() {
         )}
 
         {/* ═══ TAB CONTENT ═══ */}
-        <div key={galleryTier} className="max-w-6xl mx-auto px-4 sm:px-8 md:px-12 py-2 sm:py-8 fade-up">
+        <div
+          key={galleryTier}
+          id={`heaven-tabpanel-${galleryTier}`}
+          role="tabpanel"
+          aria-labelledby={`heaven-tab-${galleryTier === "home" ? "feed" : galleryTier}`}
+          tabIndex={0}
+          className="max-w-6xl mx-auto px-4 sm:px-8 md:px-12 py-2 sm:py-8 fade-up"
+        >
 
           {/* ── FEED ── */}
           {(galleryTier === "feed" || galleryTier === "home") && (
@@ -1066,13 +1085,19 @@ function DesktopTierNav({ galleryTier, setGalleryTier, setFocusPack, activePacks
     <div className="sticky top-[36px] md:top-[40px] z-30 py-2 hidden md:block"
       style={{ background: "color-mix(in srgb, var(--bg) 92%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
       <div className="max-w-6xl mx-auto px-5 sm:px-8 md:px-12">
-        <div className="flex gap-2 justify-center pb-1" role="tablist">
+        <div className="flex gap-2 justify-center pb-1" role="tablist" aria-label="Navigation profil">
           {/* Feed */}
-          <button role="tab" aria-selected={galleryTier === "feed"} onClick={() => { setGalleryTier(galleryTier === "feed" ? "home" : "feed"); setFocusPack(null); }}
+          <button
+            role="tab"
+            id="heaven-tab-feed"
+            aria-controls="heaven-tabpanel-feed"
+            aria-selected={galleryTier === "feed" || galleryTier === "home"}
+            aria-label="Onglet Feed"
+            onClick={() => { setGalleryTier(galleryTier === "feed" ? "home" : "feed"); setFocusPack(null); }}
             className="relative flex-1 rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] group overflow-hidden"
             style={{ minWidth: "70px", padding: "12px 16px", background: galleryTier === "feed" ? "linear-gradient(135deg, var(--accent), #F43F5E)" : "var(--surface)", border: galleryTier === "feed" ? "2px solid var(--accent)" : "1px solid var(--border)", boxShadow: galleryTier === "feed" ? "0 4px 16px rgba(230,51,41,0.25)" : "none" }}>
             <div className="flex flex-col items-center gap-1">
-              <Newspaper className="w-4 h-4" style={{ color: galleryTier === "feed" ? "#fff" : "var(--accent)" }} />
+              <Newspaper className="w-4 h-4" aria-hidden="true" style={{ color: galleryTier === "feed" ? "#fff" : "var(--accent)" }} />
               <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: galleryTier === "feed" ? "#fff" : "var(--text)" }}>Feed</span>
             </div>
           </button>
@@ -1085,31 +1110,44 @@ function DesktopTierNav({ galleryTier, setGalleryTier, setFocusPack, activePacks
             const isActive = galleryTier === t;
             const previewImg = uploads.find(u => normalizeTier(u.tier) === t && u.dataUrl && u.type === "photo")?.dataUrl;
             return (
-              <button key={t} role="tab" aria-selected={isActive} onClick={() => { setGalleryTier(isActive ? "home" : t); setFocusPack(null); }}
+              <button
+                key={t}
+                role="tab"
+                id={`heaven-tab-${t}`}
+                aria-controls={`heaven-tabpanel-${t}`}
+                aria-selected={isActive}
+                aria-label={`Onglet ${tierLabel}${isLocked ? " (verrouillé)" : ""}`}
+                onClick={() => { setGalleryTier(isActive ? "home" : t); setFocusPack(null); }}
                 className="relative flex-1 rounded-xl cursor-pointer poker-tile group overflow-hidden"
                 style={{ minWidth: "70px", height: "72px", background: isActive ? `linear-gradient(135deg, ${tierHex}, ${tierHex}CC)` : "var(--surface)", border: isActive ? `2px solid ${tierHex}` : "1px solid var(--border)", boxShadow: isActive ? `0 4px 20px ${tierHex}40` : "none", opacity: isLocked && !isActive ? 0.7 : 1 }}>
-                <div className="absolute inset-0">
+                <div className="absolute inset-0" aria-hidden="true">
                   {previewImg && !isActive ? <img src={previewImg} alt="" draggable={false} className="w-full h-full object-cover" style={{ filter: isLocked ? "blur(8px) brightness(0.3)" : "brightness(0.35)", transform: isLocked ? "scale(1.1)" : "none" }} />
                     : !isActive ? <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${tierHex}12, ${tierHex}06)` }} /> : null}
                 </div>
                 <div className="relative flex flex-col items-center justify-center h-full gap-0.5 px-3">
-                  <span className="absolute top-1 left-1.5 text-[8px] font-bold opacity-0 group-hover:opacity-60 transition-opacity" style={{ color: isActive ? "#fff" : tierHex }}>{tierSymbol}</span>
-                  <span className="absolute bottom-1 right-1.5 text-[8px] font-bold opacity-0 group-hover:opacity-60 transition-opacity rotate-180" style={{ color: isActive ? "#fff" : tierHex }}>{tierSymbol}</span>
-                  <span className="text-xl transition-all duration-200 group-hover:scale-110 relative" style={{ color: isActive ? "#fff" : tierHex, filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))" }}>
-                    {tierSymbol}{isLocked && <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-2" style={{ color: isActive ? "#fff" : tierHex, opacity: 0.7 }} />}
+                  <span aria-hidden="true" className="absolute top-1 left-1.5 text-[8px] font-bold opacity-0 group-hover:opacity-60 transition-opacity" style={{ color: isActive ? "#fff" : tierHex }}>{tierSymbol}</span>
+                  <span aria-hidden="true" className="absolute bottom-1 right-1.5 text-[8px] font-bold opacity-0 group-hover:opacity-60 transition-opacity rotate-180" style={{ color: isActive ? "#fff" : tierHex }}>{tierSymbol}</span>
+                  <span aria-hidden="true" className="text-xl transition-all duration-200 group-hover:scale-110 relative" style={{ color: isActive ? "#fff" : tierHex, filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))" }}>
+                    {tierSymbol}{isLocked && <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-2" aria-hidden="true" style={{ color: isActive ? "#fff" : tierHex, opacity: 0.7 }} />}
                   </span>
                   <span className="text-[10px] font-black uppercase tracking-wider transition-colors duration-200" style={{ color: isActive ? "#fff" : "var(--text)", textShadow: isActive || previewImg ? "0 1px 4px rgba(0,0,0,0.5)" : "none" }}>{tierLabel}</span>
                 </div>
-                {isActive && <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ background: tierHex, boxShadow: `0 0 10px ${tierHex}` }} />}
+                {isActive && <div aria-hidden="true" className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ background: tierHex, boxShadow: `0 0 10px ${tierHex}` }} />}
               </button>
             );
           })}
           {/* Custom */}
-          <button role="tab" aria-selected={galleryTier === "custom"} onClick={() => { setGalleryTier(galleryTier === "custom" ? "home" : "custom"); setFocusPack(null); }}
+          <button
+            role="tab"
+            id="heaven-tab-custom"
+            aria-controls="heaven-tabpanel-custom"
+            aria-selected={galleryTier === "custom"}
+            aria-label="Onglet Custom"
+            onClick={() => { setGalleryTier(galleryTier === "custom" ? "home" : "custom"); setFocusPack(null); }}
             className="relative flex-1 rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] group overflow-hidden"
             style={{ minWidth: "70px", padding: "12px 16px", background: galleryTier === "custom" ? "linear-gradient(135deg, #D4AF37, #B8860B)" : "var(--surface)", border: galleryTier === "custom" ? "none" : "1px solid var(--border)", boxShadow: galleryTier === "custom" ? "0 4px 16px rgba(184,134,11,0.25)" : "none" }}>
             <div className="flex flex-col items-center gap-1">
-              <Sparkles className="w-4 h-4" style={{ color: galleryTier === "custom" ? "#fff" : "#B8860B" }} />
+              <Sparkles className="w-4 h-4" aria-hidden="true" style={{ color: galleryTier === "custom" ? "#fff" : "#B8860B" }} />
               <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: galleryTier === "custom" ? "#fff" : "var(--text)" }}>Custom</span>
             </div>
           </button>

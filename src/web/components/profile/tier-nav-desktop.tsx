@@ -47,9 +47,15 @@ export function TierNavDesktop({
     <div className="sticky top-[36px] md:top-[40px] z-30 py-2 hidden md:block"
       style={{ background: "color-mix(in srgb, var(--bg) 92%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
       <div className="max-w-6xl mx-auto px-5 sm:px-8 md:px-12">
-        <div className="flex gap-2 justify-center pb-1" role="tablist">
+        <div className="flex gap-2 justify-center pb-1" role="tablist" aria-label="Navigation profil">
           {/* Feed tile */}
-          <button role="tab" aria-selected={galleryTier === "feed"} onClick={() => { setGalleryTier("feed"); setFocusPack(null); }}
+          <button
+            role="tab"
+            id="heaven-tab-feed"
+            aria-controls="heaven-tabpanel-feed"
+            aria-selected={galleryTier === "feed" || galleryTier === "home"}
+            aria-label="Onglet Feed"
+            onClick={() => { setGalleryTier("feed"); setFocusPack(null); }}
             className="relative flex-1 rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] group overflow-hidden"
             style={{
               minWidth: "70px",
@@ -61,7 +67,7 @@ export function TierNavDesktop({
               boxShadow: galleryTier === "feed" ? "0 4px 16px rgba(230,51,41,0.25)" : "none",
             }}>
             <div className="flex flex-col items-center gap-1">
-              <Newspaper className="w-4 h-4" style={{ color: galleryTier === "feed" ? "#fff" : "var(--text-muted)" }} />
+              <Newspaper className="w-4 h-4" aria-hidden="true" style={{ color: galleryTier === "feed" ? "#fff" : "var(--text-muted)" }} />
               <span className="text-[10px] font-bold uppercase tracking-wider"
                 style={{ color: galleryTier === "feed" ? "#fff" : "var(--text-muted)" }}>Feed</span>
             </div>
@@ -76,7 +82,14 @@ export function TierNavDesktop({
             const isActive = galleryTier === t;
             const previewImg = uploads.find(u => normalizeTier(u.tier) === t && u.dataUrl && u.type === "photo")?.dataUrl;
             return (
-              <button key={t} role="tab" aria-selected={isActive} onClick={() => { setGalleryTier(t); setFocusPack(null); }}
+              <button
+                key={t}
+                role="tab"
+                id={`heaven-tab-${t}`}
+                aria-controls={`heaven-tabpanel-${t}`}
+                aria-selected={isActive}
+                aria-label={`Onglet ${tierLabel}${isLocked ? " (verrouillé)" : ""}`}
+                onClick={() => { setGalleryTier(t); setFocusPack(null); }}
                 className="relative flex-1 rounded-xl cursor-pointer poker-tile group overflow-hidden"
                 style={{
                   minWidth: "70px",
@@ -87,7 +100,7 @@ export function TierNavDesktop({
                   opacity: isLocked && !isActive ? 0.7 : 1,
                 }}>
                 {/* Background — preview image or tier gradient */}
-                <div className="absolute inset-0">
+                <div className="absolute inset-0" aria-hidden="true">
                   {previewImg && !isActive ? (
                     <img src={previewImg} alt="" draggable={false}
                       className="w-full h-full object-cover"
@@ -99,15 +112,15 @@ export function TierNavDesktop({
                 </div>
                 {/* Content — white by default, tier color on hover/active */}
                 <div className="relative flex flex-col items-center justify-center h-full gap-0.5 px-3">
-                  {/* Poker card corners — visible on hover */}
-                  <span className="absolute top-1 left-1.5 text-[8px] font-bold opacity-0 group-hover:opacity-60 transition-opacity"
+                  {/* Poker card corners — visible on hover, purely decorative */}
+                  <span aria-hidden="true" className="absolute top-1 left-1.5 text-[8px] font-bold opacity-0 group-hover:opacity-60 transition-opacity"
                     style={{ color: isActive ? "#fff" : tierHex }}>{tierSymbol}</span>
-                  <span className="absolute bottom-1 right-1.5 text-[8px] font-bold opacity-0 group-hover:opacity-60 transition-opacity rotate-180"
+                  <span aria-hidden="true" className="absolute bottom-1 right-1.5 text-[8px] font-bold opacity-0 group-hover:opacity-60 transition-opacity rotate-180"
                     style={{ color: isActive ? "#fff" : tierHex }}>{tierSymbol}</span>
-                  <span className="text-xl transition-all duration-200 group-hover:scale-110 relative"
+                  <span aria-hidden="true" className="text-xl transition-all duration-200 group-hover:scale-110 relative"
                     style={{ color: isActive ? "#fff" : "var(--text-muted)", filter: `drop-shadow(0 1px 2px rgba(0,0,0,0.15))` }}>
                     {tierSymbol}
-                    {isLocked && <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-2" style={{ color: "#fff", opacity: 0.7 }} />}
+                    {isLocked && <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-2" aria-hidden="true" style={{ color: "#fff", opacity: 0.7 }} />}
                   </span>
                   <span className="text-[10px] font-black uppercase tracking-wider transition-colors duration-200"
                     style={{ color: isActive ? "#fff" : "var(--text-muted)", textShadow: isActive || previewImg ? "0 1px 4px rgba(0,0,0,0.5)" : "none" }}>
@@ -116,7 +129,7 @@ export function TierNavDesktop({
                 </div>
                 {/* Bottom glow line when active */}
                 {isActive && (
-                  <div className="absolute bottom-0 left-0 right-0 h-[3px]"
+                  <div aria-hidden="true" className="absolute bottom-0 left-0 right-0 h-[3px]"
                     style={{ background: tierHex, boxShadow: `0 0 10px ${tierHex}` }} />
                 )}
               </button>
@@ -124,7 +137,13 @@ export function TierNavDesktop({
           })}
 
           {/* Custom tile */}
-          <button role="tab" aria-selected={galleryTier === "custom"} onClick={() => { setGalleryTier("custom"); setFocusPack(null); }}
+          <button
+            role="tab"
+            id="heaven-tab-custom"
+            aria-controls="heaven-tabpanel-custom"
+            aria-selected={galleryTier === "custom"}
+            aria-label="Onglet Custom"
+            onClick={() => { setGalleryTier("custom"); setFocusPack(null); }}
             className="relative flex-1 rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] group overflow-hidden"
             style={{
               minWidth: "70px",
@@ -136,7 +155,7 @@ export function TierNavDesktop({
               boxShadow: galleryTier === "custom" ? "0 4px 16px rgba(184,134,11,0.25)" : "none",
             }}>
             <div className="flex flex-col items-center gap-1">
-              <Sparkles className="w-4 h-4" style={{ color: galleryTier === "custom" ? "#fff" : "var(--text-muted)" }} />
+              <Sparkles className="w-4 h-4" aria-hidden="true" style={{ color: galleryTier === "custom" ? "#fff" : "var(--text-muted)" }} />
               <span className="text-[10px] font-bold uppercase tracking-wider"
                 style={{ color: galleryTier === "custom" ? "#fff" : "var(--text-muted)" }}>Custom</span>
             </div>
