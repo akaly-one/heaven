@@ -1,5 +1,55 @@
 # Heaven — Changelog
 
+## [v1.3.0] — 2026-04-24 — ROOT CP m0 + Sécurité Phase 1 + Hiérarchie comptes
+
+> Rapport détaillé : [plans/_reports/UPDATE-REPORT-2026-04-24-0707-root-cp-m0-security-phase1.md](plans/_reports/UPDATE-REPORT-2026-04-24-0707-root-cp-m0-security-phase1.md)
+
+### CP maître ROOT (m0) — nouvelle entité
+- Seed `agence_models` row `root` (model_id=m0, display_name="ROOT", is_active=true) via migration 050_v2
+- Entity config `src/shared/config/entities/root.ts` + ajout au registre ENTITIES
+- `toModelId("root")` → `"m0"`, `/api/models` retourne maintenant 4 CPs
+
+### Skeleton spécimen ROOT (`/agence` mode root)
+- Remplace empty state par template dev : 13 cartes modules descriptives (fonction · rôles · sources DB · statut done/planned)
+- Header badge "SPECIMEN / DEV MODE" + footer tips dev
+
+### Header selector root
+- Label fixe "ROOT" (supprime HEAVEN hardcodé historique)
+- Rendu dès `auth.role === "root"` OR auth null (dev fallback)
+- Dropdown liste les 4 CPs depuis DB (plus d'option "Aucun CP brut")
+
+### Hiérarchie comptes enforced backend
+- Helper `canEditTarget(user, target)` dans PATCH `/api/agence/accounts` + POST `/api/agence/accounts/[code]/reset-code`
+- Root Master (m0 ou slug=root) → modifie tout
+- Yumi root-fusion (m1) → modifie Paloma/Ruby mais PAS Root
+- Model (paloma/ruby) → uniquement son propre compte
+
+### Édition inline comptes (admin)
+- Drawer modal → **accordéon inline** par ligne (mobile-friendly)
+- Sous-accordéon "Modifier identifiant & mot de passe"
+- Username = `login_aliases[0]`, Password = custom (pas juste regen aléatoire)
+- API PATCH accepte `login_aliases`, `model_id`, `model_slug`
+- API reset-code accepte `custom_code` (validation regex 4-32 chars)
+
+### Credentials standardisés
+- Règle : 1 username unique par CP, password `Mod{3lettres}2026` pour modèles
+- ROOT/`root`/Root2026 · Yumi/`yumi`/ModYum2026 · Paloma/`paloma`/ModPal2026 · Ruby/`ruby`/ModRub2026
+
+### Sécurité Phase 1 (migration 051 appliquée)
+- Table `agence_auth_events` (audit log complet login/fail/lock/password/username events)
+- Colonnes `failed_attempts`, `locked_until`, `last_failed_at`, `code_hash` sur `agence_accounts`
+- Table `auth_rate_limits` (future Phase 1.5 — DB-persistant)
+- RPC `record_failed_login(account_id, max_fails, lock_minutes)` — auto-lock atomique après 10 échecs
+- RPC `reset_login_attempts(account_id)` — reset sur login success
+- Login route `/api/auth/login` instrumentée (defensive, fonctionne même sans migration appliquée)
+- Vérifié live : `login_success` + `login_fail` enregistrés dans `agence_auth_events`
+
+### Plan sécurité progressive
+- Nouveau doc `plans/03-tech/SECURITY-PROGRESSIVE-2026.md` — 5 phases jusqu'à Passkeys/YubiKey sur 12 mois
+- Directive NB : pas de 2FA ultime maintenant, durcissement progressif
+
+---
+
 ## [v1.2.0-strategy] — 2026-04-21 soir — Unification stratégique BP v1 + adaptation Claude Code
 
 ### Intégration BP Cowork
