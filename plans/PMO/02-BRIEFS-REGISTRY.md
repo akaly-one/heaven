@@ -20,17 +20,22 @@
 | ID | Date | Titre | Type | Priorité | Branches | Statut | Fichier |
 |---|---|---|---|---|---|---|---|
 | BRIEF-2026-04-24-01 | 2026-04-24 | Session recovery — restaurer migrations manquantes + fix FK ai_runs | bug | P0 | DB, BE, Doc | ✅ livré (commit `5b64abc`) | [briefs/BRIEF-2026-04-24-01-session-recovery.md](./briefs/BRIEF-2026-04-24-01-session-recovery.md) |
-| BRIEF-2026-04-24-02 | 2026-04-24 | Messenger UI Standards — uniformiser pseudo + avatar + bulles chat + mode agent par conversation | standard + feature | P1 | FE, BE, QA, Doc | 🟠 cadré | [briefs/BRIEF-2026-04-24-02-messenger-ui-standards.md](./briefs/BRIEF-2026-04-24-02-messenger-ui-standards.md) |
-| BRIEF-2026-04-24-03 | 2026-04-24 | Structure unifiée + CONTEXT par module + roadmap trackable + auto-update | standard + méta gouvernance | P1 | Doc, Architect | 🟠 cadré | [briefs/BRIEF-2026-04-24-03-structure-unifiee-auto-update.md](./briefs/BRIEF-2026-04-24-03-structure-unifiee-auto-update.md) |
+| BRIEF-2026-04-24-02 | 2026-04-24 | Messenger UI Standards — uniformiser pseudo + avatar + bulles chat + mode agent par conversation | standard + feature | P1 | FE, BE, QA, Doc | 🔵 consolidé (→ Phase 2 plan v1) | [briefs/BRIEF-2026-04-24-02-messenger-ui-standards.md](./briefs/BRIEF-2026-04-24-02-messenger-ui-standards.md) |
+| BRIEF-2026-04-24-03 | 2026-04-24 | Structure unifiée + CONTEXT par module + roadmap trackable + auto-update | standard + méta gouvernance | P1 | Doc, Architect | 🔵 consolidé (→ Phases 1, 3, 4 plan v1) | [briefs/BRIEF-2026-04-24-03-structure-unifiee-auto-update.md](./briefs/BRIEF-2026-04-24-03-structure-unifiee-auto-update.md) |
 
 ---
 
 ## Compteur
 
 - Total reçus : 3
-- En attente consolidation : 2
+- En attente consolidation : 0
+- Consolidés dans plan global : 2
 - En exécution : 0
 - Livrés : 1
+
+## Plan global d'exécution
+
+Consolidation des 3 briefs dans **[plan-global-v1.md](./plan-global-v1.md)** (4 phases ordonnées, dépendances, parallélisations, distribution agents). En attente GO NB.
 
 ## Observations CDP
 

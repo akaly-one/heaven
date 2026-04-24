@@ -55,10 +55,11 @@ plans/PMO/
 
 ## 📊 État courant (mis à jour par le CDP)
 
-- **Phase PMO** : 0 — setup / accumulation briefs
-- **Briefs consolidés** : voir [02-BRIEFS-REGISTRY.md](./02-BRIEFS-REGISTRY.md)
-- **Tickets ouverts** : aucun (phase exécution pas démarrée)
-- **Prochaine transition** : NB signale "tous briefs donnés" → CDP produit plan global précis → GO NB → phases multi-agent.
+- **Phase PMO** : 1 — consolidation livrée, en attente GO NB pour exécution
+- **Plan global** : [plan-global-v1.md](./plan-global-v1.md) (4 phases, 14 tickets, 2 parallélisations max)
+- **Briefs** : 3 reçus / 2 consolidés dans plan v1 / 1 livré (hotfix DB)
+- **Tickets ouverts** : 0 (tous cadrés dans plan v1, attente dispatch)
+- **Prochaine transition** : GO NB sur Option A/B/C/D (§9 plan v1) → dispatch multi-agent Phase 1.
 
 ---
 
