@@ -7,6 +7,7 @@ import {
   Coins, Camera, X, Check,
   Instagram, Ghost, Key, Sparkles, AlertTriangle, Eye, Trash2,
   Edit3, Plus, ToggleLeft, ToggleRight, RotateCcw, Save, Shield,
+  Image as ImageIcon, Loader2, UserCog,
 } from "lucide-react";
 import { toModelId } from "@/lib/model-utils";
 import { normalizeTier, tierIncludes } from "@/lib/tier-utils";
@@ -37,6 +38,7 @@ import { ShopTab } from "@/components/profile/shop-tab";
 import { StoryViewer } from "@/components/profile/story-viewer";
 import { PackDetailModal } from "@/components/profile/pack-detail-modal";
 import { ProfileStyles } from "@/components/profile/profile-styles";
+import { InstagramFeedGrid } from "@/components/profile/instagram-feed-grid";
 import PublicFooter from "@/components/public-footer";
 // BRIEF-10 AG04/AG05/AG07/AG09 — age gate + access tiers
 import AgeGateModal from "@/components/age-gate-modal";
@@ -104,7 +106,11 @@ export default function ModelPage() {
 
   // ── Core hooks ──
   const modelAuth = useModelSession(slug);
-  const isModelLoggedIn = !!modelAuth;
+  // BRIEF-17 T17-B4 — actual admin session vs effective (degraded by preview mode).
+  // `isModelLoggedInActual` reflects DB session (used for HeaderBar admin tools and
+  // for the ADMIN exit-preview button). `isModelLoggedIn` is the effective value passed
+  // to children: preview mode forces it to false so chat/gate/CTA behave as if visitor.
+  const isModelLoggedInActual = !!modelAuth;
   const {
     model, posts, stories, packs, uploads, wallPosts, loading, notFound,
     setModel, setPosts, setUploads, setWallPosts, setPacks,
@@ -119,6 +125,16 @@ export default function ModelPage() {
   // ── Nav state ──
   // SSR-safe: always start with "home" on server + first client render, then sync to hash after mount (fixes React #418 hydration mismatch).
   const [galleryTier, setGalleryTier] = useState<string>("home");
+
+  // ── Edit mode (BRIEF-17: must resolve before downstream hooks because previewMode
+  // gates `isModelLoggedIn` for children — chat, gate, client profile, etc.) ──
+  const edit = useEditMode({
+    slug, isModelLoggedIn: isModelLoggedInActual, model, packs,
+    setModel, setPacks, setUploads, setGalleryTier,
+  });
+
+  // BRIEF-17 T17-B4 — Effective admin flag passed to children: false in preview mode.
+  const isModelLoggedIn = isModelLoggedInActual && !edit.previewMode;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -184,12 +200,6 @@ export default function ModelPage() {
   // ── Wall ──
   const { wallContent, setWallContent, wallPosting } = useWall({
     slug, clientId, visitorHandle, visitorPlatform, registerClient, setWallPosts,
-  });
-
-  // ── Edit mode ──
-  const edit = useEditMode({
-    slug, isModelLoggedIn, model, packs,
-    setModel, setPacks, setUploads, setGalleryTier,
   });
 
   // ── Client profile & badges ──
@@ -429,6 +439,7 @@ export default function ModelPage() {
         {/* ═══ HEADER BAR ═══ */}
         <HeaderBar
           model={model} displayModel={displayModel} isModelLoggedIn={isModelLoggedIn}
+          isModelLoggedInActual={isModelLoggedInActual}
           visitorRegistered={visitorRegistered} visitorPlatform={visitorPlatform} visitorHandle={visitorHandle} visitorVerified={visitorVerified}
           unlockedTier={unlockedTier} activeCode={activeCode}
           chatOpen={chatOpen} setChatOpen={setChatOpen} chatUnread={chatUnread}
@@ -438,6 +449,16 @@ export default function ModelPage() {
           galleryTier={galleryTier} setGalleryTier={setGalleryTier}
           onReopenGate={() => setGateDismissed(false)}
           onAdminLogin={() => setShowAdminModal(true)}
+          editDirty={edit.editDirty}
+          editSaving={edit.editSaving}
+          previewMode={edit.previewMode}
+          setPreviewMode={edit.setPreviewMode}
+          avatarInputRef={edit.avatarInputRef}
+          bannerInputRef={edit.bannerInputRef}
+          handleAvatarUpload={edit.handleAvatarUpload}
+          handleBannerUpload={edit.handleBannerUpload}
+          saveAllEdits={edit.saveAllEdits}
+          cancelEdits={edit.cancelEdits}
         />
 
         {/* ═══ HERO SECTION ═══ */}
@@ -799,8 +820,10 @@ export default function ModelPage() {
 // ═══════════════════════════════════════════
 
 // ── Header Bar ──
-function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, visitorPlatform, visitorHandle, visitorVerified, unlockedTier, activeCode, chatOpen, setChatOpen, chatUnread, newNotifications, orderHistoryOpen, setOrderHistoryOpen, clearNotifications, codeSheetOpen, setCodeSheetOpen, handleCodeValidation, modelId, slug, galleryTier, setGalleryTier, onReopenGate, onAdminLogin }: {
+function HeaderBar({ model, displayModel, isModelLoggedIn, isModelLoggedInActual, visitorRegistered, visitorPlatform, visitorHandle, visitorVerified, unlockedTier, activeCode, chatOpen, setChatOpen, chatUnread, newNotifications, orderHistoryOpen, setOrderHistoryOpen, clearNotifications, codeSheetOpen, setCodeSheetOpen, handleCodeValidation, modelId, slug, galleryTier, setGalleryTier, onReopenGate, onAdminLogin, editDirty, editSaving, previewMode, setPreviewMode, avatarInputRef, bannerInputRef, handleAvatarUpload, handleBannerUpload, saveAllEdits, cancelEdits }: {
   model: ModelInfo; displayModel: ModelInfo | null; isModelLoggedIn: boolean;
+  /** Real admin session flag, ignoring previewMode. Used to show admin tools while letting children behave as visitor. */
+  isModelLoggedInActual: boolean;
   visitorRegistered: boolean; visitorPlatform: VisitorPlatform | null; visitorHandle: string; visitorVerified: boolean;
   unlockedTier: string | null; activeCode: AccessCode | null;
   chatOpen: boolean; setChatOpen: (v: boolean) => void; chatUnread: number;
@@ -812,18 +835,91 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, visitorRegistered, vi
   onReopenGate?: () => void;
   /** Opens AdminAuthModal — always rendered on /m/{slug} unless admin session is active. */
   onAdminLogin?: () => void;
+  // BRIEF-17 T17-B2/B3/B4 — admin edit toolbox.
+  editDirty: boolean;
+  editSaving: boolean;
+  previewMode: boolean;
+  setPreviewMode: (v: boolean) => void;
+  avatarInputRef: React.RefObject<HTMLInputElement | null>;
+  bannerInputRef: React.RefObject<HTMLInputElement | null>;
+  handleAvatarUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+  handleBannerUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+  saveAllEdits: () => Promise<void>;
+  cancelEdits: () => void;
 }) {
   return (
     <div className="sticky top-0 left-0 right-0 z-40 px-3 sm:px-5 md:px-8 lg:px-12 py-2"
       style={{ background: "color-mix(in srgb, var(--bg) 90%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderBottom: "1px solid var(--border)" }}>
       <div className="flex items-center">
-        {/* LEFT: Back + Model name */}
+        {/* LEFT: Back + Admin tools + Model name */}
         <div className="flex items-center gap-2 min-w-0 shrink-0">
-          {isModelLoggedIn && <a href="/agence" className="text-sm font-bold no-underline shrink-0" style={{ color: "var(--accent)" }}>&#8592;</a>}
+          {isModelLoggedInActual && <a href="/agence" className="text-sm font-bold no-underline shrink-0" style={{ color: "var(--accent)" }}>&#8592;</a>}
           {galleryTier !== "home" && (
             <button onClick={() => setGalleryTier("home")}
               className="text-sm font-bold shrink-0 cursor-pointer bg-transparent border-none transition-all hover:scale-105 active:scale-95"
               style={{ color: "var(--accent)" }}>&#8592;</button>
+          )}
+          {/* BRIEF-17 — Admin edit toolbox (photo/banner/save/cancel/preview) */}
+          {isModelLoggedInActual && !previewMode && (
+            <div className="flex items-center gap-1 ml-1 mr-2">
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                title="Changer photo profil"
+                className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
+              >
+                <Camera className="w-3.5 h-3.5" style={{ color: "var(--w3)" }} />
+              </button>
+              <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+              <button
+                onClick={() => bannerInputRef.current?.click()}
+                title="Changer banner"
+                className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
+              >
+                <ImageIcon className="w-3.5 h-3.5" style={{ color: "var(--w3)" }} />
+              </button>
+              <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} />
+              {editDirty && (
+                <button
+                  onClick={saveAllEdits}
+                  disabled={editSaving}
+                  title="Sauvegarder"
+                  className="px-2 h-7 rounded-lg text-[10px] font-bold cursor-pointer flex items-center gap-1"
+                  style={{ background: "var(--accent)", color: "#fff" }}
+                >
+                  {editSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                  SAVE
+                </button>
+              )}
+              {editDirty && (
+                <button
+                  onClick={cancelEdits}
+                  title="Annuler"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
+                  style={{ color: "var(--w3)" }}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <button
+                onClick={() => setPreviewMode(true)}
+                title="Mode visiteur (preview)"
+                className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
+                style={{ color: "var(--w3)" }}
+              >
+                <Eye className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+          {isModelLoggedInActual && previewMode && (
+            <button
+              onClick={() => setPreviewMode(false)}
+              title="Retour mode admin"
+              className="px-2 h-7 rounded-lg text-[10px] font-bold cursor-pointer flex items-center gap-1 ml-1 mr-2"
+              style={{ background: "var(--w3)", color: "var(--bg)" }}
+            >
+              <UserCog className="w-3 h-3" />
+              ADMIN
+            </button>
           )}
           <button onClick={() => setGalleryTier("home")}
             className="text-xs sm:text-sm font-bold tracking-wide uppercase truncate bg-transparent border-none cursor-pointer transition-all hover:opacity-80 active:scale-95 p-0"
@@ -1046,14 +1142,16 @@ function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierVie
           </div>
         </div>
       </div>
-      {isEditMode && (
-        <div className="absolute top-14 right-4 z-20 flex gap-2">
-          <button onClick={() => edit.bannerInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-2 rounded-lg cursor-pointer text-[10px] font-medium transition-all hover:scale-105"
-            style={{ background: "rgba(0,0,0,0.6)", color: "#fff", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)" }}><Camera className="w-3.5 h-3.5" /> Banniere</button>
-          <button onClick={() => edit.avatarInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-2 rounded-lg cursor-pointer text-[10px] font-medium transition-all hover:scale-105"
-            style={{ background: "rgba(0,0,0,0.6)", color: "#fff", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)" }}><Camera className="w-3.5 h-3.5" /> Avatar</button>
-          <input ref={edit.bannerInputRef} type="file" accept="image/*" className="hidden" onChange={edit.handleBannerUpload} />
-          <input ref={edit.avatarInputRef} type="file" accept="image/*" className="hidden" onChange={edit.handleAvatarUpload} />
+      {/* BRIEF-17 — Photo/banner buttons relocated to HeaderBar admin toolbox.
+          Keep a discreet fallback hint (no inputs — refs live in HeaderBar) only
+          when admin hasn't started editing yet, so the call-to-action stays
+          discoverable without distracting once edits begin. */}
+      {isEditMode && !edit.editDirty && (
+        <div className="absolute top-14 right-4 z-20 flex gap-2 opacity-50 hover:opacity-90 transition-opacity pointer-events-none">
+          <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-medium"
+            style={{ background: "rgba(0,0,0,0.55)", color: "#fff", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <Camera className="w-3 h-3" /> Banniere/Avatar : utilise la barre admin
+          </span>
         </div>
       )}
       {isEditMode && (
@@ -1316,23 +1414,57 @@ function FeedView({ model, displayModel, posts, uploads, wallPosts, wallContent,
                 <p className="text-sm" style={{ color: "var(--text-muted)" }}>Pas encore de publications</p>
               </div>
             ) : (
-              unifiedItems.map((item, idx) => (
-                <FeedItemCard
-                  key={`${item.source_type}-${item.id}`}
-                  item={item}
-                  model={model}
-                  unlockedTier={unlockedTier}
-                  isModelLoggedIn={isModelLoggedIn}
-                  purchasedItems={purchasedItems}
-                  subscriberUsername={subscriberUsername}
-                  hasSubscriberIdentity={hasSubscriberIdentity}
-                  onOpenLightbox={(url) => setLightboxUrl(url)}
-                  onNavigateTier={(t) => setGalleryTier(t)}
-                  index={idx}
-                  captionExpanded={!!igExpanded[item.id]}
-                  onToggleCaption={() => setIgExpanded((p) => ({ ...p, [item.id]: true }))}
-                />
-              ))
+              <>
+                {/* ─── Instagram grid (vignettes carrées) ─── */}
+                {(() => {
+                  const igItems = unifiedItems.filter(
+                    (it) => it.source_type === "instagram" && (it.media_url || it.thumbnail_url)
+                  );
+                  if (igItems.length === 0) return null;
+                  return (
+                    <section className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                      <header className="flex items-center justify-between px-5 sm:px-6 py-3.5" style={{ borderBottom: "1px solid var(--border)" }}>
+                        <div className="flex items-center gap-2">
+                          <Instagram className="w-4 h-4" style={{ color: "#dc2743" }} />
+                          <h2 className="text-sm font-bold" style={{ color: "var(--text)" }}>Instagram</h2>
+                        </div>
+                        <span className="text-[11px] tabular-nums" style={{ color: "var(--text-muted)" }}>
+                          {igItems.length} publication{igItems.length > 1 ? "s" : ""}
+                        </span>
+                      </header>
+                      <div className="p-1 sm:p-1.5">
+                        <InstagramFeedGrid
+                          feedItems={igItems}
+                          clientId={clientId}
+                          modelSlug={slug}
+                        />
+                      </div>
+                    </section>
+                  );
+                })()}
+
+                {/* ─── Vertical feed (wall + manual) ─── */}
+                {unifiedItems
+                  .filter((it) => it.source_type !== "instagram")
+                  .map((item, idx) => (
+                    <FeedItemCard
+                      key={`${item.source_type}-${item.id}`}
+                      item={item}
+                      model={model}
+                      unlockedTier={unlockedTier}
+                      isModelLoggedIn={isModelLoggedIn}
+                      purchasedItems={purchasedItems}
+                      subscriberUsername={subscriberUsername}
+                      hasSubscriberIdentity={hasSubscriberIdentity}
+                      onOpenLightbox={(url) => setLightboxUrl(url)}
+                      onNavigateTier={(t) => setGalleryTier(t)}
+                      index={idx}
+                      captionExpanded={!!igExpanded[item.id]}
+                      onToggleCaption={() => setIgExpanded((p) => ({ ...p, [item.id]: true }))}
+                      clientId={clientId}
+                    />
+                  ))}
+              </>
             )
           ) : (
             // ═══ LEGACY FALLBACK ═══

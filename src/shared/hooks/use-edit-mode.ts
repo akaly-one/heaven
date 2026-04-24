@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { toModelId } from "@/lib/model-utils";
 import type { ModelInfo, PackConfig, UploadedContent } from "@/types/heaven";
@@ -18,6 +18,8 @@ interface UseEditModeParams {
 
 interface UseEditModeReturn {
   isEditMode: boolean;
+  previewMode: boolean;
+  setPreviewMode: (v: boolean) => void;
   editDirty: boolean;
   editSaving: boolean;
   editToast: string | null;
@@ -53,7 +55,19 @@ export function useEditMode({
   const searchParams = useSearchParams();
   const modelId = toModelId(slug);
 
-  const isEditMode = searchParams.get("edit") === "true" && isModelLoggedIn;
+  // BRIEF-17 T17-B1/B4 — Preview mode toggle: admin can simulate visitor view.
+  // ?preview=true query param forces preview (sharable link).
+  const previewParam = searchParams.get("preview") === "true";
+  const [previewMode, setPreviewMode] = useState<boolean>(previewParam);
+
+  // Sync state with query param if it changes (e.g. nav/replace).
+  useEffect(() => {
+    if (previewParam) setPreviewMode(true);
+  }, [previewParam]);
+
+  // BRIEF-17 T17-B1 — Auto-activate edit mode when admin connected (no more ?edit=true).
+  // Disabled in preview mode so admin sees the page as a visitor would.
+  const isEditMode = isModelLoggedIn && !previewMode;
   const [editDirty, setEditDirty] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editProfile, setEditProfile] = useState<Partial<ModelInfo>>({});
@@ -304,7 +318,8 @@ export function useEditMode({
   }, []);
 
   return {
-    isEditMode, editDirty, editSaving, editToast,
+    isEditMode, previewMode, setPreviewMode,
+    editDirty, editSaving, editToast,
     editProfile, editPacks, displayModel, displayPacks,
     editingUploadId, editUploadData, uploading,
     avatarInputRef, bannerInputRef, mediaInputRef,

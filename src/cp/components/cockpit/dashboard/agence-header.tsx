@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { Eye, Pencil, Link2, RefreshCw, MessageCircle, Send } from "lucide-react";
+import { Eye, Link2, RefreshCw, MessageCircle, Send } from "lucide-react";
 import type { FeedPost, HeavenAuth, AccessCode } from "@/types/heaven";
 
 const fmt = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
@@ -295,15 +295,6 @@ export function AgenceHeader(p: AgenceHeaderProps) {
             title="Voir profil public"
           >
             <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" style={{ color: "var(--w3)" }} />
-          </a>
-          <a
-            href={`/m/${p.modelSlug}?edit=true`}
-            target="_blank"
-            rel="noopener"
-            className="p-1.5 rounded-md no-underline transition-all hover:bg-white/[0.06]"
-            title="Modifier profil"
-          >
-            <Pencil className="w-3.5 h-3.5 md:w-4 md:h-4" style={{ color: "var(--w3)" }} />
           </a>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("heaven:toggle-socials"))}

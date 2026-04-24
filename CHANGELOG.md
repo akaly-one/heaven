@@ -1,5 +1,47 @@
 # Heaven — Changelog
 
+## [v1.5.1] — 2026-04-25 — BRIEF-17 Header admin enrichi + Feed IG vignettes + Likes/Commentaires
+
+### Features
+- **HeaderBar admin enrichi** : quand admin connecté (yumi/paloma/ruby/root) sur `/m/[slug]`, le header expose 5 boutons d'édition : Camera (photo profil), Image (banner), Save (si modifs en attente), Cancel, Eye (mode visiteur preview)
+- **Mode édition auto-actif** : plus besoin de `?edit=true` query param, l'édition s'active automatiquement quand `isModelLoggedIn=true`
+- **Mode preview visiteur** : bouton Eye dans le HeaderBar admin permet de prévisualiser le profil comme un visiteur normal (sans déconnexion). Bouton ADMIN pour sortir du preview. Lien partageable `?preview=true`
+- **Feed Instagram en grille de vignettes** : nouveaux composants `<InstagramFeedGrid>` (3 cols mobile, 4-5 desktop) + `<FeedItemDetailModal>` lightbox. Posts IG retirés du feed vertical (qui garde wall + manual posts)
+- **Likes** : bouton Heart dans `FeedItemCard` (modes card + thumbnail), optimistic UI + revert on error, persistance DB via `agence_feed_likes` UNIQUE(feed_item_id, client_id)
+- **Commentaires** : bouton MessageCircle ouvre lightbox avec liste comments + zone saisie textarea (Enter = submit, Shift+Enter = newline), validation 1-500 chars, soft delete owner-only ou admin
+
+### Fixes
+- Bouton "Modifier profil" Pencil supprimé de `agence-header.tsx` (obsolète, édition désormais inline via HeaderBar admin)
+- HeroSection : ancien bloc photo/banner remplacé par hint discret (refs partagées avec HeaderBar pour éviter conflits)
+
+### Technical
+- Migration `077_feed_interactions.sql` (live Supabase) :
+  - Tables `agence_feed_likes` (UNIQUE feed_item_id+client_id) + `agence_feed_comments` (1-500 chars + soft delete)
+  - Triggers auto-incrément `like_count` / `comment_count` sur `agence_feed_items` (insert+delete likes, insert+update soft-delete comments)
+  - RLS enabled + policies open-all (pattern repo)
+- Routes API :
+  - `POST /api/feed-items/[id]/like` body `{clientId}` → toggle, `{liked, likeCount}`
+  - `GET /api/feed-items/[id]/comments?limit=50&offset=0` → `{comments, total, hasMore}` avec join clients pseudo
+  - `POST /api/feed-items/[id]/comments` body `{clientId, content}` → `{comment}`
+  - `DELETE /api/feed-items/[id]/comments?commentId=xxx` → soft delete owner ou admin
+- Helpers serveur `src/shared/lib/feed/likes.ts` : `hasLiked(feedItemId, clientId)` + `getLikedSet(ids[], clientId)` batch
+- `useEditMode` étendu : `previewMode` + `setPreviewMode` + auto-active edit quand `isModelLoggedIn`
+- Composants nouveaux :
+  - `src/web/components/profile/instagram-feed-grid.tsx`
+  - `src/web/components/profile/feed-item-detail-modal.tsx`
+- `FeedItemCard` étendu : props `mode: "card" | "thumbnail"`, `clientId`, `initialLiked`, `onClick` ; mode thumbnail = aspect-square + hover overlay caption + counts
+- `HeaderBar` /m/[slug] : 11 nouvelles props (refs, handlers, previewMode, etc.)
+
+### Commits clés
+- `57125ea` — suppression Pencil + cadrage BRIEF-17
+- *(à venir)* — dispatch 3 agents : DB+BE migration 077 + routes API + HeaderBar admin enrichi + Instagram Grid + Likes UI
+
+### TODO post-merge
+- Câbler `getLikedSet()` côté `/m/[slug]/page.tsx` pour pre-render `initialLiked` (route batch à ajouter)
+- Endpoint `GET /api/feed-items/liked-by-client?ids=a,b,c&clientId=X` pour hydrater likedSet sur navigation
+
+---
+
 ## [v1.5.0] — 2026-04-25 — BRIEF-16 Packs + Payment Providers modulaires
 
 ### Features
