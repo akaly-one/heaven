@@ -26,13 +26,14 @@
 | BRIEF-2026-04-24-05 | 2026-04-24 | QStash cron provider + toggle UI CP root/yumi | feature + infra | P2 | DB, BE, FE, DevOps, QA, Doc | 🟠 cadré (attente GO NB + compte Upstash) | [briefs/BRIEF-2026-04-24-05-cron-provider-qstash-toggle.md](./briefs/BRIEF-2026-04-24-05-cron-provider-qstash-toggle.md) |
 | BRIEF-2026-04-24-06 | 2026-04-24 | Cycle de vie visiteurs (24h temp / 7j pending / archive) + sync bouton header pseudos | feature + règle métier | P1 | DB, BE, FE, QA, Doc | 🟠 cadré (hotfix b5e005e livré, refonte en attente GO) | [briefs/BRIEF-2026-04-24-06-visitor-lifecycle-header-sync.md](./briefs/BRIEF-2026-04-24-06-visitor-lifecycle-header-sync.md) |
 | BRIEF-2026-04-24-07 | 2026-04-24 | Bouton "Générer message" dans thread (flow Fanvue) — mode on-demand IA | feature | P2 | DB, BE, FE, QA, Doc | 🟠 cadré (hotfix 85ee934 after() livré, feature en attente GO) | [briefs/BRIEF-2026-04-24-07-generate-button-in-thread.md](./briefs/BRIEF-2026-04-24-07-generate-button-in-thread.md) |
+| BRIEF-2026-04-24-08 | 2026-04-24 | Persona Yumi v2 : diversité endings + knowledge grounding (URLs Fanvue/IG/Snap/Heaven) + simulation humaine | feature + knowledge | P1 | AI, DB, BE, FE, QA, Doc | 🟠 cadré (questions ouvertes URLs — hotfix L1 30 min possible aujourd'hui) | [briefs/BRIEF-2026-04-24-08-persona-yumi-v2-knowledge-grounding.md](./briefs/BRIEF-2026-04-24-08-persona-yumi-v2-knowledge-grounding.md) |
 
 ---
 
 ## Compteur
 
-- Total reçus : 7
-- En attente consolidation : 3
+- Total reçus : 8
+- En attente consolidation : 4
 - Consolidés dans plan global : 2
 - En exécution : 0
 - Livrés : 2 (BRIEF-01 + BRIEF-04)
