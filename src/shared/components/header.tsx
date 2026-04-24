@@ -238,29 +238,79 @@ export function Header() {
       .then(d => { if (d) setModelInfo(d); }).catch(() => {});
   }, [ready, modelSlug, authHeaders]);
 
-  // ── Fetch messages ──
-  const fetchMessages = useCallback(() => {
+  // ── Fetch messages + clients depuis inbox unifié (NB 2026-04-24) ──
+  // L'inbox unifié (agence_messages_timeline) est la même source que /agence/messagerie
+  // → garantit sync pseudo + messages + unread entre header et page messagerie.
+  // Fallback legacy : si endpoint 401/500, on retombe sur /api/messages + /api/clients.
+  const fetchMessages = useCallback(async () => {
     if (!modelSlug) return;
-    fetch(`/api/messages?model=${toModelId(modelSlug)}`, { headers: authHeaders() })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (!d) return;
-        const msgs: MessageItem[] = d.messages || [];
-        setRecentMessages(msgs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10));
-        setUnreadCount(msgs.filter(m => m.sender_type === "client" && !m.read).length);
-      }).catch(() => {});
+    try {
+      const r = await fetch(`/api/agence/messaging/inbox?source=all&model=${toModelId(modelSlug)}`, {
+        headers: authHeaders(),
+        credentials: "include",
+      });
+      if (!r.ok) throw new Error(`inbox_${r.status}`);
+      const d = await r.json();
+      const convs = (d.conversations || []) as Array<{
+        fan_id: string;
+        pseudo_insta?: string | null;
+        pseudo_web?: string | null;
+        pseudo_snap?: string | null;
+        display_name?: string | null;
+        last_message?: { text: string; direction: "in" | "out"; created_at: string; source: "web" | "instagram" } | null;
+        unread_count: number;
+        last_message_at: string;
+      }>;
+
+      // Transform → MessageItem[] synthétique (1 row par conversation = last_message).
+      const synthMsgs: MessageItem[] = convs
+        .filter((c) => !!c.last_message)
+        .map((c) => ({
+          id: `${c.fan_id}-${c.last_message!.created_at}`,
+          client_id: c.fan_id, // fan_id ou "pseudo:..." fallback
+          content: c.last_message!.text,
+          created_at: c.last_message!.created_at,
+          sender_type: c.last_message!.direction === "in" ? "client" : "model",
+          read: c.unread_count === 0,
+        }));
+
+      // Transform → ClientItem[] enrichi (pseudo résolu)
+      const synthClients: ClientItem[] = convs.map((c) => ({
+        id: c.fan_id,
+        pseudo_snap: c.pseudo_snap || null,
+        pseudo_insta: c.pseudo_insta || c.pseudo_web || c.display_name || null,
+        model: toModelId(modelSlug),
+        tier: null,
+        last_active: c.last_message_at,
+        created_at: c.last_message_at,
+      }));
+
+      setRecentMessages(synthMsgs.slice(0, 10));
+      setUnreadCount(convs.reduce((s, c) => s + (c.unread_count || 0), 0));
+      setClients(synthClients);
+    } catch {
+      // Fallback legacy
+      try {
+        const r2 = await fetch(`/api/messages?model=${toModelId(modelSlug)}`, { headers: authHeaders() });
+        if (r2.ok) {
+          const d2 = await r2.json();
+          const msgs: MessageItem[] = d2.messages || [];
+          setRecentMessages(msgs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10));
+          setUnreadCount(msgs.filter((m) => m.sender_type === "client" && !m.read).length);
+        }
+      } catch { /* noop */ }
+    }
   }, [modelSlug, authHeaders]);
 
-  // ── Fetch clients + codes ──
+  // ── Fetch codes uniquement (clients viennent de l'inbox unifié) ──
   const fetchClients = useCallback(() => {
     if (!modelSlug) return;
-    Promise.all([
-      fetch(`/api/clients?model=${toModelId(modelSlug)}`, { headers: authHeaders() }).then(r => r.ok ? r.json() : null),
-      fetch(`/api/codes?model=${toModelId(modelSlug)}`, { headers: authHeaders() }).then(r => r.ok ? r.json() : null),
-    ]).then(([cd, co]) => {
-      if (cd) setClients(cd.clients || []);
-      if (co) setCodes(co.codes || []);
-    }).catch(() => {});
+    fetch(`/api/codes?model=${toModelId(modelSlug)}`, { headers: authHeaders() })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((co) => {
+        if (co) setCodes(co.codes || []);
+      })
+      .catch(() => {});
   }, [modelSlug, authHeaders]);
 
   // ── Initial + polling — wait for context to be ready ──

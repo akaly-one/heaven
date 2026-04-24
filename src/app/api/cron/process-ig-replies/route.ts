@@ -6,6 +6,7 @@ import {
 } from "@/lib/instagram";
 import { generateReply } from "@/lib/openrouter";
 import { generateReplyGroq, hasGroqKey, GROQ_DEFAULT_MODEL } from "@/lib/groq";
+import { decideForMode, type AgentMode } from "@/lib/ai-agent/modes";
 
 // Force Node runtime — crypto / Graph / service-role.
 export const runtime = "nodejs";
@@ -112,6 +113,9 @@ export async function GET(req: NextRequest) {
       let aiRunId: string | null = null;
       let providerId = "groq-llama-3.3-70b";
       let personaVersion = 1;
+      // Mode + decision déclarés au scope try pour être visibles après le bloc if(aiConfigured).
+      let mode: AgentMode = "auto";
+      let decision = decideForMode(mode);
 
       if (aiConfigured) {
         // Resolve model_slug from conversation
@@ -125,12 +129,31 @@ export async function GET(req: NextRequest) {
         // Load active persona
         const { data: persona } = await db
           .from("agent_personas")
-          .select("base_prompt, default_provider, version, trait_warmth, trait_flirt, favorite_emojis, favorite_endings")
+          .select("base_prompt, default_provider, version, mode, trait_warmth, trait_flirt, favorite_emojis, favorite_endings")
           .eq("model_slug", modelSlug)
           .eq("is_active", true)
           .order("version", { ascending: false })
           .limit(1)
           .maybeSingle();
+
+        // Mode handling (NB 2026-04-24 : auto/user/shadow/learning)
+        mode = (persona?.mode || "auto") as AgentMode;
+        decision = decideForMode(mode);
+
+        // Mode "user" → skip entirely : requeue as "pending" forever is wrong, so mark as done
+        // (l'humain répondra manuellement via messagerie). On sort immédiatement du flow de ce job.
+        if (!decision.generate) {
+          await db
+            .from("ig_reply_queue")
+            .update({
+              status: "done",
+              completed_at: new Date().toISOString(),
+              last_error: "mode_user_human_handles",
+            })
+            .eq("id", job.id);
+          results.push({ id: job.id, status: "skipped_mode_user" });
+          continue;
+        }
 
         // Load provider config (au cas où on route via OpenRouter fallback)
         const providerKey = persona?.default_provider || "groq-llama-3.3-70b";
@@ -210,6 +233,8 @@ export async function GET(req: NextRequest) {
               tokens_in: tokensIn,
               tokens_out: tokensOut,
               latency_ms: Date.now() - aiRunStart,
+              mode_at_run: mode,
+              sent: decision.send,
             })
             .select("id")
             .maybeSingle();
@@ -232,7 +257,21 @@ export async function GET(req: NextRequest) {
         replyText = "[IA not configured — placeholder]";
       }
 
-      // --- (b) Send via Meta Graph -----------------------------------------
+      // --- (b) Send via Meta Graph (gated par decision.send — shadow skip) --
+      if (!decision.send) {
+        // Mode shadow : on a loggé le draft dans ai_runs, on NE publie PAS.
+        await db
+          .from("ig_reply_queue")
+          .update({
+            status: "done",
+            completed_at: new Date().toISOString(),
+            last_error: "mode_shadow_draft_kept",
+          })
+          .eq("id", job.id);
+        results.push({ id: job.id, status: "draft_shadow", error: undefined });
+        continue;
+      }
+
       const sendRes = await sendInstagramReply(job.recipient_id, replyText);
 
       if (!sendRes.success) {
@@ -278,7 +317,7 @@ export async function GET(req: NextRequest) {
         })
         .eq("id", job.id);
 
-      results.push({ id: job.id, status: "done" });
+      results.push({ id: job.id, status: decision.learning ? "done_learning" : "done" });
     } catch (err) {
       if (err instanceof MetaRateLimitError) {
         // Re-queue this job as pending and halt the batch.

@@ -12,14 +12,16 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { Bot, Sparkles, Zap, Send, CheckCircle2, AlertTriangle, Loader2, Save } from "lucide-react";
+import { Bot, Sparkles, Zap, Send, CheckCircle2, AlertTriangle, Loader2, Save, Radio, UserRound, EyeOff, GraduationCap } from "lucide-react";
 import { useModel } from "@/lib/model-context";
+import { MODE_LABELS, type AgentMode } from "@/lib/ai-agent/modes";
 
 interface Persona {
   id: string;
   model_slug: string;
   version: number;
   is_active: boolean;
+  mode: AgentMode;
   base_prompt: string;
   default_provider: string;
   trait_warmth: number | null;
@@ -66,6 +68,7 @@ export function AgentIAPanel() {
   const [emojis, setEmojis] = useState("");
   const [endings, setEndings] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [mode, setMode] = useState<AgentMode>("auto");
 
   // Test playground
   const [testInput, setTestInput] = useState("Hey, tu fais quoi ?");
@@ -86,6 +89,7 @@ export function AgentIAPanel() {
         setEmojis(d.persona.favorite_emojis || "");
         setEndings(d.persona.favorite_endings || "");
         setIsActive(!!d.persona.is_active);
+        setMode((d.persona.mode || "auto") as AgentMode);
       }
     } finally {
       setLoading(false);
@@ -108,6 +112,7 @@ export function AgentIAPanel() {
           favorite_emojis: emojis,
           favorite_endings: endings,
           is_active: isActive,
+          mode,
         }),
       });
       const d = await res.json();
@@ -123,7 +128,7 @@ export function AgentIAPanel() {
     } finally {
       setSaving(false);
     }
-  }, [slug, basePrompt, emojis, endings, isActive, load]);
+  }, [slug, basePrompt, emojis, endings, isActive, mode, load]);
 
   const runTest = useCallback(async () => {
     if (!testInput.trim()) return;
@@ -207,6 +212,52 @@ export function AgentIAPanel() {
           color={data?.persona?.is_active ? "#22C55E" : "#F59E0B"}
         />
       </div>
+
+      {/* ── Mode selector ── */}
+      <section className="rounded-xl p-4 space-y-3"
+        style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text)" }}>
+            Mode d&apos;opération
+          </h3>
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
+            style={{
+              background: `${MODE_LABELS[mode].color}20`,
+              color: MODE_LABELS[mode].color,
+            }}>
+            {MODE_LABELS[mode].short}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {(["auto", "user", "shadow", "learning"] as AgentMode[]).map((m) => {
+            const meta = MODE_LABELS[m];
+            const Icon = m === "auto" ? Radio : m === "user" ? UserRound : m === "shadow" ? EyeOff : GraduationCap;
+            const selected = mode === m;
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className="flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left cursor-pointer transition-all"
+                style={{
+                  background: selected ? `${meta.color}15` : "var(--bg2)",
+                  border: `1.5px solid ${selected ? meta.color : "var(--border2)"}`,
+                }}
+              >
+                <div className="flex items-center gap-1.5">
+                  <Icon className="w-3.5 h-3.5" style={{ color: selected ? meta.color : "var(--text-muted)" }} />
+                  <span className="text-[11px] font-bold" style={{ color: selected ? meta.color : "var(--text)" }}>
+                    {meta.label}
+                  </span>
+                </div>
+                <p className="text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+                  {meta.description}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       {/* ── Persona editor ── */}
       <section className="rounded-xl p-4 space-y-3"

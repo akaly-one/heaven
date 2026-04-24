@@ -6,6 +6,7 @@ import { getAuthUser } from "@/lib/api-auth";
 import { toModelId, isModelId, toSlug } from "@/lib/model-utils";
 import { generateReplyGroq, hasGroqKey, GROQ_DEFAULT_MODEL } from "@/lib/groq";
 import { filterOutbound, humanizeDelay } from "@/lib/ai-agent/safety";
+import { decideForMode, type AgentMode } from "@/lib/ai-agent/modes";
 
 export const runtime = "nodejs";
 
@@ -22,15 +23,22 @@ async function triggerWebAutoReply(params: {
   if (!db) return;
   const t0 = Date.now();
   try {
-    // Load persona
+    // Load persona (+ mode NB 2026-04-24)
     const { data: persona } = await db
       .from("agent_personas")
-      .select("base_prompt, version")
+      .select("base_prompt, version, mode")
       .eq("model_slug", params.modelSlug)
       .eq("is_active", true)
       .order("version", { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    const mode = (persona?.mode || "auto") as AgentMode;
+    const decision = decideForMode(mode);
+    if (!decision.generate) {
+      // Mode user : aucune IA, humain répond manuellement.
+      return;
+    }
 
     // Load history (5 derniers messages pour ce client)
     const { data: history } = await db
@@ -71,7 +79,7 @@ async function triggerWebAutoReply(params: {
     // Humanizer delay pour simuler humain
     await humanizeDelay();
 
-    // Log ai_run
+    // Log ai_run (toujours — même en shadow pour garder l'historique)
     const { data: runRow } = await db
       .from("ai_runs")
       .insert({
@@ -87,18 +95,23 @@ async function triggerWebAutoReply(params: {
         latency_ms: Date.now() - t0,
         safety_flags: safety.flags,
         safety_blocked: safety.action === "block",
+        mode_at_run: mode,
+        sent: decision.send,
       })
       .select("id")
       .maybeSingle();
 
-    // Insert as model reply
-    await db.from("agence_messages").insert({
-      model: params.modelId,
-      client_id: params.clientId,
-      sender_type: "model",
-      content: finalText,
-      ...(runRow?.id ? { ai_run_id: runRow.id } : {}),
-    });
+    // Mode shadow : NE PAS publier dans agence_messages — le cockpit lit ai_runs
+    // pour proposer le draft à valider. Mode auto/learning : publish.
+    if (decision.send) {
+      await db.from("agence_messages").insert({
+        model: params.modelId,
+        client_id: params.clientId,
+        sender_type: "model",
+        content: finalText,
+        ...(runRow?.id ? { ai_run_id: runRow.id } : {}),
+      });
+    }
   } catch (err) {
     console.warn("[WebAutoReply] failed:", err);
     await db.from("ai_runs").insert({

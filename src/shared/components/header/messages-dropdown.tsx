@@ -211,9 +211,10 @@ export function MessagesDropdown({
               });
             })()}
           </div>
-          <a href="/agence?tab=clients" className="flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold no-underline"
+          {/* NB 2026-04-24 : lien direct vers inbox unifié (pas ?tab=clients qui ouvrait le drawer). */}
+          <a href="/agence/messagerie" className="flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold no-underline"
             style={{ color: "var(--accent)", borderTop: "1px solid var(--border)" }}>
-            Voir tout <ArrowRight className="w-3 h-3" />
+            Voir tous les messages <ArrowRight className="w-3 h-3" />
           </a>
         </>
       )}

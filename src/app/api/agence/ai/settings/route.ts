@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 
   const { data: personaRaw } = await db
     .from("agent_personas")
-    .select("id, model_slug, version, is_active, base_prompt, default_provider, trait_warmth, trait_flirt, favorite_emojis, favorite_endings, promoted_at, created_at")
+    .select("id, model_slug, version, is_active, mode, base_prompt, default_provider, trait_warmth, trait_flirt, favorite_emojis, favorite_endings, promoted_at, created_at")
     .eq("model_slug", slug)
     .order("version", { ascending: false })
     .limit(1)
@@ -106,6 +106,10 @@ export async function PUT(req: NextRequest) {
   if (typeof body.trait_warmth === "number") updates.trait_warmth = body.trait_warmth;
   if (typeof body.trait_flirt === "number") updates.trait_flirt = body.trait_flirt;
   if (typeof body.is_active === "boolean") updates.is_active = body.is_active;
+  // Mode : auto | user | shadow | learning (NB 2026-04-24)
+  if (typeof body.mode === "string" && ["auto", "user", "shadow", "learning"].includes(body.mode)) {
+    updates.mode = body.mode;
+  }
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "no_fields" }, { status: 400, headers: cors });
