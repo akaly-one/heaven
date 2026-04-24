@@ -103,13 +103,13 @@ Ce brief **active 3 phases déjà documentées** mais non implémentées :
 
 ### Questions ouvertes NB (bloquent seed knowledge base)
 
-- [ ] **URL Fanvue exacte de Yumi** ? Ex: `https://fanvue.com/yumiclub` ou autre slug ?
-- [x] **Snap username** : `yumiiclub` (NB confirmé 2026-04-24 ~18:15) → lien `https://snapchat.com/add/yumiiclub`
-- [x] **IG handle** : `@yumiiiclub` (confirmé `docs/ACCESS-HEAVEN-OS.md`) → lien `https://instagram.com/yumiiiclub`
-- [x] **Heaven profile** : `https://heaven-os.vercel.app/m/yumi` (confirmé)
-- [ ] **Message "web en développement"** : phrasing précis souhaité ? (proposition : "mon site est encore en développement, pour l'instant tu peux me suivre sur Insta et Snap — je te tiens au courant dès qu'il y a du nouveau 💜")
-- [x] **Argumentaire Snap** : "tu seras ajouté aux story privées Hot et recevras des nudes" (NB confirmé)
-- [x] **Argumentaire IG** : "suivre nouveautés + me parler directement" (NB confirmé)
+- [x] **URL Fanvue** : `https://www.fanvue.com/yumiclub` (NB confirmé 2026-04-24 ~18:30)
+- [x] **Snap username** : `yumiiclub` → lien `https://snapchat.com/add/yumiiclub`
+- [x] **IG handle** : `@yumiiiclub` → lien `https://instagram.com/yumiiiclub`
+- [x] **Heaven profile** : `https://heaven-os.vercel.app/m/yumi`
+- [x] **Argumentaire Snap** : "tu seras ajouté aux story privées Hot et recevras des nudes"
+- [x] **Argumentaire IG** : "suivre nouveautés + me parler directement"
+- [x] **Nouvelle directive NB (18:30)** : chauffer progressivement + explicite autorisé sur web → nécessite ajout règles NSFW progressives dans prompt (niveau 1 → 2 → 3 selon engagement fan). Voir BRIEF-09 pour l'extraction progressive de données fiche fan (complémentaire).
 
 ## Branches concernées
 
