@@ -31,13 +31,14 @@
 | BRIEF-2026-04-24-10 | 2026-04-24 | Privacy Policy + Age Gate + Accès hiérarchisé (sensuel vs explicite) | feature + légal + sécu | P0 (bloquant explicite/packs) | DB, BE, FE, Legal, QA, Doc | 🟠 cadré (5 questions en attente) | [briefs/BRIEF-2026-04-24-10-privacy-age-gate-tiered-access.md](./briefs/BRIEF-2026-04-24-10-privacy-age-gate-tiered-access.md) |
 | BRIEF-2026-04-24-11 | 2026-04-24 | Usage meters stack + alertes upgrade (Groq/Vercel/Cloudinary/Supabase) | feature + DevOps + monitoring | P1 | DB, BE, FE, DevOps, Doc | 🟠 cadré (4 questions tokens + fréquence en attente) | [briefs/BRIEF-2026-04-24-11-stack-usage-meters-upgrade-alerts.md](./briefs/BRIEF-2026-04-24-11-stack-usage-meters-upgrade-alerts.md) |
 | BRIEF-2026-04-24-12 | 2026-04-24 | Détection langue + adaptation multilingue agent IA (FR/EN/ES MVP) | feature + IA prompting + i18n | P1 | AI, DB, BE, FE, QA, Doc | 🟠 cadré (4 questions langues/UI en attente) | [briefs/BRIEF-2026-04-24-12-ai-language-detection-multilingual.md](./briefs/BRIEF-2026-04-24-12-ai-language-detection-multilingual.md) |
+| BRIEF-2026-04-24-13 | 2026-04-24 | Unification Clients & Codes ↔ Messages + flow self-verification IP-matched | feature majeure + refactor data | P1 | DB, BE, FE, QA, Doc, DevOps | 🟠 cadré (8 questions simplification en attente) | [briefs/BRIEF-2026-04-24-13-unified-client-self-verification-flow.md](./briefs/BRIEF-2026-04-24-13-unified-client-self-verification-flow.md) |
 
 ---
 
 ## Compteur
 
-- Total reçus : 12
-- En attente consolidation : 8
+- Total reçus : 13
+- En attente consolidation : 9
 - Consolidés dans plan global : 2
 - En exécution : 0
 - Livrés : 2 (BRIEF-01 + BRIEF-04)
