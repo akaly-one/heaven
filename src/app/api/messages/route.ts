@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 import { sanitize } from "@/lib/api-utils";
@@ -237,16 +237,27 @@ export async function POST(req: NextRequest) {
         .eq("read", false);
     }
 
-    // NB 2026-04-24 : auto-reply agent IA (web) — fire-and-forget si fan envoie
+    // NB 2026-04-24 : auto-reply agent IA (web).
+    // Utilise `after()` de next/server pour garantir l'exécution post-response.
+    // Le fire-and-forget classique (.catch silent) ne survit PAS toujours la
+    // response HTTP sur Vercel serverless — la function est tuée dès que la
+    // response est envoyée. Résultat : l'agent IA répondait au 1er message
+    // (container chaud) mais rataient les suivants (container froid tué).
     if (sender_type === "client") {
       const slug = toSlug(normalizedModel);
       if (slug) {
-        triggerWebAutoReply({
-          modelSlug: slug,
-          modelId: normalizedModel,
-          clientId: client_id,
-          inboundText: cleanContent,
-        }).catch(() => { /* silent, déjà loggé dans ai_runs */ });
+        after(async () => {
+          try {
+            await triggerWebAutoReply({
+              modelSlug: slug,
+              modelId: normalizedModel,
+              clientId: client_id,
+              inboundText: cleanContent,
+            });
+          } catch {
+            // silent — déjà loggé dans ai_runs.error_message via le catch interne
+          }
+        });
       }
     }
 
