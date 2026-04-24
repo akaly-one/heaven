@@ -33,7 +33,15 @@ async function triggerWebAutoReply(params: {
       .limit(1)
       .maybeSingle();
 
-    const mode = (persona?.mode || "auto") as AgentMode;
+    // Override conversation-level (agence_clients.agent_mode) > persona default
+    const { data: clientRow } = await db
+      .from("agence_clients")
+      .select("agent_mode")
+      .eq("id", params.clientId)
+      .maybeSingle();
+    const conversationMode = (clientRow?.agent_mode as string | null) || null;
+
+    const mode = (conversationMode || persona?.mode || "auto") as AgentMode;
     const decision = decideForMode(mode);
     if (!decision.generate) {
       // Mode user : aucune IA, humain répond manuellement.

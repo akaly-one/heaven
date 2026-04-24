@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useModel } from "@/lib/model-context";
 import { OsLayout } from "@/components/os-layout";
@@ -21,6 +21,13 @@ import { MultiChannelReply } from "@/components/cockpit/messagerie/multi-channel
 // NB 2026-04-24 : tab Agent IA dédié pour persona + playground + logs.
 import { AgentIAPanel } from "@/components/cockpit/messagerie/agent-ia-panel";
 import { Bot } from "lucide-react";
+// Standards d'affichage unifiés header ↔ messagerie (source unique)
+import {
+  getConversationPseudo,
+  formatConversationTime as sharedFormatTime,
+} from "@/lib/messaging/conversation-display";
+import { MODE_LABELS, type AgentMode } from "@/lib/ai-agent/modes";
+import { Radio, GraduationCap, UserRound, Sparkles } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -78,33 +85,17 @@ interface ModelSelf {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mn = Math.floor(diff / 60000);
-  if (mn < 1) return "à l'instant";
-  if (mn < 60) return `${mn}m`;
-  const h = Math.floor(mn / 60);
-  if (h < 24) return `${h}h`;
-  const d = Math.floor(h / 24);
-  return `${d}j`;
-}
+// Alias vers le helper partagé (même format dans header + messagerie)
+const timeAgo = sharedFormatTime;
 
 function truncate(text: string, max: number): string {
   if (!text) return "";
   return text.length > max ? text.slice(0, max) + "…" : text;
 }
 
+// Wrapper qui délègue au helper partagé — garantit mêmes règles que le header.
 function primaryHandle(c: InboxConversation): string {
-  if (c.pseudo_insta) return `@${c.pseudo_insta}`;
-  if (c.pseudo_snap) return c.pseudo_snap;
-  if (c.pseudo_web) return c.pseudo_web;
-  if (c.fanvue_handle) return c.fanvue_handle;
-  // NB 2026-04-24 : jamais "pseudo:xxx" brut. Si fan_id préfixé, extrait le suffix UUID.
-  if (c.fan_id.startsWith("pseudo:")) {
-    const suffix = c.fan_id.slice("pseudo:".length, "pseudo:".length + 4);
-    return `visiteur-${suffix.toLowerCase()}`;
-  }
-  return c.fan_id.slice(0, 8);
+  return getConversationPseudo(c);
 }
 
 function Avatar({
@@ -188,6 +179,9 @@ function MessagingPageInner() {
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [orderMode, setOrderMode] = useState<OrderMode>("recent");
   const [view, setView] = useState<MessagerieView>("messages");
+  // NB 2026-04-24 : mode agent par conversation (null = héritage persona)
+  const [convMode, setConvMode] = useState<{ mode: AgentMode; override: AgentMode | null; source: "override" | "persona_default" } | null>(null);
+  const [convModeOpen, setConvModeOpen] = useState(false);
   const [conversations, setConversations] = useState<InboxConversation[]>([]);
   const [currentFanId, setCurrentFanId] = useState<string | null>(null);
   const [messages, setMessages] = useState<InboxThreadMessage[]>([]);
@@ -364,6 +358,39 @@ function MessagingPageInner() {
     () => conversations.find((c) => c.fan_id === currentFanId) || null,
     [conversations, currentFanId]
   );
+
+  // Fetch conversation agent mode when fan changes (override ou héritage persona).
+  useEffect(() => {
+    if (!currentFanId) { setConvMode(null); return; }
+    let aborted = false;
+    fetch(`/api/agence/messaging/mode?fan_id=${encodeURIComponent(currentFanId)}`, {
+      credentials: "include",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (aborted || !d) return;
+        setConvMode({ mode: d.mode, override: d.override, source: d.source });
+      })
+      .catch(() => {});
+    return () => { aborted = true; };
+  }, [currentFanId]);
+
+  const updateConvMode = useCallback(async (nextOverride: AgentMode | null) => {
+    if (!currentFanId) return;
+    try {
+      const r = await fetch("/api/agence/messaging/mode", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fan_id: currentFanId, mode: nextOverride }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        setConvMode({ mode: d.mode, override: d.override, source: d.source });
+      }
+    } catch { /* silent */ }
+    setConvModeOpen(false);
+  }, [currentFanId]);
 
   // Last IG inbound message timestamp — drives the Meta 24h window timer.
   const lastIgInboundAt: string | null = useMemo(() => {
@@ -840,6 +867,89 @@ function MessagingPageInner() {
                         : "Conversation web"}
                     </p>
                   </div>
+                  {/* Mode agent pour cette conversation — NB 2026-04-24 */}
+                  {convMode && (
+                    <div className="relative shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setConvModeOpen((o) => !o)}
+                        title={`Mode agent : ${MODE_LABELS[convMode.mode].label} (${convMode.source === "override" ? "override conversation" : "défaut persona"})`}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-colors"
+                        style={{
+                          background: `${MODE_LABELS[convMode.mode].color}15`,
+                          color: MODE_LABELS[convMode.mode].color,
+                          border: `1px solid ${MODE_LABELS[convMode.mode].color}40`,
+                        }}
+                      >
+                        {convMode.mode === "auto" ? <Radio className="w-3 h-3" />
+                          : convMode.mode === "copilot" ? <GraduationCap className="w-3 h-3" />
+                          : <UserRound className="w-3 h-3" />}
+                        <span className="hidden sm:inline">
+                          {MODE_LABELS[convMode.mode].short}
+                          {convMode.source === "persona_default" && (
+                            <span className="ml-1 opacity-50">(défaut)</span>
+                          )}
+                        </span>
+                      </button>
+                      {convModeOpen && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setConvModeOpen(false)} />
+                          <div
+                            className="absolute right-0 top-full mt-1 z-50 rounded-xl overflow-hidden min-w-[220px]"
+                            style={{
+                              background: "var(--surface)",
+                              border: "1px solid var(--border)",
+                              boxShadow: "0 12px 32px rgba(0,0,0,0.4)",
+                            }}
+                          >
+                            <div className="px-3 py-2 border-b" style={{ borderColor: "var(--border2)" }}>
+                              <p className="text-[10px] uppercase tracking-wider font-bold" style={{ color: "var(--text-muted)" }}>
+                                Mode agent (cette conversation)
+                              </p>
+                            </div>
+                            {(["auto", "copilot", "user"] as AgentMode[]).map((m) => {
+                              const meta = MODE_LABELS[m];
+                              const selected = convMode.override === m;
+                              const Icon = m === "auto" ? Radio : m === "copilot" ? GraduationCap : UserRound;
+                              return (
+                                <button
+                                  key={m}
+                                  type="button"
+                                  onClick={() => updateConvMode(m)}
+                                  className="w-full flex items-start gap-2 px-3 py-2 text-left transition-colors cursor-pointer hover:brightness-110"
+                                  style={{
+                                    background: selected ? `${meta.color}15` : "transparent",
+                                  }}
+                                >
+                                  <Icon className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: meta.color }} />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[11px] font-bold" style={{ color: selected ? meta.color : "var(--text)" }}>
+                                      {meta.label}
+                                    </p>
+                                    <p className="text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+                                      {meta.description.slice(0, 80)}{meta.description.length > 80 ? "…" : ""}
+                                    </p>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                            {convMode.override !== null && (
+                              <button
+                                type="button"
+                                onClick={() => updateConvMode(null)}
+                                className="w-full flex items-center gap-2 px-3 py-2 border-t cursor-pointer hover:brightness-110"
+                                style={{ borderColor: "var(--border2)", color: "var(--text-muted)" }}
+                              >
+                                <Sparkles className="w-3 h-3" />
+                                <span className="text-[10px]">Retour au défaut persona</span>
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     onClick={() =>

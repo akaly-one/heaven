@@ -118,13 +118,15 @@ export async function GET(req: NextRequest) {
       let decision = decideForMode(mode);
 
       if (aiConfigured) {
-        // Resolve model_slug from conversation
+        // Resolve model_slug + per-conversation agent_mode override from ig conv.
         const { data: conv } = await db
           .from("instagram_conversations")
-          .select("model_slug")
+          .select("model_slug, agent_mode")
           .eq("id", job.conversation_id)
           .maybeSingle();
         const modelSlug = conv?.model_slug || "yumi";
+        // NB 2026-04-24 : override conversation > persona default
+        const conversationMode = (conv?.agent_mode as string | null) || null;
 
         // Load active persona
         const { data: persona } = await db
@@ -136,8 +138,9 @@ export async function GET(req: NextRequest) {
           .limit(1)
           .maybeSingle();
 
-        // Mode handling (NB 2026-04-24 : auto/user/shadow/learning)
-        mode = (persona?.mode || "auto") as AgentMode;
+        // Mode handling (NB 2026-04-24 : auto/copilot/user)
+        // Priorité : override conversation > persona default
+        mode = (conversationMode || persona?.mode || "auto") as AgentMode;
         decision = decideForMode(mode);
 
         // Mode "user" → skip entirely : requeue as "pending" forever is wrong, so mark as done

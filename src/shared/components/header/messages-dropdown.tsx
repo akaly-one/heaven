@@ -2,6 +2,12 @@
 
 import { useRef } from "react";
 import { X, ArrowLeft, ExternalLink, Send, ArrowRight, Ghost, Instagram, Globe } from "lucide-react";
+import {
+  getConversationPseudo,
+  getAvatarStyle,
+  getExternalUrl,
+  formatConversationTime,
+} from "@/lib/messaging/conversation-display";
 
 interface MessageItem {
   id: string; client_id: string; content: string; created_at: string;
@@ -33,41 +39,20 @@ interface MessagesDropdownProps {
   replyInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
-/* ── Platform avatar helper ──
-   Web visitor (pseudo_web présent, pas d'IG/Snap) → icône Globe neutre.
-   Pas de lien externe possible tant qu'ils n'ont pas upgrade leur pseudo. */
+/* ── Platform avatar helper — délègue à conversation-display.ts (source unique) ── */
 function PlatformAvatar({ client, pseudo, size = "md", hasUnread = false }: {
   client?: ClientItem | null; pseudo?: string; size?: "sm" | "md"; hasUnread?: boolean;
 }) {
-  const isSnap = !!client?.pseudo_snap;
-  const isInsta = !isSnap && !!client?.pseudo_insta;
-  const isWeb = !isSnap && !isInsta && !!client?.pseudo_web;
+  const style = getAvatarStyle(client || {}, { hasUnread });
   const s = size === "sm" ? "w-6 h-6" : "w-8 h-8";
   const iconSize = size === "sm" ? "w-3 h-3" : "w-4 h-4";
 
-  let bg: string;
-  let color: string;
-  if (isSnap) {
-    bg = "rgba(255,252,0,0.12)";
-    color = "#FFFC00";
-  } else if (isInsta) {
-    bg = "rgba(193,53,132,0.12)";
-    color = "#C13584";
-  } else if (isWeb) {
-    // Visiteur web — neutre, pas de branding réseau social.
-    bg = "rgba(156,163,175,0.12)";
-    color = "#9CA3AF";
-  } else {
-    bg = hasUnread ? "rgba(230,51,41,0.12)" : "rgba(0,0,0,0.06)";
-    color = hasUnread ? "var(--accent)" : "var(--text-muted)";
-  }
-
   return (
     <div className={`${s} rounded-full flex items-center justify-center shrink-0`}
-      style={{ background: bg, color }}>
-      {isSnap ? <Ghost className={iconSize} />
-        : isInsta ? <Instagram className={iconSize} />
-        : isWeb ? <Globe className={iconSize} />
+      style={{ background: style.bg, color: style.color }}>
+      {style.iconKey === "snap" ? <Ghost className={iconSize} />
+        : style.iconKey === "insta" ? <Instagram className={iconSize} />
+        : style.iconKey === "web" ? <Globe className={iconSize} />
         : (
           <span className={size === "sm" ? "text-[9px] font-bold" : "text-[11px] font-bold"}>
             {(pseudo || "?").charAt(0).toUpperCase()}
@@ -103,13 +88,15 @@ export function MessagesDropdown({
             {(() => {
               const cl = clients.find(c => c.id === activeChat.clientId);
               if (!cl) return null;
-              const isSnap = !!cl.pseudo_snap;
-              const profileUrl = isSnap ? `https://snapchat.com/add/${cl.pseudo_snap}` : cl.pseudo_insta ? `https://instagram.com/${cl.pseudo_insta}` : null;
-              return profileUrl ? (
+              // Lien externe uniquement pour Snap/Insta upgradés — pas de lien pour visiteur web brut.
+              const profileUrl = getExternalUrl(cl);
+              if (!profileUrl) return null;
+              const color = cl.pseudo_snap ? "#C4A600" : "#C13584";
+              return (
                 <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 no-underline ml-auto">
-                  <ExternalLink className="w-3 h-3" style={{ color: isSnap ? "#C4A600" : "#C13584" }} />
+                  <ExternalLink className="w-3 h-3" style={{ color }} />
                 </a>
-              ) : null;
+              );
             })()}
             <button onClick={() => { onSetActiveChat(null); onClose(); }}
               className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer shrink-0 ml-auto"
@@ -176,8 +163,10 @@ export function MessagesDropdown({
                 const isNewer = !existing || new Date(m.created_at).getTime() > new Date(existing.lastMsg.created_at).getTime();
                 if (isNewer || !existing) {
                   const cl = clients.find(c => c.id === cid);
-                  // Priorité snap > insta > pseudo_web (visiteur-NNN) > fallback id truncated
-                  const pseudo = cl ? (cl.pseudo_snap || cl.pseudo_insta || cl.pseudo_web || cid.slice(0, 8)) : cid.slice(0, 10);
+                  // Même résolution partout (header + messagerie) via conversation-display.ts
+                  const pseudo = cl
+                    ? getConversationPseudo({ fan_id: cl.id, pseudo_snap: cl.pseudo_snap, pseudo_insta: cl.pseudo_insta, pseudo_web: cl.pseudo_web }).replace(/^@/, "")
+                    : `visiteur-${cid.slice(-4).toLowerCase()}`;
                   convMap.set(cid, {
                     clientId: cid,
                     pseudo,
@@ -206,7 +195,7 @@ export function MessagesDropdown({
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] font-bold truncate" style={{ color: "var(--text)" }}>@{conv.pseudo}</span>
                         <span className="text-[10px] shrink-0 ml-auto" style={{ color: "var(--text-muted)" }}>
-                          {new Date(conv.lastMsg.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          {formatConversationTime(conv.lastMsg.created_at)}
                         </span>
                       </div>
                       <p className="text-[11px] truncate mt-0.5" style={{ color: conv.unread > 0 ? "var(--text)" : "var(--text-muted)", fontWeight: conv.unread > 0 ? 600 : 400 }}>
