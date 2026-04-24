@@ -28,17 +28,45 @@
 | BRIEF-2026-04-24-07 | 2026-04-24 | Bouton "Générer message" dans thread (flow Fanvue) — mode on-demand IA | feature | P2 | DB, BE, FE, QA, Doc | 🟠 cadré (hotfix 85ee934 after() livré, feature en attente GO) | [briefs/BRIEF-2026-04-24-07-generate-button-in-thread.md](./briefs/BRIEF-2026-04-24-07-generate-button-in-thread.md) |
 | BRIEF-2026-04-24-08 | 2026-04-24 | Persona Yumi v2 : diversité endings + knowledge grounding (URLs Fanvue/IG/Snap/Heaven) + simulation humaine | feature + knowledge | P1 | AI, DB, BE, FE, QA, Doc | 🟠 cadré (toutes URLs confirmées — hotfix L1 exécutable) | [briefs/BRIEF-2026-04-24-08-persona-yumi-v2-knowledge-grounding.md](./briefs/BRIEF-2026-04-24-08-persona-yumi-v2-knowledge-grounding.md) |
 | BRIEF-2026-04-24-09 | 2026-04-24 | Fiche fan dynamique + extraction progressive + dashboard market research | feature majeure + data | P1 | DB, BE, AI, FE, QA, Doc, Legal | 🟠 cadré (7 questions RGPD/scope en attente, Phase A DB exécutable immédiat) | [briefs/BRIEF-2026-04-24-09-fan-profile-insights-market-research.md](./briefs/BRIEF-2026-04-24-09-fan-profile-insights-market-research.md) |
+| BRIEF-2026-04-24-10 | 2026-04-24 | Privacy Policy + Age Gate + Accès hiérarchisé (sensuel vs explicite) | feature + légal + sécu | P0 (bloquant explicite/packs) | DB, BE, FE, Legal, QA, Doc | 🟠 cadré (5 questions en attente) | [briefs/BRIEF-2026-04-24-10-privacy-age-gate-tiered-access.md](./briefs/BRIEF-2026-04-24-10-privacy-age-gate-tiered-access.md) |
+| BRIEF-2026-04-24-11 | 2026-04-24 | Usage meters stack + alertes upgrade (Groq/Vercel/Cloudinary/Supabase) | feature + DevOps + monitoring | P1 | DB, BE, FE, DevOps, Doc | 🟠 cadré (4 questions tokens + fréquence en attente) | [briefs/BRIEF-2026-04-24-11-stack-usage-meters-upgrade-alerts.md](./briefs/BRIEF-2026-04-24-11-stack-usage-meters-upgrade-alerts.md) |
+| BRIEF-2026-04-24-12 | 2026-04-24 | Détection langue + adaptation multilingue agent IA (FR/EN/ES MVP) | feature + IA prompting + i18n | P1 | AI, DB, BE, FE, QA, Doc | 🟠 cadré (4 questions langues/UI en attente) | [briefs/BRIEF-2026-04-24-12-ai-language-detection-multilingual.md](./briefs/BRIEF-2026-04-24-12-ai-language-detection-multilingual.md) |
 
 ---
 
 ## Compteur
 
-- Total reçus : 9
-- En attente consolidation : 5
+- Total reçus : 12
+- En attente consolidation : 8
 - Consolidés dans plan global : 2
 - En exécution : 0
 - Livrés : 2 (BRIEF-01 + BRIEF-04)
 - Hotfixes inline : 2 (commit `b5e005e` ai_run_id + pseudo-fan reply | commit `85ee934` after() for serverless)
+
+## Vue d'ensemble implications full-stack (tous briefs cadrés)
+
+Pour orchestrer proprement la redistribution multi-agent (Charte §1.3), synthèse des impacts :
+
+| Brief | DB tables nouvelles | API routes nouvelles | Composants FE nouveaux | Stack tier concerné |
+|---|---|---|---|---|
+| 02 Messenger UI | 0 | 0 | 3 shared (Avatar/Row/Bubble) | Aucun nouveau |
+| 03 Structure PMO | 0 | 0 | 0 | Aucun |
+| 05 QStash toggle | 1 (cron_settings) | 2 (cron/config) | 1 (CronProviderToggle) | **+QStash Upstash** |
+| 06 Cycle visiteurs | 0 (extension clients) | 3 | 3 (badges/filtres/drawer) | Aucun |
+| 07 Bouton Générer | 0 (extension ai_runs) | 1 | 1 (GenerateButton) | Groq usage ↑ |
+| 08 Persona v2 | 0 | 0 | 0 | Groq usage = |
+| 09 Fiche fan insights | 3 (insights/heat/agg) | 3 | 3 (drawer/dashboard/consent) | Groq usage ↑↑ |
+| 10 Privacy + Age Gate | 1 (age_gate_events + ext clients) | 3 | 5 (modal/footer/drawer/queue/badge) | Aucun |
+| 11 Usage meters | 2 (snapshots/alerts) | 2 | 4 (dashboard/widget/banner/upgrade) | **+Vercel API, +Supabase Mgmt API, +Telegram** |
+| 12 Multilingue | 0 (ext clients) | 0 | 2 (badge/preferences) | Groq usage ↑ |
+
+**Nouveaux stacks à provisionner** :
+- QStash Upstash (BRIEF-05) — gratuit
+- Vercel API token (BRIEF-11) — gratuit
+- Supabase Management token (BRIEF-11) — gratuit
+- Telegram Bot NB (BRIEF-11) — à vérifier si déjà existant
+
+**Croissance Groq** : BRIEFs 07/09/12 multiplient les appels LLM. Prévoir fallback OpenRouter (BRIEF-11 auto-fallback) quand Groq >95%.
 
 ## Follow-up du jour
 

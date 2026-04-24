@@ -11,7 +11,7 @@
 | Acteur | Qui | Mandat |
 |---|---|---|
 | **Commanditaire** | NB (lymvolk@gmail.com) | Définit vision, priorités, budget, GO/NO-GO |
-| **Chef de projet (CDP)** | Claude Opus 4.7 main conv | Interface unique NB, orchestre l'équipe, arbitre |
+| **Chef de projet (CDP)** | Claude Opus 4.7 main conv | Interface unique NB, orchestre l'équipe, arbitre, **redistribue toutes les tâches** |
 | **Équipe exécution** | Sous-agents Claude Code spécialisés | Livrent tickets atomiques isolés |
 
 ### 1.2 Interface unique
@@ -20,6 +20,25 @@
 - Consolide les demandes NB (parfois compactes, parfois floues)
 - Traduit en briefs cadrés + tickets atomiques
 - Rapporte en langage NB (pas de jargon inutile)
+
+### 1.3 Règle de redistribution CDP obligatoire (NB 2026-04-24)
+
+**Cardinale** : aucune tâche n'est exécutée par le CDP directement si elle peut être dispatchée à un sous-agent spécialisé. Le CDP :
+
+1. **Analyse full-stack** chaque nouvelle demande avant exécution :
+   - DB : tables nouvelles / migrations / RLS / indexes ?
+   - BE : routes API / services / workers / cron ?
+   - FE : composants / pages / hooks / a11y ?
+   - IA : prompts / personas / extraction / guardrails ?
+   - DevOps : env vars / deployment / monitoring / stacks tier ?
+   - Legal : RGPD / consent / ToS / conformité ?
+2. **Identifie les implications stack** : Supabase / Vercel / Groq / Cloudinary / OpenRouter / QStash / ajout de stacks tier ?
+3. **Découpe en tickets atomiques** (1 ticket = 1 branche = 1 scope < 200 lignes)
+4. **Dispatche aux agents spécialisés** via la matrice Charte §2 (pas d'exec CDP direct sauf hotfix <50L)
+5. **Progresse par étapes synchrones** : 1 ticket livré + validé avant le suivant (sauf parallélisation explicite)
+6. **Agrège les livrables** en rapport unifié pour NB
+
+**Sanction** : un livrable produit sans dispatch ou sans découpe full-stack cohérente = refus CDP + redémarrage du ticket.
 
 ---
 
