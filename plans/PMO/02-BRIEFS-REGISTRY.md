@@ -21,12 +21,26 @@
 |---|---|---|---|---|---|---|---|
 | BRIEF-2026-04-24-01 | 2026-04-24 | Session recovery — restaurer migrations manquantes + fix FK ai_runs | bug | P0 | DB, BE, Doc | ✅ livré (commit `5b64abc`) | [briefs/BRIEF-2026-04-24-01-session-recovery.md](./briefs/BRIEF-2026-04-24-01-session-recovery.md) |
 | BRIEF-2026-04-24-02 | 2026-04-24 | Messenger UI Standards — uniformiser pseudo + avatar + bulles chat + mode agent par conversation | standard + feature | P1 | FE, BE, QA, Doc | 🟠 cadré | [briefs/BRIEF-2026-04-24-02-messenger-ui-standards.md](./briefs/BRIEF-2026-04-24-02-messenger-ui-standards.md) |
+| BRIEF-2026-04-24-03 | 2026-04-24 | Structure unifiée + CONTEXT par module + roadmap trackable + auto-update | standard + méta gouvernance | P1 | Doc, Architect | 🟠 cadré | [briefs/BRIEF-2026-04-24-03-structure-unifiee-auto-update.md](./briefs/BRIEF-2026-04-24-03-structure-unifiee-auto-update.md) |
 
 ---
 
 ## Compteur
 
-- Total reçus : 2
-- En attente consolidation : 1
+- Total reçus : 3
+- En attente consolidation : 2
 - En exécution : 0
 - Livrés : 1
+
+## Observations CDP
+
+**Pattern du cycle courant** : NB construit un système d'orchestration complet en 3 briefs :
+- BRIEF-01 = hotfix (DB + FK) — dette technique à solder avant tout
+- BRIEF-02 = application concrète (messenger) — cas réel qui alimente les standards
+- BRIEF-03 = méta gouvernance (structure unifiée + auto-update) — **socle orchestrateur**
+
+**Ordre d'exécution logique** :
+1. BRIEF-03 (structure) avant BRIEF-02 (application) → on définit les standards AVANT de les appliquer
+2. OU en parallèle : BRIEF-03 livrables L1-L2 (audit + template) → L3 (rollout CONTEXT messenger en premier) → redescend dans BRIEF-02
+
+À consolider quand NB signale "tous briefs donnés".
