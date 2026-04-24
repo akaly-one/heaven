@@ -97,7 +97,7 @@ Tickets (8 total) — tous pending :
 
 ### BRIEF-08 — Persona Yumi v2 + knowledge grounding (P1)
 Tickets (9 total) — tous pending, **hotfix L1 exécutable immédiat** :
-- [x] P01-HOTFIX — persona_v2 quick-win (migration 061 appliquée prod — commit SHA à renseigner après commit)
+- [x] P01-HOTFIX — persona_v2 quick-win (migration 061 appliquée prod — commit `c6e930f`)
 - [ ] P02 à P09
 
 ### BRIEF-09 — Fiche fan insights + market research (P1)
