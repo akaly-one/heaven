@@ -104,11 +104,12 @@ Ce brief **active 3 phases déjà documentées** mais non implémentées :
 ### Questions ouvertes NB (bloquent seed knowledge base)
 
 - [ ] **URL Fanvue exacte de Yumi** ? Ex: `https://fanvue.com/yumiclub` ou autre slug ?
-- [ ] **Snap username de Yumi** ? (nécessaire pour partager lien dans conversation)
-- [ ] **IG handle confirmé** : `@yumiiiclub` (vu dans `docs/ACCESS-HEAVEN-OS.md` + persona existant) → OK ?
-- [ ] **Message "web en développement"** : phrasing précis souhaité ? ("on travaille sur des features exclusives, tu peux ajouter ton Snap pour des sneak peek...")
-- [ ] **Argumentaire Snap** : "story privée Hot + nudes" — je le prends tel quel ?
-- [ ] **Argumentaire IG** : "suivre nouveautés + me parler directement" — OK ?
+- [x] **Snap username** : `yumiiclub` (NB confirmé 2026-04-24 ~18:15) → lien `https://snapchat.com/add/yumiiclub`
+- [x] **IG handle** : `@yumiiiclub` (confirmé `docs/ACCESS-HEAVEN-OS.md`) → lien `https://instagram.com/yumiiiclub`
+- [x] **Heaven profile** : `https://heaven-os.vercel.app/m/yumi` (confirmé)
+- [ ] **Message "web en développement"** : phrasing précis souhaité ? (proposition : "mon site est encore en développement, pour l'instant tu peux me suivre sur Insta et Snap — je te tiens au courant dès qu'il y a du nouveau 💜")
+- [x] **Argumentaire Snap** : "tu seras ajouté aux story privées Hot et recevras des nudes" (NB confirmé)
+- [x] **Argumentaire IG** : "suivre nouveautés + me parler directement" (NB confirmé)
 
 ## Branches concernées
 
