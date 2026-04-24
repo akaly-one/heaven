@@ -41,6 +41,10 @@ export function useChat({ slug, clientId, model }: UseChatParams): UseChatReturn
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const seenMsgIdsRef = useRef<Set<string>>(new Set());
   const readMsgIdsRef = useRef<Set<string>>(new Set());
+  // NB 2026-04-25 : trigger re-render du compteur quand readMsgIdsRef change.
+  // useRef ne déclenche pas de re-render → useMemo dépend de chatMessages seul.
+  // On incrémente un compteur à chaque marquage pour forcer le recalcul unread.
+  const [readMarker, setReadMarker] = useState(0);
 
   // NB 2026-04-24 : chat visiteur sans IdentityGate — crée un guest client
   // automatique en session. L'agent IA peut ainsi converser avec un prospect
@@ -76,6 +80,33 @@ export function useChat({ slug, clientId, model }: UseChatParams): UseChatReturn
   }, [clientId, guestClientId, slug]);
 
   const effectiveClientId = clientId || guestClientId;
+
+  // NB 2026-04-25 : hydrate readMsgIdsRef depuis localStorage — persiste entre sessions
+  // (compteur ne remonte plus à 999 au reload). Clé scopée par slug+clientId pour isoler
+  // chaque modèle × fan. On persist seulement les IDs de messages model, plafonné à 500
+  // pour éviter bloat (cold start lit les 500 derniers IDs → suffisant pour UX).
+  const readStorageKey = effectiveClientId ? `heaven_read_${slug}_${effectiveClientId}` : null;
+  useEffect(() => {
+    if (!readStorageKey) return;
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(readStorageKey);
+      if (raw) {
+        const ids = JSON.parse(raw) as string[];
+        ids.forEach((id) => readMsgIdsRef.current.add(id));
+        setReadMarker((n) => n + 1);
+      }
+    } catch { /* silent */ }
+  }, [readStorageKey]);
+
+  const persistRead = useCallback(() => {
+    if (!readStorageKey) return;
+    if (typeof window === "undefined") return;
+    try {
+      const ids = Array.from(readMsgIdsRef.current).slice(-500);
+      localStorage.setItem(readStorageKey, JSON.stringify(ids));
+    } catch { /* silent */ }
+  }, [readStorageKey]);
 
   // Chat sounds (Web Audio API)
   const playSound = useCallback((type: "receive" | "send") => {
@@ -136,18 +167,28 @@ export function useChat({ slug, clientId, model }: UseChatParams): UseChatReturn
   }, [effectiveClientId, modelId, chatOpen, playSound]);
 
   // Unread = model messages not yet marked as read
+  // NB 2026-04-25 : readMarker dans la dep pour re-render quand localStorage hydrate readMsgIdsRef.
   const chatUnread = useMemo(() => {
     return chatMessages.filter(m => m.sender_type === "model" && !readMsgIdsRef.current.has(m.id)).length;
-  }, [chatMessages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatMessages, readMarker]);
 
-  // Mark all model messages as read when chat is open
+  // Mark all model messages as read when chat is open — persist in localStorage
   useEffect(() => {
     if (chatOpen) {
+      let changed = false;
       chatMessages.forEach(m => {
-        if (m.sender_type === "model") readMsgIdsRef.current.add(m.id);
+        if (m.sender_type === "model" && !readMsgIdsRef.current.has(m.id)) {
+          readMsgIdsRef.current.add(m.id);
+          changed = true;
+        }
       });
+      if (changed) {
+        persistRead();
+        setReadMarker((n) => n + 1);
+      }
     }
-  }, [chatOpen, chatMessages]);
+  }, [chatOpen, chatMessages, persistRead]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -177,8 +218,9 @@ export function useChat({ slug, clientId, model }: UseChatParams): UseChatReturn
     const d = await res.json();
     const msgs = ((d.messages || []) as ChatMessage[]).reverse();
     msgs.forEach(m => { seenMsgIdsRef.current.add(m.id); if (m.sender_type === "model") readMsgIdsRef.current.add(m.id); });
+    persistRead();
     setChatMessages(msgs);
-  }, [chatInput, ensureClientId, modelId, playSound]);
+  }, [chatInput, ensureClientId, modelId, playSound, persistRead]);
 
   return {
     chatMessages, chatInput, setChatInput,

@@ -329,8 +329,11 @@ function MessagingPageInner() {
     // on skip — ils utiliseront le flow classique une fois fans unifiés (BRIEF-13).
     if (!clientId) return;
 
+    // NB 2026-04-25 : PATCH (pas POST) — la route /api/messages distingue les verbes
+    // (POST = créer message, PATCH = mark_read/reassign). POST avec action=mark_read
+    // était silencieusement ignoré → compteur non-lus ne descendait jamais.
     fetch("/api/messages", {
-      method: "POST",
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({
