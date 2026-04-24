@@ -28,6 +28,8 @@ import {
 } from "@/lib/messaging/conversation-display";
 import { MODE_LABELS, type AgentMode } from "@/lib/ai-agent/modes";
 import { Radio, GraduationCap, UserRound, Sparkles } from "lucide-react";
+// NB 2026-04-24 : utilisé pour mark_read payload normalisation model_id
+import { toModelId } from "@/lib/model-utils";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -303,6 +305,41 @@ function MessagingPageInner() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentFanId]);
+
+  // NB 2026-04-24 : marquer conversation comme lue dès ouverture
+  // → décrémente compteur non-lus header + met à jour unread_count row.
+  // Pour pseudo-fans (format pseudo:<client_id>) : extrait client_id et call mark_read.
+  useEffect(() => {
+    if (!currentFanId) return;
+    const slug = (currentModel || auth?.model_slug || "").toLowerCase();
+    if (!slug) return;
+
+    const clientId = currentFanId.startsWith("pseudo:")
+      ? currentFanId.slice("pseudo:".length)
+      : null;
+
+    // Real fans (UUID direct in agence_fans) : API mark_read par fan_id pas encore dispo,
+    // on skip — ils utiliseront le flow classique une fois fans unifiés (BRIEF-13).
+    if (!clientId) return;
+
+    fetch("/api/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        model: toModelId(slug),
+        client_id: clientId,
+        action: "mark_read",
+      }),
+    }).then(() => {
+      // Optimistic UI : reset unread_count local pour feedback immédiat
+      setConversations((prev) =>
+        prev.map((c) => (c.fan_id === currentFanId ? { ...c, unread_count: 0 } : c))
+      );
+      // Trigger event global pour que le header se refresh (dropdown + badge)
+      window.dispatchEvent(new CustomEvent("heaven:messages-read", { detail: { clientId } }));
+    }).catch(() => { /* silent */ });
+  }, [currentFanId, currentModel, auth?.model_slug]);
 
   // Fetch own model avatar
   // Cloisonnement strict : currentModel (root selector) OU model_slug session.

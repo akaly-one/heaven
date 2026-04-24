@@ -327,6 +327,14 @@ export function Header() {
     return () => clearInterval(iv);
   }, [ready, modelSlug, fetchMessages, fetchClients, fetchOrders]);
 
+  // NB 2026-04-24 : refresh immédiat compteur non-lus quand la page
+  // messagerie marque une conversation comme lue (évite attendre le polling 15s).
+  useEffect(() => {
+    const handler = () => { fetchMessages(); };
+    window.addEventListener("heaven:messages-read", handler);
+    return () => window.removeEventListener("heaven:messages-read", handler);
+  }, [fetchMessages]);
+
   // ── Open conversation with a client ──
   const openChat = useCallback(async (clientId: string, pseudo: string) => {
     setActiveChat({ clientId, pseudo });

@@ -137,9 +137,11 @@ export function FanTimeline({
     );
   }
 
-  // Sort chronologically desc (most recent first)
+  // NB 2026-04-24 : sort chronologically ASC (oldest first, newest at bottom)
+  // Standard messenger (iMessage/WhatsApp/Slack) — nouveau message arrive en bas,
+  // scroll auto vers le bas géré par le parent via useEffect sur items.length.
   const sorted = [...items].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
   // Group by day
