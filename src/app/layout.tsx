@@ -9,11 +9,11 @@ import { Analytics } from "@vercel/analytics/next";
 
 import type { Viewport } from "next";
 
+// NB 2026-04-24 : viewport a11y — pas de maximumScale/userScalable=no.
+// Laisser l'utilisateur zoomer (WCAG 1.4.4 Resize Text / iOS Safari UX).
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export const metadata: Metadata = {

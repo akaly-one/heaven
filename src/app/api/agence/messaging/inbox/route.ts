@@ -209,9 +209,13 @@ export async function GET(req: NextRequest) {
       const normalizedVisitor = shortId ? `visiteur-${shortId}` : "visiteur";
       const rawNickname = client?.nickname || client?.firstname || null;
       const nicknameIsPseudo = rawNickname && /^(visiteur|guest)/i.test(rawNickname);
+      // NB 2026-04-24 Bug #4 : pseudo_web fallback visiteur-NNN uniquement si le
+      // client N'A PAS de handle réel (insta/snap) — sinon on garde pseudo_web
+      // vide pour laisser getConversationPlatform() détecter la plateforme snap/insta.
+      const clientHasRealHandle = !!(client?.pseudo_insta || client?.pseudo_snap);
       const pseudo_web = fan?.pseudo_web
         || (nicknameIsPseudo ? rawNickname : null)
-        || (!fan?.pseudo_insta && !fan?.pseudo_snap ? normalizedVisitor : null);
+        || (!fan?.pseudo_insta && !fan?.pseudo_snap && !clientHasRealHandle ? normalizedVisitor : null);
 
       const displayName = fan?.pseudo_insta
         ? `@${fan.pseudo_insta}`
@@ -219,11 +223,23 @@ export async function GET(req: NextRequest) {
         ? `@${igConv.ig_username}`
         : pseudo_web || g.display_handle;
 
+      // NB 2026-04-24 Bug #4 : pour les conversations fan-less (client-only),
+      // il faut PROPAGER pseudo_snap / pseudo_insta depuis agence_clients pour
+      // que getConversationPlatform() retourne "snap" au lieu de "web".
+      // Sans ça, @test / @oku étaient stockés dans clients.pseudo_snap mais
+      // le badge frontend affichait "Web" (platform=unknown→fallback web).
+      const pseudoSnapResolved =
+        fan?.pseudo_snap || (!fan ? client?.pseudo_snap || null : null);
+      const pseudoInstaResolved =
+        fan?.pseudo_insta ||
+        igConv?.ig_username ||
+        (!fan ? client?.pseudo_insta || null : null);
+
       return {
         fan_id,
-        pseudo_insta: fan?.pseudo_insta || igConv?.ig_username || null,
+        pseudo_insta: pseudoInstaResolved,
         pseudo_web,
-        pseudo_snap: fan?.pseudo_snap || null,
+        pseudo_snap: pseudoSnapResolved,
         fanvue_handle: fan?.fanvue_handle || null,
         display_name: displayName,
         avatar_url: null,

@@ -50,15 +50,20 @@ const MOBILE_NAV_ROOT = [
   { id: "ops", label: "Ops", icon: Activity, href: "/agence/ops" },
 ] as const;
 
-function useAuth(): HeavenAuth | null {
+// NB 2026-04-24 Bug #1 : hook SSR-safe. Retourne null au 1er render (SSR + CSR
+// hydration), puis la vraie valeur après useEffect — évite tout mismatch de
+// markup conditionnel (React error #418 en prod minifiée).
+function useAuth(): { auth: HeavenAuth | null; hydrated: boolean } {
   const [auth, setAuth] = useState<HeavenAuth | null>(null);
+  const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
     try {
       const raw = localStorage.getItem("heaven_auth") || sessionStorage.getItem("heaven_auth");
       if (raw) setAuth(JSON.parse(raw));
-    } catch {}
+    } catch { /* noop */ }
+    setHydrated(true);
   }, []);
-  return auth;
+  return { auth, hydrated };
 }
 
 // ── D-3 : expanded default + toggle persistant via localStorage ──
@@ -98,8 +103,10 @@ function usePersistentExpanded(): [boolean, (next: boolean) => void] {
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const auth = useAuth();
-  const isRoot = auth?.role === "root";
+  const { auth, hydrated } = useAuth();
+  // NB 2026-04-24 Bug #1 : isRoot forcé à false tant que non-hydraté pour éviter
+  // tout rendu conditionnel qui différerait entre SSR et CSR (React #418).
+  const isRoot = hydrated && auth?.role === "root";
   const [expanded, setExpanded] = usePersistentExpanded();
   const collapsed = !expanded;
 
@@ -161,14 +168,20 @@ export function Sidebar() {
             <Crown className="w-4 h-4" style={{ color: "#fff" }} />
           </div>
           {!collapsed && (
-            <span className="ml-2 text-[10px] font-bold tracking-widest" style={{ color: "var(--text-muted)" }}>
-              {isRoot ? "ROOT" : (auth?.display_name?.toUpperCase() || "")}
+            <span
+              className="ml-2 text-[10px] font-bold tracking-widest"
+              style={{ color: "var(--text-muted)" }}
+              suppressHydrationWarning
+            >
+              {hydrated ? (isRoot ? "ROOT" : (auth?.display_name?.toUpperCase() || "")) : ""}
             </span>
           )}
         </a>
 
-        {/* Model badge */}
-        {!collapsed && auth && (
+        {/* Model badge — NB 2026-04-24 Bug #1 : rendu uniquement après hydratation
+            pour éviter un mismatch SSR (auth=null) / CSR (auth populé) détecté
+            par React 19 comme hydration error #418. */}
+        {!collapsed && hydrated && auth && (
           <div className="px-3 mb-4">
             <div className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider text-center"
               style={{ background: "rgba(230,51,41,0.12)", color: "#E63329" }}>

@@ -36,7 +36,9 @@ interface MessagesDropdownProps {
   onOpenChat: (clientId: string, pseudo: string) => void;
   onClose: () => void;
   chatEndRef: React.RefObject<HTMLDivElement | null>;
-  replyInputRef: React.RefObject<HTMLInputElement | null>;
+  // NB 2026-04-24 Bug #7 : textarea pour composer multi-line (+ auto-resize
+  // hook JS si besoin futur). Garde refs minimales côté parent.
+  replyInputRef: React.RefObject<HTMLTextAreaElement | null>;
 }
 
 export function MessagesDropdown({
@@ -131,13 +133,20 @@ export function MessagesDropdown({
             })}
             <div ref={chatEndRef} />
           </div>
-          <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderTop: "1px solid var(--border)" }}>
-            <input ref={replyInputRef} value={replyText} onChange={e => onSetReplyText(e.target.value)}
+          <div className="flex items-end gap-2 px-3 py-2.5" style={{ borderTop: "1px solid var(--border)" }}>
+            <label htmlFor="header-reply-input" className="sr-only">Répondre</label>
+            <textarea
+              id="header-reply-input"
+              ref={replyInputRef}
+              value={replyText}
+              onChange={e => onSetReplyText(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSendReply(); } }}
-              placeholder="Repondre..."
-              className="flex-1 text-xs bg-transparent outline-none px-3 py-2 rounded-xl"
-              style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }} />
-            <button onClick={onSendReply} disabled={!replyText.trim() || sending}
+              placeholder="Répondre…"
+              rows={2}
+              className="flex-1 text-xs bg-transparent outline-none px-3 py-2 rounded-xl resize-none"
+              style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", minHeight: 36, maxHeight: 140 }}
+            />
+            <button onClick={onSendReply} disabled={!replyText.trim() || sending} aria-label="Envoyer la réponse"
               className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shrink-0 disabled:opacity-30"
               style={{ background: "var(--accent)", color: "#fff", border: "none" }}>
               <Send className="w-3.5 h-3.5" />

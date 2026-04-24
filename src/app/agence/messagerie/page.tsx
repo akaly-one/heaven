@@ -24,6 +24,7 @@ import { Bot } from "lucide-react";
 // Standards d'affichage unifiés header ↔ messagerie (source unique)
 import {
   getConversationPseudo,
+  getConversationPlatform,
   formatConversationTime as sharedFormatTime,
 } from "@/lib/messaging/conversation-display";
 import { MODE_LABELS, type AgentMode } from "@/lib/ai-agent/modes";
@@ -231,15 +232,13 @@ function MessagingPageInner() {
     }
   };
 
-  // Initial load + poll every 15s
+  // NB 2026-04-24 Bug #2 : polling unique ici (initial load + cleanup).
+  // Le polling 30s + focus/visibility est géré par l'effet ci-dessous.
+  // ÉVITE : 2 setInterval parallèles dans la même page (1 inbox/15s ici
+  // + 1 inbox/15s plus bas = 2 appels parallèles au lieu d'1).
   useEffect(() => {
     loadInbox();
-    const interval = setInterval(() => {
-      // Keep current selection intact; refresh list + thread together
-      loadInbox(currentFanId);
-    }, 15000);
     return () => {
-      clearInterval(interval);
       listAbortRef.current?.abort();
       threadAbortRef.current?.abort();
     };
@@ -268,9 +267,11 @@ function MessagingPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceFilter]);
 
-  // NB 2026-04-24 : polling 15s aligné header + refresh sur focus tab
-  // → synchro live pseudo upgrade + nouveaux messages sans reload manuel
-  // (ex : visiteur ajoute pseudo_snap via /m/yumi → admin voit la maj en 15s max)
+  // NB 2026-04-24 Bug #2 : polling UNIQUE 30s messagerie (désaligné du header 15s
+  // pour réduire bursts simultanés). Header: 15s. Messagerie: 30s. Focus/visibility
+  // triggers instantanés ne font pas doublon car fetch est abort-able.
+  // Ancien comportement = 2 pollers parallèles 15s + header 15s = 3+ inbox calls/15s
+  // → rate limit + 503 intermittent observé en prod (Chrome Ext monitoring).
   useEffect(() => {
     const poll = () => {
       if (!document.hidden) {
@@ -278,7 +279,7 @@ function MessagingPageInner() {
         if (currentFanId) loadThread(currentFanId);
       }
     };
-    const iv = setInterval(poll, 15000);
+    const iv = setInterval(poll, 30000);
     const onFocus = () => poll();
     const onVis = () => { if (!document.hidden) poll(); };
     window.addEventListener("focus", onFocus);
@@ -706,9 +707,14 @@ function MessagingPageInner() {
                 <Search
                   className="w-3.5 h-3.5 shrink-0"
                   style={{ color: "var(--text-muted)" }}
+                  aria-hidden
                 />
+                <label htmlFor="search-fan" className="sr-only">
+                  Rechercher un fan
+                </label>
                 <input
-                  type="text"
+                  id="search-fan"
+                  type="search"
                   placeholder="Rechercher un fan…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -818,10 +824,19 @@ function MessagingPageInner() {
                         </div>
                         <p
                           className="text-[11px] truncate"
-                          style={{ color: "var(--text-muted)" }}
+                          style={{
+                            color: "var(--text-muted)",
+                            fontStyle: conv.last_message?.text ? "normal" : "italic",
+                            opacity: conv.last_message?.text ? 1 : 0.65,
+                          }}
                         >
+                          {/* NB 2026-04-24 Bug #6 : preview explicite "Pas encore
+                              de message" pour conversations sans last_message.text
+                              (ex : visiteur-b255 nouvellement créé). */}
                           {conv.last_message?.direction === "out" ? "✓ " : ""}
-                          {truncate(conv.last_message?.text || "—", 48)}
+                          {conv.last_message?.text
+                            ? truncate(conv.last_message.text, 48)
+                            : "Pas encore de message"}
                         </p>
                       </div>
                       <span
@@ -900,11 +915,17 @@ function MessagingPageInner() {
                       className="text-[10px]"
                       style={{ color: "var(--text-muted)" }}
                     >
-                      {currentConversation.sources.length > 1
-                        ? "Thread unifié web + Instagram"
-                        : currentConversation.sources[0] === "instagram"
-                        ? "Conversation Instagram"
-                        : "Conversation web"}
+                      {/* NB 2026-04-24 Bug #10 : label calculé via getConversationPlatform
+                          pour que @test/@oku (pseudo_snap réel) affichent "Conversation Snapchat"
+                          et non pas "Conversation web" par défaut source[0]. */}
+                      {(() => {
+                        if (currentConversation.sources.length > 1) return "Thread unifié web + Instagram";
+                        const platform = getConversationPlatform(currentConversation);
+                        if (platform === "insta") return "Conversation Instagram";
+                        if (platform === "snap") return "Conversation Snapchat";
+                        if (currentConversation.sources[0] === "instagram") return "Conversation Instagram";
+                        return "Conversation web";
+                      })()}
                     </p>
                   </div>
                   {/* Mode agent pour cette conversation — NB 2026-04-24 */}
@@ -914,6 +935,9 @@ function MessagingPageInner() {
                         type="button"
                         onClick={() => setConvModeOpen((o) => !o)}
                         title={`Mode agent : ${MODE_LABELS[convMode.mode].label} (${convMode.source === "override" ? "override conversation" : "défaut persona"})`}
+                        aria-label={`Mode agent ${MODE_LABELS[convMode.mode].label}${convMode.source === "persona_default" ? " (défaut persona)" : " (override conversation)"}`}
+                        aria-expanded={convModeOpen}
+                        aria-haspopup="menu"
                         className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-colors"
                         style={{
                           background: `${MODE_LABELS[convMode.mode].color}15`,
@@ -998,6 +1022,7 @@ function MessagingPageInner() {
                         : undefined
                     }
                     disabled={!currentFanId || currentFanId.startsWith("pseudo:")}
+                    aria-label="Ouvrir la fiche fan"
                     className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{
                       background: "rgba(201,168,76,0.1)",
@@ -1005,7 +1030,7 @@ function MessagingPageInner() {
                       border: "1px solid rgba(201,168,76,0.25)",
                     }}
                   >
-                    <BookUser className="w-3 h-3" />
+                    <BookUser className="w-3 h-3" aria-hidden />
                     <span className="hidden sm:inline">Fiche fan</span>
                   </button>
                 </div>

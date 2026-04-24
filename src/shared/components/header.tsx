@@ -76,7 +76,8 @@ export function Header() {
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const replyInputRef = useRef<HTMLInputElement>(null);
+  // NB 2026-04-24 Bug #7 : composer passe en <textarea> multi-line
+  const replyInputRef = useRef<HTMLTextAreaElement>(null);
   const [pendingOrders, setPendingOrders] = useState<{ id: string; pseudo: string; content: string; created_at: string }[]>([]);
   const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
 
@@ -414,13 +415,18 @@ export function Header() {
           <div className="w-2 h-2 rounded-full shrink-0"
             style={{ background: modelInfo?.online ? "#10B981" : "#EF4444",
               boxShadow: modelInfo?.online ? "0 0 6px rgba(16,185,129,0.4)" : "none" }} />
-          {!auth || auth.role === "root" ? (
+          {/* NB 2026-04-24 Bug #1 : tant que ModelProvider n'a pas hydraté la session
+              (ready=false), on affiche systématiquement le RootCpSelector pour
+              matcher le markup SSR (où auth est toujours null). Évite React #418
+              en prod minifiée où un flip SSR→CSR changerait <RootCpSelector>
+              vs <span>. Le switch réel se produit après ready=true (re-render). */}
+          {!ready || !auth || auth.role === "root" ? (
             <RootCpSelector
               variant="inline"
               fallbackLabel="ROOT"
             />
           ) : (
-            <span className="text-xs font-bold truncate" style={{ color: "var(--text)" }}>
+            <span className="text-xs font-bold truncate" style={{ color: "var(--text)" }} suppressHydrationWarning>
               {modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase() || "ROOT"}
             </span>
           )}

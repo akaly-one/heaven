@@ -214,8 +214,27 @@ export async function POST(req: NextRequest) {
     }
 
     if (!isValidModelSlug(model) || !client_id || !sender_type || !content) {
+      // NB 2026-04-24 Bug #3 : log structuré pour diagnostiquer 400 côté Chrome
+      // Ext (ex : visiteur-b0b0 → client envoyait fan_id="pseudo:xxx" au lieu de
+      // client_id UUID réel). Pas de secrets dans le log.
+      console.warn("[POST /api/messages] 400 validation failed:", {
+        received_keys: Object.keys(body || {}),
+        model_valid: isValidModelSlug(model),
+        has_client_id: !!client_id,
+        client_id_looks_pseudo: typeof client_id === "string" && client_id.startsWith("pseudo:"),
+        has_sender_type: !!sender_type,
+        has_content: !!content,
+      });
       return NextResponse.json({ error: "model, client_id, sender_type, content requis" }, { status: 400, headers: cors });
     }
+
+    // NB 2026-04-24 Bug #3 : rejeter proprement les fan_id pseudo envoyés comme
+    // client_id. Le client web devrait d'abord convertir via /api/clients (upgrade).
+    if (typeof client_id === "string" && client_id.startsWith("pseudo:")) {
+      console.warn("[POST /api/messages] 400 pseudo-fan client_id:", { suffix_len: client_id.length });
+      return NextResponse.json({ error: "client_id invalide (pseudo-fan non upgradé)" }, { status: 400, headers: cors });
+    }
+
     const normalizedModel = toModelId(model);
 
     if (sender_type === "client") {
