@@ -193,14 +193,29 @@ Fichier `plans/PMO/daily/YYYY-MM-DD.md` mis à jour en fin de chaque séance :
 
 ---
 
-## 7. Décisions bloquantes en attente NB
+## 7. Décisions bloquantes — ACTÉES par NB (2026-04-24 ~15:00)
 
-Avant GO Phase 1, clarifier :
+| # | Décision | Réponse NB | Impact sur plan |
+|---|---|---|---|
+| 1 | Audit inclut `docs/` racine ? | ✅ **OUI** + rappel règle existante : `docs/` = fichiers user uniquement, rien de dev dedans | S01 audite `docs/`. S07 migre tout contenu dev vers `plans/` ou racine. Règle sauvée en memory `feedback_docs_folder_user_only.md`. |
+| 2 | `ACCESS-HEAVEN-OS.md` contient credentials ? | ✅ **OUI, à sécuriser** — règle établie : credentials jamais mélangés au repo publié, seuls NB + Claude local ont accès dev | S07 vérifie contenu → si credentials, migration vers `/Users/aka/Documents/AI-LAB/personal-nb/` (hors git). Règle sauvée en memory `feedback_credentials_never_in_repo.md`. |
+| 3 | Validation Phase 2 par étape ou bloc final ? | ✅ **ÉTAPE PAR ÉTAPE** — NB veut affiner, être méticuleux, guider | Plan Phase 2 révisé : validation NB après CHAQUE ticket (M01, M02, M03, M04, M05, M06, M07). Pas de merge ticket N+1 avant GO NB sur N. Screenshots / diff à chaque étape. |
+| 4 | Parallélisation multi-agent OK ? | ✅ **OUI** — condition : tout méticuleusement orchestré, planifié, suivre feuille de route | Parallélisation autorisée sur tickets indépendants, MAIS : (a) chaque ticket a son périmètre exact écrit avant dispatch, (b) aucun chevauchement de fichiers, (c) sync vers ROADMAP-MASTER après chaque merge, (d) QA review croisée obligatoire. |
 
-1. ☐ **Périmètre audit S01** : inclut `docs/` racine (4 fichiers) ? [Recommandé : oui]
-2. ☐ **`docs/ACCESS-HEAVEN-OS.md`** : contient-il des credentials sensibles ? [Action conditionnelle : migration hors repo si oui]
-3. ☐ **Livraison messenger (Phase 2)** : NB valide en 1 bloc à la fin ou après chaque M0X ? [Recommandé : bloc final avec screenshots 3 vues]
-4. ☐ **Parallélisation Phase 2/3** : OK pour dispatcher 4-5 sous-agents simultanément ? [Recommandé : oui, règle `dispatching-parallel-agents`]
+---
+
+## 7.bis Impact sur l'ordonnancement
+
+**Phase 2 révisée — validation ticket par ticket** :
+
+```
+S03-messenger → GO NB → M01 → GO NB → M02 → GO NB → M03 → GO NB
+             → M04 → GO NB → M05 → GO NB → M06 → GO NB → M07 → GO NB → DONE
+```
+
+Parallélisation limitée en Phase 2 aux tickets que NB valide AU MÊME MOMENT (ex: si NB GO sur M03/M04/M05 en bloc après M01 et M02 livrés). Par défaut : séquentiel avec validation chaque step.
+
+**Phase 3 parallèle** conservée : 5 CONTEXT.md peuvent être produits simultanément car NB validera le lot (5 fichiers semblables de structure identique, peu de décisions individuelles).
 
 ---
 

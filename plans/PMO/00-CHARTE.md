@@ -84,8 +84,12 @@ NB: validation livrable
 - [ ] `npm run build` passe
 - [ ] Changelog module + CHANGELOG.md mis à jour si feature user-visible
 - [ ] Review QA croisée (agent ≠ auteur)
-- [ ] Aucun secret commité, `.env.example` à jour
+- [ ] Aucun secret commité, `.env.example` à jour, credentials sensibles hors repo (règle `feedback_credentials_never_in_repo`)
 - [ ] Rapport horodaté dans `plans/_reports/` (si scope ≥ M)
+- [ ] **ROADMAP-MASTER.md mis à jour** (case cochée) — règle auto-update
+- [ ] **Module CONTEXT.md à jour** (section État) si le ticket change l'état d'un module
+- [ ] **BRIEFS-REGISTRY.md mis à jour** (statut brief parent progressé)
+- [ ] **Validation NB explicite** si le mode de travail en cours est "ticket par ticket" (cf. décisions plan global actif)
 
 ---
 
@@ -96,7 +100,17 @@ NB: validation livrable
 | **Intake** | À chaque demande NB | Brief daté | `PMO/briefs/BRIEF-YYYY-MM-DD-##-<slug>.md` |
 | **Consolidation** | Quand NB signale fin d'un cycle briefs | Plan global + tickets | `PMO/03-TICKETS-REGISTRY.md` + `PMO/plan-global-v{N}.md` |
 | **Exécution phase** | Déclenchement par GO NB | Rapport fin phase | `plans/_reports/UPDATE-REPORT-*.md` |
+| **Auto-update post-ticket** | Après CHAQUE ticket livré | 4 fichiers mis à jour (ROADMAP-MASTER, module CHANGELOG, module CONTEXT, BRIEFS-REGISTRY) | Cf. `04-AUTO-UPDATE-PROTOCOL.md` (à créer TICKET-S05) |
 | **Sync NB (fin de session)** | Fin conversation | Synthèse + next steps | Message conversationnel |
+
+## 6.bis Mode de travail actif
+
+Le mode de travail est défini dans le `plan-global-v{N}.md` actif. 2 modes principaux :
+
+- **Mode validation par étape** : chaque ticket livré requiert GO NB explicite avant le ticket suivant. Utilisé quand NB veut affiner/guider/rester méticuleux. Parallélisation limitée aux tickets validés simultanément.
+- **Mode validation par phase** : les tickets d'une phase s'enchaînent, NB valide en bloc en fin de phase. Utilisé quand les tickets sont fortement similaires (ex: rollout templates) et peu de décisions individuelles attendues.
+
+Le CDP identifie le mode actif au début de chaque phase et communique à NB ses attentes (fréquence validations, points de contrôle).
 
 ---
 
