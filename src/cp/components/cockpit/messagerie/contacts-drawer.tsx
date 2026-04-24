@@ -16,9 +16,18 @@ import {
   Tag,
   Sparkles,
   Package,
+  MessageCircle,
+  Info,
+  HelpCircle,
+  ShieldCheck,
+  ShieldAlert,
+  ShieldQuestion,
 } from "lucide-react";
 // BRIEF-10 AG06/AG10 — section certification âge + validation handle admin
-import { AgeCertificationSection } from "./age-certification-section";
+// BRIEF-15 Lot C — section enrichie avec copy link/code + mark-sent
+import { ValidationSection } from "./validation-section";
+// BRIEF-15 Lot B — standard d'affichage partagé (pseudo-fan support)
+import { getConversationPseudo } from "@/lib/messaging/conversation-display";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -62,6 +71,10 @@ export interface FanDrawerData {
     price_eur?: number | null;
     created_at: string;
   }>;
+  // BRIEF-15 Lot B — compteur messages (renseigné par /clients/[id]). Absent sur /fans/[id].
+  message_count?: number;
+  // BRIEF-15 Lot B — flag pseudo-fan (visiteur éphémère sans agence_fans row).
+  is_pseudo_fan?: boolean;
 }
 
 interface ContactsDrawerProps {
@@ -80,12 +93,80 @@ interface MergeCandidate {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// BRIEF-15 Lot B — délègue au helper partagé (source unique header / messagerie / drawer).
+// Garantit qu'un fan éphémère ("pseudo:...") reçoit un pseudo `visiteur-xxxx` cohérent.
 function primaryHandle(fan: FanDrawerData["fan"]): string {
-  if (fan.pseudo_insta) return `@${fan.pseudo_insta}`;
-  if (fan.pseudo_web) return fan.pseudo_web;
-  if (fan.pseudo_snap) return fan.pseudo_snap;
-  if (fan.fanvue_handle) return fan.fanvue_handle;
-  return fan.id.slice(0, 8);
+  return getConversationPseudo({
+    fan_id: fan.id,
+    pseudo_insta: fan.pseudo_insta,
+    pseudo_snap: fan.pseudo_snap,
+    pseudo_web: fan.pseudo_web,
+    fanvue_handle: fan.fanvue_handle,
+  });
+}
+
+// BRIEF-15 Lot B — metadata access level badge (cohérent avec tiers.ts §AG07).
+interface AccessLevelMeta {
+  label: string;
+  color: string;
+  bg: string;
+  border: string;
+  Icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+}
+
+const ACCESS_LEVEL_META: Record<string, AccessLevelMeta> = {
+  anonymous: {
+    label: "Anonyme",
+    color: "#9CA3AF",
+    bg: "rgba(107,114,128,0.12)",
+    border: "rgba(107,114,128,0.28)",
+    Icon: ShieldQuestion,
+  },
+  major_visitor: {
+    label: "18+ certifié",
+    color: "#E6C974",
+    bg: "rgba(201,168,76,0.12)",
+    border: "rgba(201,168,76,0.28)",
+    Icon: ShieldCheck,
+  },
+  pending_upgrade: {
+    label: "En attente validation",
+    color: "#F59E0B",
+    bg: "rgba(245,158,11,0.12)",
+    border: "rgba(245,158,11,0.28)",
+    Icon: ShieldAlert,
+  },
+  validated: {
+    label: "Handle validé",
+    color: "#10B981",
+    bg: "rgba(16,185,129,0.12)",
+    border: "rgba(16,185,129,0.28)",
+    Icon: ShieldCheck,
+  },
+  rejected: {
+    label: "Rejeté",
+    color: "#F87171",
+    bg: "rgba(220,38,38,0.12)",
+    border: "rgba(220,38,38,0.28)",
+    Icon: ShieldAlert,
+  },
+};
+
+function getAccessMeta(level: string | null | undefined): AccessLevelMeta {
+  if (!level) return ACCESS_LEVEL_META.anonymous;
+  return ACCESS_LEVEL_META[level] || ACCESS_LEVEL_META.anonymous;
+}
+
+// BRIEF-15 Lot B — détecte les plateformes présentes sur le fan.
+type DrawerPlatform = "web" | "insta" | "snap" | "fanvue";
+function detectPlatforms(fan: FanDrawerData["fan"]): DrawerPlatform[] {
+  const out: DrawerPlatform[] = [];
+  if (fan.pseudo_insta) out.push("insta");
+  if (fan.pseudo_snap && !/^(visiteur|guest)/i.test(fan.pseudo_snap)) out.push("snap");
+  if (fan.pseudo_web) out.push("web");
+  if (fan.fanvue_handle) out.push("fanvue");
+  if (out.length === 0) out.push("web");
+  return out;
 }
 
 function formatDate(iso: string | null | undefined): string {
@@ -417,15 +498,19 @@ export function ContactsDrawer({ fanId, open, onClose }: ContactsDrawerProps) {
       setData(null);
       return;
     }
-    // Pseudo-fan ids ("pseudo:...") are not real DB rows — skip fetch.
-    if (fanId.startsWith("pseudo:")) {
-      setData(null);
-      setError("Fan éphémère — aucune fiche consolidée disponible");
-      return;
-    }
     setLoading(true);
     setError(null);
-    fetch(`/api/agence/fans/${fanId}`)
+    // BRIEF-15 Lot B — branchement pseudo-fan vs vrai fan.
+    //  - Pseudo-fan ("pseudo:<client_id>") → /api/agence/clients/<client_id>
+    //    (route créée BRIEF-15 Lot B — shape identique à FanDrawerData).
+    //  - Fan réel (UUID agence_fans)      → /api/agence/fans/<fan_id>
+    const isPseudo = fanId.startsWith("pseudo:");
+    const clientIdFromPseudo = isPseudo ? fanId.slice("pseudo:".length) : null;
+    const url = isPseudo && clientIdFromPseudo
+      ? `/api/agence/clients/${clientIdFromPseudo}`
+      : `/api/agence/fans/${fanId}`;
+
+    fetch(url)
       .then(async (r) => {
         if (!r.ok) {
           if (r.status === 404) throw new Error("Fan introuvable");
@@ -433,7 +518,7 @@ export function ContactsDrawer({ fanId, open, onClose }: ContactsDrawerProps) {
         }
         return r.json();
       })
-      .then((j) => {
+      .then((j: FanDrawerData) => {
         setData(j);
       })
       .catch((err) => {
@@ -643,12 +728,12 @@ export function ContactsDrawer({ fanId, open, onClose }: ContactsDrawerProps) {
                 </div>
               </section>
 
-              {/* BRIEF-10 AG06/AG10 — Certification majorité + validation handle */}
+              {/* BRIEF-10 AG06/AG10 + BRIEF-15 Lot C — Certification + validation handle (copy link/code) */}
               {data.linked_clients.length > 0 && (
                 <>
                   {data.linked_clients.map((c) => (
-                    <AgeCertificationSection
-                      key={`agc-${c.id}`}
+                    <ValidationSection
+                      key={`val-${c.id}`}
                       client={{
                         id: c.id,
                         age_certified: c.age_certified ?? null,

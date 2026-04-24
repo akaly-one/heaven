@@ -273,11 +273,11 @@ function MessagingPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceFilter]);
 
-  // NB 2026-04-24 Bug #2 : polling UNIQUE 30s messagerie (désaligné du header 15s
-  // pour réduire bursts simultanés). Header: 15s. Messagerie: 30s. Focus/visibility
-  // triggers instantanés ne font pas doublon car fetch est abort-able.
-  // Ancien comportement = 2 pollers parallèles 15s + header 15s = 3+ inbox calls/15s
-  // → rate limit + 503 intermittent observé en prod (Chrome Ext monitoring).
+  // NB 2026-04-24 BRIEF-15 Lot C : polling 10s messagerie pour sync pseudo
+  // upgrade ultra-réactif (passage anonymous→pending_upgrade visible <10s).
+  // Header: 15s. Messagerie: 10s. Focus/visibility triggers instantanés ne
+  // font pas doublon car fetch est abort-able. Event `heaven:client-handle-updated`
+  // dispatché par ValidationSection rafraîchit instantanément sans attendre poll.
   useEffect(() => {
     const poll = () => {
       if (!document.hidden) {
@@ -285,7 +285,7 @@ function MessagingPageInner() {
         if (currentFanId) loadThread(currentFanId);
       }
     };
-    const iv = setInterval(poll, 30000);
+    const iv = setInterval(poll, 10000);
     const onFocus = () => poll();
     const onVis = () => { if (!document.hidden) poll(); };
     window.addEventListener("focus", onFocus);
