@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Ghost, Instagram, KeyRound, X } from "lucide-react";
+import { Ghost, Instagram, KeyRound, Shield, X } from "lucide-react";
 
 type Platform = "snap" | "insta" | "phone" | "pseudo";
 
@@ -239,21 +239,19 @@ export function IdentityGate({ slug, modelName, onRegistered, onAdminRequest, on
         </p>
 
         {onAdminRequest && (
-          <>
-            <div className="mt-5 mb-3 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+          <div className="mt-5 flex justify-center">
+            {/* NB 2026-04-25 : bouton bouclier discret (remplace texte "Accès admin") */}
             <button
               type="button"
               onClick={onAdminRequest}
-              className="w-full py-2 rounded-lg text-[11px] font-medium uppercase tracking-wider transition-all hover:brightness-125"
-              style={{
-                background: "rgba(255,255,255,0.03)",
-                color: "rgba(255,255,255,0.45)",
-                border: "1px solid rgba(255,255,255,0.05)",
-              }}
+              aria-label="Accès admin"
+              title="Accès admin"
+              className="p-2 rounded-full transition-all hover:opacity-100 hover:scale-110 active:scale-95"
+              style={{ color: "rgba(255,255,255,0.25)" }}
             >
-              Accès admin
+              <Shield className="w-4 h-4" />
             </button>
-          </>
+          </div>
         )}
       </div>
     </div>
