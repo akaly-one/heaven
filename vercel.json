@@ -16,6 +16,10 @@
     {
       "path": "/api/cron/process-ig-replies",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/expire-verifications",
+      "schedule": "0 2 * * *"
     }
   ]
 }

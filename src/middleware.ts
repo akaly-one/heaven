@@ -65,6 +65,9 @@ const SELF_AUTHED_PREFIXES = [
   // Portal routes (token-gated, no JWT) — release form pre-fill, contracts, onboarding.
   // Each route verifies a one-shot token against `agence_portal_tokens`.
   "/api/portal",
+  // Cron routes — Vercel cron sends x-vercel-cron header OR Bearer CRON_SECRET
+  // auth is verified inside each route (BRIEF-15 expire-verifications + existing crons).
+  "/api/cron",
 ];
 
 function isPublicRoute(pathname: string, method: string): boolean {
