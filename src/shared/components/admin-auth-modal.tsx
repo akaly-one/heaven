@@ -95,11 +95,7 @@ export function AdminAuthModal({ onClose }: AdminAuthModalProps) {
           </h2>
         </div>
 
-        <p className="text-center text-[10px] mb-5" style={{ color: "rgba(255,255,255,0.3)" }}>
-          Accès cockpit modèle
-        </p>
-
-        <div className="relative mb-4">
+        <div className="relative mb-4 mt-5">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: "rgba(255,255,255,0.2)" }}>
             @
           </span>
