@@ -174,6 +174,12 @@ function MessagingPageInner() {
 
   const listAbortRef = useRef<AbortController | null>(null);
   const threadAbortRef = useRef<AbortController | null>(null);
+  // NB 2026-04-24 BRIEF-15 Bug #2 : auto-scroll bottom du thread messagerie
+  // (iMessage-like). prevFanIdRef détecte changement de conversation pour forcer
+  // le scroll bottom même si user était scrollé en haut dans la précédente.
+  const threadContainerRef = useRef<HTMLDivElement | null>(null);
+  const prevFanIdRef = useRef<string | null>(null);
+  const prevMessagesLenRef = useRef<number>(0);
 
   // Load inbox (conversations + optional thread)
   const loadInbox = async (fanId?: string | null, filter?: SourceFilter) => {
@@ -360,6 +366,42 @@ function MessagingPageInner() {
       })
       .catch(() => {});
   }, [auth?.display_name, auth?.model_slug, currentModel]);
+
+  // NB 2026-04-24 BRIEF-15 Bug #2 : auto-scroll bottom du thread
+  // - À l'ouverture d'une conversation (currentFanId change) → force scroll bottom
+  // - À l'arrivée d'un nouveau message (messages.length augmente) → scroll bottom
+  //   seulement si user était déjà en bas (préserve lecture historique scrollée haut)
+  // - requestAnimationFrame pour attendre le render de FanTimeline avant de scroller
+  useEffect(() => {
+    const container = threadContainerRef.current;
+    if (!container) {
+      prevFanIdRef.current = currentFanId;
+      prevMessagesLenRef.current = messages.length;
+      return;
+    }
+
+    const fanChanged = prevFanIdRef.current !== currentFanId;
+    const messagesGrew = messages.length > prevMessagesLenRef.current;
+
+    // Détecte si user était en bas avant le nouveau render
+    const wasAtBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+
+    if (fanChanged || (messagesGrew && wasAtBottom)) {
+      // requestAnimationFrame pour attendre le render des messages par FanTimeline.
+      // Double rAF : 1er tick = layout recalculé, 2e tick = scroll appliqué après
+      // que le DOM ait stabilisé la hauteur finale (images/avatars/emoji).
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const c = threadContainerRef.current;
+          if (c) c.scrollTop = c.scrollHeight;
+        });
+      });
+    }
+
+    prevFanIdRef.current = currentFanId;
+    prevMessagesLenRef.current = messages.length;
+  }, [currentFanId, messages.length]);
 
   // Search + ordering
   const filteredConversations = useMemo(() => {
@@ -548,7 +590,7 @@ function MessagingPageInner() {
                 className="text-sm font-bold leading-tight truncate"
                 style={{ color: "var(--text)" }}
               >
-                {view === "agent-ia" ? "Agent IA" : "Messagerie unifiée"}
+                {view === "agent-ia" ? "Agent IA" : "Messenger"}
               </h1>
               <p
                 className="text-[10px] truncate"
@@ -1061,6 +1103,7 @@ function MessagingPageInner() {
 
                 {/* Thread body */}
                 <div
+                  ref={threadContainerRef}
                   className="flex-1 overflow-y-auto px-4 md:px-6 py-4"
                   style={{ background: "var(--bg)" }}
                 >
