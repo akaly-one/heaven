@@ -22,6 +22,8 @@ export function IdentityGate({ slug, modelName, onRegistered, onAdminRequest, on
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"handle" | "code">("handle");
+  // NB 2026-04-25 ~00:15 : hover tab → tagline remplace le titre modelName au-dessus
+  const [hoveredTab, setHoveredTab] = useState<"snap" | "code" | "insta" | null>(null);
 
   // Auto-dismiss returning visitors
   useEffect(() => {
@@ -143,16 +145,48 @@ export function IdentityGate({ slug, modelName, onRegistered, onAdminRequest, on
           </button>
         )}
 
-        {/* Model name */}
-        <h2 className="text-center text-lg font-medium uppercase tracking-[0.2em] mb-6"
-          style={{ color: "#fff" }}>
-          {modelName || "Heaven"}
-        </h2>
+        {/* Model name OR tagline au hover d'un tab (NB 2026-04-25) */}
+        <div className="mb-6 h-14 flex items-center justify-center px-2">
+          {hoveredTab === "snap" && (
+            <p className="text-center text-[11px] leading-relaxed animate-[fadeIn_0.2s_ease]" style={{ color: accentSnap }}>
+              <span className="block font-semibold tracking-[0.15em] uppercase mb-1" style={{ color: accentSnap }}>Snap · Cercle Intime</span>
+              <span style={{ color: "rgba(255,255,255,0.55)" }}>Stories privées · Contenu exclusif · Échanges directs</span>
+            </p>
+          )}
+          {hoveredTab === "code" && (
+            <p className="text-center text-[11px] leading-relaxed animate-[fadeIn_0.2s_ease]" style={{ color: accentCode }}>
+              <span className="block font-semibold tracking-[0.15em] uppercase mb-1" style={{ color: accentCode }}>Code · Accès Premium</span>
+              <span style={{ color: "rgba(255,255,255,0.55)" }}>Déverrouille tes packs & stories VIP</span>
+            </p>
+          )}
+          {hoveredTab === "insta" && (
+            <p className="text-center text-[11px] leading-relaxed animate-[fadeIn_0.2s_ease]" style={{ color: accentInsta }}>
+              <span className="block font-semibold tracking-[0.15em] uppercase mb-1" style={{ color: accentInsta }}>Instagram · Backstage</span>
+              <span style={{ color: "rgba(255,255,255,0.55)" }}>Actualités · Nouveaux shootings · Offres exclusives</span>
+            </p>
+          )}
+          {!hoveredTab && (
+            <h2 className="text-center text-lg font-medium uppercase tracking-[0.2em]" style={{ color: "#fff" }}>
+              {modelName || "Heaven"}
+            </h2>
+          )}
+        </div>
+
+        <style>{`
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-2px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
 
         {/* 3-way selector: Snap | Code | Insta */}
         <div className="flex gap-0 mb-5 rounded-xl overflow-hidden"
           style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
           <button onClick={() => { setMode("handle"); setPlatform("snap"); }}
+            onMouseEnter={() => setHoveredTab("snap")}
+            onMouseLeave={() => setHoveredTab(null)}
+            onFocus={() => setHoveredTab("snap")}
+            onBlur={() => setHoveredTab(null)}
             className="flex-1 py-2.5 flex items-center justify-center gap-1.5 text-[11px] font-semibold cursor-pointer transition-all"
             style={{
               background: mode === "handle" && platform === "snap" ? `${accentSnap}15` : "transparent",
@@ -163,6 +197,10 @@ export function IdentityGate({ slug, modelName, onRegistered, onAdminRequest, on
             Snap
           </button>
           <button onClick={() => setMode("code")}
+            onMouseEnter={() => setHoveredTab("code")}
+            onMouseLeave={() => setHoveredTab(null)}
+            onFocus={() => setHoveredTab("code")}
+            onBlur={() => setHoveredTab(null)}
             className="flex-1 py-2.5 flex items-center justify-center gap-1.5 text-[11px] font-semibold cursor-pointer transition-all"
             style={{
               background: mode === "code" ? `${accentCode}15` : "transparent",
@@ -173,6 +211,10 @@ export function IdentityGate({ slug, modelName, onRegistered, onAdminRequest, on
             Code
           </button>
           <button onClick={() => { setMode("handle"); setPlatform("insta"); }}
+            onMouseEnter={() => setHoveredTab("insta")}
+            onMouseLeave={() => setHoveredTab(null)}
+            onFocus={() => setHoveredTab("insta")}
+            onBlur={() => setHoveredTab(null)}
             className="flex-1 py-2.5 flex items-center justify-center gap-1.5 text-[11px] font-semibold cursor-pointer transition-all"
             style={{
               background: mode === "handle" && platform === "insta" ? `${accentInsta}15` : "transparent",
