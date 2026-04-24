@@ -99,17 +99,58 @@ export async function POST(req: NextRequest) {
       }
     }
     // Normalize pseudos to lowercase for consistent matching
-    const pseudo_snap = body.pseudo_snap ? body.pseudo_snap.trim().toLowerCase() : null;
-    const pseudo_insta = body.pseudo_insta ? body.pseudo_insta.trim().toLowerCase() : null;
+    let pseudo_snap = body.pseudo_snap ? body.pseudo_snap.trim().toLowerCase() : null;
+    let pseudo_insta = body.pseudo_insta ? body.pseudo_insta.trim().toLowerCase() : null;
     const phone = body.phone ? body.phone.trim() : null;
     const nickname = body.nickname ? body.nickname.trim().toLowerCase() : null;
     const lead_source = body.lead_source || null;
     const lead_hook = body.lead_hook || null;
+    const upgrade_guest_id: string | null = typeof body.upgrade_guest_id === "string"
+      ? body.upgrade_guest_id : null;
 
     if (!model || !isValidModelSlug(model)) return NextResponse.json({ error: "model invalide" }, { status: 400, headers: cors });
     const normalizedModel = toModelId(model);
+
+    // NB 2026-04-24 : auto-génération pseudo visiteur si lead_source='web_guest'
+    // sans pseudo fourni → "visiteur-042" (numéro séquentiel atomique par model)
+    if (lead_source === "web_guest" && !pseudo_snap && !pseudo_insta && !phone && !nickname) {
+      const sb = getServerSupabase();
+      if (sb) {
+        const { data: nextN } = await sb.rpc("next_visitor_number", {
+          p_model_id: normalizedModel,
+        });
+        const num = typeof nextN === "number" ? nextN : 1;
+        pseudo_snap = `visiteur-${String(num).padStart(3, "0")}`;
+      }
+    }
+
     if (!pseudo_snap && !pseudo_insta && !phone && !nickname) {
       return NextResponse.json({ error: "pseudo_snap, pseudo_insta, phone ou nickname requis" }, { status: 400, headers: cors });
+    }
+
+    // NB 2026-04-24 : upgrade guest → vérifié. Si upgrade_guest_id fourni, on
+    // UPDATE ce client (conservant l'historique messages) au lieu de créer.
+    if (upgrade_guest_id) {
+      const sb = getServerSupabase();
+      if (!sb) return NextResponse.json({ error: "DB non configuree" }, { status: 500, headers: cors });
+      const updates: Record<string, unknown> = {};
+      if (pseudo_snap) updates.pseudo_snap = pseudo_snap;
+      if (pseudo_insta) updates.pseudo_insta = pseudo_insta;
+      if (phone) updates.phone = phone;
+      if (nickname) updates.nickname = nickname;
+      if (lead_source) updates.lead_source = lead_source;
+      if (lead_hook) updates.lead_hook = lead_hook;
+      const { data: upgraded } = await sb
+        .from("agence_clients")
+        .update(updates)
+        .eq("id", upgrade_guest_id)
+        .eq("model", normalizedModel)
+        .select()
+        .maybeSingle();
+      if (upgraded) {
+        return NextResponse.json({ client: upgraded }, { headers: cors });
+      }
+      // Si update échoue (row pas trouvée) → fallthrough vers create normal
     }
 
     const supabase = getServerSupabase();

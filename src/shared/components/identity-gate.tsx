@@ -88,6 +88,13 @@ export function IdentityGate({ slug, modelName, onRegistered, onAdminRequest, on
       if (platform === "snap") payload.pseudo_snap = handle.trim().toLowerCase();
       else payload.pseudo_insta = handle.trim().toLowerCase();
 
+      // NB 2026-04-24 : upgrade guest → vérifié si sessionStorage a un guest_id
+      // pour ce slug (préserve historique messages du visiteur)
+      try {
+        const guestId = sessionStorage.getItem(`heaven_guest_${slug}`);
+        if (guestId) payload.upgrade_guest_id = guestId;
+      } catch { /* noop */ }
+
       const res = await fetch("/api/clients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -97,6 +104,8 @@ export function IdentityGate({ slug, modelName, onRegistered, onAdminRequest, on
       const client = data.client || data;
 
       sessionStorage.setItem(`heaven_client_${slug}`, JSON.stringify(client));
+      // Nettoyer le marqueur guest — maintenant remplacé par le client vérifié
+      try { sessionStorage.removeItem(`heaven_guest_${slug}`); } catch { /* noop */ }
       onRegistered(client, platform, handle.trim());
     } catch {
       setError("Erreur de connexion");

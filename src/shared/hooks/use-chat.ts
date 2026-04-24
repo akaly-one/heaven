@@ -55,13 +55,13 @@ export function useChat({ slug, clientId, model }: UseChatParams): UseChatReturn
   const ensureClientId = useCallback(async (): Promise<string | null> => {
     if (clientId) return clientId;
     if (guestClientId) return guestClientId;
-    // Création à la volée d'un guest
-    const guestPseudo = `guest-${Date.now().toString(36).slice(-6)}${Math.random().toString(36).slice(2, 6)}`;
+    // NB 2026-04-24 : backend auto-génère pseudo "visiteur-NNN" (RPC séquentiel).
+    // Le pseudo sera remplacé par le vrai IG/snap si le visiteur se vérifie via IdentityGate.
     try {
       const r = await fetch("/api/clients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: slug, pseudo_snap: guestPseudo, lead_source: "web_guest" }),
+        body: JSON.stringify({ model: slug, lead_source: "web_guest" }),
       });
       if (!r.ok) return null;
       const d = await r.json();
