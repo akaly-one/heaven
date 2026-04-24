@@ -40,6 +40,26 @@
 
 **Sanction** : un livrable produit sans dispatch ou sans découpe full-stack cohérente = refus CDP + redémarrage du ticket.
 
+### 1.4 Workflow phase standard obligatoire (NB 2026-04-24)
+
+**Chaque ticket ou phase passe OBLIGATOIREMENT par 4 étapes séquentielles** (standard agence dev) :
+
+| Étape | Rôle | Agent type | Livrable |
+|---|---|---|---|
+| **1. DEV** | Produit le code / doc / migration | Spécialiste domaine (FE/BE/DB/AI/Doc/Legal) | Fichiers créés/modifiés, tests basiques (tsc, build) |
+| **2. DEBUG** | Lit le livrable DEV, teste, identifie bugs | QA + agent différent du DEV | Rapport bugs/observations structuré |
+| **3. CORRECTIF** | Applique les fixes issus de DEBUG | Agent DEV initial OU spécialiste bug | Patchs appliqués, DEBUG rejoué pour confirmer |
+| **4. OPTIMISATION** | Revue performances, standards, cohérence design system | Senior-frontend / Senior-backend / code-review | Optimisations appliquées, metrics before/after si perf |
+
+**Règles d'application** :
+- **Étape 2-3 (DEBUG + CORRECTIF)** : systématique après chaque ticket, **avant validation NB**
+- **Étape 4 (OPTIMISATION)** : appliquée **en fin de phase** (batch sur tous livrables de la phase), PAS après chaque ticket individuel (overhead inutile sur micro-tickets)
+- **Timing CDP** : le CDP juge quand OPTIMISATION est pertinent vs quand skip (ex : hotfix <20L = skip OPTIMISATION, feature UI complexe = OPTIMISATION obligatoire)
+- **Aucun livrable n'est commit + push + validated NB sans avoir traversé au minimum DEV + DEBUG + CORRECTIF**
+- **Documentation systématique** dans le rapport horodaté `plans/_reports/UPDATE-REPORT-*.md` : qui a fait DEV, qui DEBUG, quels bugs trouvés, quels fixes, quelles optim
+
+**Sanction** : un ticket livré sans DEBUG documenté = refus CDP + cycle DEBUG+CORRECTIF appliqué rétroactivement.
+
 ---
 
 ## 2. L'équipe — 7 branches d'exécution
