@@ -120,8 +120,12 @@ Tickets (10 total) — tous pending :
 - [ ] ML01 à ML10
 
 ### BRIEF-13 — Unification Clients & Codes + Self-verification (P1)
-Tickets (20 total) — tous pending :
-- [ ] UV01 à UV20
+Tickets (20 total) — 4 livrés Phase 2.2 :
+- [x] UV01 — Migration 069 + 070 tables (livré Phase 2.2)
+- [x] UV02 — Trigger auto-create verification (livré Phase 2.2)
+- [x] UV03 — Helper crypto + generateVerification service (livré Phase 2.2)
+- [x] UV04 — Routes API /api/agence/clients/[id]/verification/* (livré Phase 2.2)
+- [ ] UV05 à UV20
 
 ---
 

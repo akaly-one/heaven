@@ -1,5 +1,65 @@
 # Messagerie + Contacts — Changelog
 
+## 2026-04-24 (v3 — Phase 2.2) — BRIEF-13 tickets UV01 + UV02 + UV03 + UV04 livrés
+
+> Auteur : Agent DEV Phase 2 #2 · Tickets : UV01 + UV02 + UV03 + UV04 · Brief parent : [BRIEF-2026-04-24-13](../../PMO/briefs/) (Unification Clients & Codes + Self-verification)
+
+### Infrastructure self-verification IP-matched
+
+Base de données + service layer prêts pour le flow : visiteur fournit un pseudo Snap/Insta → admin génère un lien + code 6 chiffres → admin envoie manuellement via le vrai canal (Snap/IG) → fan clique depuis la même IP /24 → auto-validé.
+
+### UV01 — Migration 069 + 070 (DB)
+
+- **`supabase/migrations/069_agence_client_verifications.sql`** — Nouvelle table `agence_client_verifications` (24 colonnes avec `created_at/updated_at`, 4 index spécifiques + pkey + unique token, RLS service_role-safe, CHECK constraints sur `target_platform`, `sent_via_platform`, `validation_method`, `ip_match_type`, `status`).
+- **`supabase/migrations/070_agence_clients_verified_fields.sql`** — Extension `agence_clients` avec 3 colonnes (`verified_handle`, `verified_platform`, `verified_via_verification_id` FK). Backfill safe : 4 clients déjà `access_level='validated'` ont reçu leur `verified_handle` depuis `pseudo_insta` (priorité) ou `pseudo_snap` non-anonyme.
+- Appliquées en prod Supabase `tbvojfjfgmjiwitiudbn` via MCP `apply_migration`.
+
+### UV02 — Trigger auto-create verification
+
+Inclus dans migration 070 : fonction PL/pgSQL `auto_create_verification_on_handle_add()` + trigger `trg_auto_verif_handle` AFTER INSERT OR UPDATE OF pseudo_snap, pseudo_insta. Dès qu'un handle Snap (non-anon) ou Insta est ajouté sur un client `access_level != 'validated'`, une row `agence_client_verifications` pending est créée automatiquement (token hex 32 chars via `gen_random_bytes(16)`, code 6 chiffres, TTL 72h). Testé live : UPDATE `pseudo_insta` → row pending créée, token et code conformes.
+
+### UV03 — Helper crypto + service generate
+
+- **`src/shared/lib/verification/crypto.ts`** (73 lignes) — `hashIpSubnet()` (SHA256 subnet /24 IPv4 ou 3 premiers segments IPv6 + SALT, tronqué 16 chars), `hashUserAgent()` (browser + major version base), `compareIpLoose()`, `compareUaLoose()`, `getClientIp()` (x-forwarded-for > x-real-ip), `getUserAgent()`. RGPD : jamais stocker IP brute, seul le hash subnet est persisté.
+- **`src/shared/lib/verification/generate.ts`** (58 lignes) — `generateVerification({ clientId, handle, platform, adminCode, req })` → token `randomBytes(16).toString("hex")`, code `100000-999999`, TTL `Date.now() + 72h`, INSERT dans `agence_client_verifications` avec hashs IP/UA de l'admin qui génère, retourne `{ verification_id, token, code, link, expires_at }`. Env var `VERIFICATION_SALT` (fallback `"heaven-verif-default-salt-2026"` à surcharger en prod Vercel). Env var `NEXT_PUBLIC_SITE_URL` pour composer le lien (fallback `https://heaven-os.vercel.app`).
+
+### UV04 — Routes API
+
+- **`src/app/api/agence/clients/[id]/verification/generate/route.ts`** — POST, auth root/model (scope check model→client.model), input `{ platform: "snap"|"insta", handle? }`, lit `pseudo_{platform}` du client si `handle` absent, refuse pseudo anon (visiteur-/guest-), rate limit **5 verifs / client / 24h** via COUNT, appelle `generateVerification()`, retourne `VerificationGenerated`.
+- **`src/app/api/agence/clients/[id]/verification/[vid]/mark-sent/route.ts`** — POST, auth root/model (scope check), input `{ via: "snap"|"insta"|"manual" }`, UPDATE `agence_client_verifications` SET `status='sent', sent_by, sent_via_platform, sent_at=NOW()` WHERE `id=vid AND client_id=id AND status='pending'` (contrôle état). Retourne `{ ok, verification }`.
+
+### Fichiers touchés
+
+- `supabase/migrations/069_agence_client_verifications.sql` (créé, 57 lignes)
+- `supabase/migrations/070_agence_clients_verified_fields.sql` (créé, 83 lignes — migration + trigger UV02)
+- `src/shared/lib/verification/crypto.ts` (créé, 73 lignes)
+- `src/shared/lib/verification/generate.ts` (créé, 58 lignes)
+- `src/app/api/agence/clients/[id]/verification/generate/route.ts` (créé, 102 lignes)
+- `src/app/api/agence/clients/[id]/verification/[vid]/mark-sent/route.ts` (créé, 82 lignes)
+- `plans/PMO/03-ROADMAP-MASTER.md` (4 cases cochées UV01-UV04)
+- `plans/modules/messagerie-contacts/CHANGELOG.md` (cette entry v3)
+
+### Vérification
+
+- `npx tsc --noEmit` → **exit 0** (strict, sans `any`)
+- DB live : table `agence_client_verifications` créée (24 cols, 6 index, RLS ON policy `agence_client_verif_all`)
+- `agence_clients` : 3 colonnes ajoutées, **4 rows backfillées** avec `verified_handle`
+- Trigger testé en live (UPDATE `pseudo_insta` → row pending, token 32 chars, code 6 chiffres → rollback propre)
+
+### Contraintes NB respectées
+
+- Migrations **idempotentes** (IF NOT EXISTS / ON CONFLICT / IF NOT EXISTS partout)
+- **Jamais d'IP brute** stockée — seulement SHA256(subnet /24 + SALT) tronqué 16 chars
+- `VERIFICATION_SALT` jamais commité — env var avec fallback à surcharger en Vercel
+- **Zero `any`** dans le code TypeScript
+- Aucune régression : backfill préserve tous les `validated` existants
+
+### Prochains tickets (UV05+)
+
+Page `/verify/[token]`, API validate (IP match loose + UA fallback), UI admin fiche fan (bouton Générer + copier + Marquer envoyé + Révoquer), liste verifications pending, expiration cron, audit logs — à cadrer dans Phase 2.3 sur GO NB.
+
+---
+
 ## 2026-04-24 (v2 — Phase 1) — BRIEF-02 tickets M01 full + M02 livrés
 
 > Auteur : Agent DEV #2 · Tickets : M01 full + M02 · Brief parent : [BRIEF-2026-04-24-02](../../PMO/briefs/BRIEF-2026-04-24-02-messenger-ui-standards.md)
