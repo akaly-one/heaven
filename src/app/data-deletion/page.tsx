@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import PublicFooter from "@/components/public-footer";
 
 export const metadata: Metadata = {
   title: "Data Deletion Request — Yumi · Heaven",
@@ -7,7 +8,8 @@ export const metadata: Metadata = {
 
 export default function DataDeletionPage() {
   return (
-    <main className="max-w-2xl mx-auto px-5 py-10 md:py-16 text-neutral-200" style={{ background: "#0a0a0b", minHeight: "100vh" }}>
+    <div className="flex flex-col min-h-screen" style={{ background: "#0a0a0b" }}>
+      <main className="flex-1 max-w-2xl mx-auto w-full px-5 py-10 md:py-16 text-neutral-200">
       <div className="flex items-center gap-3 mb-8">
         <a href="/m/yumi" className="text-sm opacity-60 hover:opacity-100 no-underline" style={{ color: "#E84393" }}>← Yumi</a>
       </div>
@@ -86,9 +88,8 @@ Response (success):
 
       </section>
 
-      <footer className="pt-10 mt-10 border-t border-white/10 text-xs opacity-50">
-        © 2026 Yumi · Heaven. Content creator platform.
-      </footer>
-    </main>
+      </main>
+      <PublicFooter />
+    </div>
   );
 }

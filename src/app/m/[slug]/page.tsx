@@ -37,6 +37,7 @@ import { ShopTab } from "@/components/profile/shop-tab";
 import { StoryViewer } from "@/components/profile/story-viewer";
 import { PackDetailModal } from "@/components/profile/pack-detail-modal";
 import { ProfileStyles } from "@/components/profile/profile-styles";
+import PublicFooter from "@/components/public-footer";
 
 // ── CP-domain profile components (Phase 3 Agent 3.B) ──
 import { FeedItemCard } from "@cp/components/profile/feed-item-card";
@@ -694,6 +695,9 @@ export default function ModelPage() {
           </div>
         </div>
       )}
+
+      {/* ═══ PUBLIC FOOTER (BRIEF-10 AG03) ═══ */}
+      <PublicFooter />
     </div>
   );
 }
