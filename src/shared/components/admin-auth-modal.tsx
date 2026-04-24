@@ -100,14 +100,14 @@ export function AdminAuthModal({ onClose }: AdminAuthModalProps) {
         </p>
 
         <div className="relative mb-4">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm" style={{ color: "rgba(255,255,255,0.2)" }}>
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: "rgba(255,255,255,0.2)" }}>
             @
           </span>
           <input
             value={login}
             onChange={(e) => setLogin(e.target.value)}
             placeholder="identifiant"
-            className="w-full pl-9 pr-4 py-3 rounded-xl text-sm outline-none transition-all"
+            className="w-full px-9 py-3 rounded-xl text-sm text-center outline-none transition-all"
             style={{
               background: "rgba(255,255,255,0.05)",
               color: "#fff",

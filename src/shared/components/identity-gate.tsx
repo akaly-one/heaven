@@ -183,14 +183,14 @@ export function IdentityGate({ slug, modelName, onRegistered, onAdminRequest, on
           </button>
         </div>
 
-        {/* Input — handle or code */}
+        {/* Input — handle or code (centrés NB 2026-04-24) */}
         {mode === "handle" ? (
           <div className="relative mb-5">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm"
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm pointer-events-none"
               style={{ color: "rgba(255,255,255,0.2)" }}>@</span>
             <input value={handle} onChange={e => setHandle(e.target.value)}
               placeholder={platform === "snap" ? "ton pseudo snap" : "ton pseudo insta"}
-              className="w-full pl-9 pr-4 py-3 rounded-xl text-sm outline-none transition-all"
+              className="w-full px-9 py-3 rounded-xl text-sm text-center outline-none transition-all"
               style={{
                 background: "rgba(255,255,255,0.05)",
                 color: "#fff",
