@@ -154,10 +154,6 @@ export function AdminAuthModal({ onClose }: AdminAuthModalProps) {
         >
           {submitting ? "..." : "Connexion"}
         </button>
-
-        <p className="text-center text-[10px] mt-4" style={{ color: "rgba(255,255,255,0.18)" }}>
-          root · yumi · paloma · ruby
-        </p>
       </div>
     </div>
   );
