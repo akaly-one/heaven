@@ -1,5 +1,18 @@
 # CHANGELOG — Module AI Conversational Agent
 
+## [v2] — 2026-04-24 — Persona Yumi v2 (knowledge + anti-répétition)
+- Prompt enrichi ~2200 chars avec URLs plateformes + scripts
+- Règle fréquence endings max 1/3 messages
+- Pool endearments 7 options (vs 3 v1)
+- Cross-promote Snap/IG/Fanvue scripté
+- Section "Heaven web en développement"
+
+Migration : `supabase/migrations/061_persona_yumi_v2.sql`
+DB prod : v1 conservée `is_active=false` (traçabilité), v2 `is_active=true` provider `groq-direct-llama-3.3-70b`.
+Source brief : `plans/PMO/briefs/BRIEF-2026-04-24-08-persona-yumi-v2-knowledge-grounding.md`.
+
+---
+
 ## [v0.6.0] — 2026-04-24 (late morning) — 3 modes opérationnels + per-conversation override
 
 > Lien livraison globale Heaven v1.4.0 : [plans/_reports/UPDATE-REPORT-2026-04-24-1112-messagerie-copilot-per-conversation.md](../../_reports/UPDATE-REPORT-2026-04-24-1112-messagerie-copilot-per-conversation.md)
