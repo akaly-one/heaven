@@ -162,7 +162,7 @@ export function Sidebar() {
           </div>
           {!collapsed && (
             <span className="ml-2 text-[10px] font-bold tracking-widest" style={{ color: "var(--text-muted)" }}>
-              HEAVEN
+              {isRoot ? "ROOT" : (auth?.display_name?.toUpperCase() || "")}
             </span>
           )}
         </a>

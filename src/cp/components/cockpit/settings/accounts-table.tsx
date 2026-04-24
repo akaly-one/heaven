@@ -18,8 +18,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
-  Eye, EyeOff, RefreshCw, Check, X, AlertCircle, ShieldCheck, Shield,
-  Copy, Loader2, ChevronRight, Key, Power,
+  Eye, EyeOff, RefreshCw, Check, AlertCircle, ShieldCheck, Shield,
+  Copy, Loader2, Key, Power, ChevronDown, UserCog,
 } from "lucide-react";
 import {
   AccountModulesToggle,
@@ -56,10 +56,21 @@ export function AccountsTable({ isAgencyAdmin, authHeaders, onToast }: Props) {
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState<string | null>(null);
-  const [selected, setSelected] = useState<Account | null>(null);
   const [resetTarget, setResetTarget] = useState<Account | null>(null);
   const [newCodeReveal, setNewCodeReveal] = useState<{ display_name: string; code: string } | null>(null);
   const [resetting, setResetting] = useState(false);
+
+  // NB 2026-04-24 : chaque ligne compte = accordéon inline (pas modal drawer).
+  // expandedId = id du compte déplié (1 à la fois). editSubOpen = sous-accordéon
+  // "Modifier identifiant & mot de passe" à l'intérieur.
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editSubOpen, setEditSubOpen] = useState(false);
+  const [editUsername, setEditUsername] = useState("");
+  const [editNewPassword, setEditNewPassword] = useState("");
+  const [editShowPassword, setEditShowPassword] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+
+  const selected = expandedId ? accounts.find((a) => a.id === expandedId) ?? null : null;
 
   const fetchAccounts = useCallback(async () => {
     setLoading(true);
@@ -82,6 +93,17 @@ export function AccountsTable({ isAgencyAdmin, authHeaders, onToast }: Props) {
   useEffect(() => {
     fetchAccounts();
   }, [fetchAccounts]);
+
+  // Init edit fields quand un compte est sélectionné (déplié)
+  useEffect(() => {
+    if (selected) {
+      const firstAlias = selected.login_aliases?.[0] ?? "";
+      setEditUsername(firstAlias);
+      setEditNewPassword("");
+      setEditShowPassword(false);
+      setEditSubOpen(false);
+    }
+  }, [selected?.id]);
 
   const countEnabledModules = (mods: ActivableModules): number => {
     return MODULE_KEYS.reduce((n, k) => n + (mods?.[k]?.enabled ? 1 : 0), 0);
@@ -174,13 +196,82 @@ export function AccountsTable({ isAgencyAdmin, authHeaders, onToast }: Props) {
     }
   };
 
+  // Sauvegarde nom utilisateur (login_aliases) et/ou nouveau password
+  const handleSaveEdit = async () => {
+    if (!selected || !isAgencyAdmin) return;
+    const usernameTrimmed = editUsername.trim();
+    const passwordTrimmed = editNewPassword.trim();
+    const currentFirstAlias = selected.login_aliases?.[0] ?? "";
+    const usernameChanged = usernameTrimmed !== currentFirstAlias;
+    const passwordChanged = passwordTrimmed.length > 0;
+    if (!usernameChanged && !passwordChanged) {
+      onToast({ kind: "err", msg: "Rien à sauvegarder" });
+      return;
+    }
+    const regex = /^[a-zA-Z0-9_\-.]{4,32}$/;
+    if (usernameChanged && usernameTrimmed && !regex.test(usernameTrimmed)) {
+      onToast({ kind: "err", msg: "Nom utilisateur invalide : 4-32 chars, a-z 0-9 _ - ." });
+      return;
+    }
+    setEditSaving(true);
+    try {
+      // 1. Update login_aliases si changé (PATCH)
+      if (usernameChanged) {
+        const nextAliases = [...(selected.login_aliases ?? [])];
+        if (usernameTrimmed) {
+          nextAliases[0] = usernameTrimmed;
+        } else {
+          nextAliases.shift();
+        }
+        const r1 = await fetch("/api/agence/accounts", {
+          method: "PATCH",
+          headers: { ...(authHeaders() as Record<string, string>), "Content-Type": "application/json" },
+          body: JSON.stringify({ id: selected.id, login_aliases: nextAliases.filter(Boolean) }),
+        });
+        if (!r1.ok) {
+          const d = await r1.json().catch(() => ({}));
+          throw new Error(d.error || "Erreur nom utilisateur");
+        }
+      }
+      // 2. Update password custom si fourni (POST reset-code avec custom_code)
+      if (passwordChanged) {
+        let code = selected.code ?? revealedCodes[selected.id] ?? "";
+        if (!code) {
+          const rc = await fetch("/api/agence/accounts?with_code=true", { headers: authHeaders() });
+          const d = await rc.json();
+          const found = d.accounts?.find((a: Account) => a.id === selected.id);
+          if (!found?.code) throw new Error("Code introuvable pour cet account");
+          code = found.code;
+          setRevealedCodes((prev) => ({ ...prev, [selected.id]: code }));
+        }
+        const r2 = await fetch(`/api/agence/accounts/${code}/reset-code`, {
+          method: "POST",
+          headers: { ...(authHeaders() as Record<string, string>), "Content-Type": "application/json" },
+          body: JSON.stringify({ custom_code: passwordTrimmed }),
+        });
+        if (!r2.ok) {
+          const d = await r2.json().catch(() => ({}));
+          throw new Error(d.error || "Erreur mot de passe");
+        }
+      }
+      onToast({ kind: "ok", msg: "Compte enregistré" });
+      setEditNewPassword("");
+      setEditShowPassword(false);
+      setRevealedIds(new Set());
+      setRevealedCodes({});
+      await fetchAccounts();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Erreur inconnue";
+      onToast({ kind: "err", msg });
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   const handleModulesToggled = (accountId: string, nextMods: ActivableModules) => {
     setAccounts((prev) =>
       prev.map((a) => (a.id === accountId ? { ...a, activable_modules: nextMods } : a)),
     );
-    if (selected?.id === accountId) {
-      setSelected((s) => (s ? { ...s, activable_modules: nextMods } : s));
-    }
     onToast({ kind: "ok", msg: "Module mis à jour" });
   };
 
@@ -222,11 +313,13 @@ export function AccountsTable({ isAgencyAdmin, authHeaders, onToast }: Props) {
               const revealed = revealedIds.has(account.id);
               const displayCode = revealed ? revealedCodes[account.id] ?? "•••••••" : "••••••••";
 
+              const isExpanded = expandedId === account.id;
               return (
+                <div key={account.id}>
                 <div
-                  key={account.id}
                   className="px-4 py-3 flex items-center gap-3 hover:bg-white/[0.02] cursor-pointer transition-colors"
-                  onClick={() => setSelected(account)}
+                  onClick={() => setExpandedId(isExpanded ? null : account.id)}
+                  aria-expanded={isExpanded}
                 >
                   {/* Avatar role */}
                   <div
@@ -309,7 +402,7 @@ export function AccountsTable({ isAgencyAdmin, authHeaders, onToast }: Props) {
                     {account.active ? "ACTIF" : "OFF"}
                   </span>
 
-                  {/* Reset button + chevron */}
+                  {/* Reset button + chevron expand */}
                   {isAgencyAdmin && (
                     <button
                       onClick={(e) => { e.stopPropagation(); startReset(account); }}
@@ -320,104 +413,169 @@ export function AccountsTable({ isAgencyAdmin, authHeaders, onToast }: Props) {
                       <RefreshCw className="w-3 h-3" />
                     </button>
                   )}
-                  <ChevronRight className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--text-muted)" }} />
+                  <ChevronDown
+                    className="w-3.5 h-3.5 shrink-0 transition-transform"
+                    style={{ color: "var(--text-muted)", transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}
+                  />
+                </div>
+
+                {/* Accordéon inline — détails + édition quand expandedId match */}
+                {isExpanded && (
+                  <div
+                    className="px-4 py-4 space-y-4"
+                    style={{ background: "rgba(255,255,255,0.015)", borderTop: "1px solid var(--border2)" }}
+                  >
+                    {/* Sous-accordéon édition (admin only) */}
+                    {isAgencyAdmin && (
+                      <div className="rounded-xl overflow-hidden" style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.18)" }}>
+                        <button
+                          type="button"
+                          onClick={() => setEditSubOpen((v) => !v)}
+                          className="w-full px-3 py-2.5 flex items-center justify-between cursor-pointer"
+                          style={{ background: "transparent", border: "none" }}
+                          aria-expanded={editSubOpen}
+                        >
+                          <div className="flex items-center gap-2">
+                            <UserCog className="w-3.5 h-3.5" style={{ color: "#F59E0B" }} />
+                            <span className="text-[11px] uppercase tracking-wider font-semibold" style={{ color: "#F59E0B" }}>
+                              Modifier identifiant &amp; mot de passe
+                            </span>
+                          </div>
+                          <ChevronDown
+                            className="w-4 h-4 transition-transform"
+                            style={{ color: "#F59E0B", transform: editSubOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                          />
+                        </button>
+
+                        {editSubOpen && (
+                          <div className="px-3 pb-3 pt-1 space-y-3 border-t" style={{ borderColor: "rgba(245,158,11,0.12)" }}>
+                            <div>
+                              <label className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+                                Nom utilisateur (login)
+                              </label>
+                              <input
+                                type="text"
+                                value={editUsername}
+                                onChange={(e) => setEditUsername(e.target.value)}
+                                className="w-full mt-1 px-3 py-2 rounded-lg text-xs outline-none font-mono"
+                                style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }}
+                                placeholder="4-32 caractères · a-z 0-9 _ - ."
+                                autoComplete="username"
+                              />
+                              <p className="text-[10px] mt-1 italic" style={{ color: "var(--text-muted)" }}>
+                                Utilisé pour la connexion. Distinct du nom affiché (géré dans Général).
+                              </p>
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+                                Nouveau mot de passe (laisser vide = inchangé)
+                              </label>
+                              <div className="flex gap-1 mt-1">
+                                <input
+                                  type={editShowPassword ? "text" : "password"}
+                                  value={editNewPassword}
+                                  onChange={(e) => setEditNewPassword(e.target.value)}
+                                  className="flex-1 px-3 py-2 rounded-lg text-xs outline-none font-mono"
+                                  style={{ background: "var(--bg3)", color: "var(--text)", border: "1px solid var(--border2)" }}
+                                  placeholder="4-32 caractères · a-z 0-9 _ - ."
+                                  autoComplete="new-password"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setEditShowPassword((v) => !v)}
+                                  className="px-3 rounded-lg cursor-pointer"
+                                  style={{ background: "var(--bg3)", border: "1px solid var(--border2)", color: "var(--text-muted)" }}
+                                  title={editShowPassword ? "Masquer" : "Afficher"}
+                                >
+                                  {editShowPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                </button>
+                              </div>
+                              <p className="text-[10px] mt-1 italic" style={{ color: "var(--text-muted)" }}>
+                                Le mot de passe actuel sera remplacé immédiatement. Note-le avant.
+                              </p>
+                            </div>
+
+                            <button
+                              onClick={handleSaveEdit}
+                              disabled={editSaving}
+                              className="w-full py-2 rounded-lg text-xs font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                              style={{ background: "#F59E0B", color: "#000", border: "none" }}
+                            >
+                              {editSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                              Enregistrer
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Scopes */}
+                    {account.scopes && account.scopes.length > 0 && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--text-muted)" }}>
+                          Scopes
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {account.scopes.slice(0, 6).map((s) => (
+                            <span
+                              key={s}
+                              className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                              style={{ background: "rgba(255,255,255,0.04)", color: "var(--text-muted)" }}
+                            >
+                              {s}
+                            </span>
+                          ))}
+                          {account.scopes.length > 6 && (
+                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                              +{account.scopes.length - 6}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Modules toggle */}
+                    <AccountModulesToggle
+                      accountCode={account.code ?? revealedCodes[account.id] ?? ""}
+                      accountDisplayName={account.display_name}
+                      modules={account.activable_modules || {}}
+                      canEdit={isAgencyAdmin}
+                      authHeaders={authHeaders}
+                      onToggled={(next) => handleModulesToggled(account.id, next)}
+                      onError={(msg) => onToast({ kind: "err", msg })}
+                    />
+
+                    {/* Fallback si pas de code connu */}
+                    {!(account.code ?? revealedCodes[account.id]) && isAgencyAdmin && (
+                      <div
+                        className="rounded-lg p-2.5 flex items-start gap-2 text-[11px]"
+                        style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", color: "#F59E0B" }}
+                      >
+                        <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                        <p>Afficher le code une fois (icone œil) pour autoriser les toggles modules.</p>
+                      </div>
+                    )}
+
+                    {isAgencyAdmin && (
+                      <div className="flex gap-2 pt-2" style={{ borderTop: "1px solid var(--border2)" }}>
+                        <button
+                          onClick={() => startReset(account)}
+                          className="flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer flex items-center justify-center gap-2"
+                          style={{ background: "rgba(232,67,147,0.1)", color: "#E84393", border: "1px solid rgba(232,67,147,0.2)" }}
+                        >
+                          <RefreshCw className="w-3 h-3" /> Regénérer code aléatoire
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 </div>
               );
             })}
           </div>
         )}
       </div>
-
-      {/* Drawer detail */}
-      {selected && (
-        <div
-          className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.6)" }}
-          onClick={() => setSelected(null)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl p-5 space-y-4 max-h-[85vh] overflow-y-auto animate-slide-up"
-            style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Compte</p>
-                <h3 className="text-base font-bold" style={{ color: "var(--text)" }}>{selected.display_name}</h3>
-                <p className="text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>
-                  {selected.role}{selected.model_id ? ` · ${selected.model_id}` : ""}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelected(null)}
-                className="p-1 rounded cursor-pointer hover:scale-110"
-                style={{ background: "none", border: "none", color: "var(--text-muted)" }}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Scopes */}
-            {selected.scopes && selected.scopes.length > 0 && (
-              <div>
-                <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--text-muted)" }}>
-                  Scopes
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {selected.scopes.slice(0, 6).map((s) => (
-                    <span
-                      key={s}
-                      className="text-[10px] font-mono px-1.5 py-0.5 rounded"
-                      style={{ background: "rgba(255,255,255,0.04)", color: "var(--text-muted)" }}
-                    >
-                      {s}
-                    </span>
-                  ))}
-                  {selected.scopes.length > 6 && (
-                    <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                      +{selected.scopes.length - 6}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Modules toggle */}
-            <AccountModulesToggle
-              accountCode={selected.code ?? revealedCodes[selected.id] ?? ""}
-              accountDisplayName={selected.display_name}
-              modules={selected.activable_modules || {}}
-              canEdit={isAgencyAdmin}
-              authHeaders={authHeaders}
-              onToggled={(next) => handleModulesToggled(selected.id, next)}
-              onError={(msg) => onToast({ kind: "err", msg })}
-            />
-
-            {/* Fallback si pas de code connu (model non-admin) */}
-            {!(selected.code ?? revealedCodes[selected.id]) && isAgencyAdmin && (
-              <div
-                className="rounded-lg p-2.5 flex items-start gap-2 text-[11px]"
-                style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", color: "#F59E0B" }}
-              >
-                <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                <p>Afficher le code une fois (icone oeil) pour autoriser les toggles modules.</p>
-              </div>
-            )}
-
-            {isAgencyAdmin && (
-              <div className="flex gap-2 pt-2" style={{ borderTop: "1px solid var(--border2)" }}>
-                <button
-                  onClick={() => startReset(selected)}
-                  className="flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer flex items-center justify-center gap-2"
-                  style={{ background: "rgba(232,67,147,0.1)", color: "#E84393", border: "1px solid rgba(232,67,147,0.2)" }}
-                >
-                  <RefreshCw className="w-3 h-3" /> Reset code
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Confirm reset modal */}
       {resetTarget && (

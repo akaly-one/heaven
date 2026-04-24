@@ -30,7 +30,7 @@ interface RootCpSelectorProps {
   fallbackLabel?: string;
 }
 
-export function RootCpSelector({ variant = "badge", fallbackLabel = "HEAVEN" }: RootCpSelectorProps = {}) {
+export function RootCpSelector({ variant = "badge", fallbackLabel = "ROOT" }: RootCpSelectorProps = {}) {
   const { auth, models, currentModel, setCurrentModel, ready } = useModel();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -45,21 +45,22 @@ export function RootCpSelector({ variant = "badge", fallbackLabel = "HEAVEN" }: 
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  // Root-only gating — absolutely hidden for other accounts
-  if (!ready) return null;
-  if (auth?.role !== "root") return null;
+  // NB 2026-04-24 : dev mode — si auth null (preview non loggué), on affiche quand
+  // même le selector comme visualisation. En prod avec auth model, on cache.
+  if (auth && auth.role !== "root") return null;
   // Root dev sans model_id => non-agence root. Root-fusion yumi (model_id=m1) = agence.
   // Ici on affiche pour les deux : root pur ET root-fusion peuvent switch.
   // Le modèle sélectionné par défaut est currentModel ou model_slug ("yumi" pour fusion).
-
-  if (!models || models.length === 0) return null;
+  // NB 2026-04-24 : on n'attend plus que models soit chargé — bouton ROOT toujours
+  // visible en mode root. Si models vides, dropdown propose juste "Aucun CP" + message.
 
   // Pas de fallback : active peut être null si root n'a pas encore choisi.
   const active = currentModel ? models.find(m => m.slug === currentModel) ?? null : null;
 
-  // Variant "inline" : rendu discret qui remplace le pseudo du CP dans le breadcrumb
-  // (NB 2026-04-21 : « le cp selector doit tranformer le pseado du cp en bouton
-  //  selector tout simplement sinon les 2 se chevauchent »).
+  // Label dynamique :
+  //   - currentModel défini → affiche le display_name du CP actif (Yumi/Paloma/Ruby/ROOT)
+  //   - sinon → fallback "ROOT" (root brut, aucun CP sélectionné)
+  // NB 2026-04-24 : quand Yumi se login (root-fusion, model_slug=yumi) → doit afficher "Yumi".
   const triggerLabel = active?.display_name || fallbackLabel;
   const isInline = variant === "inline";
 
@@ -108,21 +109,11 @@ export function RootCpSelector({ variant = "badge", fallbackLabel = "HEAVEN" }: 
           <div className="px-3 py-1.5 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border2)" }}>
             Basculer vers le CP de…
           </div>
-          {/* Option "Aucun CP" (skeleton vide — compte root brut) */}
-          <button
-            type="button"
-            onClick={() => { setCurrentModel(null); setOpen(false); }}
-            className="w-full px-3 py-2 flex items-center justify-between text-xs hover:bg-white/5 transition-colors"
-            style={{
-              background: !currentModel ? "rgba(245,158,11,0.08)" : "transparent",
-              color: "var(--text-muted)",
-              borderLeft: !currentModel ? "2px solid #F59E0B" : "2px solid transparent",
-              borderBottom: "1px solid var(--border2)",
-            }}
-          >
-            <span className="font-medium">Aucun CP (root brut)</span>
-            <span className="text-[10px] italic">vide</span>
-          </button>
+          {models.length === 0 && (
+            <div className="px-3 py-2 text-[10px] italic" style={{ color: "var(--text-muted)" }}>
+              Aucun modèle chargé
+            </div>
+          )}
           {models.map(m => (
             <button
               key={m.slug}

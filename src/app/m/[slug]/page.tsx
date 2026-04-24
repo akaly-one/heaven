@@ -912,10 +912,18 @@ function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierVie
             </div>
               {displayModel?.bio && <p className="profile-stagger-3 text-sm sm:text-base mt-2 sm:mt-3 line-clamp-2 leading-relaxed max-w-lg" style={{ color: "rgba(255,255,255,0.7)" }}>{displayModel.bio}</p>}
               {displayModel?.status_text && !isEditMode && <p className="text-sm sm:text-base mt-2 max-w-md" style={{ color: "rgba(255,255,255,0.8)", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>{displayModel.status_text}</p>}
-              {/* Instagram CTAs (B9) — follow + DM native links. Hidden if no handle. */}
-              {!isEditMode && !isModelLoggedIn && instagramHandle && (
+              {/* Profile CTAs (B9 + NB 2026-04-24 Fanvue button) — follow IG + DM + Fanvue */}
+              {!isEditMode && !isModelLoggedIn && (instagramHandle || (model as { fanvue_url?: string | null })?.fanvue_url || (model as { fanvue_handle?: string | null })?.fanvue_handle) && (
                 <div className="profile-stagger-3 mt-3 sm:mt-4">
-                  <ProfileCta handle={instagramHandle} size="sm" />
+                  <ProfileCta
+                    handle={instagramHandle}
+                    size="sm"
+                    fanvueUrl={
+                      (model as { fanvue_url?: string | null })?.fanvue_url
+                      || (model as { fanvue_handle?: string | null })?.fanvue_handle
+                      || null
+                    }
+                  />
                 </div>
               )}
               <div className="profile-stagger-4 flex items-center gap-6 sm:gap-8 mt-3 sm:mt-4">

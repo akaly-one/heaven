@@ -668,10 +668,179 @@ function AgenceDashboard() {
   }
 
   if (!modelSlug) {
+    // NB 2026-04-24 : ROOT = CP spécimen. Au lieu d'afficher des données, on
+    // affiche des cartes descriptives de chaque module (fonction, features, rôles,
+    // sources data, statut dev). Permet à root de voir tout le skeleton + ce que
+    // chaque module fait sans avoir à charger un vrai CP.
+    if (isRoot) {
+      return (
+        <OsLayout cpId="agence">
+          <div className="min-h-screen p-4 md:p-6" style={{ background: "var(--bg)" }}>
+            <div className="max-w-[1400px] mx-auto space-y-6">
+
+              {/* Header ROOT */}
+              <div className="p-4 rounded-xl border" style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(230,51,41,0.05))", borderColor: "rgba(245,158,11,0.3)" }}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: "rgba(245,158,11,0.15)", color: "#F59E0B" }}>SPECIMEN / DEV MODE</span>
+                </div>
+                <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>CP ROOT — template de référence</h1>
+                <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
+                  Ce mode affiche la structure et la documentation de chaque module. Sélectionne un CP (Yumi, Paloma, Ruby) dans le header pour basculer vers les données réelles — tu conserves les fonctions dev (selector, skeleton specimen toujours accessible).
+                </p>
+              </div>
+
+              {/* Modules grid — descriptifs */}
+              <div>
+                <h2 className="text-xs uppercase tracking-wider mb-3" style={{ color: "var(--text-muted)" }}>Modules principaux</h2>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {[
+                    {
+                      icon: "📊",
+                      name: "Dashboard",
+                      desc: "KPIs financiers (revenus, abonnés, rétention) + activité récente + feed unifié.",
+                      roles: "root / yumi / paloma / ruby (own)",
+                      sources: "agence_fans · agence_messages · agence_revenus_modele",
+                      status: "done",
+                    },
+                    {
+                      icon: "💬",
+                      name: "Messagerie",
+                      desc: "Inbox unifiée web + Instagram. Grouping par fan. Mode agent auto/humain par conversation.",
+                      roles: "root / yumi (all) / paloma/ruby (own)",
+                      sources: "agence_messages_timeline · instagram_conversations",
+                      status: "done",
+                    },
+                    {
+                      icon: "📷",
+                      name: "Instagram",
+                      desc: "Stats profil, feed posts, commentaires, config agent IA, conversations DM.",
+                      roles: "root / yumi / paloma/ruby (own)",
+                      sources: "instagram_config · instagram_messages · feed_items",
+                      status: "done",
+                    },
+                    {
+                      icon: "🎨",
+                      name: "Contenu / Packs",
+                      desc: "Grille de contenus (upload + IG + wall). Composer packs tarifés, tiers visibility.",
+                      roles: "root / yumi / paloma/ruby (own)",
+                      sources: "agence_uploads · agence_packs · agence_wall_posts",
+                      status: "done",
+                    },
+                    {
+                      icon: "🎯",
+                      name: "Stratégie",
+                      desc: "Plans A (IA pur) / B (hub annexe) / C (consultance) + milestones + paliers rémunération.",
+                      roles: "root / yumi / paloma/ruby (own)",
+                      sources: "agence_models (palier, mode_operation) · milestones",
+                      status: "done",
+                    },
+                    {
+                      icon: "⚙️",
+                      name: "Paramètres",
+                      desc: "Général (mode opération, handle IG) + Comptes (admin) + Dev Center (root) + Finances own + Agent DM.",
+                      roles: "root (tous) / yumi (admin) / paloma/ruby (own limited)",
+                      sources: "agence_accounts · agence_models · instagram_config",
+                      status: "done",
+                    },
+                    {
+                      icon: "👤",
+                      name: "Modèles (agence admin)",
+                      desc: "Profil identity, contrats, DMCA release forms, palier rémunération par modèle.",
+                      roles: "root + yumi (cross-model m1/m2/m3)",
+                      sources: "agence_models · agence_contracts · agence_releaseform_dossier",
+                      status: "done",
+                    },
+                    {
+                      icon: "📈",
+                      name: "Ops / Monitoring",
+                      desc: "Observabilité cron workers, meta API rate limit, volumes messages.",
+                      roles: "root uniquement",
+                      sources: "ops_metrics · ig_reply_queue",
+                      status: "done",
+                    },
+                    {
+                      icon: "🤖",
+                      name: "Agent IA Conversationnel",
+                      desc: "Agent multi-IA (Groq Llama + Grok + Haiku) qui répond aux DMs, scoring leads, shadow mode apprentissage, multilingue FR/EN/ES/DE/IT/PT.",
+                      roles: "scope config par model_slug",
+                      sources: "agent_personas · prompt_examples · ai_runs · fan_scores",
+                      status: "planned (V1 — voir plans/modules/ai-conversational-agent/)",
+                    },
+                    {
+                      icon: "🎤",
+                      name: "Voice / Audio",
+                      desc: "Voice cloning Yumi (ElevenLabs) pour envoi DM audio. Triggers intelligents par bucket fan.",
+                      roles: "scope config per model",
+                      sources: "voice_samples · voice_generation_events",
+                      status: "planned (V2 — doc 14)",
+                    },
+                    {
+                      icon: "🎬",
+                      name: "Content Generation IA",
+                      desc: "Scénarios photos/vidéos cohérents (LoRA Yumi + Flux + Kling). Identity profile + scenario library.",
+                      roles: "scope per model",
+                      sources: "content_scenarios · content_outputs · model_identity_profile",
+                      status: "planned (V3 — doc 15)",
+                    },
+                    {
+                      icon: "📅",
+                      name: "Community Manager IA",
+                      desc: "Détection trends IG/TikTok, calendrier éditorial auto, benchmarking concurrentes, idea generator.",
+                      roles: "scope per model",
+                      sources: "trend_signals · content_ideas · tracked_competitors",
+                      status: "planned (V3 — doc 16)",
+                    },
+                    {
+                      icon: "🌍",
+                      name: "Storyline Life Consistency",
+                      desc: "Univers persistent (appartement Paris, yoga, voyages, préférences stables, life_events calendrier).",
+                      roles: "scope per model",
+                      sources: "life_events · locations · stable_preferences · storyline_arcs",
+                      status: "planned (V3 — doc 17)",
+                    },
+                  ].map(m => (
+                    <div key={m.name} className="p-4 rounded-xl border hover:border-opacity-80 transition-all" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{m.icon}</span>
+                          <h3 className="text-sm font-bold" style={{ color: "var(--text)" }}>{m.name}</h3>
+                        </div>
+                        <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{
+                          background: m.status === "done" ? "rgba(16,185,129,0.12)" : "rgba(139,92,246,0.12)",
+                          color: m.status === "done" ? "#10B981" : "#8B5CF6",
+                        }}>{m.status === "done" ? "done" : "planned"}</span>
+                      </div>
+                      <p className="text-xs mb-3 leading-relaxed" style={{ color: "var(--text-muted)" }}>{m.desc}</p>
+                      <div className="space-y-1 text-[10px]" style={{ color: "var(--text-muted)", opacity: 0.8 }}>
+                        <div><span className="font-semibold">Rôles :</span> {m.roles}</div>
+                        <div><span className="font-semibold">Sources :</span> <code className="font-mono">{m.sources}</code></div>
+                        {m.status !== "done" && <div className="italic">{m.status.replace("planned ", "")}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Footer dev info */}
+              <div className="p-3 rounded-xl border text-[11px]" style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text-muted)" }}>
+                <p className="font-semibold mb-1" style={{ color: "var(--text)" }}>🧪 Tips dev</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  <li>Le selector <code className="font-mono">ROOT ∨</code> permet de switch vers Yumi/Paloma/Ruby</li>
+                  <li>Au switch, tu gardes le mode root (selector reste visible, Dev Center accessible)</li>
+                  <li>Login direct Yumi/Paloma/Ruby = pas de selector, pas de spécimen</li>
+                  <li>Plans détaillés : <code className="font-mono">plans/modules/</code> (18 docs v0.4.0)</li>
+                </ul>
+              </div>
+
+            </div>
+          </div>
+        </OsLayout>
+      );
+    }
     return (
       <OsLayout cpId="agence">
         <div className="flex items-center justify-center h-[60vh]">
-          <p className="text-xs text-white/40">{isRoot ? "Selectionne un modele dans le header" : "Chargement..."}</p>
+          <p className="text-xs text-white/40">Chargement...</p>
         </div>
       </OsLayout>
     );

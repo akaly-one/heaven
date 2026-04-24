@@ -25,6 +25,7 @@ interface UseChatReturn {
   chatUnread: number;
   sendMessage: () => Promise<void>;
   chatEndRef: React.RefObject<HTMLDivElement | null>;
+  guestClientId: string | null;
 }
 
 /**
@@ -36,9 +37,45 @@ export function useChat({ slug, clientId, model }: UseChatParams): UseChatReturn
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
+  const [guestClientId, setGuestClientId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const seenMsgIdsRef = useRef<Set<string>>(new Set());
   const readMsgIdsRef = useRef<Set<string>>(new Set());
+
+  // NB 2026-04-24 : chat visiteur sans IdentityGate — crée un guest client
+  // automatique en session. L'agent IA peut ainsi converser avec un prospect
+  // anonyme (objectif : conversion Fanvue progressive).
+  useEffect(() => {
+    if (clientId) return;
+    if (typeof window === "undefined") return;
+    const cached = sessionStorage.getItem(`heaven_guest_${slug}`);
+    if (cached) setGuestClientId(cached);
+  }, [slug, clientId]);
+
+  const ensureClientId = useCallback(async (): Promise<string | null> => {
+    if (clientId) return clientId;
+    if (guestClientId) return guestClientId;
+    // Création à la volée d'un guest
+    const guestPseudo = `guest-${Date.now().toString(36).slice(-6)}${Math.random().toString(36).slice(2, 6)}`;
+    try {
+      const r = await fetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: slug, pseudo_snap: guestPseudo, lead_source: "web_guest" }),
+      });
+      if (!r.ok) return null;
+      const d = await r.json();
+      const id = d.client?.id;
+      if (!id) return null;
+      sessionStorage.setItem(`heaven_guest_${slug}`, id);
+      setGuestClientId(id);
+      return id;
+    } catch {
+      return null;
+    }
+  }, [clientId, guestClientId, slug]);
+
+  const effectiveClientId = clientId || guestClientId;
 
   // Chat sounds (Web Audio API)
   const playSound = useCallback((type: "receive" | "send") => {
@@ -71,10 +108,10 @@ export function useChat({ slug, clientId, model }: UseChatParams): UseChatReturn
 
   // Poll messages + notification sound
   useEffect(() => {
-    if (!clientId) return;
+    if (!effectiveClientId) return;
     let isFirst = true;
     const fetchChat = () => {
-      fetch(`/api/messages?model=${modelId}&client_id=${clientId}`)
+      fetch(`/api/messages?model=${modelId}&client_id=${effectiveClientId}`)
         .then(r => r.json())
         .then(d => {
           const msgs = ((d.messages || []) as ChatMessage[]).reverse();
@@ -96,7 +133,7 @@ export function useChat({ slug, clientId, model }: UseChatParams): UseChatReturn
     const interval = chatOpen ? 5000 : 15000;
     const iv = setInterval(fetchChat, interval);
     return () => clearInterval(iv);
-  }, [clientId, modelId, chatOpen, playSound]);
+  }, [effectiveClientId, modelId, chatOpen, playSound]);
 
   // Unread = model messages not yet marked as read
   const chatUnread = useMemo(() => {
@@ -117,13 +154,18 @@ export function useChat({ slug, clientId, model }: UseChatParams): UseChatReturn
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  // Send message
+  // Send message — auto-crée un guest clientId si visiteur non identifié (NB 2026-04-24)
   const sendMessage = useCallback(async () => {
-    if (!chatInput.trim() || !clientId) return;
+    if (!chatInput.trim()) return;
+    const id = await ensureClientId();
+    if (!id) {
+      console.error("[Chat] ensureClientId failed");
+      return;
+    }
     const msgRes = await fetch("/api/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: modelId, client_id: clientId, sender_type: "client", content: chatInput.trim() }),
+      body: JSON.stringify({ model: modelId, client_id: id, sender_type: "client", content: chatInput.trim() }),
     });
     if (!msgRes.ok) {
       console.error("[Chat] send failed:", await msgRes.text());
@@ -131,17 +173,16 @@ export function useChat({ slug, clientId, model }: UseChatParams): UseChatReturn
     }
     setChatInput("");
     playSound("send");
-    // Mark all as seen since user just interacted
-    const res = await fetch(`/api/messages?model=${modelId}&client_id=${clientId}`);
+    const res = await fetch(`/api/messages?model=${modelId}&client_id=${id}`);
     const d = await res.json();
     const msgs = ((d.messages || []) as ChatMessage[]).reverse();
     msgs.forEach(m => { seenMsgIdsRef.current.add(m.id); if (m.sender_type === "model") readMsgIdsRef.current.add(m.id); });
     setChatMessages(msgs);
-  }, [chatInput, clientId, modelId, playSound]);
+  }, [chatInput, ensureClientId, modelId, playSound]);
 
   return {
     chatMessages, chatInput, setChatInput,
     chatOpen, setChatOpen, chatUnread,
-    sendMessage, chatEndRef,
+    sendMessage, chatEndRef, guestClientId,
   };
 }

@@ -176,10 +176,21 @@ export function FanTimeline({
             />
           </div>
 
-          {/* Messages within the day */}
+          {/* Messages within the day — NB 2026-04-24 : colors par source
+              web = jaune/gold, instagram = gradient IG (purple→pink→orange) */}
           <div className="space-y-3">
             {group.items.map((item, idx) => {
               const isOut = item.direction === "out";
+              const isIg = item.source === "instagram";
+              // Bulle OUT (reply) : couleur selon source
+              const outBg = isIg
+                ? "linear-gradient(135deg, #833AB4, #E1306C, #F77737)"
+                : "linear-gradient(135deg, #E6C974, #C9A84C)";
+              const outColor = isIg ? "#fff" : "#0A0A0C";
+              // Bulle IN (fan) : bg neutre + accent border selon source
+              const inAccent = isIg
+                ? "rgba(225,48,108,0.35)"
+                : "rgba(212,175,55,0.45)";
               return (
                 <div
                   key={item.id || `${group.day}-${idx}`}
@@ -199,13 +210,12 @@ export function FanTimeline({
                     <div
                       className="px-4 py-2.5 text-sm rounded-2xl"
                       style={{
-                        background: isOut
-                          ? "linear-gradient(135deg, #C9A84C, #9E7C1F)"
-                          : "var(--bg3)",
-                        color: isOut ? "#0A0A0C" : "var(--text)",
+                        background: isOut ? outBg : "var(--bg3)",
+                        color: isOut ? outColor : "var(--text)",
                         borderBottomRightRadius: isOut ? "4px" : "16px",
                         borderBottomLeftRadius: isOut ? "16px" : "4px",
                         wordBreak: "break-word",
+                        borderLeft: !isOut ? `2px solid ${inAccent}` : "none",
                       }}
                     >
                       {item.media_url && (

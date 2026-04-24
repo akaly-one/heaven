@@ -44,7 +44,9 @@ export function GeneralPanel({ modelSlug, isRoot, authHeaders }: Props) {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
 
-  const effectiveSlug = modelSlug || (isRoot ? "yumi" : "");
+  // NB 2026-04-24 : root brut (modelSlug vide) = CP maître m0 "ROOT" — fetch depuis
+  // la DB (table agence_models row slug='root', model_id='m0'). Migration 050.
+  const effectiveSlug = modelSlug || (isRoot ? "root" : "");
 
   const load = async () => {
     if (!effectiveSlug) { setLoading(false); return; }
@@ -56,25 +58,28 @@ export function GeneralPanel({ modelSlug, isRoot, authHeaders }: Props) {
       if (r.ok) {
         const d = await r.json();
         const m = d.model || d;
+        const isRootSlug = effectiveSlug === "root" || toModelId(effectiveSlug) === "m0";
+        // ROOT m0 : override défauts DB — display toujours "ROOT", bio spécimen fixe.
         setInfo({
           slug: effectiveSlug,
-          display_name: m.display_name || m.name || "",
-          bio: m.bio ?? "",
-          handle: m.handle ?? "",
+          display_name: isRootSlug ? "ROOT" : (m.display_name || m.name || ""),
+          bio: isRootSlug ? "CP maître (m0) — vue spécimen/template. Sélectionne un CP dans le header pour charger les vraies données." : (m.bio ?? ""),
+          handle: isRootSlug ? "root" : (m.handle ?? ""),
           language: m.language ?? "fr",
           timezone: m.timezone ?? "Europe/Brussels",
-          notifications_enabled: m.notifications_enabled ?? true,
+          notifications_enabled: isRootSlug ? false : (m.notifications_enabled ?? true),
         });
       } else {
-        // Fallback minimal
+        // Fallback minimal — ROOT spécial si migration 050 pas encore appliquée
+        const isRootSlug = effectiveSlug === "root";
         setInfo({
           slug: effectiveSlug,
-          display_name: effectiveSlug.toUpperCase(),
-          bio: "",
-          handle: "",
+          display_name: isRootSlug ? "ROOT" : effectiveSlug.toUpperCase(),
+          bio: isRootSlug ? "CP maître (m0) — vue spécimen/template. Appliquer migration 050_seed_root_m0.sql pour persistence DB." : "",
+          handle: isRootSlug ? "root" : "",
           language: "fr",
           timezone: "Europe/Brussels",
-          notifications_enabled: true,
+          notifications_enabled: !isRootSlug,
         });
       }
     } catch {

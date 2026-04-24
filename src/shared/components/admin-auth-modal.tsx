@@ -117,12 +117,16 @@ export function AdminAuthModal({ onClose }: AdminAuthModalProps) {
           />
         </div>
 
+        {/* NB 2026-04-24 : retrait `uppercase` CSS — password case-sensitive.
+            Type=password pour masquer pendant saisie. */}
         <input
           id="admin-code-input"
+          type="password"
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          placeholder="CODE"
-          className="w-full px-4 py-3 rounded-xl text-sm font-mono uppercase tracking-widest text-center outline-none mb-5 transition-all"
+          placeholder="mot de passe"
+          autoComplete="current-password"
+          className="w-full px-4 py-3 rounded-xl text-sm font-mono tracking-widest text-center outline-none mb-5 transition-all"
           style={{
             background: "rgba(255,255,255,0.05)",
             color: "#fff",
@@ -149,7 +153,7 @@ export function AdminAuthModal({ onClose }: AdminAuthModalProps) {
         </button>
 
         <p className="text-center text-[10px] mt-4" style={{ color: "rgba(255,255,255,0.18)" }}>
-          YUMI (root) · PALOMA · RUBY
+          root · yumi · paloma · ruby
         </p>
       </div>
     </div>

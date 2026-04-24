@@ -1,6 +1,6 @@
 "use client";
 
-import { Instagram, MessageCircle } from "lucide-react";
+import { Instagram, MessageCircle, Sparkles } from "lucide-react";
 
 /**
  * Public-profile CTA buttons — « Suivre sur Insta » + « Envoyer un DM ».
@@ -28,17 +28,24 @@ interface ProfileCtaProps {
   size?: "sm" | "md";
   /** Optional className override for layout. */
   className?: string;
+  /** Fanvue URL (full https://fanvue.com/...) OR handle. Active CTA gold si présent. */
+  fanvueUrl?: string | null;
 }
 
 function cleanHandle(raw: string): string {
   return raw.trim().replace(/^@/, "").replace(/\/$/, "");
 }
 
-export function ProfileCta({ handle, dmDisabled = false, size = "md", className }: ProfileCtaProps) {
-  if (!handle || !handle.trim()) return null;
+export function ProfileCta({ handle, dmDisabled = false, size = "md", className, fanvueUrl }: ProfileCtaProps) {
+  const h = handle ? cleanHandle(handle) : "";
+  const hasIg = !!h;
 
-  const h = cleanHandle(handle);
-  if (!h) return null;
+  // NB 2026-04-24 : construire fanvue URL complète
+  const fanvueFull = fanvueUrl
+    ? (fanvueUrl.startsWith("http") ? fanvueUrl : `https://fanvue.com/${cleanHandle(fanvueUrl)}`)
+    : null;
+
+  if (!hasIg && !fanvueFull) return null;
 
   const followUrl = `https://instagram.com/${h}`;
   const dmUrl = `https://ig.me/m/${h}`;
@@ -48,25 +55,27 @@ export function ProfileCta({ handle, dmDisabled = false, size = "md", className 
   const iconSize = size === "sm" ? "w-3 h-3" : "w-3.5 h-3.5";
 
   return (
-    <div className={`flex items-center gap-2 ${className || ""}`}>
-      <a
-        href={followUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={`inline-flex items-center gap-1.5 rounded-xl ${pad} ${text} font-semibold no-underline transition-all hover:brightness-110 active:scale-[0.97]`}
-        style={{
-          background:
-            "linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
-          color: "#fff",
-          boxShadow: "0 2px 10px rgba(220,39,67,0.25)",
-        }}
-        aria-label={`Suivre @${h} sur Instagram`}
-      >
-        <Instagram className={iconSize} />
-        Suivre
-      </a>
+    <div className={`flex items-center gap-2 flex-wrap ${className || ""}`}>
+      {hasIg && (
+        <a
+          href={followUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`inline-flex items-center gap-1.5 rounded-xl ${pad} ${text} font-semibold no-underline transition-all hover:brightness-110 active:scale-[0.97]`}
+          style={{
+            background:
+              "linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
+            color: "#fff",
+            boxShadow: "0 2px 10px rgba(220,39,67,0.25)",
+          }}
+          aria-label={`Suivre @${h} sur Instagram`}
+        >
+          <Instagram className={iconSize} />
+          Suivre
+        </a>
+      )}
 
-      {!dmDisabled && (
+      {hasIg && !dmDisabled && (
         <a
           href={dmUrl}
           target="_blank"
@@ -82,6 +91,24 @@ export function ProfileCta({ handle, dmDisabled = false, size = "md", className 
         >
           <MessageCircle className={iconSize} />
           DM
+        </a>
+      )}
+
+      {fanvueFull && (
+        <a
+          href={fanvueFull}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`inline-flex items-center gap-1.5 rounded-xl ${pad} ${text} font-semibold no-underline transition-all hover:brightness-110 active:scale-[0.97]`}
+          style={{
+            background: "linear-gradient(135deg, #D4AF37, #E6C974, #B8860B)",
+            color: "#0A0A0C",
+            boxShadow: "0 2px 10px rgba(212,175,55,0.35)",
+          }}
+          aria-label="Voir sur Fanvue"
+        >
+          <Sparkles className={iconSize} />
+          Fanvue
         </a>
       )}
     </div>

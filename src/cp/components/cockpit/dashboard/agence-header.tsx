@@ -16,9 +16,8 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { Eye, Pencil, Link2, RefreshCw } from "lucide-react";
+import { Eye, Pencil, Link2, RefreshCw, MessageCircle, Send } from "lucide-react";
 import type { FeedPost, HeavenAuth, AccessCode } from "@/types/heaven";
-import { IgCtaButtons } from "./ig-cta-buttons";
 
 const fmt = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 const fmtNum = new Intl.NumberFormat("fr-FR");
@@ -51,6 +50,12 @@ interface IgProfileSnapshot {
   profile_picture_url?: string;
 }
 
+interface IgDailyStats {
+  dms_received_today?: number;
+  dms_replied_today?: number;
+  last_sync_at?: string | null;
+}
+
 function relativeFromNow(iso: string | null): string {
   if (!iso) return "jamais";
   const diff = Date.now() - new Date(iso).getTime();
@@ -67,6 +72,7 @@ function relativeFromNow(iso: string | null): string {
 
 export function AgenceHeader(p: AgenceHeaderProps) {
   const [igProfile, setIgProfile] = useState<IgProfileSnapshot | null>(null);
+  const [igDaily, setIgDaily] = useState<IgDailyStats | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(p.lastSyncAtOverride ?? null);
   const [, tick] = useState(0);
 
@@ -93,10 +99,12 @@ export function AgenceHeader(p: AgenceHeaderProps) {
         setIgProfile(null);
       }
       if (dRes.ok) {
-        const json = (await dRes.json()) as { last_sync_at: string | null };
+        const json = (await dRes.json()) as IgDailyStats & { last_sync_at: string | null };
         setLastSyncAt(json.last_sync_at);
+        setIgDaily(json);
       } else {
         setLastSyncAt(null);
+        setIgDaily(null);
       }
     } catch {
       setIgProfile(null);
@@ -132,106 +140,113 @@ export function AgenceHeader(p: AgenceHeaderProps) {
 
   return (
     <>
-      {/* ══ HEADER ══ */}
-      <div className="flex items-start gap-4 py-3">
-        <div className="relative shrink-0">
-          <label className="cursor-pointer">
-            <div
-              className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center text-base font-black"
-              style={{
-                background: avatarSrc ? "transparent" : "linear-gradient(135deg, #E63329, #E84393)",
-                color: "#fff",
-              }}
-            >
-              {avatarSrc ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarSrc} alt={handle || p.modelSlug} className="w-full h-full object-cover" />
-              ) : (
-                p.modelSlug.charAt(0).toUpperCase()
-              )}
-            </div>
-            <input
-              type="file"
-              accept=".jpg,.jpeg,.png,.webp,.gif"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                p.onAvatarUpload(file);
-                e.target.value = "";
-              }}
-            />
-          </label>
-          <button
-            onClick={p.onToggleStatus}
-            disabled={p.statusUpdating}
-            className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full cursor-pointer transition-all border-none p-0 disabled:opacity-50"
-            style={{
-              background: p.modelInfo?.online ? "#10B981" : "#6B7280",
-              boxShadow: `0 0 0 2.5px var(--bg)`,
-            }}
-          />
-        </div>
+      {/* ══ HEADER fusionné (profil + stats IG) — NB 2026-04-24 ══
+          Suppressions : IgCtaButtons redondants, toggle En ligne/Hors ligne.
+          Fusion : KPIs cockpit + stats IG (followers/posts/DMs) en 1 section. */}
+      <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-4 py-3">
 
-        <div className="flex flex-col min-w-0 shrink-0 gap-0.5">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="text-lg font-bold text-white truncate">
+        {/* Avatar + nom + handle */}
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          <div className="relative shrink-0">
+            <label className="cursor-pointer" title="Changer l'avatar (remplace la photo IG synchronisée)">
+              <div
+                className="w-14 h-14 md:w-16 md:h-16 rounded-xl overflow-hidden flex items-center justify-center text-lg font-black"
+                style={{
+                  background: avatarSrc ? "transparent" : "linear-gradient(135deg, #833AB4, #E1306C, #F77737)",
+                  color: "#fff",
+                  border: "2px solid transparent",
+                  backgroundImage: avatarSrc
+                    ? undefined
+                    : "linear-gradient(135deg, #833AB4, #E1306C, #F77737)",
+                }}
+              >
+                {avatarSrc ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatarSrc} alt={handle || p.modelSlug} className="w-full h-full object-cover" />
+                ) : (
+                  p.modelSlug.charAt(0).toUpperCase()
+                )}
+              </div>
+              <input
+                type="file"
+                accept=".jpg,.jpeg,.png,.webp,.gif"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  p.onAvatarUpload(file);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {/* Indicateur status (lecture seule, sync depuis IG/DB) */}
+            <div
+              className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full"
+              style={{
+                background: p.modelInfo?.online ? "#10B981" : "#6B7280",
+                boxShadow: `0 0 0 2.5px var(--bg)`,
+              }}
+              title={p.modelInfo?.online ? "En ligne" : "Hors ligne"}
+            />
+          </div>
+
+          <div className="flex flex-col min-w-0 gap-0.5 flex-1">
+            <span className="text-base md:text-lg font-bold text-white truncate">
               {p.modelInfo?.display_name || p.auth?.display_name || p.modelSlug.toUpperCase()}
             </span>
-            <span
-              className="w-1.5 h-1.5 rounded-full shrink-0"
-              style={{ background: p.modelInfo?.online ? "#10B981" : "#6B7280" }}
-            />
-            <span className="text-xs text-white/30 shrink-0 hidden sm:inline">
-              {p.modelInfo?.online ? "en ligne" : "hors ligne"}
-            </span>
-          </div>
-          {handle && (
-            <div className="flex items-center gap-2 text-[11px]">
-              <span className="font-semibold" style={{ color: "#E1306C" }}>{handle}</span>
-              {typeof igProfile?.followers_count === "number" && (
-                <span className="text-white/40 tabular-nums">
-                  {fmtNum.format(igProfile.followers_count)} fol.
-                </span>
-              )}
-              {typeof igProfile?.media_count === "number" && (
+            {handle && (
+              <div className="flex items-center gap-1.5 text-[11px] md:text-xs flex-wrap">
+                <span className="font-semibold" style={{ color: "#E1306C" }}>{handle}</span>
+                {typeof igProfile?.followers_count === "number" && (
+                  <>
+                    <span className="text-white/15">·</span>
+                    <span className="text-white/50 tabular-nums">
+                      {fmtNum.format(igProfile.followers_count)} fol.
+                    </span>
+                  </>
+                )}
+                {typeof igProfile?.media_count === "number" && (
+                  <>
+                    <span className="text-white/15">·</span>
+                    <span className="text-white/50 tabular-nums">{igProfile.media_count} posts</span>
+                  </>
+                )}
+              </div>
+            )}
+            {bio && (
+              <span className="text-[11px] text-white/35 line-clamp-2 max-w-full" title={bio}>
+                {bio}
+              </span>
+            )}
+            <div className="flex items-center gap-1.5 text-[10px] text-white/30">
+              <RefreshCw className="w-3 h-3" />
+              <span>Sync IG {relativeFromNow(lastSyncAt)}</span>
+              {typeof igDaily?.dms_received_today === "number" && (
                 <>
                   <span className="text-white/15">·</span>
-                  <span className="text-white/40 tabular-nums">{igProfile.media_count} posts</span>
+                  <span className="flex items-center gap-1">
+                    <MessageCircle className="w-3 h-3" style={{ color: "#E1306C" }} />
+                    <span className="tabular-nums">{igDaily.dms_received_today}</span>
+                    <span className="hidden sm:inline">reçus</span>
+                  </span>
+                </>
+              )}
+              {typeof igDaily?.dms_replied_today === "number" && (
+                <>
+                  <span className="text-white/15">·</span>
+                  <span className="flex items-center gap-1">
+                    <Send className="w-3 h-3" style={{ color: "#22C55E" }} />
+                    <span className="tabular-nums">{igDaily.dms_replied_today}</span>
+                    <span className="hidden sm:inline">replied</span>
+                  </span>
                 </>
               )}
             </div>
-          )}
-          {bio && (
-            <span className="text-[11px] text-white/35 line-clamp-1 max-w-[320px]" title={bio}>
-              {bio}
-            </span>
-          )}
-          <div className="flex items-center gap-1.5 text-[10px]" title="Dernière synchronisation Instagram">
-            <RefreshCw className="w-3 h-3 text-white/30" />
-            <span className="text-white/30">Sync IG {relativeFromNow(lastSyncAt)}</span>
           </div>
         </div>
 
-        {/* Mobile compact KPI */}
-        <div className="flex md:hidden items-center gap-1.5 ml-auto shrink-0">
-          <span className="text-[11px] font-black tabular-nums" style={{ color: "#D4AF37" }}>
-            {fmt.format(p.revenue)}
-          </span>
-          <span className="text-white/10">·</span>
-          <span className="text-[11px] font-bold tabular-nums text-white">
-            {fmtNum.format(p.uniqueClients)}
-            <span className="text-white/25 text-[9px] ml-0.5">abo</span>
-          </span>
-          <span className="text-white/10">·</span>
-          <span className="text-[11px] font-bold tabular-nums text-white">
-            {p.activeCodes.length}
-            <span className="text-white/25 text-[9px]">/{p.modelCodes.length}</span>
-          </span>
-        </div>
-
-        <div className="flex-1 hidden md:block" />
-        <div className="hidden md:flex items-center gap-0 overflow-x-auto no-scrollbar shrink-0">
+        {/* KPIs cockpit — horizontal scroll mobile, grid desktop */}
+        <div className="flex items-center gap-0 overflow-x-auto no-scrollbar shrink-0 -mx-1 md:mx-0 md:ml-auto pr-1">
           {[
             { label: "Rev", value: fmt.format(p.revenue), color: "#D4AF37" },
             { label: "Abo", value: String(p.uniqueClients), color: "var(--text)" },
@@ -239,7 +254,7 @@ export function AgenceHeader(p: AgenceHeaderProps) {
             { label: "Ret", value: `${p.retentionRate}%`, color: "var(--text)" },
             { label: "Codes", value: `${p.activeCodes.length}/${p.modelCodes.length}`, color: "var(--text)" },
           ].map((kpi, i) => (
-            <div key={i} className="flex items-center gap-1.5 px-2.5">
+            <div key={i} className="flex items-center gap-1.5 px-2.5 shrink-0">
               {i > 0 && <div className="w-px h-3.5 bg-white/[0.06] mr-1.5" />}
               <span className="text-[10px] text-white/25 uppercase tracking-wider font-medium">{kpi.label}</span>
               <span className="text-xs font-bold tabular-nums" style={{ color: kpi.color }}>
@@ -248,17 +263,6 @@ export function AgenceHeader(p: AgenceHeaderProps) {
             </div>
           ))}
         </div>
-
-        <IgCtaButtons username={igProfile?.username || null} />
-
-        <button
-          onClick={p.onToggleStatus}
-          disabled={p.statusUpdating}
-          className="hidden md:inline-flex px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all border border-white/[0.06] bg-transparent shrink-0 disabled:opacity-50"
-          style={{ color: p.modelInfo?.online ? "#10B981" : "#6B7280" }}
-        >
-          {p.statusUpdating ? "..." : p.modelInfo?.online ? "En ligne" : "Hors ligne"}
-        </button>
       </div>
 
       {/* ══ UNDERLINE TABS + shortcuts ══ */}

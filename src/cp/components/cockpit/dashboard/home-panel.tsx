@@ -15,8 +15,10 @@
  */
 
 import { Newspaper, Camera, Image as ImageIcon, Send, Trash2, Pin, Lock, Heart, MessageCircle, Eye, X, ChevronDown } from "lucide-react";
-import { InstagramStatsWidget } from "@/components/cockpit/instagram-stats-widget";
-import { OverviewSimulator } from "@/components/cockpit/overview-simulator";
+// NB 2026-04-24 : InstagramStatsWidget retiré — stats IG fusionnées dans AgenceHeader.
+// NB 2026-04-24 : OverviewSimulator retiré — obsolète (page Stratégie dédiée existe).
+// Remplacé par BotActivityPanel (récap agent IA + prospects convertis).
+import { BotActivityPanel } from "@/components/cockpit/dashboard/bot-activity-panel";
 import { KpiStrip } from "@/components/cockpit/dashboard/kpi-strip";
 import type { AccessCode, ClientInfo, FeedPost, PackConfig, WallPost } from "@/types/heaven";
 import { isFreeSlot } from "@/lib/tier-utils";
@@ -91,43 +93,30 @@ export function HomePanel(props: HomePanelProps) {
 
   return (
     <div className="space-y-4">
-      {/* Phase 3 Agent 3.A — 6-card KPI strip (Revenus/Abo/Conv/Panier/IG followers/IG posts) */}
-      <KpiStrip modelId={modelId} period={30} />
+      {/* KPI strip repliable — NB 2026-04-24 : toggle pour faire remonter le feed si besoin */}
+      <div>
+        <button
+          onClick={() => setShowMobileOverview(prev => !prev)}
+          className="w-full flex items-center justify-between px-4 py-2 rounded-xl cursor-pointer transition-all mb-2"
+          style={{ background: "var(--w03)", border: "1px solid var(--w06)" }}
+          aria-expanded={showMobileOverview}
+          title={showMobileOverview ? "Masquer les KPIs" : "Afficher les KPIs"}
+        >
+          <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: "var(--text-muted)" }}>
+            {showMobileOverview ? "Masquer KPIs" : "Afficher KPIs"}
+          </span>
+          <ChevronDown
+            className="w-3.5 h-3.5 transition-transform"
+            style={{ color: "var(--text-muted)", transform: showMobileOverview ? "rotate(180deg)" : "rotate(0)" }}
+          />
+        </button>
+        {showMobileOverview && <KpiStrip modelId={modelId} period={30} />}
+      </div>
 
-      {/* Instagram stats — live snapshot (kept below the KPI strip) */}
-      <InstagramStatsWidget />
-
-      {/* Two-column layout: Feed (left) + Overview (right sticky) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 items-start">
-        {/* ── LEFT COLUMN: Feed (+ mobile overview) ── */}
+      {/* Two-column layout: Feed (left) + BotActivity (right sticky) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
+        {/* ── LEFT COLUMN: Feed ── */}
         <div className="space-y-4 min-w-0">
-          {/* Mobile-only: Overview toggle */}
-          <div className="lg:hidden">
-            <button onClick={() => setShowMobileOverview(prev => !prev)}
-              className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl cursor-pointer transition-all"
-              style={{ background: "var(--w03)", border: "1px solid var(--w06)" }}>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-black tabular-nums" style={{ color: "#D4AF37" }}>{fmt.format(revenue)}</span>
-                <span className="text-[10px] text-white/30">·</span>
-                <span className="text-[10px] text-white/40">{activeCodes.length} codes · {uniqueClients} clients</span>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-white/25 transition-transform" style={{ transform: showMobileOverview ? "rotate(180deg)" : "rotate(0)" }} />
-            </button>
-            {showMobileOverview && (
-              <div className="mt-2">
-                <OverviewSimulator
-                  revenue={revenue}
-                  activeCodes={activeCodes}
-                  modelCodes={modelCodes}
-                  packs={packs}
-                  clients={clients}
-                  uniqueClients={uniqueClients}
-                  retentionRate={retentionRate}
-                  stories={stories}
-                />
-              </div>
-            )}
-          </div>
 
           {/* ── Composer Card ── */}
           <div className={`${surface} overflow-hidden`}>
@@ -334,18 +323,14 @@ export function HomePanel(props: HomePanelProps) {
           })()}
         </div>
 
-        {/* ── RIGHT COLUMN: Overview + Simulator (sticky on desktop) ── */}
+        {/* ── RIGHT COLUMN: Bot activity (sticky desktop) ── */}
         <div className="hidden lg:block sticky top-4">
-          <OverviewSimulator
-            revenue={revenue}
-            activeCodes={activeCodes}
-            modelCodes={modelCodes}
-            packs={packs}
-            clients={clients}
-            uniqueClients={uniqueClients}
-            retentionRate={retentionRate}
-            stories={stories}
-          />
+          <BotActivityPanel modelSlug={modelSlug} />
+        </div>
+
+        {/* Mobile: Bot activity inline en bas du feed */}
+        <div className="lg:hidden">
+          <BotActivityPanel modelSlug={modelSlug} />
         </div>
       </div>
     </div>

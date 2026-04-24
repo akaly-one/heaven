@@ -54,7 +54,6 @@ export function Header() {
   const pathname = usePathname();
   const { currentModel, auth, authHeaders, ready } = useModel();
   const modelSlug = currentModel || auth?.model_slug || "";
-
   const [modelInfo, setModelInfo] = useState<{
     display_name?: string; online?: boolean;
     platforms?: Record<string, string | null>;
@@ -351,14 +350,14 @@ export function Header() {
           <div className="w-2 h-2 rounded-full shrink-0"
             style={{ background: modelInfo?.online ? "#10B981" : "#EF4444",
               boxShadow: modelInfo?.online ? "0 0 6px rgba(16,185,129,0.4)" : "none" }} />
-          {auth?.role === "root" ? (
+          {!auth || auth.role === "root" ? (
             <RootCpSelector
               variant="inline"
-              fallbackLabel={modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase() || "HEAVEN"}
+              fallbackLabel="ROOT"
             />
           ) : (
             <span className="text-xs font-bold truncate" style={{ color: "var(--text)" }}>
-              {modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase() || "HEAVEN"}
+              {modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase() || "ROOT"}
             </span>
           )}
         </div>
@@ -488,7 +487,7 @@ export function Header() {
       {/* Story Generator Modal */}
       {showStoryGen && (
         <StoryGenerator
-          modelName={modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase() || "HEAVEN"}
+          modelName={modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase() || ""}
           accentColor="#E63329"
           onClose={() => setShowStoryGen(false)}
         />

@@ -22,6 +22,7 @@ import { MultiChannelReply } from "@/components/cockpit/messagerie/multi-channel
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type SourceFilter = "all" | "web" | "instagram";
+type OrderMode = "recent" | "oldest" | "unread";
 
 interface InboxConversation {
   fan_id: string;
@@ -176,6 +177,7 @@ function MessagingPageInner() {
   const searchParams = useSearchParams();
 
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const [orderMode, setOrderMode] = useState<OrderMode>("recent");
   const [conversations, setConversations] = useState<InboxConversation[]>([]);
   const [currentFanId, setCurrentFanId] = useState<string | null>(null);
   const [messages, setMessages] = useState<InboxThreadMessage[]>([]);
@@ -318,11 +320,11 @@ function MessagingPageInner() {
       .catch(() => {});
   }, [auth?.display_name, auth?.model_slug, currentModel]);
 
-  // Search filter
+  // Search + ordering
   const filteredConversations = useMemo(() => {
-    if (!searchQuery) return conversations;
-    const q = searchQuery.toLowerCase();
-    return conversations.filter((c) => {
+    const base = conversations.filter((c) => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
       return (
         c.pseudo_insta?.toLowerCase().includes(q) ||
         c.pseudo_web?.toLowerCase().includes(q) ||
@@ -331,7 +333,22 @@ function MessagingPageInner() {
         c.last_message?.text?.toLowerCase().includes(q)
       );
     });
-  }, [conversations, searchQuery]);
+    // NB 2026-04-24 : ordre configurable
+    if (orderMode === "oldest") {
+      return [...base].sort((a, b) =>
+        new Date(a.last_message_at).getTime() - new Date(b.last_message_at).getTime()
+      );
+    }
+    if (orderMode === "unread") {
+      return [...base].sort((a, b) => {
+        const u = (b.unread_count || 0) - (a.unread_count || 0);
+        if (u !== 0) return u;
+        return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime();
+      });
+    }
+    // default "recent" — already sorted server-side DESC
+    return base;
+  }, [conversations, searchQuery, orderMode]);
 
   const currentConversation = useMemo(
     () => conversations.find((c) => c.fan_id === currentFanId) || null,
@@ -469,7 +486,32 @@ function MessagingPageInner() {
             </div>
           </div>
 
-          {/* Segmented filter */}
+          {/* Ordre — NB 2026-04-24 */}
+          <div
+            className="inline-flex rounded-lg p-0.5 shrink-0"
+            style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}
+          >
+            {(["recent", "oldest", "unread"] as const).map((o) => {
+              const active = orderMode === o;
+              const label = o === "recent" ? "Récent" : o === "oldest" ? "Ancien" : "Non lus";
+              return (
+                <button
+                  key={o}
+                  type="button"
+                  onClick={() => setOrderMode(o)}
+                  className="px-2.5 md:px-3 py-1 rounded text-[10px] md:text-[11px] font-semibold transition-colors"
+                  style={{
+                    background: active ? "rgba(212,175,55,0.18)" : "transparent",
+                    color: active ? "#D4AF37" : "var(--text-muted)",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Filtre source (web / instagram) */}
           <div
             className="inline-flex rounded-lg p-0.5 shrink-0"
             style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}
