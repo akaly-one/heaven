@@ -100,18 +100,20 @@ export function AdminAuthModal({ onClose }: AdminAuthModalProps) {
           />
         </div>
 
+        {/* NB 2026-04-24 ~23:40 : inputs affichent des * centrés clignotants (style services secrets).
+            Input réel text-transparent + overlay <span> qui rend les * avec glow + pulse lent. */}
         <div className="relative mb-4">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: "rgba(255,255,255,0.2)" }}>
-            @
-          </span>
           <input
             value={login}
             onChange={(e) => setLogin(e.target.value)}
-            placeholder="identifiant"
-            className="w-full px-9 py-3 rounded-xl text-sm text-center outline-none transition-all"
+            placeholder=""
+            aria-label="Identifiant"
+            className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
             style={{
               background: "rgba(255,255,255,0.05)",
-              color: "#fff",
+              color: "transparent",
+              caretColor: accent,
+              textAlign: "center",
               border: `1.5px solid ${login.trim() ? `${accent}40` : "rgba(255,255,255,0.08)"}`,
             }}
             onKeyDown={(e) => {
@@ -119,27 +121,65 @@ export function AdminAuthModal({ onClose }: AdminAuthModalProps) {
             }}
             autoFocus
           />
+          <div
+            className="absolute inset-0 flex items-center justify-center pointer-events-none font-bold select-none"
+            aria-hidden="true"
+            style={{
+              fontSize: "22px",
+              lineHeight: 1,
+              letterSpacing: "0.4em",
+              color: accent,
+              textShadow: `0 0 6px ${accent}cc, 0 0 14px ${accent}66`,
+              animation: login ? "admin-star-blink 2s ease-in-out infinite" : undefined,
+            }}
+          >
+            {login ? "*".repeat(Math.min(login.length, 24)) : <span className="text-[11px] font-normal tracking-normal" style={{ color: "rgba(255,255,255,0.2)", textShadow: "none" }}>identifiant</span>}
+          </div>
         </div>
 
-        {/* NB 2026-04-24 : retrait `uppercase` CSS — password case-sensitive.
-            Type=password pour masquer pendant saisie. */}
-        <input
-          id="admin-code-input"
-          type="password"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="mot de passe"
-          autoComplete="current-password"
-          className="w-full px-4 py-3 rounded-xl text-sm font-mono tracking-widest text-center outline-none mb-5 transition-all"
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            color: "#fff",
-            border: `1.5px solid ${code.trim() ? `${accent}40` : "rgba(255,255,255,0.08)"}`,
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") submit();
-          }}
-        />
+        <div className="relative mb-5">
+          <input
+            id="admin-code-input"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder=""
+            aria-label="Mot de passe"
+            autoComplete="current-password"
+            className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              color: "transparent",
+              caretColor: accent,
+              textAlign: "center",
+              border: `1.5px solid ${code.trim() ? `${accent}40` : "rgba(255,255,255,0.08)"}`,
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submit();
+            }}
+          />
+          <div
+            className="absolute inset-0 flex items-center justify-center pointer-events-none font-bold select-none"
+            aria-hidden="true"
+            style={{
+              fontSize: "22px",
+              lineHeight: 1,
+              letterSpacing: "0.4em",
+              color: accent,
+              textShadow: `0 0 6px ${accent}cc, 0 0 14px ${accent}66`,
+              animation: code ? "admin-star-blink 2s ease-in-out infinite" : undefined,
+            }}
+          >
+            {code ? "*".repeat(Math.min(code.length, 32)) : <span className="text-[11px] font-normal tracking-normal" style={{ color: "rgba(255,255,255,0.2)", textShadow: "none" }}>mot de passe</span>}
+          </div>
+        </div>
+
+        {/* Keyframes inline scoped au modal (évite d'étendre globals.css) */}
+        <style>{`
+          @keyframes admin-star-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.55; }
+          }
+        `}</style>
 
         {error && <p className="text-xs text-center mb-3" style={{ color: "#EF4444" }}>{error}</p>}
 
@@ -155,43 +195,6 @@ export function AdminAuthModal({ onClose }: AdminAuthModalProps) {
         >
           {submitting ? "..." : "Connexion"}
         </button>
-
-        {/* NB 2026-04-24 : affichage masqué style services secrets — valeurs tapées = *
-            avec glow rouge accent (let user confirm visually ce qu'il a tapé sans révéler). */}
-        {(login || code) && (
-          <div
-            className="mt-5 pt-4 space-y-2 font-mono text-[10px]"
-            style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
-            aria-hidden="true"
-          >
-            <div className="flex items-center justify-between">
-              <span style={{ color: "rgba(255,255,255,0.3)", letterSpacing: "0.2em" }}>ID</span>
-              <span
-                className="font-bold"
-                style={{
-                  color: accent,
-                  letterSpacing: "0.35em",
-                  textShadow: `0 0 6px ${accent}cc, 0 0 14px ${accent}55`,
-                }}
-              >
-                {login ? "*".repeat(Math.min(login.length, 24)) : "—"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span style={{ color: "rgba(255,255,255,0.3)", letterSpacing: "0.2em" }}>PWD</span>
-              <span
-                className="font-bold"
-                style={{
-                  color: accent,
-                  letterSpacing: "0.35em",
-                  textShadow: `0 0 6px ${accent}cc, 0 0 14px ${accent}55`,
-                }}
-              >
-                {code ? "*".repeat(Math.min(code.length, 24)) : "—"}
-              </span>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
