@@ -9,6 +9,15 @@ import { filterOutbound, humanizeDelay } from "@/lib/ai-agent/safety";
 import { decideForMode, type AgentMode } from "@/lib/ai-agent/modes";
 // BRIEF-10 AG08 : inject max_tone selon access_level du fan
 import { computeAccessLevel, type MaxAiTone } from "@/lib/access/tiers";
+// BRIEF-16 Phase G : pack awareness + correction pseudo intent
+import {
+  buildPackHistoryContext,
+  formatPackHistoryForPrompt,
+} from "@/lib/ai-agent/context/pack-history";
+import {
+  detectPseudoCorrection,
+  formatPseudoCorrectionAlert,
+} from "@/lib/ai-agent/intents/pseudo-correction";
 
 export const runtime = "nodejs";
 
@@ -34,6 +43,8 @@ async function triggerWebAutoReply(params: {
   clientId: string;
   inboundText: string;
   maxAiTone: MaxAiTone;
+  /** BRIEF-16 G2 : pseudo courant du fan (pour detectPseudoCorrection). */
+  fanPseudo?: string;
 }) {
   if (!hasGroqKey()) return;
   const db = getServerSupabase();
@@ -79,7 +90,38 @@ async function triggerWebAutoReply(params: {
     const accessNote = toneInstructionFor(params.maxAiTone);
     const basePrompt = persona?.base_prompt
       || "Tu es Yumi, créatrice. Réponds court et naturel.";
-    const systemPrompt = `${basePrompt}\n\n[CONTRAINTE ACCÈS FAN] ${accessNote}`;
+
+    // BRIEF-16 Phase G1 — pack awareness : injecte historique achats fan dans
+    // le system prompt pour que l'agent puisse répondre aux questions type
+    // « il me reste combien de jours sur mon pack Gold ? ».
+    const packCtx = await buildPackHistoryContext(params.clientId, params.modelId);
+    const packHistoryBlock = formatPackHistoryForPrompt(packCtx);
+
+    // BRIEF-16 Phase G2 — intent detection correction pseudo. Flag la
+    // conversation + injecte alerte dans system prompt.
+    const fanPseudo = params.fanPseudo || "";
+    const pseudoCorr = detectPseudoCorrection(params.inboundText, fanPseudo);
+    const pseudoAlert = pseudoCorr.isCorrection
+      ? formatPseudoCorrectionAlert(pseudoCorr)
+      : "";
+
+    // Tag conversation + dispatch event serveur-side (via DB column flag)
+    if (pseudoCorr.isCorrection) {
+      try {
+        await db
+          .from("agence_clients")
+          .update({ pending_pseudo_correction: true })
+          .eq("id", params.clientId);
+      } catch (err) {
+        // Colonne optionnelle : si elle n'existe pas encore, on log + continue
+        console.warn("[pseudo-correction] flag update failed (column may be missing):", err);
+      }
+    }
+
+    const promptParts: string[] = [basePrompt, `[CONTRAINTE ACCÈS FAN] ${accessNote}`];
+    if (packHistoryBlock) promptParts.push(packHistoryBlock);
+    if (pseudoAlert) promptParts.push(pseudoAlert);
+    const systemPrompt = promptParts.join("\n\n");
 
     const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
       { role: "system", content: systemPrompt },
@@ -286,6 +328,7 @@ export async function POST(req: NextRequest) {
       const slug = toSlug(normalizedModel);
       if (slug) {
         // BRIEF-10 AG08 : charger le client pour calculer max_tone
+        // BRIEF-16 G2 : on récupère aussi les pseudos pour detectPseudoCorrection
         const { data: clientForAccess } = await supabase
           .from("agence_clients")
           .select("age_certified, access_level, pseudo_insta, pseudo_snap, verified_handle")
@@ -293,6 +336,11 @@ export async function POST(req: NextRequest) {
           .maybeSingle();
         const decision = computeAccessLevel(clientForAccess || {});
         const maxAiTone = decision.maxAiTone;
+        const fanPseudo =
+          clientForAccess?.pseudo_insta ||
+          clientForAccess?.pseudo_snap ||
+          clientForAccess?.verified_handle ||
+          "";
 
         after(async () => {
           try {
@@ -302,6 +350,7 @@ export async function POST(req: NextRequest) {
               clientId: client_id,
               inboundText: cleanContent,
               maxAiTone,
+              fanPseudo,
             });
           } catch {
             // silent — déjà loggé dans ai_runs.error_message via le catch interne

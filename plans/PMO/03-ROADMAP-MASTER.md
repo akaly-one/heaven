@@ -135,6 +135,57 @@ Tickets (20 total) — 4 livrés Phase 2.2 :
 - [x] UV04 — Routes API /api/agence/clients/[id]/verification/* (livré Phase 2.2)
 - [ ] UV05 à UV20
 
+### BRIEF-16 — Payment Providers modulaires (P1, 🟠 cadré, dispatched 8 agents)
+
+> Brief source : [briefs/BRIEF-2026-04-25-16-packs-payment-providers.md](briefs/BRIEF-2026-04-25-16-packs-payment-providers.md)
+
+Tickets (24 total, 8 agents parallèles) :
+
+#### Phase A — V1 manuel PayPal.me (P0, bloquant first)
+- [ ] T16-A1 — Migration DB `payment_providers` JSONB + `agence_webhook_events` + `reference_code` + `pseudo_web` sur `agence_pending_payments`
+- [ ] T16-A2 — Provider `manual.ts` (registry + types + référence human-readable)
+- [ ] T16-A3 — UI fan : bouton pack dans `unlock-sheet` → POST `/api/payment/create?provider=manual` → modal référence + copy + redirect PayPal.me
+- [ ] T16-A4 — Route `POST /api/payments/manual/confirm` (match référence → fulfillPayment + code cloisonné pack)
+- [ ] T16-A5 — UI cockpit `/agence/payments` : liste pending + bouton "Valider paiement"
+
+#### Phase B — Enforcement cloisonnement pack (P0, bloquant UX promise)
+- [ ] T16-B1 — Guard serveur `code.pack === pack.slug` avant servir contenu pack-specific
+- [ ] T16-B2 — Audit `computeAccessLevel()` : passage tier-based → pack-slug-based
+- [ ] T16-B3 — UI fan profil : filtrer contenu visible par pack_slug validé
+
+#### Phase C — Architecture modulaire V2 (P1)
+- [ ] T16-C1 — Interface `PaymentProvider` + types unifiés (`src/shared/payment/types.ts`)
+- [ ] T16-C2 — Registry + wrappers paypal/revolut existants
+- [ ] T16-C3 — Squelette `stripe.ts` + guard `ALLOW_STRIPE=true`
+- [ ] T16-C4 — Table `agence_webhook_events` + helper `verifyAndStoreWebhook()`
+
+#### Phase D — Toggle UI cockpit (P1)
+- [ ] T16-D1 — Composant `<PaymentProvidersToggle>` lit/écrit `agence_settings.payment_providers`
+- [ ] T16-D2 — Intégration `/cp/root/settings/payments` et `/agence/settings/payments`
+- [ ] T16-D3 — Hook `usePaymentProviders()` : liste enabled + auto-fallback
+
+#### Phase E — QA + doc (P1)
+- [ ] T16-E1 — Tests E2E Playwright V1 manuel (visiteur → pack → cockpit valide → code → access)
+- [ ] T16-E2 — Docs `docs/architecture/PAYMENT-PROVIDERS.md` (archi interne dev)
+- [ ] T16-E3 — CHANGELOG v1.5.0 + mise à jour masterplan
+
+#### Phase F — Custom pack pricing + shopping cart (P1)
+- [ ] T16-F1 — Migration DB `agence_custom_pricing` (category × media_type × multiplier × base_price) + seed Yumi
+- [ ] T16-F2 — API `POST /api/packs/custom/quote` (items[] → total + breakdown)
+- [ ] T16-F3 — UI shopping cart fan (sélection items + quantité + description + total live + redirect)
+- [ ] T16-F4 — UI cockpit : affichage breakdown pending_payment pour fulfillment manuel
+
+#### Phase G — Agent IA pack awareness (P1)
+- [ ] T16-G1 — Contexte agent enrichi : `pack_history` + `remaining_days` injectés dans system prompt
+- [ ] T16-G2 — Intent recognition `detectPseudoCorrection()` (regex `correction|erreur|trompé|mauvais pseudo` + réf `YUMI-P*`)
+- [ ] T16-G3 — Auto-suggestion validation à la modèle quand match probable (pseudo similaire + montant + date)
+
+#### Phase H — CGV + docs NB (P1)
+- [x] T16-H1 — Page `/cgv` publique complète (14 sections, objet / 18+ / prix / accès 30 j / paiement / responsabilité pseudo / art. VI.53 CDE BE / usage perso / révocation / juridiction Bruxelles FR) — livré 2026-04-25 par Agent DOCS
+- [ ] T16-H2 — Footer link CGV sur `/m/[slug]` et modal d'achat
+- [x] T16-H3 — Docs NB `docs/architecture/PAYMENT-INTEGRATION-GUIDE-NB.md` (PayPal Business + Revolut Merchant KYB + Wise + Stripe urgence + DAC7 BE + procédure correction pseudo) — livré 2026-04-25 par Agent DOCS
+- [ ] T16-H4 — Checkbox "J'accepte les CGV" obligatoire avant commande
+
 ---
 
 ## 🎯 Chemin critique — ordre d'exécution recommandé

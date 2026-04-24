@@ -34,12 +34,13 @@
 | BRIEF-2026-04-24-13 | 2026-04-24 | Unification Clients & Codes ↔ Messages + flow self-verification IP-matched | feature majeure + refactor data | P1 | DB, BE, FE, QA, Doc, DevOps | 🟢 partial (4/20 UV01-UV04 livrés Phase 2.2, RBAC fix C3) | [briefs/BRIEF-2026-04-24-13-unified-client-self-verification-flow.md](./briefs/BRIEF-2026-04-24-13-unified-client-self-verification-flow.md) |
 | BRIEF-2026-04-24-14 | 2026-04-24 | Domaine yumii.club + uniformisation handles Yumi + sync Chrome extension | feature infra + refactor + tooling | P1 | Doc, FE, BE, DevOps | 🟠 cadré (5 questions en attente) | [briefs/BRIEF-2026-04-24-14-domain-yumii-club-uniformisation.md](./briefs/BRIEF-2026-04-24-14-domain-yumii-club-uniformisation.md) |
 | BRIEF-2026-04-24-15 | 2026-04-24 | Messagerie UX polish + fiche fan accessible + sync pseudo + UI admin validation + régressions R2 | UX + bugs + DB | P0 | FE, BE, DB, DevOps | 🟢 dispatched (4 agents CORRECTIF parallèles) | [briefs/BRIEF-2026-04-24-15-messagerie-ux-polish-phase25.md](./briefs/BRIEF-2026-04-24-15-messagerie-ux-polish-phase25.md) |
+| BRIEF-2026-04-25-16 | 2026-04-25 | Packs + Payment Providers modulaires (V1 manuel PayPal.me + V2 auto + custom pricing cart + CGV + agent IA pack awareness) | feature majeure + refactor archi + légal | P1 | DB, BE, FE, AI, QA, Legal, DevOps, Doc | 🟠 cadré (7/7 décisions NB reçues, plan 8 agents parallèles prêt, attente GO final) | [briefs/BRIEF-2026-04-25-16-packs-payment-providers.md](./briefs/BRIEF-2026-04-25-16-packs-payment-providers.md) |
 
 ---
 
 ## Compteur
 
-- Total reçus : 15
+- Total reçus : 16
 - En attente consolidation : 9
 - Consolidés dans plan global : 2
 - En exécution : 0

@@ -50,6 +50,17 @@ export interface AccessDecision {
 }
 
 /**
+ * BRIEF-16 Phase B — décision enrichie avec la dimension "pack slug" (codes
+ * actifs détenus par le client). Complémentaire à `allowedContent` qui
+ * correspond au tier global. Les deux axes sont combinés côté API :
+ *  - `allowedContent.includes("packs")` → fan peut acheter des packs
+ *  - `allowedPackSlugs.includes(<slug>)` → fan a accès au contenu du pack
+ */
+export interface PackAwareAccessDecision extends AccessDecision {
+  allowedPackSlugs: string[];
+}
+
+/**
  * Détecte si le fan a fourni un vrai handle (pas un pseudo auto-généré
  * type "visiteur-123" ou "guest-abc").
  */
@@ -126,4 +137,92 @@ export function canAccess(
   content: AllowedContent
 ): boolean {
   return computeAccessLevel(client).allowedContent.includes(content);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  BRIEF-16 Phase B — enrichissement pack-slug
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Cache mémoire in-process pour éviter N+1 sur le rendu page profil (un
+ * composant par tier + compute access par rendu = 4-6 queries sinon).
+ *
+ * Key : `${clientId}:${model}` — Value : { slugs, expiresAt }
+ * TTL : 30s (volontairement court — un code freshly generated doit apparaître
+ * rapidement dans l'UI suivant la validation PayPal manual).
+ */
+const PACK_CACHE_TTL_MS = 30_000;
+type CacheEntry = { slugs: string[]; expiresAt: number };
+const packSlugsCache = new Map<string, CacheEntry>();
+
+function cacheKey(clientId: string, model: string): string {
+  return `${clientId}:${model}`;
+}
+
+/**
+ * Invalide le cache pour un client+model donné. À appeler juste après
+ * `fulfillPayment` ou `POST /api/codes action=create` pour que le profil
+ * reflète immédiatement le nouveau pack.
+ */
+export function invalidatePackSlugsCache(clientId: string, model: string): void {
+  packSlugsCache.delete(cacheKey(clientId, model));
+}
+
+/**
+ * Vide entièrement le cache pack-slugs (utilisé en tests).
+ */
+export function clearPackSlugsCache(): void {
+  packSlugsCache.clear();
+}
+
+/**
+ * Calcule la décision d'accès COMPLÈTE pour un client, incluant les pack
+ * slugs actifs (stricts) déduits de `agence_codes`.
+ *
+ * @param client  row client minimal (pour computeAccessLevel)
+ * @param opts.clientId  UUID du client (pour query agence_codes)
+ * @param opts.model     model_id (m1 / m2 / m3) ou slug (yumi / paloma / ruby)
+ *
+ * Si `clientId` ou `model` sont absents → retourne la décision standard sans
+ * pack slugs (backwards compat).
+ *
+ * Cache 30s par (clientId, model) pour éviter N+1 côté SSR.
+ */
+export async function computePackAwareAccessLevel(
+  client: ClientForAccess,
+  opts: { clientId?: string | null; model?: string | null }
+): Promise<PackAwareAccessDecision> {
+  const baseDecision = computeAccessLevel(client);
+
+  const clientId = opts.clientId?.trim();
+  const model = opts.model?.trim();
+
+  // Si pas de clientId ou model → pas de pack slugs (visiteur anonyme / guest)
+  if (!clientId || !model) {
+    return { ...baseDecision, allowedPackSlugs: [] };
+  }
+
+  // Lecture cache
+  const key = cacheKey(clientId, model);
+  const now = Date.now();
+  const cached = packSlugsCache.get(key);
+  if (cached && cached.expiresAt > now) {
+    return { ...baseDecision, allowedPackSlugs: cached.slugs };
+  }
+
+  // Miss → query DB via listClientPacks (import dynamique pour éviter le cycle
+  // tiers.ts → pack-guard.ts → supabase-server au niveau top-level dans les
+  // contextes qui n'en ont pas besoin).
+  let activeSlugs: string[] = [];
+  try {
+    const { listClientPacks, extractActivePackSlugs } = await import("./pack-guard");
+    const packs = await listClientPacks(clientId, model);
+    activeSlugs = extractActivePackSlugs(packs);
+  } catch (err) {
+    console.warn("[tiers] pack-guard query failed:", err);
+    activeSlugs = [];
+  }
+
+  packSlugsCache.set(key, { slugs: activeSlugs, expiresAt: now + PACK_CACHE_TTL_MS });
+  return { ...baseDecision, allowedPackSlugs: activeSlugs };
 }

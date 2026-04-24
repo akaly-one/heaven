@@ -1,5 +1,33 @@
 # Heaven — Changelog
 
+## [v1.5.0] — 2026-04-25 — BRIEF-16 Packs + Payment Providers modulaires
+
+### Features
+- Payment providers modulaires activables/désactivables via toggle cockpit (manual, paypal, revolut, stripe)
+- Flow V1 manuel PayPal.me : référence human-readable copiable (`YUMI-PGLD-K3M9X2`) + validation cockpit modèle
+- Custom pack shopping cart : sélection photo/vidéo × catégorie × quantité + description libre + total live
+- Agent IA pack awareness : historique achats + temps restant + intent correction pseudo (regex `detectPseudoCorrection()`)
+- Cloisonnement strict code ↔ pack_slug au niveau serveur (plus d'accès croisé par tier)
+- CGV publiques `/cgv` + checkbox acceptation obligatoire avant commande
+
+### Technical
+- Migration `NNN_payment_providers_toggle.sql` — `agence_settings.payment_providers` JSONB + `reference_code` + `pseudo_web` sur `agence_pending_payments`
+- Migration `NNN+1_webhook_events_antireplay.sql` — table `agence_webhook_events` avec contrainte `UNIQUE(provider, event_id)`
+- Migration `NNN+2_custom_pricing.sql` — table `agence_custom_pricing` (photo 5 € base + vidéo 10 €/min × multiplicateur Silver/Gold/VIP Black/VIP Platinum) + seed Yumi/Paloma/Ruby
+- Extension `agence_pending_payments` : colonnes `reference_code`, `pseudo_web`, `pack_breakdown JSONB`, `rejected_reason`
+- Interface `PaymentProvider` unifiée dans `src/shared/payment/types.ts`
+- Registry `src/shared/payment/registry.ts` avec `getProvider(id)` + `getEnabledProviders()` + fallback
+- Wrappers providers : `manual.ts`, `paypal.ts`, `revolut.ts`, `stripe.ts` dans `src/shared/payment/providers/`
+- Stripe feature-flagged OFF par défaut (env var `ALLOW_STRIPE=true` obligatoire pour toute activation)
+- Helper `verifyAndStoreWebhook()` centralisé (signature + anti-replay + raw body JSONB)
+
+### Docs
+- `docs/architecture/PAYMENT-INTEGRATION-GUIDE-NB.md` — guide opérationnel NB pour brancher PayPal Business, Revolut Merchant (KYB, webhooks, env vars), Wise Request, Stripe urgence, règles DAC7 BE, procédure correction pseudo
+- ADR-003 payments modulaires (dans `plans/`)
+- CGV publiques `/cgv` — 14 sections (objet, 18+, prix, accès 30 j, paiement, responsabilité pseudo, rétractation art. VI.53 CDE BE, usage perso, révocation, juridiction Bruxelles FR)
+
+---
+
 ## [v1.4.0] — 2026-04-24 — Messagerie unifiée + Agent IA 3 modes + per-conversation override
 
 > Rapport détaillé : [plans/_reports/UPDATE-REPORT-2026-04-24-1112-messagerie-copilot-per-conversation.md](plans/_reports/UPDATE-REPORT-2026-04-24-1112-messagerie-copilot-per-conversation.md)
