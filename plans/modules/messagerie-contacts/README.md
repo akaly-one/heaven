@@ -12,6 +12,7 @@ Fusion inbox (web + Instagram) + panneau Contacts intégré (plus de tab Clients
 
 - [STRATEGY-v1.2026-04-21.md](./STRATEGY-v1.2026-04-21.md) — briefs B7 + flows fusion
 - [TECH-v1.2026-04-21.md](./TECH-v1.2026-04-21.md) — vue `agence_messages_timeline`, table `agence_fans`, API merge/link
+- [UI-STANDARDS-v1.2026-04-24.md](./UI-STANDARDS-v1.2026-04-24.md) — règles pseudo + avatar + bulles row/thread + mode agent + matrice cohérence (source unique header ↔ messagerie ↔ profil)
 - [DECISIONS.md](./DECISIONS.md) — ADRs module
 - [CHANGELOG.md](./CHANGELOG.md) — append-only
 

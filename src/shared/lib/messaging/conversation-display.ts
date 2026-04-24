@@ -3,13 +3,28 @@
  *
  * Source de vérité unique utilisée par :
  *  - Header dropdown (src/shared/components/header/messages-dropdown.tsx)
+ *  - Header dropdown clients (src/shared/components/header/clients-dropdown.tsx)
  *  - Page messagerie (src/app/agence/messagerie/page.tsx)
  *
  * Garantit que le même fan apparaît avec le MÊME pseudo + MÊME avatar + MÊME couleur
  * dans les deux vues (la bulle header = raccourci vers messagerie, pas un univers séparé).
+ *
+ * ▸ Spec complète : plans/modules/messagerie-contacts/UI-STANDARDS-v1.2026-04-24.md
  */
 
 export type ConversationPlatform = "snap" | "insta" | "web" | "unknown";
+
+/**
+ * Type strict pour les handles rendus à l'écran.
+ * - `@xxx` : handle externe (Insta / Snap / Fanvue) — TOUJOURS préfixé `@`
+ * - `visiteur-xxxx` : visiteur web anonyme — JAMAIS préfixé `@`
+ * - `guest-xxxx` : variante legacy alternative — JAMAIS préfixé `@`
+ */
+export type Handle =
+  | `@${string}`
+  | `visiteur-${string}`
+  | `guest-${string}`
+  | "visiteur";
 
 export interface ConversationLike {
   fan_id?: string;
@@ -22,19 +37,47 @@ export interface ConversationLike {
 
 // ─── Platform detection ─────────────────────────────────────────────
 export function getConversationPlatform(c: ConversationLike): ConversationPlatform {
-  if (c.pseudo_snap) return "snap";
   if (c.pseudo_insta) return "insta";
+  if (c.pseudo_snap) {
+    // Si snap contient un pseudo anonyme (visiteur/guest), considérer comme web
+    if (/^(visiteur|guest)/i.test(c.pseudo_snap)) return "web";
+    return "snap";
+  }
   if (c.pseudo_web) return "web";
   return "unknown";
 }
 
 // ─── Pseudo resolver (cœur de la norme) ──────────────────────────────
-// Priorité: Snap → Insta → pseudo_web (visiteur-NNN) → fallback stable basé sur fan_id
-export function getConversationPseudo(c: ConversationLike): string {
-  if (c.pseudo_insta) return `@${c.pseudo_insta}`;
-  if (c.pseudo_snap) return c.pseudo_snap;
+//
+// RÈGLE UNIQUE 2026-04-24 :
+//  1. pseudo_insta → `@<clean>` (strip @ existant, puis re-préfixe pour éviter `@@`)
+//  2. pseudo_snap  → `@<clean>` SAUF si ressemble à `visiteur-NNN` ou `guest-XXX` → conservé tel quel
+//  3. pseudo_web   → tel quel (déjà formaté visiteur-NNN)
+//  4. fanvue_handle→ `@<clean>`
+//  5. Fallback fan_id préfixé "pseudo:" → `visiteur-<last4 lowercase>`
+//  6. Fallback fan_id plain UUID → `visiteur-<last4 lowercase>`
+//  7. Ultime fallback → display_name ou "visiteur"
+//
+// INVARIANT : TOUJOURS `@` pour les handles externes (Insta/Snap réel/Fanvue),
+//             JAMAIS `@` pour les pseudos anonymes (visiteur-NNN / guest-XXX).
+export function getConversationPseudo(c: ConversationLike): Handle | string {
+  if (c.pseudo_insta) {
+    const clean = c.pseudo_insta.replace(/^@/, "");
+    return `@${clean}` as const;
+  }
+  if (c.pseudo_snap) {
+    // Les visiteurs anonymes peuvent être stockés dans pseudo_snap avec format
+    // visiteur-NNN ou guest-XXX (legacy). Ceux-là ne prennent PAS de @.
+    const isAnon = /^(visiteur|guest)/i.test(c.pseudo_snap);
+    if (isAnon) return c.pseudo_snap;
+    const clean = c.pseudo_snap.replace(/^@/, "");
+    return `@${clean}` as const;
+  }
   if (c.pseudo_web) return c.pseudo_web;
-  if (c.fanvue_handle) return c.fanvue_handle;
+  if (c.fanvue_handle) {
+    const clean = c.fanvue_handle.replace(/^@/, "");
+    return `@${clean}` as const;
+  }
 
   // Fallback : si fan_id préfixé "pseudo:", extrait les 4 derniers chars du suffix
   if (c.fan_id?.startsWith("pseudo:")) {
@@ -74,9 +117,15 @@ export function getAvatarStyle(c: ConversationLike, opts?: { hasUnread?: boolean
 
 // ─── External URL (null si pas d'upgrade) ─────────────────────────────
 // NB : web visitor → null, il faut d'abord upgrade son pseudo.
+// Les pseudos anonymes (visiteur-NNN / guest-XXX) stockés dans pseudo_snap
+// ne doivent PAS générer d'URL Snapchat valide.
 export function getExternalUrl(c: ConversationLike): string | null {
-  if (c.pseudo_snap) return `https://snapchat.com/add/${c.pseudo_snap}`;
+  if (c.pseudo_snap && !/^(visiteur|guest)/i.test(c.pseudo_snap)) {
+    const clean = c.pseudo_snap.replace(/^@/, "");
+    return `https://snapchat.com/add/${clean}`;
+  }
   if (c.pseudo_insta) return `https://instagram.com/${c.pseudo_insta.replace(/^@/, "")}`;
+  if (c.fanvue_handle) return `https://fanvue.com/${c.fanvue_handle.replace(/^@/, "")}`;
   return null;
 }
 

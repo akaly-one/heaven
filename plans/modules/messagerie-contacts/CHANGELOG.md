@@ -1,5 +1,63 @@
 # Messagerie + Contacts — Changelog
 
+## 2026-04-24 (v2 — Phase 1) — BRIEF-02 tickets M01 full + M02 livrés
+
+> Auteur : Agent DEV #2 · Tickets : M01 full + M02 · Brief parent : [BRIEF-2026-04-24-02](../../PMO/briefs/BRIEF-2026-04-24-02-messenger-ui-standards.md)
+
+### M01 full — UI-STANDARDS-v1.2026-04-24.md créé
+
+Document unique source de vérité pour tout rendu conversationnel. 571 lignes, 8 sections :
+
+1. **Règle Pseudo** — priorité stricte insta > snap(réel) > web > fanvue > fan_id, type strict `Handle`, invariant `@` pour handles externes / jamais `@` pour visiteur-NNN/guest-XXX
+2. **Règle Avatar** — composant unique `<ConversationAvatar>`, tailles normalisées 24/32/40/56, a11y `role="img"` + `aria-label`, avatar modèle dans bulles outbound
+3. **Règle Bulle conversation (liste)** — `<ConversationRow>` structure + source dots + tier badge + mode chip + preview 40ch + time ago, touch target ≥ 56px, roving tabindex
+4. **Règle Bulle chat (thread)** — `<MessageBubble>` avec discriminator `actor` (fan / model_web / model_instagram / agent_ai / agent_draft), tokens Tailwind v4 `@theme`, cluster detection, scroll preservation + badge "N nouveaux ↓", live region `role="log"`
+5. **Mode agent placement** — 3 points d'entrée cohérents (row / thread header / dropdown), sémantique unifiée AUTO/COPILOT/MANUAL/null, endpoint PUT /api/agence/messaging/mode
+6. **Matrice cohérence** — header ↔ messagerie ↔ profil, snapshot Playwright test case visiteur-005, check-list PR anti-régression
+
+Impact : tous les futurs tickets M03-M07 ont un contrat clair, toute régression visuelle sera bloquée par snapshot Playwright.
+
+### M02 — Fix `getConversationPseudo` règle unique + test Vitest
+
+Bug fixé dans `src/shared/lib/messaging/conversation-display.ts` :
+
+**Avant** : Insta → `@{pseudo}`, Snap → `{pseudo}` (sans @) → même fan affiché différemment entre dropdown et page
+
+**Après** : règle unique `@` pour handles externes (Insta/Snap réel/Fanvue), JAMAIS `@` pour visiteur-NNN/guest-XXX.
+
+- Type strict `Handle = \`@${string}\` | \`visiteur-${string}\` | \`guest-${string}\` | "visiteur"` ajouté
+- Double `@` évité par strip préalable (`replace(/^@/, "")` puis re-préfixe)
+- Détection anonyme regex insensible à la casse `/^(visiteur|guest)/i`
+- `getConversationPlatform` aussi corrigé (snap anon → "web" au lieu de "snap")
+- `getExternalUrl` refactor : `snapchat.com/add/<x>` uniquement si non-anon + ajout branche fanvue.com
+- Test unit [`conversation-display.test.ts`](../../../src/shared/lib/messaging/conversation-display.test.ts) : **31 cases Vitest** couvrant les 8 priorités + invariants de cohérence + extensions `getConversationPlatform` et `getExternalUrl`
+- Validation logique : 31/31 passed (runner standalone, Vitest à installer sur GO NB pour intégration CI)
+- `tsconfig.json` : exclu `**/*.test.ts` du build Next (test runner séparé)
+- `npx tsc --noEmit` : passed
+
+Impact : le dropdown header et la page messagerie affichent désormais le **MÊME pseudo** pour le **MÊME client**, conformément à l'invariant BRIEF-02.
+
+### Fichiers touchés
+
+- `plans/modules/messagerie-contacts/UI-STANDARDS-v1.2026-04-24.md` (+571 lignes créé)
+- `plans/modules/messagerie-contacts/README.md` (ajout entry UI-STANDARDS)
+- `plans/modules/messagerie-contacts/CHANGELOG.md` (cette entry v2)
+- `plans/PMO/03-ROADMAP-MASTER.md` (2 cases cochées M01 full + M02)
+- `src/shared/lib/messaging/conversation-display.ts` (+ type Handle, règle unique, getExternalUrl refactor)
+- `src/shared/lib/messaging/conversation-display.test.ts` (+ 31 cases créé)
+- `tsconfig.json` (exclu `**/*.test.ts`)
+
+### Prochains tickets (M03-M07)
+
+Dépendent désormais de ce doc comme contrat. Parallélisables après M01 validé :
+- M03 `<ConversationAvatar>` shared + refactor 2 sites
+- M04 `<ConversationRow>` shared
+- M05 `<MessageBubble>` shared avec styling iMessage + tokens CSS
+- M06 `<AgentModeChip>` + 3 points d'entrée
+- M07 snapshot Playwright + axe-core
+
+---
+
 ## 2026-04-24 (11:12) — Standards d'affichage unifiés header ↔ page + mode agent par conversation
 
 > Rapport global Heaven v1.4.0 : [plans/_reports/UPDATE-REPORT-2026-04-24-1112-messagerie-copilot-per-conversation.md](../../_reports/UPDATE-REPORT-2026-04-24-1112-messagerie-copilot-per-conversation.md)
