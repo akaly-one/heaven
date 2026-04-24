@@ -40,10 +40,25 @@ export async function POST(req: NextRequest) {
   const userSlug = String(user.sub || "").toLowerCase();
   const currentModelId = toModelId(userSlug || "yumi");
 
+  // NB 2026-04-24 : pseudo-fans (visiteurs sans fan_id réel dans agence_fans)
+  // arrivent avec fan_id="pseudo:<client_id|ig_conv_id>". On extrait le suffix
+  // et on route directement via client_id pour le web reply.
+  const isPseudoFan = fanId.startsWith("pseudo:");
+  const pseudoSuffix = isPseudoFan ? fanId.slice("pseudo:".length) : null;
+
   // Determine channel
   let channel: "web" | "instagram";
   if (preferChannel) {
     channel = preferChannel;
+  } else if (isPseudoFan) {
+    // Pseudo-fans : channel déduit via agence_clients (web) ou instagram_conversations (ig)
+    const { data: asClient } = await db
+      .from("agence_clients")
+      .select("id")
+      .eq("id", pseudoSuffix)
+      .eq("model", currentModelId)
+      .maybeSingle();
+    channel = asClient ? "web" : "instagram";
   } else {
     // Lookup last inbound message for this fan on the current model
     const { data: lastIn } = await db
@@ -108,13 +123,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, channel: "instagram", message_id: inserted.id });
   }
 
-  // Web channel : need a client row on current model linked to this fan
-  const { data: client } = await db
-    .from("agence_clients")
-    .select("id, model")
-    .eq("fan_id", fanId)
-    .eq("model", currentModelId)
-    .maybeSingle();
+  // Web channel : need a client row on current model.
+  // NB 2026-04-24 : 2 voies de résolution :
+  //   1. fan_id UUID réel → lookup agence_clients.fan_id (fan unifié)
+  //   2. fan_id="pseudo:<client_id>" → lookup direct agence_clients.id (visiteur sans fan_id)
+  let client: { id: string; model: string } | null = null;
+
+  if (isPseudoFan && pseudoSuffix) {
+    const { data } = await db
+      .from("agence_clients")
+      .select("id, model")
+      .eq("id", pseudoSuffix)
+      .eq("model", currentModelId)
+      .maybeSingle();
+    client = data;
+  } else {
+    const { data } = await db
+      .from("agence_clients")
+      .select("id, model")
+      .eq("fan_id", fanId)
+      .eq("model", currentModelId)
+      .maybeSingle();
+    client = data;
+  }
 
   if (!client) {
     return NextResponse.json(
