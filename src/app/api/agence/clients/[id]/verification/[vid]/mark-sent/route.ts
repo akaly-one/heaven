@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/api-auth";
 import { getServerSupabase } from "@/lib/supabase-server";
+import { toModelId } from "@/lib/model-utils";
 
 // BRIEF-13 UV04 — POST /api/agence/clients/[id]/verification/[vid]/mark-sent
 // Admin marque une verification comme "sent" après avoir envoyé le lien+code
@@ -48,8 +49,8 @@ export async function POST(
     if (!client) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
-    const userSlug = String(user.sub || "").toLowerCase();
-    if (String(client.model).toLowerCase() !== userSlug) {
+    const userModelId = toModelId(user.sub);
+    if (String(client.model).toLowerCase() !== userModelId.toLowerCase()) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }

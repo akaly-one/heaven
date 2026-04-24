@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/api-auth";
 import { getServerSupabase } from "@/lib/supabase-server";
+import { toModelId } from "@/lib/model-utils";
 
 export async function POST(
   _req: NextRequest,
@@ -45,8 +46,8 @@ export async function POST(
 
   // Scope model role à sa propre model
   if (user.role === "model") {
-    const userSlug = String(user.sub || "").toLowerCase();
-    if (String(client.model).toLowerCase() !== userSlug) {
+    const userModelId = toModelId(user.sub);
+    if (String(client.model).toLowerCase() !== userModelId.toLowerCase()) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }

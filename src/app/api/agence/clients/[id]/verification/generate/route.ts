@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/api-auth";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { generateVerification } from "@/lib/verification/generate";
+import { toModelId } from "@/lib/model-utils";
 
 // BRIEF-13 UV04 — POST /api/agence/clients/[id]/verification/generate
 // Admin génère un lien + code 6 chiffres à envoyer manuellement via Snap/IG
@@ -50,8 +51,8 @@ export async function POST(
 
   // Scope check for model role
   if (user.role === "model") {
-    const userSlug = String(user.sub || "").toLowerCase();
-    if (String(client.model).toLowerCase() !== userSlug) {
+    const userModelId = toModelId(user.sub);
+    if (String(client.model).toLowerCase() !== userModelId.toLowerCase()) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
