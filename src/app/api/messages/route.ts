@@ -3,9 +3,113 @@ import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 import { sanitize } from "@/lib/api-utils";
 import { getAuthUser } from "@/lib/api-auth";
-import { toModelId, isModelId } from "@/lib/model-utils";
+import { toModelId, isModelId, toSlug } from "@/lib/model-utils";
+import { generateReplyGroq, hasGroqKey, GROQ_DEFAULT_MODEL } from "@/lib/groq";
+import { filterOutbound, humanizeDelay } from "@/lib/ai-agent/safety";
 
 export const runtime = "nodejs";
+
+// NB 2026-04-24 : fire-and-forget auto-reply agent IA sur messages web.
+// Web = filtre permissif (pas NSFW bloqué), mais zero AI leak + zero confidentiality leak.
+async function triggerWebAutoReply(params: {
+  modelSlug: string;
+  modelId: string;
+  clientId: string;
+  inboundText: string;
+}) {
+  if (!hasGroqKey()) return;
+  const db = getServerSupabase();
+  if (!db) return;
+  const t0 = Date.now();
+  try {
+    // Load persona
+    const { data: persona } = await db
+      .from("agent_personas")
+      .select("base_prompt, version")
+      .eq("model_slug", params.modelSlug)
+      .eq("is_active", true)
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // Load history (5 derniers messages pour ce client)
+    const { data: history } = await db
+      .from("agence_messages")
+      .select("sender_type, content")
+      .eq("model", params.modelId)
+      .eq("client_id", params.clientId)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    const historyOrdered = (history || []).reverse();
+
+    const systemPrompt = persona?.base_prompt
+      || "Tu es Yumi, créatrice. Réponds court et naturel.";
+
+    const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
+      { role: "system", content: systemPrompt },
+      ...historyOrdered.map((m) => ({
+        role: (m.sender_type === "model" || m.sender_type === "admin" ? "assistant" : "user") as "assistant" | "user",
+        content: m.content,
+      })),
+    ];
+
+    const aiResp = await generateReplyGroq(messages, {
+      model: GROQ_DEFAULT_MODEL,
+      maxTokens: 256,
+      temperature: 0.8,
+    });
+
+    // Safety filter mode 'web' (permissif)
+    const safety = filterOutbound(aiResp.content, "web");
+    let finalText = aiResp.content;
+    if (!safety.ok) {
+      if (safety.action === "block" || safety.action === "rephrase") {
+        finalText = safety.sanitized || "Hey bb 💜";
+      }
+    }
+
+    // Humanizer delay pour simuler humain
+    await humanizeDelay();
+
+    // Log ai_run
+    const { data: runRow } = await db
+      .from("ai_runs")
+      .insert({
+        conversation_id: params.clientId,
+        conversation_source: "web",
+        model_slug: params.modelSlug,
+        provider_id: "groq-direct-llama-3.3-70b",
+        persona_version: persona?.version ?? 1,
+        input_message: params.inboundText,
+        output_message: finalText,
+        tokens_in: aiResp.tokensIn,
+        tokens_out: aiResp.tokensOut,
+        latency_ms: Date.now() - t0,
+        safety_flags: safety.flags,
+        safety_blocked: safety.action === "block",
+      })
+      .select("id")
+      .maybeSingle();
+
+    // Insert as model reply
+    await db.from("agence_messages").insert({
+      model: params.modelId,
+      client_id: params.clientId,
+      sender_type: "model",
+      content: finalText,
+      ...(runRow?.id ? { ai_run_id: runRow.id } : {}),
+    });
+  } catch (err) {
+    console.warn("[WebAutoReply] failed:", err);
+    await db.from("ai_runs").insert({
+      conversation_id: params.clientId,
+      conversation_source: "web",
+      model_slug: params.modelSlug,
+      error_message: String(err).slice(0, 500),
+      latency_ms: Date.now() - t0,
+    });
+  }
+}
 
 export async function OPTIONS(req: NextRequest) {
   const cors = getCorsHeaders(req);
@@ -110,6 +214,19 @@ export async function POST(req: NextRequest) {
         .eq("client_id", client_id)
         .eq("sender_type", "client")
         .eq("read", false);
+    }
+
+    // NB 2026-04-24 : auto-reply agent IA (web) — fire-and-forget si fan envoie
+    if (sender_type === "client") {
+      const slug = toSlug(normalizedModel);
+      if (slug) {
+        triggerWebAutoReply({
+          modelSlug: slug,
+          modelId: normalizedModel,
+          clientId: client_id,
+          inboundText: cleanContent,
+        }).catch(() => { /* silent, déjà loggé dans ai_runs */ });
+      }
     }
 
     return NextResponse.json({ message: data }, { status: 201, headers: cors });

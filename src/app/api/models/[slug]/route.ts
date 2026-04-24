@@ -71,6 +71,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       paypal_handle: config?.paypal_handle || null,
       status_text: modelInfo?.status_text || null,
       status_updated_at: modelInfo?.status_updated_at || null,
+      // NB 2026-04-24 : expose Fanvue pour ProfileCta public
+      fanvue_handle: modelInfo?.fanvue_handle || null,
+      fanvue_url: modelInfo?.fanvue_url || null,
     }, { headers: cors });
   } catch (err) {
     console.error("[API/models] GET:", err);

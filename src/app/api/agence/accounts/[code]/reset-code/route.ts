@@ -17,6 +17,7 @@ import { randomBytes } from "crypto";
 export const runtime = "nodejs";
 
 const AGENCY_ADMIN_SLUGS = ["yumi"];
+const ROOT_MASTER_MARKERS = new Set(["m0", "root"]); // model_id ou model_slug identifiant ROOT
 const DEFAULT_LENGTH = 8;
 const MIN_LENGTH = 6;
 const MAX_LENGTH = 10;
@@ -37,6 +38,40 @@ function isAdminSession(user: SessionLike): boolean {
   if (user.role === "model" && AGENCY_ADMIN_SLUGS.includes(slug)) return true;
   const scopes = user.scopes ?? [];
   if (scopes.includes("*") || scopes.includes("manage_entities")) return true;
+  return false;
+}
+
+// Hiérarchie NB 2026-04-24 :
+//   Root Master (role=root, model_slug=null ou slug=root) → peut éditer tous
+//   Yumi root-fusion (role=root, model_slug='yumi') → peut éditer modèles SAUF Root Master
+//   Model (paloma/ruby) → uniquement son propre compte
+function isRootMaster(user: SessionLike): boolean {
+  if (!user || user.role !== "root") return false;
+  const slug = String(user.sub || user.model_slug || "").toLowerCase();
+  return slug === "" || slug === "root";
+}
+
+type TargetAccount = { model_id?: string | null; model_slug?: string | null; role?: string | null };
+
+function canEditTarget(user: SessionLike, target: TargetAccount): boolean {
+  if (!user) return false;
+  const targetIsRootMaster =
+    ROOT_MASTER_MARKERS.has(String(target.model_id ?? "").toLowerCase()) ||
+    ROOT_MASTER_MARKERS.has(String(target.model_slug ?? "").toLowerCase()) ||
+    (target.role === "root" && !target.model_slug);
+
+  if (isRootMaster(user)) return true;
+
+  // Yumi (root-fusion) : tout sauf Root Master
+  const userSlug = String(user.sub || user.model_slug || "").toLowerCase();
+  if (user.role === "root" && AGENCY_ADMIN_SLUGS.includes(userSlug)) {
+    return !targetIsRootMaster;
+  }
+
+  // Model : seulement son propre compte
+  if (user.role === "model") {
+    return userSlug === String(target.model_slug ?? "").toLowerCase();
+  }
   return false;
 }
 
@@ -62,6 +97,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ code: stri
   const body = await req.json().catch(() => ({}));
   const reqLength = Number(body?.length ?? DEFAULT_LENGTH);
   const length = Math.max(MIN_LENGTH, Math.min(MAX_LENGTH, isFinite(reqLength) ? reqLength : DEFAULT_LENGTH));
+  // NB 2026-04-24 : root peut définir un code CUSTOM (password au choix) au lieu
+  // du code généré aléatoire. Validation : 4-32 chars, alphanum + _ - .
+  const customCode = typeof body?.custom_code === "string" ? body.custom_code.trim() : "";
+  const CUSTOM_CODE_REGEX = /^[a-zA-Z0-9_\-.]{4,32}$/;
+  if (customCode && !CUSTOM_CODE_REGEX.test(customCode)) {
+    return NextResponse.json({
+      error: "Code custom invalide : 4-32 caractères alphanumériques, _ - . autorisés",
+    }, { status: 400 });
+  }
 
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "DB not configured" }, { status: 500 });
@@ -69,25 +113,46 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ code: stri
   // Verifie que le compte existe
   const { data: account, error: fetchErr } = await db
     .from("agence_accounts")
-    .select("id, code, display_name, active")
+    .select("id, code, display_name, active, role, model_id, model_slug")
     .eq("code", currentCode)
     .maybeSingle();
 
   if (fetchErr) return NextResponse.json({ error: fetchErr.message }, { status: 500 });
   if (!account) return NextResponse.json({ error: "Compte introuvable" }, { status: 404 });
 
-  // Retry si collision (tres rare avec alphabet 31 chars, 8 chars = 8.5e11 combinaisons)
+  // Hiérarchie : empêche Yumi de modifier Root Master, modèle de modifier autres, etc.
+  if (!canEditTarget(user, account)) {
+    return NextResponse.json({
+      error: "Accès refusé : hiérarchie. Seul Root peut modifier ce compte.",
+    }, { status: 403 });
+  }
+
+  // Mode custom : utilise directement le code fourni (avec check collision)
   let newCode = "";
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const candidate = generateCode(length);
+  if (customCode) {
     const { data: exists } = await db
       .from("agence_accounts")
       .select("id")
-      .eq("code", candidate)
+      .eq("code", customCode)
+      .neq("id", account.id)
       .maybeSingle();
-    if (!exists) {
-      newCode = candidate;
-      break;
+    if (exists) {
+      return NextResponse.json({ error: "Ce code est déjà utilisé par un autre compte" }, { status: 409 });
+    }
+    newCode = customCode;
+  } else {
+    // Mode random : retry si collision (très rare)
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const candidate = generateCode(length);
+      const { data: exists } = await db
+        .from("agence_accounts")
+        .select("id")
+        .eq("code", candidate)
+        .maybeSingle();
+      if (!exists) {
+        newCode = candidate;
+        break;
+      }
     }
   }
 

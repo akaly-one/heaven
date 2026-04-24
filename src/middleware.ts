@@ -20,6 +20,7 @@ const PUBLIC_GET = new Set([
 
 // Public GET with dynamic segments
 const PUBLIC_GET_PREFIXES = [
+  "/api/dev/",         // dev endpoints (désactivés via DISABLE_DEV_ENDPOINTS en prod)
   "/api/models/",
   "/api/payments/revolut/status",
   "/api/clients/orders",

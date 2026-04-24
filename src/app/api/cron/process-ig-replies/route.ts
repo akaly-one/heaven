@@ -4,6 +4,8 @@ import {
   sendInstagramReply,
   MetaRateLimitError,
 } from "@/lib/instagram";
+import { generateReply } from "@/lib/openrouter";
+import { generateReplyGroq, hasGroqKey, GROQ_DEFAULT_MODEL } from "@/lib/groq";
 
 // Force Node runtime — crypto / Graph / service-role.
 export const runtime = "nodejs";
@@ -83,7 +85,11 @@ export async function GET(req: NextRequest) {
   }
 
   // ─── 3. Process each claimed job ──────────────────────────────────────────
+  // Phase 4 V1 : Groq direct en priorité (free tier 14 400 req/jour),
+  // fallback OpenRouter si Groq absent. Canned si aucun provider configuré.
   const openrouterKey = process.env.OPENROUTER_API_KEY;
+  const groqKey = hasGroqKey();
+  const aiConfigured = groqKey || openrouterKey;
   const results: Array<{ id: string; status: string; error?: string }> = [];
   let halted = false;
 
@@ -99,11 +105,132 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-      // --- (a) Generate reply text ------------------------------------------
-      // Placeholder: real OpenRouter branching arrives in Phase 5.
-      const replyText = openrouterKey
-        ? "Hey ! Merci pour ton message 🤍 Je te réponds très vite."
-        : "[draft pending — IA not configured]";
+      // --- (a) Generate reply text via IA (Phase 4 activated) ---------------
+      // Pipeline : fetch persona active + history + appelle provider via OpenRouter
+      const aiRunStart = Date.now();
+      let replyText = "";
+      let aiRunId: string | null = null;
+      let providerId = "groq-llama-3.3-70b";
+      let personaVersion = 1;
+
+      if (aiConfigured) {
+        // Resolve model_slug from conversation
+        const { data: conv } = await db
+          .from("instagram_conversations")
+          .select("model_slug")
+          .eq("id", job.conversation_id)
+          .maybeSingle();
+        const modelSlug = conv?.model_slug || "yumi";
+
+        // Load active persona
+        const { data: persona } = await db
+          .from("agent_personas")
+          .select("base_prompt, default_provider, version, trait_warmth, trait_flirt, favorite_emojis, favorite_endings")
+          .eq("model_slug", modelSlug)
+          .eq("is_active", true)
+          .order("version", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        // Load provider config (au cas où on route via OpenRouter fallback)
+        const providerKey = persona?.default_provider || "groq-llama-3.3-70b";
+        const { data: provider } = await db
+          .from("ai_providers")
+          .select("id, endpoint, max_tokens, temperature")
+          .eq("id", providerKey)
+          .eq("active", true)
+          .maybeSingle();
+        providerId = provider?.id || providerKey;
+        personaVersion = persona?.version || 1;
+
+        // Load last 5 messages in conversation (history)
+        const { data: history } = await db
+          .from("instagram_messages")
+          .select("role, content")
+          .eq("conversation_id", job.conversation_id)
+          .order("created_at", { ascending: false })
+          .limit(5);
+        const historyOrdered = (history || []).reverse();
+
+        // Build system prompt with traits
+        const systemPrompt = persona?.base_prompt
+          || "Tu es Yumi, créatrice de contenu. Réponds court et naturel en français.";
+
+        // Build messages array
+        const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
+          { role: "system", content: systemPrompt },
+          ...historyOrdered.map((m) => ({
+            role: (m.role === "agent" ? "assistant" : "user") as "assistant" | "user",
+            content: m.content,
+          })),
+        ];
+
+        try {
+          let content = "";
+          let tokensIn = 0;
+          let tokensOut = 0;
+
+          if (groqKey) {
+            // V1 : Groq direct (gratuit, 14 400/jour)
+            providerId = "groq-direct-llama-3.3-70b";
+            const aiResp = await generateReplyGroq(messages, {
+              model: GROQ_DEFAULT_MODEL,
+              maxTokens: provider?.max_tokens ?? 256,
+              temperature: Number(provider?.temperature) || 0.8,
+            });
+            content = aiResp.content;
+            tokensIn = aiResp.tokensIn;
+            tokensOut = aiResp.tokensOut;
+          } else {
+            // Fallback : OpenRouter (multi-provider)
+            const modelId = provider?.endpoint?.replace(/^openrouter:\/\//, "")
+              || "meta-llama/llama-3.3-70b-instruct";
+            const aiResp = await generateReply(messages, {
+              model: modelId,
+              maxTokens: provider?.max_tokens ?? 256,
+              temperature: Number(provider?.temperature) || 0.8,
+            });
+            content = aiResp.content;
+            tokensIn = aiResp.tokens;
+            tokensOut = 0;
+          }
+
+          replyText = content || "Hey 💜";
+
+          const { data: runRow } = await db
+            .from("ai_runs")
+            .insert({
+              conversation_id: job.conversation_id,
+              conversation_source: "instagram",
+              model_slug: modelSlug,
+              provider_id: providerId,
+              persona_version: personaVersion,
+              input_message: historyOrdered[historyOrdered.length - 1]?.content ?? null,
+              output_message: replyText,
+              tokens_in: tokensIn,
+              tokens_out: tokensOut,
+              latency_ms: Date.now() - aiRunStart,
+            })
+            .select("id")
+            .maybeSingle();
+          aiRunId = runRow?.id || null;
+        } catch (aiErr) {
+          console.warn("[IG worker] AI generate failed, fallback canned:", aiErr);
+          replyText = "Hey mon cœur 💜 je te réponds très vite";
+          await db.from("ai_runs").insert({
+            conversation_id: job.conversation_id,
+            conversation_source: "instagram",
+            model_slug: modelSlug,
+            provider_id: providerId,
+            persona_version: personaVersion,
+            error_message: String(aiErr).slice(0, 500),
+            latency_ms: Date.now() - aiRunStart,
+          });
+        }
+      } else {
+        // Aucune clé IA configurée
+        replyText = "[IA not configured — placeholder]";
+      }
 
       // --- (b) Send via Meta Graph -----------------------------------------
       const sendRes = await sendInstagramReply(job.recipient_id, replyText);
@@ -127,6 +254,7 @@ export async function GET(req: NextRequest) {
         content: replyText,
       };
       if (messageId) insertPayload.ig_message_id = messageId;
+      if (aiRunId) insertPayload.ai_run_id = aiRunId;
 
       const { error: insertErr } = await db
         .from("instagram_messages")

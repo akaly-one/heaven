@@ -3,6 +3,35 @@ import { createSessionToken } from "@/lib/jwt";
 import { getCorsHeaders } from "@/lib/auth";
 import { getServerSupabase } from "@/lib/supabase-server";
 
+// ── Audit helper (Phase 1 sécurité progressive, migration 051) ──
+async function logAuthEvent(
+  supabase: ReturnType<typeof getServerSupabase>,
+  type: "login_success" | "login_fail" | "account_locked" | "rate_limit_hit",
+  params: {
+    accountId?: string | null;
+    accountCode?: string | null;
+    accountLogin?: string | null;
+    ip: string;
+    userAgent?: string | null;
+    metadata?: Record<string, unknown>;
+  }
+) {
+  if (!supabase) return;
+  supabase
+    .from("agence_auth_events")
+    .insert({
+      event_type: type,
+      account_id: params.accountId ?? null,
+      // Ne jamais logger le password en clair, même pour un fail.
+      account_code: null,
+      account_login: params.accountLogin ?? null,
+      ip_address: params.ip,
+      user_agent: params.userAgent ?? null,
+      metadata: params.metadata ?? {},
+    })
+    .then(() => { /* fire-and-forget */ });
+}
+
 // Server-only: SQWENSY is a fallback verifier when the code isn't found locally.
 const SQWENSY_API = process.env.OS_BEACON_URL || process.env.SQWENSY_URL || "";
 
@@ -89,15 +118,45 @@ export async function POST(req: NextRequest) {
       login_aliases: string[];
     } | null = null;
 
+    let matchedAccountId: string | null = null;
     if (supabase) {
+      // SELECT de base (toujours présent) — Phase 1 colonnes lock/fails sont optionnelles
+      // (migration 051 peut être pas encore appliquée, fallback gracieux)
       const { data: account } = await supabase
         .from("agence_accounts")
-        .select("role, model_slug, model_id, display_name, active, login_aliases, scopes")
+        .select("id, role, model_slug, model_id, display_name, active, login_aliases, scopes")
         .eq("code", code.trim())
         .eq("active", true)
         .maybeSingle();
 
       if (account) {
+        // Phase 1.2 : check lock actif — tentative SELECT séparé, ignore si colonne absente
+        try {
+          const { data: lockInfo } = await supabase
+            .from("agence_accounts")
+            .select("locked_until")
+            .eq("id", account.id)
+            .maybeSingle();
+          const lockedUntilStr = (lockInfo as { locked_until?: string | null } | null)?.locked_until;
+          const lockedUntil = lockedUntilStr ? new Date(lockedUntilStr).getTime() : 0;
+          if (lockedUntil > Date.now()) {
+            const remaining = Math.ceil((lockedUntil - Date.now()) / 1000);
+            await logAuthEvent(supabase, "account_locked", {
+              accountId: account.id,
+              accountLogin: login ?? null,
+              ip,
+              userAgent: req.headers.get("user-agent"),
+              metadata: { remaining_seconds: remaining },
+            });
+            recordAttempt(ip);
+            return NextResponse.json(
+              { valid: false, error: `Compte temporairement verrouillé. Réessaie dans ${Math.ceil(remaining / 60)} min.` },
+              { status: 423, headers: cors }
+            );
+          }
+        } catch { /* colonne locked_until absente — migration 051 non appliquée, on continue */ }
+
+        matchedAccountId = account.id;
         verified = {
           role: account.role,
           model_slug: account.model_slug,
@@ -107,12 +166,15 @@ export async function POST(req: NextRequest) {
           scopes: Array.isArray(account.scopes) ? account.scopes : [],
           login_aliases: Array.isArray(account.login_aliases) ? account.login_aliases : [],
         };
-        // Update last_login (best-effort, non-blocking)
+        // Update last_login (best-effort, non-blocking). Reset fails + lock via RPC séparé (ignore si absent).
         supabase
           .from("agence_accounts")
           .update({ last_login: new Date().toISOString() })
-          .eq("code", code.trim())
+          .eq("id", account.id)
           .then(() => { /* ignore */ });
+        supabase
+          .rpc("reset_login_attempts", { p_account_id: account.id })
+          .then(() => { /* ignore si RPC absente */ });
       }
     }
 
@@ -141,6 +203,48 @@ export async function POST(req: NextRequest) {
 
     if (!verified) {
       recordAttempt(ip);
+      // Si on a un login fourni, essayer de retrouver le compte cible pour audit + lock counter.
+      if (supabase && login && typeof login === "string") {
+        const normalizedLogin = login.trim().replace(/^@/, "").toLowerCase();
+        const { data: byLogin } = await supabase
+          .from("agence_accounts")
+          .select("id, login_aliases")
+          .eq("active", true);
+        if (Array.isArray(byLogin)) {
+          const target = byLogin.find((a: { id: string; login_aliases?: string[] | null }) =>
+            Array.isArray(a.login_aliases) &&
+            a.login_aliases.some((al: string) => al.toLowerCase() === normalizedLogin)
+          );
+          if (target) {
+            await supabase.rpc("record_failed_login", {
+              p_account_id: target.id,
+              p_max_fails: 10,
+              p_lock_minutes: 15,
+            });
+            await logAuthEvent(supabase, "login_fail", {
+              accountId: target.id,
+              accountLogin: login,
+              ip,
+              userAgent: req.headers.get("user-agent"),
+              metadata: { reason: "wrong_password" },
+            });
+          } else {
+            await logAuthEvent(supabase, "login_fail", {
+              accountLogin: login,
+              ip,
+              userAgent: req.headers.get("user-agent"),
+              metadata: { reason: "unknown_login" },
+            });
+          }
+        }
+      } else if (supabase) {
+        await logAuthEvent(supabase, "login_fail", {
+          accountLogin: null,
+          ip,
+          userAgent: req.headers.get("user-agent"),
+          metadata: { reason: "no_account_match" },
+        });
+      }
       return NextResponse.json(
         { valid: false, error: INVALID_CREDENTIALS },
         { status: 401, headers: cors }
@@ -157,6 +261,20 @@ export async function POST(req: NextRequest) {
         : FALLBACK_LOGIN_ALIASES[slugKey] || [slugKey];
       if (!expected.includes(normalized)) {
         recordAttempt(ip);
+        if (supabase && matchedAccountId) {
+          await supabase.rpc("record_failed_login", {
+            p_account_id: matchedAccountId,
+            p_max_fails: 10,
+            p_lock_minutes: 15,
+          });
+          await logAuthEvent(supabase, "login_fail", {
+            accountId: matchedAccountId,
+            accountLogin: login,
+            ip,
+            userAgent: req.headers.get("user-agent"),
+            metadata: { reason: "wrong_login_alias" },
+          });
+        }
         return NextResponse.json(
           { valid: false, error: INVALID_CREDENTIALS },
           { status: 401, headers: cors }
@@ -164,8 +282,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Success : reset rate limit for this IP
+    // Success : reset rate limit for this IP + log audit
     attempts.delete(ip);
+    if (supabase && matchedAccountId) {
+      await logAuthEvent(supabase, "login_success", {
+        accountId: matchedAccountId,
+        accountLogin: login ?? null,
+        ip,
+        userAgent: req.headers.get("user-agent"),
+        metadata: { role: verified.role, model_slug: verified.model_slug },
+      });
+    }
 
     // Create JWT session token (Agent 1.B: hydrate model_id + scopes from DB)
     const narrowedRole: "root" | "model" = verified.role === "root" ? "root" : "model";
