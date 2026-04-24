@@ -15,6 +15,9 @@ export function AdminAuthModal({ onClose }: AdminAuthModalProps) {
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // NB 2026-04-24 ~23:55 : décoratif seulement — * disparaissent au focus/typing, pas d'indice longueur.
+  const [loginFocus, setLoginFocus] = useState(false);
+  const [codeFocus, setCodeFocus] = useState(false);
 
   const submit = useCallback(async () => {
     if (!login.trim() || !code.trim()) return;
@@ -100,20 +103,21 @@ export function AdminAuthModal({ onClose }: AdminAuthModalProps) {
           />
         </div>
 
-        {/* NB 2026-04-24 ~23:40 : inputs affichent des * centrés clignotants (style services secrets).
-            Input réel text-transparent + overlay <span> qui rend les * avec glow + pulse lent. */}
+        {/* NB 2026-04-24 ~23:55 : overlay * DÉCORATIF seulement (nombre FIXE, pas d'indice sur longueur).
+            Disparait dès que l'input a du focus OU du texte, pour laisser place au typing normal. */}
         <div className="relative mb-4">
           <input
             value={login}
             onChange={(e) => setLogin(e.target.value)}
+            onFocus={() => setLoginFocus(true)}
+            onBlur={() => setLoginFocus(false)}
             placeholder=""
             aria-label="Identifiant"
-            className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
+            className="w-full px-4 py-3 rounded-xl text-sm text-center outline-none transition-all"
             style={{
               background: "rgba(255,255,255,0.05)",
-              color: "transparent",
+              color: "#fff",
               caretColor: accent,
-              textAlign: "center",
               border: `1.5px solid ${login.trim() ? `${accent}40` : "rgba(255,255,255,0.08)"}`,
             }}
             onKeyDown={(e) => {
@@ -121,59 +125,65 @@ export function AdminAuthModal({ onClose }: AdminAuthModalProps) {
             }}
             autoFocus
           />
-          <div
-            className="absolute inset-0 flex items-center justify-center pointer-events-none font-bold select-none"
-            aria-hidden="true"
-            style={{
-              fontSize: "22px",
-              lineHeight: 1,
-              letterSpacing: "0.4em",
-              color: accent,
-              textShadow: `0 0 6px ${accent}cc, 0 0 14px ${accent}66`,
-              animation: login ? "admin-star-blink 2s ease-in-out infinite" : undefined,
-            }}
-          >
-            {login ? "*".repeat(Math.min(login.length, 24)) : <span className="text-[11px] font-normal tracking-normal" style={{ color: "rgba(255,255,255,0.2)", textShadow: "none" }}>identifiant</span>}
-          </div>
+          {!loginFocus && !login && (
+            <div
+              className="absolute inset-0 flex items-center justify-center pointer-events-none font-bold select-none"
+              aria-hidden="true"
+              style={{
+                fontSize: "22px",
+                lineHeight: 1,
+                letterSpacing: "0.4em",
+                color: accent,
+                textShadow: `0 0 6px ${accent}cc, 0 0 14px ${accent}66`,
+                animation: "admin-star-blink 2s ease-in-out infinite",
+              }}
+            >
+              ******
+            </div>
+          )}
         </div>
 
         <div className="relative mb-5">
           <input
             id="admin-code-input"
+            type="password"
             value={code}
             onChange={(e) => setCode(e.target.value)}
+            onFocus={() => setCodeFocus(true)}
+            onBlur={() => setCodeFocus(false)}
             placeholder=""
             aria-label="Mot de passe"
             autoComplete="current-password"
-            className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
+            className="w-full px-4 py-3 rounded-xl text-sm font-mono tracking-widest text-center outline-none transition-all"
             style={{
               background: "rgba(255,255,255,0.05)",
-              color: "transparent",
+              color: "#fff",
               caretColor: accent,
-              textAlign: "center",
               border: `1.5px solid ${code.trim() ? `${accent}40` : "rgba(255,255,255,0.08)"}`,
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") submit();
             }}
           />
-          <div
-            className="absolute inset-0 flex items-center justify-center pointer-events-none font-bold select-none"
-            aria-hidden="true"
-            style={{
-              fontSize: "22px",
-              lineHeight: 1,
-              letterSpacing: "0.4em",
-              color: accent,
-              textShadow: `0 0 6px ${accent}cc, 0 0 14px ${accent}66`,
-              animation: code ? "admin-star-blink 2s ease-in-out infinite" : undefined,
-            }}
-          >
-            {code ? "*".repeat(Math.min(code.length, 32)) : <span className="text-[11px] font-normal tracking-normal" style={{ color: "rgba(255,255,255,0.2)", textShadow: "none" }}>mot de passe</span>}
-          </div>
+          {!codeFocus && !code && (
+            <div
+              className="absolute inset-0 flex items-center justify-center pointer-events-none font-bold select-none"
+              aria-hidden="true"
+              style={{
+                fontSize: "22px",
+                lineHeight: 1,
+                letterSpacing: "0.4em",
+                color: accent,
+                textShadow: `0 0 6px ${accent}cc, 0 0 14px ${accent}66`,
+                animation: "admin-star-blink 2s ease-in-out infinite",
+              }}
+            >
+              ******
+            </div>
+          )}
         </div>
 
-        {/* Keyframes inline scoped au modal (évite d'étendre globals.css) */}
+        {/* Keyframes inline scoped au modal */}
         <style>{`
           @keyframes admin-star-blink {
             0%, 100% { opacity: 1; }
