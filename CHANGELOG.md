@@ -3,28 +3,62 @@
 ## [v1.5.0] — 2026-04-25 — BRIEF-16 Packs + Payment Providers modulaires
 
 ### Features
-- Payment providers modulaires activables/désactivables via toggle cockpit (manual, paypal, revolut, stripe)
+- Payment providers modulaires activables/désactivables via toggle cockpit (manual, paypal, revolut, stripe, **wise**)
 - Flow V1 manuel PayPal.me : référence human-readable copiable (`YUMI-PGLD-K3M9X2`) + validation cockpit modèle
+- **PayPal Checkout JavaScript SDK (hybride)** : bouton inline via `@paypal/react-paypal-js` (popup, pas de redirect plein écran), rendu auto si `NEXT_PUBLIC_PAYPAL_CLIENT_ID` défini, sinon silencieux. Le V1 manuel reste actif en parallèle comme fallback.
+- **Wise Payment Requests provider** : génère un lien `wise.com/pay/...` partageable via API v3 (POST `/v3/profiles/{id}/payment-requests`)
 - Custom pack shopping cart : sélection photo/vidéo × catégorie × quantité + description libre + total live
 - Agent IA pack awareness : historique achats + temps restant + intent correction pseudo (regex `detectPseudoCorrection()`)
 - Cloisonnement strict code ↔ pack_slug au niveau serveur (plus d'accès croisé par tier)
 - CGV publiques `/cgv` + checkbox acceptation obligatoire avant commande
+- Fix sync messages lu/non-lu : cockpit `POST → PATCH` sur `/api/messages` (mark_read désormais effectif), fan public `readMsgIdsRef` persisté en localStorage `heaven_read_<slug>_<clientId>`
+- Hover taglines IdentityGate Snap/Code/Insta (Cercle Intime / Accès Premium / Backstage) remplacent le titre modèle au survol
 
 ### Technical
-- Migration `NNN_payment_providers_toggle.sql` — `agence_settings.payment_providers` JSONB + `reference_code` + `pseudo_web` sur `agence_pending_payments`
-- Migration `NNN+1_webhook_events_antireplay.sql` — table `agence_webhook_events` avec contrainte `UNIQUE(provider, event_id)`
-- Migration `NNN+2_custom_pricing.sql` — table `agence_custom_pricing` (photo 5 € base + vidéo 10 €/min × multiplicateur Silver/Gold/VIP Black/VIP Platinum) + seed Yumi/Paloma/Ruby
-- Extension `agence_pending_payments` : colonnes `reference_code`, `pseudo_web`, `pack_breakdown JSONB`, `rejected_reason`
-- Interface `PaymentProvider` unifiée dans `src/shared/payment/types.ts`
-- Registry `src/shared/payment/registry.ts` avec `getProvider(id)` + `getEnabledProviders()` + fallback
-- Wrappers providers : `manual.ts`, `paypal.ts`, `revolut.ts`, `stripe.ts` dans `src/shared/payment/providers/`
-- Stripe feature-flagged OFF par défaut (env var `ALLOW_STRIPE=true` obligatoire pour toute activation)
-- Helper `verifyAndStoreWebhook()` centralisé (signature + anti-replay + raw body JSONB)
+- Migration `073_payment_providers_toggle.sql` — table `agence_settings` singleton `id='global'` avec `payment_providers` JSONB + extension `agence_pending_payments` (`reference_code`, `pseudo_web`, `pack_breakdown JSONB`, `rejected_reason`)
+- Migration `074_webhook_events_antireplay.sql` — table `agence_webhook_events` avec contrainte `UNIQUE(provider, event_id)`
+- Migration `075_custom_pricing.sql` — table `agence_custom_pricing` (photo 5 € base + vidéo 10 €/min × multiplicateur Silver/Gold/VIP Black/VIP Platinum + pied ×3) + seed 24 rows Yumi/Paloma/Ruby (m1/m2/m3)
+- Migration `076_pending_pseudo_correction.sql` — colonne `agence_clients.pending_pseudo_correction` BOOLEAN + index partiel
+- Interface `PaymentProvider` unifiée dans `src/shared/payment/types.ts` (id étendu : `manual | paypal | revolut | stripe | wise`)
+- Registry `src/shared/payment/registry.ts` avec `getProvider(id)` + `getEnabledProviders()` + `toggleProvider()` (audit log) + fallback manual seul
+- Wrappers providers : `manual.ts`, `paypal.ts`, `revolut.ts`, `stripe.ts`, **`wise.ts`** dans `src/shared/payment/providers/`
+- Composant `<PayPalCheckoutButton>` (`src/web/components/profile/paypal-checkout-button.tsx`) wire avec `/api/payments/paypal/{create,capture}` existant
+- Stripe feature-flagged OFF par défaut + triple-guard (`ALLOW_STRIPE=true` env + provider throws + registry refuse enable + route 403)
+- Helper `storeAndCheckWebhook()` centralisé (signature `timingSafeEqual` + anti-replay code 23505 + raw body JSONB)
+- Routes API : `POST /api/payment/create` (registry dispatch), `POST /api/payments/manual/confirm` (approve/reject), `POST /api/packs/custom/quote` (breakdown total), `GET /api/payments/pending` (liste cockpit), `GET/POST /api/payment/providers` (toggle root-only audit)
+- UI cockpit `/agence/payments` (liste pending + Valider/Refuser) + `<PaymentPendingDrawer>` messagerie + `<PaymentProvidersToggle>` cockpit
+- Pack guard serveur `hasPackAccess(clientId, packSlug, model)` strict EXACT match + cache 30s in-memory
+- Agent IA system prompt enrichi automatiquement avec `formatPackHistoryForPrompt(ctx)` ("HISTORIQUE ACHATS CLIENT : Gold actif 12j, VIP Black expiré 3j")
+
+### Dependencies
+- `@paypal/react-paypal-js` (PayPal JavaScript SDK wrapper officiel React)
+
+### Env vars ajoutées
+- `NEXT_PUBLIC_PAYPAL_CLIENT_ID` — déjà présent, sert au SDK client
+- `ALLOW_STRIPE` — feature flag (défaut vide ou `false`)
+- `WISE_API_TOKEN` — token API Wise Business (Settings → API tokens)
+- `WISE_BUSINESS_PROFILE_ID` — récupéré via `GET /v2/profiles`
+- `WISE_API_URL` — défaut `https://api.wise.com` (sandbox `https://api.sandbox.transferwise.tech`)
 
 ### Docs
-- `docs/architecture/PAYMENT-INTEGRATION-GUIDE-NB.md` — guide opérationnel NB pour brancher PayPal Business, Revolut Merchant (KYB, webhooks, env vars), Wise Request, Stripe urgence, règles DAC7 BE, procédure correction pseudo
-- ADR-003 payments modulaires (dans `plans/`)
+- `docs/architecture/PAYMENT-INTEGRATION-GUIDE-NB.md` — guide opérationnel NB :
+  - §2 PayPal Business (handle, webhooks, env vars)
+  - §2.6 différence REST API vs JavaScript SDK + approche hybride Heaven (nouveau)
+  - §3 Revolut Merchant (KYB, webhooks, signature HMAC, payout SEPA Wise)
+  - §4 Wise + Apple Pay (3 alternatives + recommandation Revolut→Wise payout)
+  - §4.5 Wise Payment Requests API concret (KYB, token, profileId, env vars, limites) (nouveau)
+  - §5 Stripe urgence + feature flag
+  - §7 checklist env vars Vercel complète
+  - §9 DAC7 BE (déclaration revenus ≥ 2000€/an ou 30 ventes)
+  - §10 FAQ correction pseudo
+- 5 ADR dans `plans/modules/payments/DECISIONS.md` (architecture modulaire, V1 manuel ref, anti-replay UNIQUE, custom pricing multiplicateurs, settings singleton)
 - CGV publiques `/cgv` — 14 sections (objet, 18+, prix, accès 30 j, paiement, responsabilité pseudo, rétractation art. VI.53 CDE BE, usage perso, révocation, juridiction Bruxelles FR)
+
+### Commits clés
+- `796d056` / `c7a797a` — BRIEF-16 V1 dispatch 6 agents parallèles (37 fichiers, 4 migrations live Supabase)
+- `cdb03df` — PayPal Checkout SDK hybride + Wise provider (9 fichiers)
+- `1387047` — fix mark_read messages cockpit POST→PATCH + fan localStorage persist
+- `a599f5d` — hover taglines IdentityGate
 
 ---
 

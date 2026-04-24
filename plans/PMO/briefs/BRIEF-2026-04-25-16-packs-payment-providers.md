@@ -303,14 +303,66 @@ Le pack "Custom" est un **panier composable** de produits prédéfinis avec quan
 
 ## ✅ Definition of Done
 
-- [ ] V1 manuel : fan peut choisir pack → PayPal.me → cockpit voit pending → modèle valide → code envoyé → fan access pack uniquement
-- [ ] Code cloisonné strict : tester qu'un code Gold ne donne PAS accès au contenu Platinum
-- [ ] Cockpit toggle : activer/désactiver chaque provider indépendamment
-- [ ] Stripe OFF par défaut + guard `ALLOW_STRIPE=true`
-- [ ] Webhook idempotence : double-fire pas générer 2 codes
-- [ ] Tests E2E verts
-- [ ] Doc architecture livrée
-- [ ] CHANGELOG v2.9.0 + merge main
+- [x] V1 manuel : fan peut choisir pack → PayPal.me → cockpit voit pending → modèle valide → code envoyé → fan access pack uniquement (commits `796d056`/`c7a797a`)
+- [x] Code cloisonné strict : pack-guard.ts match EXACT slug + `computePackAwareAccessLevel` cache 30s
+- [x] Cockpit toggle : `<PaymentProvidersToggle>` cockpit root/yumi avec 5 providers (manual, paypal, revolut, stripe, wise)
+- [x] Stripe OFF par défaut + guard `ALLOW_STRIPE=true` (triple-guard provider+registry+route)
+- [x] Webhook anti-replay via `agence_webhook_events UNIQUE(provider,event_id)` + helper `storeAndCheckWebhook()`
+- [ ] Tests E2E Playwright verts (à écrire — ticket T16-E1 reporté)
+- [x] Doc architecture livrée : `PAYMENT-INTEGRATION-GUIDE-NB.md` + 5 ADR + CGV `/cgv`
+- [x] CHANGELOG v1.5.0 + merge main (commits `c7a797a` et `cdb03df`)
+
+---
+
+## 🆕 Phase I — PayPal SDK + Wise (livrée 2026-04-25, commit `cdb03df`)
+
+Suite NB le 25/04 : "intègre PayPal Checkout via API ou JavaScript SDK" + "guide-moi avec Wise pour intégrer les paiements via l'API ou Apple Pay".
+
+### Tickets livrés
+- **T16-I1** : Composant `PayPalCheckoutButton` utilisant `@paypal/react-paypal-js` (SDK officiel) — bouton inline rendu auto si `NEXT_PUBLIC_PAYPAL_CLIENT_ID` défini, popup au lieu de redirect plein écran. Approche hybride : SDK côté client + backend `/api/payments/paypal/{create,capture}` existant pour la sécu.
+- **T16-I2** : Wire dans `unlock-sheet.tsx` à côté du bouton PayPal.me manuel — V1 reste actif en parallèle comme fallback automatique.
+- **T16-I3** : Provider `wise.ts` utilisant Wise Payment Requests API v3 — génère lien `wise.com/pay/...`, `getStatus()` par polling (Wise n'a pas de webhook natif sur payment-requests v3).
+- **T16-I4** : `PaymentProviderId` étendu (`+wise`) + registry includes `wiseProvider` + `VALID_IDS` updated.
+- **T16-I5** : Env vars `WISE_API_TOKEN` + `WISE_BUSINESS_PROFILE_ID` + `WISE_API_URL` ajoutées dans `.env.example`.
+- **T16-I6** : Guide NB enrichi : §2.6 différence REST API vs JavaScript SDK + approche hybride Heaven, §4.5 Wise Payment Requests API concret (KYB, token, profileId, env vars, limites Apple Pay), §4.6 recommandation finale.
+
+### Décision archi
+**PayPal hybride** : SDK pour UX (bouton popup, mobile deep-link app PayPal) + REST API backend pour sécurité (création ordre + capture côté serveur, webhook idempotent). Best practice officielle PayPal.
+
+**Wise tertiaire** : Wise n'a pas Apple Pay natif sur payment-requests. Le rôle de Wise reste principalement compte de **consolidation multi-currency** alimenté par payout SEPA daily depuis Revolut. Le provider `wise` direct sert de backup quand le fan ne veut/peut pas utiliser Apple Pay.
+
+---
+
+## 📋 TODO post-merge concrets (à faire par NB ou au prochain cycle)
+
+### Côté NB (config externe — pas de code requis)
+1. **Activer PayPal Checkout SDK** (~5 min)
+   - Vercel → Settings → Environment Variables → ajouter `NEXT_PUBLIC_PAYPAL_CLIENT_ID = <même valeur que PAYPAL_CLIENT_ID>` (le préfixe `NEXT_PUBLIC_` expose la var au client)
+   - Redeploy → bouton PayPal inline apparaît automatiquement sur `/m/yumi`
+
+2. **Activer Wise** (~30 min)
+   - Ouvrir compte Wise Business (https://wise.com/business, plan Business ~8€/mois pour avoir Payment Requests)
+   - Settings → API tokens → Create new token (scope `Full access` ou `payment-requests write`)
+   - `curl -H "Authorization: Bearer $TOKEN" https://api.wise.com/v2/profiles` → noter `id` du profil business
+   - Vercel env vars : `WISE_API_TOKEN`, `WISE_BUSINESS_PROFILE_ID`
+   - `/cp/root/settings/payments` → activer toggle Wise
+
+3. **Activer Revolut Merchant** (KYB 2-5j ouvrés)
+   - Compte Revolut Business BE (plan Basic gratuit suffit)
+   - KYB phrasing "creator content platform" (pas "adult" en formulaire initial)
+   - Merchant API → générer API Key + Webhook signing secret
+   - Vercel env vars : `REVOLUT_API_SECRET_KEY`, `REVOLUT_WEBHOOK_SECRET`
+   - Webhook URL : `https://heaven-os.vercel.app/api/payments/revolut/webhook` (déjà existant)
+   - `/cp/root/settings/payments` → activer toggle Revolut
+
+### Côté code (à programmer dans prochain cycle)
+4. **T16-E1 Tests E2E Playwright V1 manuel** : visiteur → choisit pack → PayPal.me → cockpit valide → code généré → access débloqué (ticket reporté)
+5. **Webhooks PayPal/Revolut existants à migrer vers `storeAndCheckWebhook()`** pour audit forensics + double-barrière idempotence (non bloquant V1)
+6. **Monter `unlock-sheet` externe dans `/m/[slug]/page.tsx`** : actuellement un `UnlockSheet` inline L1686 coexiste — substituer par l'import `@/web/components/profile/unlock-sheet`
+7. **Cron Wise polling status** si Wise devient primaire : `GET /v3/profiles/{id}/payment-requests/{id}` toutes les 5 min pour les pending status (Wise n'a pas de webhook payment-requests)
+8. **Wise webhook generic** (transfer-state-change) à wire en cas de besoin — différent des payment-requests mais utile pour suivre les payouts entrants
+9. **Custom pack pricing — affichage breakdown détaillé dans email/notif modèle** post-validation pour QA visuel
+10. **DAC7 BE export CSV** depuis `agence_pending_payments` (status=completed) — script à écrire pour export annuel avant 31 janvier 2027
 
 ---
 

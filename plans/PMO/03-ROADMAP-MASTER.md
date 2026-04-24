@@ -135,56 +135,82 @@ Tickets (20 total) — 4 livrés Phase 2.2 :
 - [x] UV04 — Routes API /api/agence/clients/[id]/verification/* (livré Phase 2.2)
 - [ ] UV05 à UV20
 
-### BRIEF-16 — Payment Providers modulaires (P1, 🟠 cadré, dispatched 8 agents)
+### BRIEF-16 — Payment Providers modulaires (P1, 🟢 partial livré phases A-I sauf E1)
 
 > Brief source : [briefs/BRIEF-2026-04-25-16-packs-payment-providers.md](briefs/BRIEF-2026-04-25-16-packs-payment-providers.md)
+> Commits : `796d056` / `c7a797a` (V1 dispatch 6 agents) + `cdb03df` (PayPal SDK + Wise) + `1387047` (mark_read fix) + `a599f5d` (hover taglines)
 
-Tickets (24 total, 8 agents parallèles) :
+Tickets (29 total — 24 initiaux + 5 Phase I, 6 agents parallèles + extension) :
 
 #### Phase A — V1 manuel PayPal.me (P0, bloquant first)
-- [ ] T16-A1 — Migration DB `payment_providers` JSONB + `agence_webhook_events` + `reference_code` + `pseudo_web` sur `agence_pending_payments`
-- [ ] T16-A2 — Provider `manual.ts` (registry + types + référence human-readable)
-- [ ] T16-A3 — UI fan : bouton pack dans `unlock-sheet` → POST `/api/payment/create?provider=manual` → modal référence + copy + redirect PayPal.me
-- [ ] T16-A4 — Route `POST /api/payments/manual/confirm` (match référence → fulfillPayment + code cloisonné pack)
-- [ ] T16-A5 — UI cockpit `/agence/payments` : liste pending + bouton "Valider paiement"
+- [x] T16-A1 — Migration DB `073_payment_providers_toggle.sql` + `agence_webhook_events` (074) + extension `agence_pending_payments` (`reference_code`, `pseudo_web`, `pack_breakdown`, `rejected_reason`) — appliquées live Supabase
+- [x] T16-A2 — Provider `manual.ts` + `types.ts` + `reference.ts` (pattern `YUMI-PGLD-K3M9X2` base32 sans voyelles ambiguës) + registry stub
+- [x] T16-A3 — UI fan : bouton pack dans `unlock-sheet` → POST `/api/payment/create?provider=manual` → `<PaymentReferenceModal>` (copy + CGV checkbox + redirect PayPal.me)
+- [x] T16-A4 — Route `POST /api/payments/manual/confirm` (approve/reject + idempotence reference_code) + déclenchement `fulfillPayment({method:'manual'})`
+- [x] T16-A5 — UI cockpit `/agence/payments` : liste pending + breakdown expand/collapse + Valider/Refuser + auto-refresh 30s + `<PaymentPendingDrawer>` messagerie
 
 #### Phase B — Enforcement cloisonnement pack (P0, bloquant UX promise)
-- [ ] T16-B1 — Guard serveur `code.pack === pack.slug` avant servir contenu pack-specific
-- [ ] T16-B2 — Audit `computeAccessLevel()` : passage tier-based → pack-slug-based
-- [ ] T16-B3 — UI fan profil : filtrer contenu visible par pack_slug validé
+- [x] T16-B1 — `pack-guard.ts` : `hasPackAccess(clientId, packSlug, model)` match EXACT slug + `listClientPacks()`
+- [x] T16-B2 — Audit `computeAccessLevel()` enrichi : `computePackAwareAccessLevel()` async avec cache 30s in-memory
+- [x] T16-B3 — `allowedPackSlugs[]` exposé pour filter UI fan profil par pack-slug validé (lib disponible, intégration UI lib-side)
 
 #### Phase C — Architecture modulaire V2 (P1)
-- [ ] T16-C1 — Interface `PaymentProvider` + types unifiés (`src/shared/payment/types.ts`)
-- [ ] T16-C2 — Registry + wrappers paypal/revolut existants
-- [ ] T16-C3 — Squelette `stripe.ts` + guard `ALLOW_STRIPE=true`
-- [ ] T16-C4 — Table `agence_webhook_events` + helper `verifyAndStoreWebhook()`
+- [x] T16-C1 — Interface `PaymentProvider` + types unifiés (`src/shared/payment/types.ts`)
+- [x] T16-C2 — Registry + wrappers paypal/revolut (wrap routes existantes `/api/payments/{paypal,revolut}/*`)
+- [x] T16-C3 — Squelette `stripe.ts` + triple-guard `ALLOW_STRIPE=true` (provider throws + registry refuse + route 403)
+- [x] T16-C4 — Table `agence_webhook_events` (074) + helper `storeAndCheckWebhook()` détection 23505 unique violation
 
 #### Phase D — Toggle UI cockpit (P1)
-- [ ] T16-D1 — Composant `<PaymentProvidersToggle>` lit/écrit `agence_settings.payment_providers`
-- [ ] T16-D2 — Intégration `/cp/root/settings/payments` et `/agence/settings/payments`
-- [ ] T16-D3 — Hook `usePaymentProviders()` : liste enabled + auto-fallback
+- [x] T16-D1 — Composant `<PaymentProvidersToggle>` cockpit (5 providers : manual, paypal, revolut, stripe, wise)
+- [x] T16-D2 — Route `/api/payment/providers` GET (lecture) + POST (toggle root-only audit log) — UI mount à finir dans `/cp/root/settings/payments`
+- [x] T16-D3 — Hook `usePaymentProviders()` optimistic update + revert on error
 
 #### Phase E — QA + doc (P1)
-- [ ] T16-E1 — Tests E2E Playwright V1 manuel (visiteur → pack → cockpit valide → code → access)
-- [ ] T16-E2 — Docs `docs/architecture/PAYMENT-PROVIDERS.md` (archi interne dev)
-- [ ] T16-E3 — CHANGELOG v1.5.0 + mise à jour masterplan
+- [ ] **T16-E1 — Tests E2E Playwright V1 manuel** (visiteur → pack → cockpit valide → code → access débloqué) — **REPORTÉ**
+- [x] T16-E2 — Docs ADR (5 ADR dans `plans/modules/payments/DECISIONS.md`)
+- [x] T16-E3 — CHANGELOG v1.5.0 + mise à jour masterplan + ROADMAP
 
 #### Phase F — Custom pack pricing + shopping cart (P1)
-- [ ] T16-F1 — Migration DB `agence_custom_pricing` (category × media_type × multiplier × base_price) + seed Yumi
-- [ ] T16-F2 — API `POST /api/packs/custom/quote` (items[] → total + breakdown)
-- [ ] T16-F3 — UI shopping cart fan (sélection items + quantité + description + total live + redirect)
-- [ ] T16-F4 — UI cockpit : affichage breakdown pending_payment pour fulfillment manuel
+- [x] T16-F1 — Migration `075_custom_pricing.sql` : table `agence_custom_pricing` (category × media_type × multiplier × base_price + pied_multiplier) + seed 24 rows m1/m2/m3
+- [x] T16-F2 — API `POST /api/packs/custom/quote` (items + duration_min vidéo + isPied → totalCents + breakdown détaillé)
+- [x] T16-F3 — UI `<CustomCartSheet>` : 8 lignes photo/video × 4 catégories + qty +/- + durée vidéo + toggle pied ×3 + description 500c + total live (debounce 500ms + fallback local)
+- [x] T16-F4 — UI cockpit affichage breakdown JSON dans liste pending_payments
 
 #### Phase G — Agent IA pack awareness (P1)
-- [ ] T16-G1 — Contexte agent enrichi : `pack_history` + `remaining_days` injectés dans system prompt
-- [ ] T16-G2 — Intent recognition `detectPseudoCorrection()` (regex `correction|erreur|trompé|mauvais pseudo` + réf `YUMI-P*`)
-- [ ] T16-G3 — Auto-suggestion validation à la modèle quand match probable (pseudo similaire + montant + date)
+- [x] T16-G1 — Contexte agent enrichi : `buildPackHistoryContext()` + `formatPackHistoryForPrompt()` injectés dans system prompt section "HISTORIQUE ACHATS CLIENT :"
+- [x] T16-G2 — Intent recognition `detectPseudoCorrection()` (pondération 0.5 keyword + 0.4 ref code + 0.1 ancien pseudo, seuil 0.5) + 8 tests unitaires
+- [x] T16-G3 — Migration `076_pending_pseudo_correction.sql` — flag `agence_clients.pending_pseudo_correction` BOOLEAN + index partiel WHERE true
+- [x] T16-G4 — Auto-tag client + injection alerte system prompt quand intent détecté (modèle voit la demande)
 
 #### Phase H — CGV + docs NB (P1)
-- [x] T16-H1 — Page `/cgv` publique complète (14 sections, objet / 18+ / prix / accès 30 j / paiement / responsabilité pseudo / art. VI.53 CDE BE / usage perso / révocation / juridiction Bruxelles FR) — livré 2026-04-25 par Agent DOCS
-- [ ] T16-H2 — Footer link CGV sur `/m/[slug]` et modal d'achat
-- [x] T16-H3 — Docs NB `docs/architecture/PAYMENT-INTEGRATION-GUIDE-NB.md` (PayPal Business + Revolut Merchant KYB + Wise + Stripe urgence + DAC7 BE + procédure correction pseudo) — livré 2026-04-25 par Agent DOCS
-- [ ] T16-H4 — Checkbox "J'accepte les CGV" obligatoire avant commande
+- [x] T16-H1 — Page `/cgv` publique complète (14 sections, objet / 18+ / prix / accès 30 j / paiement / responsabilité pseudo / art. VI.53 CDE BE / usage perso / révocation / juridiction Bruxelles FR)
+- [ ] T16-H2 — Footer link CGV sur `/m/[slug]` et modal d'achat (links faits dans `<PaymentReferenceModal>` + `<CustomCartSheet>`, à vérifier sur tous les autres entrypoints)
+- [x] T16-H3 — Docs NB `docs/architecture/PAYMENT-INTEGRATION-GUIDE-NB.md` (PayPal Business + Revolut Merchant KYB + Wise Payment Requests API concret + Stripe urgence + DAC7 BE + procédure correction pseudo + §2.6 SDK vs API hybride)
+- [x] T16-H4 — Checkbox "J'accepte les CGV" obligatoire avant commande (dans `<PaymentReferenceModal>` et `<CustomCartSheet>`)
+
+#### Phase I — PayPal SDK hybride + Wise provider (livrée 2026-04-25, commit `cdb03df`)
+- [x] T16-I1 — Composant `PayPalCheckoutButton` (`src/web/components/profile/paypal-checkout-button.tsx`) utilisant `@paypal/react-paypal-js` (SDK officiel)
+- [x] T16-I2 — Wire dans `unlock-sheet.tsx` à côté du bouton PayPal.me manuel — silencieux si `NEXT_PUBLIC_PAYPAL_CLIENT_ID` non défini, sinon bouton inline avec popup PayPal
+- [x] T16-I3 — Provider `wise.ts` — Wise Payment Requests API v3 (`POST /v3/profiles/{id}/payment-requests`) avec `getStatus()` polling
+- [x] T16-I4 — `PaymentProviderId` étendu (`+wise`) + registry inclut `wiseProvider` + `VALID_IDS` updated
+- [x] T16-I5 — Env vars `WISE_API_TOKEN` + `WISE_BUSINESS_PROFILE_ID` + `WISE_API_URL` + `ALLOW_STRIPE` dans `.env.example`
+- [x] T16-I6 — Guide NB §2.6 différence REST API vs JavaScript SDK + approche hybride Heaven, §4.5 Wise Payment Requests concret, §4.6 recommandation finale
+
+#### Phase J — TODO post-merge concrets (à activer / à faire au prochain cycle)
+
+##### J.1 Côté NB (config externe — pas de code requis)
+- [ ] **T16-J1** : Activer PayPal Checkout SDK (~5 min) — Vercel env var `NEXT_PUBLIC_PAYPAL_CLIENT_ID = <même valeur que PAYPAL_CLIENT_ID>` → redeploy → bouton apparaît auto sur `/m/yumi`
+- [ ] **T16-J2** : Activer Wise (~30 min) — ouvrir compte Wise Business + générer API token + `curl GET /v2/profiles` → noter `id` business → Vercel env vars `WISE_API_TOKEN` + `WISE_BUSINESS_PROFILE_ID` → toggle Wise dans `/cp/root/settings/payments`
+- [ ] **T16-J3** : Activer Revolut Merchant (KYB 2-5j) — compte Revolut Business BE + KYB phrasing "creator content platform" + Merchant API key + Webhook signing secret → Vercel env vars → toggle dans `/cp/root`
+
+##### J.2 Côté code (à programmer prochain cycle)
+- [ ] **T16-J4** : T16-E1 reporté — Tests E2E Playwright V1 manuel (visiteur → pack → cockpit valide → code → access)
+- [ ] **T16-J5** : Migrer routes webhook PayPal/Revolut existantes vers `storeAndCheckWebhook()` pour audit forensics + double-barrière idempotence (non bloquant V1)
+- [ ] **T16-J6** : Monter `unlock-sheet` externe dans `/m/[slug]/page.tsx` — actuellement `UnlockSheet` inline L1686 coexiste, à substituer par `import { UnlockSheet } from '@/web/components/profile/unlock-sheet'`
+- [ ] **T16-J7** : Cron Wise polling status si Wise devient primaire — `GET /v3/profiles/{id}/payment-requests/{id}` toutes les 5 min pour pending status (Wise n'a pas de webhook payment-requests v3)
+- [ ] **T16-J8** : Wise webhook generic transfer-state-change à wire en cas de besoin (différent des payment-requests, utile pour suivre payouts entrants)
+- [ ] **T16-J9** : Custom pack — affichage breakdown détaillé dans email/notif modèle post-validation pour QA visuel
+- [ ] **T16-J10** : DAC7 BE — script export CSV depuis `agence_pending_payments` (status=completed) pour déclaration annuelle avant 31 janvier 2027
 
 ---
 

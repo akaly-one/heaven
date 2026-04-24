@@ -34,18 +34,19 @@
 | BRIEF-2026-04-24-13 | 2026-04-24 | Unification Clients & Codes ↔ Messages + flow self-verification IP-matched | feature majeure + refactor data | P1 | DB, BE, FE, QA, Doc, DevOps | 🟢 partial (4/20 UV01-UV04 livrés Phase 2.2, RBAC fix C3) | [briefs/BRIEF-2026-04-24-13-unified-client-self-verification-flow.md](./briefs/BRIEF-2026-04-24-13-unified-client-self-verification-flow.md) |
 | BRIEF-2026-04-24-14 | 2026-04-24 | Domaine yumii.club + uniformisation handles Yumi + sync Chrome extension | feature infra + refactor + tooling | P1 | Doc, FE, BE, DevOps | 🟠 cadré (5 questions en attente) | [briefs/BRIEF-2026-04-24-14-domain-yumii-club-uniformisation.md](./briefs/BRIEF-2026-04-24-14-domain-yumii-club-uniformisation.md) |
 | BRIEF-2026-04-24-15 | 2026-04-24 | Messagerie UX polish + fiche fan accessible + sync pseudo + UI admin validation + régressions R2 | UX + bugs + DB | P0 | FE, BE, DB, DevOps | 🟢 dispatched (4 agents CORRECTIF parallèles) | [briefs/BRIEF-2026-04-24-15-messagerie-ux-polish-phase25.md](./briefs/BRIEF-2026-04-24-15-messagerie-ux-polish-phase25.md) |
-| BRIEF-2026-04-25-16 | 2026-04-25 | Packs + Payment Providers modulaires (V1 manuel PayPal.me + V2 auto + custom pricing cart + CGV + agent IA pack awareness) | feature majeure + refactor archi + légal | P1 | DB, BE, FE, AI, QA, Legal, DevOps, Doc | 🟠 cadré (7/7 décisions NB reçues, plan 8 agents parallèles prêt, attente GO final) | [briefs/BRIEF-2026-04-25-16-packs-payment-providers.md](./briefs/BRIEF-2026-04-25-16-packs-payment-providers.md) |
+| BRIEF-2026-04-25-16 | 2026-04-25 | Packs + Payment Providers modulaires (V1 manuel PayPal.me + V2 auto + custom pricing cart + CGV + agent IA pack awareness + PayPal SDK + Wise) | feature majeure + refactor archi + légal | P1 | DB, BE, FE, AI, QA, Legal, DevOps, Doc | 🟢 partial livré (Phases A-H + I PayPal SDK/Wise — commits `c7a797a` + `cdb03df`. Reste : T16-E1 tests E2E + 6 TODO post-merge dont 2 config NB côté Vercel/KYB) | [briefs/BRIEF-2026-04-25-16-packs-payment-providers.md](./briefs/BRIEF-2026-04-25-16-packs-payment-providers.md) |
 
 ---
 
 ## Compteur
 
 - Total reçus : 16
-- En attente consolidation : 9
-- Consolidés dans plan global : 2
-- En exécution : 0
-- Livrés : 2 (BRIEF-01 + BRIEF-04)
-- Hotfixes inline : 2 (commit `b5e005e` ai_run_id + pseudo-fan reply | commit `85ee934` after() for serverless)
+- Livrés totaux : 2 (BRIEF-01 + BRIEF-04)
+- Livrés partial : 3 (BRIEF-10 11/13, BRIEF-13 4/20, **BRIEF-16 phases A-I sauf E1**)
+- Cadrés en attente GO : 8 (BRIEF-05/06/07/08/09/11/12/14)
+- Dispatched en cours : 1 (BRIEF-15)
+- Hotfixes inline session 25/04 : 3 (commit `1387047` mark_read POST→PATCH + fan localStorage | commit `a599f5d` hover taglines IdentityGate | commit `cdb03df` PayPal SDK + Wise)
+- Hotfixes session 24/04 : 2 (commit `b5e005e` ai_run_id + pseudo-fan reply | commit `85ee934` after() for serverless)
 
 ## Vue d'ensemble implications full-stack (tous briefs cadrés)
 
