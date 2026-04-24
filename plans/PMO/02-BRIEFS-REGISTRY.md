@@ -22,16 +22,17 @@
 | BRIEF-2026-04-24-01 | 2026-04-24 | Session recovery — restaurer migrations manquantes + fix FK ai_runs | bug | P0 | DB, BE, Doc | ✅ livré (commit `5b64abc`) | [briefs/BRIEF-2026-04-24-01-session-recovery.md](./briefs/BRIEF-2026-04-24-01-session-recovery.md) |
 | BRIEF-2026-04-24-02 | 2026-04-24 | Messenger UI Standards — uniformiser pseudo + avatar + bulles chat + mode agent par conversation | standard + feature | P1 | FE, BE, QA, Doc | 🔵 consolidé (→ Phase 2 plan v1) | [briefs/BRIEF-2026-04-24-02-messenger-ui-standards.md](./briefs/BRIEF-2026-04-24-02-messenger-ui-standards.md) |
 | BRIEF-2026-04-24-03 | 2026-04-24 | Structure unifiée + CONTEXT par module + roadmap trackable + auto-update | standard + méta gouvernance | P1 | Doc, Architect | 🔵 consolidé (→ Phases 1, 3, 4 plan v1) | [briefs/BRIEF-2026-04-24-03-structure-unifiee-auto-update.md](./briefs/BRIEF-2026-04-24-03-structure-unifiee-auto-update.md) |
+| BRIEF-2026-04-24-04 | 2026-04-24 | Push env vars Vercel prod pour activer agent IA online | config infra / follow-up BRIEF-01 | P0 | DevOps, Doc | ✅ livré (5 vars prod OK, preview bug CLI reporté) | [briefs/BRIEF-2026-04-24-04-vercel-env-vars-agent-ia.md](./briefs/BRIEF-2026-04-24-04-vercel-env-vars-agent-ia.md) |
 
 ---
 
 ## Compteur
 
-- Total reçus : 3
+- Total reçus : 4
 - En attente consolidation : 0
 - Consolidés dans plan global : 2
 - En exécution : 0
-- Livrés : 1
+- Livrés : 2 (BRIEF-01 + BRIEF-04)
 
 ## Plan global d'exécution
 
