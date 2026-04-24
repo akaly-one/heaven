@@ -22,17 +22,24 @@
 | BRIEF-2026-04-24-01 | 2026-04-24 | Session recovery — restaurer migrations manquantes + fix FK ai_runs | bug | P0 | DB, BE, Doc | ✅ livré (commit `5b64abc`) | [briefs/BRIEF-2026-04-24-01-session-recovery.md](./briefs/BRIEF-2026-04-24-01-session-recovery.md) |
 | BRIEF-2026-04-24-02 | 2026-04-24 | Messenger UI Standards — uniformiser pseudo + avatar + bulles chat + mode agent par conversation | standard + feature | P1 | FE, BE, QA, Doc | 🔵 consolidé (→ Phase 2 plan v1) | [briefs/BRIEF-2026-04-24-02-messenger-ui-standards.md](./briefs/BRIEF-2026-04-24-02-messenger-ui-standards.md) |
 | BRIEF-2026-04-24-03 | 2026-04-24 | Structure unifiée + CONTEXT par module + roadmap trackable + auto-update | standard + méta gouvernance | P1 | Doc, Architect | 🔵 consolidé (→ Phases 1, 3, 4 plan v1) | [briefs/BRIEF-2026-04-24-03-structure-unifiee-auto-update.md](./briefs/BRIEF-2026-04-24-03-structure-unifiee-auto-update.md) |
-| BRIEF-2026-04-24-04 | 2026-04-24 | Push env vars Vercel prod pour activer agent IA online | config infra / follow-up BRIEF-01 | P0 | DevOps, Doc | ✅ livré (5 vars prod OK, preview bug CLI reporté) | [briefs/BRIEF-2026-04-24-04-vercel-env-vars-agent-ia.md](./briefs/BRIEF-2026-04-24-04-vercel-env-vars-agent-ia.md) |
+| BRIEF-2026-04-24-04 | 2026-04-24 | Push env vars Vercel prod pour activer agent IA online | config infra / follow-up BRIEF-01 | P0 | DevOps, Doc | ✅ livré + vérifié (commit `831cb83` prod, agent IA health OK) | [briefs/BRIEF-2026-04-24-04-vercel-env-vars-agent-ia.md](./briefs/BRIEF-2026-04-24-04-vercel-env-vars-agent-ia.md) |
+| BRIEF-2026-04-24-05 | 2026-04-24 | QStash cron provider + toggle UI CP root/yumi | feature + infra | P2 | DB, BE, FE, DevOps, QA, Doc | 🟠 cadré (attente GO NB + compte Upstash) | [briefs/BRIEF-2026-04-24-05-cron-provider-qstash-toggle.md](./briefs/BRIEF-2026-04-24-05-cron-provider-qstash-toggle.md) |
 
 ---
 
 ## Compteur
 
-- Total reçus : 4
-- En attente consolidation : 0
+- Total reçus : 5
+- En attente consolidation : 1
 - Consolidés dans plan global : 2
 - En exécution : 0
 - Livrés : 2 (BRIEF-01 + BRIEF-04)
+
+## Follow-up du jour
+
+BRIEF-04 a débloqué une cascade : le redeploy auto Vercel était cassé depuis v1.4.0 (cron `*/2` rejeté par Hobby). Patch appliqué (cron → daily) + deploy manuel. Agent IA maintenant **vraiment opérationnel en prod** (commit `831cb83`, verified via `/api/agence/ai/health`).
+
+BRIEF-05 est la suite logique : garder le cron rapide en option via QStash + toggle UI pour switcher quand Meta App Review sera validée.
 
 ## Plan global d'exécution
 
