@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, User, Shield, FileSignature } from "lucide-react";
+import { ArrowLeft, ExternalLink, Loader2, User, Shield, FileSignature } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { toModelId } from "@/lib/model-utils";
@@ -40,13 +40,17 @@ interface LatestCommission {
 }
 
 /**
- * Agent 7.C — Model Profile page (tabs Profile, Contrat, Release Form, Dossier).
+ * Agent 7.C — Model Dossier page (admin RH / fiche interne).
+ *
+ * Distinction :
+ *  - Dossier (ICI, admin) = Plan Identite + Palier + Statut initial + Release Form + Contrat
+ *  - Profil public (`/m/[slug]`) = page vue par les fans, avec HeaderBar complet
  *
  * Tab principale "general" : Plan Identite + Palier + Statut initial.
  * Les autres tabs renvoient vers les sous-pages dediees ou ouvrent une
  * sous-section interne.
  */
-export default function ModelProfilePage() {
+export default function ModelDossierPage() {
   const params = useParams();
   const rawId = String(params.id || "");
   const modelId = toModelId(rawId);
@@ -101,8 +105,8 @@ export default function ModelProfilePage() {
     <OsLayout cpId="agence">
       <div className="min-h-screen p-4 md:p-8 pb-24 md:pb-8">
         <div className="max-w-4xl mx-auto space-y-5">
-          {/* Breadcrumb */}
-          <div className="flex items-center gap-3 fade-up">
+          {/* Breadcrumb + public profile link */}
+          <div className="flex items-center justify-between gap-3 fade-up">
             <Link
               href="/agence/clients"
               className="inline-flex items-center gap-1 text-[12px]"
@@ -111,6 +115,18 @@ export default function ModelProfilePage() {
               <ArrowLeft size={14} />
               Retour clients
             </Link>
+            {profile?.slug ? (
+              <Link
+                href={`/m/${profile.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[12px] font-medium"
+                style={{ color: "var(--accent, #c4fd50)" }}
+              >
+                Voir profil public
+                <ExternalLink size={12} />
+              </Link>
+            ) : null}
           </div>
 
           {/* Header */}
@@ -119,7 +135,7 @@ export default function ModelProfilePage() {
               className="text-lg font-bold"
               style={{ color: "var(--text)" }}
             >
-              Modele : {pseudo}
+              Dossier modele : {pseudo}
             </h1>
             <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
               Mode={profile?.mode_operation ?? "—"} · Plan=
@@ -131,8 +147,8 @@ export default function ModelProfilePage() {
 
           {/* Top-level navigation */}
           <nav className="flex flex-wrap gap-2">
-            <NavLink href={`/agence/models/${modelId}/profile`} active>
-              Profile
+            <NavLink href={`/agence/models/${modelId}/dossier`} active>
+              Dossier
             </NavLink>
             <NavLink href={`/agence/models/${modelId}/contract`}>
               Contrat

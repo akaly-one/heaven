@@ -104,12 +104,12 @@ export default function ModelContractPage() {
         <div className="max-w-4xl mx-auto space-y-5">
           <div className="flex items-center gap-3 fade-up">
             <Link
-              href={`/agence/models/${modelId}/profile`}
+              href={`/agence/models/${modelId}/dossier`}
               className="inline-flex items-center gap-1 text-[12px]"
               style={{ color: "var(--text-muted)" }}
             >
               <ArrowLeft size={14} />
-              Retour profil
+              Retour dossier
             </Link>
           </div>
 
@@ -124,8 +124,8 @@ export default function ModelContractPage() {
           </header>
 
           <nav className="flex flex-wrap gap-2">
-            <NavLink href={`/agence/models/${modelId}/profile`}>
-              Profile
+            <NavLink href={`/agence/models/${modelId}/dossier`}>
+              Dossier
             </NavLink>
             <NavLink href={`/agence/models/${modelId}/contract`} active>
               Contrat

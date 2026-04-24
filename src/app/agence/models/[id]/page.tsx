@@ -1,12 +1,17 @@
 import { redirect } from "next/navigation";
+import { toSlug } from "@/lib/model-utils";
 
 /**
- * Agent 7.C — Dispatcher `/agence/models/[id]` → redirect vers profile par defaut.
+ * NB 2026-04-25 — `/agence/models/[id]` redirige vers le PROFIL PUBLIC `/m/[slug]`.
  *
- * Tabs disponibles :
- *  - Profile (general + plan identite + palier + statut)      → /profile
- *  - Contrat (versioning + generator + dossier business)      → /contract
- *  - Release Form DMCA (Agent 7.B — NE PAS TOUCHER)           → /dmca
+ * Décision : il n'existe qu'UN SEUL skeleton de page profil = `/m/[slug]` (version complète
+ * avec HeaderBar, login, retour, message, chat, etc.). La page admin RH/dossier a été
+ * renommée en `/agence/models/[id]/dossier` pour éviter toute confusion sémantique.
+ *
+ * Si tu cherches le dossier RH (Plan Identité, Palier, Statut, Contrat, DMCA) :
+ *  - `/agence/models/[id]/dossier`
+ *  - `/agence/models/[id]/contract`
+ *  - `/agence/models/[id]/dmca`
  */
 export default async function AgenceModelRootPage({
   params,
@@ -14,5 +19,6 @@ export default async function AgenceModelRootPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  redirect(`/agence/models/${id}/profile`);
+  const slug = toSlug(id) || id;
+  redirect(`/m/${slug}`);
 }
