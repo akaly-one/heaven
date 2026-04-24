@@ -25,17 +25,18 @@
 | BRIEF-2026-04-24-04 | 2026-04-24 | Push env vars Vercel prod pour activer agent IA online | config infra / follow-up BRIEF-01 | P0 | DevOps, Doc | ✅ livré + vérifié (commit `831cb83` prod, agent IA health OK) | [briefs/BRIEF-2026-04-24-04-vercel-env-vars-agent-ia.md](./briefs/BRIEF-2026-04-24-04-vercel-env-vars-agent-ia.md) |
 | BRIEF-2026-04-24-05 | 2026-04-24 | QStash cron provider + toggle UI CP root/yumi | feature + infra | P2 | DB, BE, FE, DevOps, QA, Doc | 🟠 cadré (attente GO NB + compte Upstash) | [briefs/BRIEF-2026-04-24-05-cron-provider-qstash-toggle.md](./briefs/BRIEF-2026-04-24-05-cron-provider-qstash-toggle.md) |
 | BRIEF-2026-04-24-06 | 2026-04-24 | Cycle de vie visiteurs (24h temp / 7j pending / archive) + sync bouton header pseudos | feature + règle métier | P1 | DB, BE, FE, QA, Doc | 🟠 cadré (hotfix b5e005e livré, refonte en attente GO) | [briefs/BRIEF-2026-04-24-06-visitor-lifecycle-header-sync.md](./briefs/BRIEF-2026-04-24-06-visitor-lifecycle-header-sync.md) |
+| BRIEF-2026-04-24-07 | 2026-04-24 | Bouton "Générer message" dans thread (flow Fanvue) — mode on-demand IA | feature | P2 | DB, BE, FE, QA, Doc | 🟠 cadré (hotfix 85ee934 after() livré, feature en attente GO) | [briefs/BRIEF-2026-04-24-07-generate-button-in-thread.md](./briefs/BRIEF-2026-04-24-07-generate-button-in-thread.md) |
 
 ---
 
 ## Compteur
 
-- Total reçus : 6
-- En attente consolidation : 2
+- Total reçus : 7
+- En attente consolidation : 3
 - Consolidés dans plan global : 2
 - En exécution : 0
 - Livrés : 2 (BRIEF-01 + BRIEF-04)
-- Hotfix inline : 1 (bugs découverts pendant BRIEF-06 intake → commit `b5e005e`)
+- Hotfixes inline : 2 (commit `b5e005e` ai_run_id + pseudo-fan reply | commit `85ee934` after() for serverless)
 
 ## Follow-up du jour
 
