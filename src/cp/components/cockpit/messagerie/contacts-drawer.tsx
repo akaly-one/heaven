@@ -22,15 +22,16 @@ import { AgeCertificationSection } from "./age-certification-section";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+// NB 2026-04-24 — aligné sur colonnes DB réelles (agence_clients).
+// Pas de pseudo / display_name / avatar_url / badge_grade (n'existent pas en DB).
 export interface FanDrawerClient {
   id: string;
   model: string;
-  pseudo?: string | null;
   pseudo_insta?: string | null;
   pseudo_snap?: string | null;
+  nickname?: string | null;
+  firstname?: string | null;
   tier?: string | null;
-  avatar_url?: string | null;
-  display_name?: string | null;
   // BRIEF-10 AG06/AG10 — certification + validation flow
   age_certified?: boolean | null;
   age_certified_at?: string | null;

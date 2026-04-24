@@ -45,12 +45,19 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   // Linked clients (one per model scope)
   // BRIEF-10 AG06/AG10 : inclure age_certified + access_level pour la section
   // de certification majorité et validation handle dans le drawer admin.
-  const { data: linkedClients } = await db
+  // NB 2026-04-24 — colonnes réelles uniquement (agence_clients n'a pas
+  // pseudo / display_name / avatar_url / badge_grade). On log les erreurs
+  // pour ne plus silent-fail (bug P0 identifié par DEBUG v2).
+  const { data: linkedClients, error: linkedError } = await db
     .from("agence_clients")
     .select(
-      "id, model, pseudo, pseudo_insta, pseudo_snap, tier, badge_grade, display_name, avatar_url, last_active, created_at, age_certified, age_certified_at, access_level, validated_at, validated_by, rejected_at, rejected_reason"
+      "id, model, pseudo_insta, pseudo_snap, nickname, firstname, tier, last_active, created_at, age_certified, age_certified_at, access_level, validated_at, validated_by, rejected_at, rejected_reason, verified_handle, verified_platform"
     )
     .eq("fan_id", id);
+
+  if (linkedError) {
+    console.warn("[api/agence/fans/:id] linkedClients error:", linkedError);
+  }
 
   // Access check for model role
   if (user.role === "model") {

@@ -18,15 +18,16 @@ export interface AgenceFan {
   tier?: string | null;
 }
 
+// NB 2026-04-24 — aligné sur colonnes DB réelles (agence_clients).
+// Pas de pseudo / display_name / avatar_url (n'existent pas en DB).
 export interface AgenceClient {
   id: string;
   model: string;
-  pseudo?: string | null;
   pseudo_insta?: string | null;
   pseudo_snap?: string | null;
+  nickname?: string | null;
+  firstname?: string | null;
   tier?: string | null;
-  avatar_url?: string | null;
-  display_name?: string | null;
 }
 
 interface FanProfileCardProps {
@@ -146,11 +147,8 @@ export function FanProfileCard({ fan, linkedClients = [] }: FanProfileCardProps)
   const highestTier = tierPriority.find((t) => allTiers.includes(t)) || null;
   const tierMeta = highestTier ? TIER_HEX[highestTier] : null;
 
-  // Avatar — fan's own first, fallback to any linked client avatar
-  const avatarUrl =
-    fan.avatar_url ||
-    linkedClients.find((c) => c.avatar_url)?.avatar_url ||
-    null;
+  // Avatar — fan's own (agence_clients n'a pas d'avatar_url).
+  const avatarUrl = fan.avatar_url || null;
 
   return (
     <div

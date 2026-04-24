@@ -19,29 +19,33 @@ import {
   Clock,
 } from "lucide-react";
 import { OsLayout } from "@/components/os-layout";
+import { getConversationPseudo } from "@/shared/lib/messaging/conversation-display";
 
 interface QueueRow {
   id: string;
   model: string;
-  pseudo?: string | null;
   pseudo_insta?: string | null;
   pseudo_snap?: string | null;
-  avatar_url?: string | null;
-  display_name?: string | null;
+  nickname?: string | null;
+  firstname?: string | null;
   created_at: string;
   age_certified?: boolean | null;
   age_certified_at?: string | null;
   access_level?: string | null;
 }
 
+// NB 2026-04-24 — source unique : getConversationPseudo()
+// Fallbacks locaux uniquement pour nickname/firstname (propres à agence_clients).
 function primaryHandle(row: QueueRow): string {
-  if (row.pseudo_insta) return `@${row.pseudo_insta}`;
-  if (row.pseudo_snap && !/^(visiteur|guest)/i.test(row.pseudo_snap)) {
-    return row.pseudo_snap;
-  }
-  if (row.display_name) return row.display_name;
-  if (row.pseudo) return row.pseudo;
-  return row.id.slice(0, 8);
+  const resolved = getConversationPseudo({
+    pseudo_insta: row.pseudo_insta,
+    pseudo_snap: row.pseudo_snap,
+    fan_id: row.id,
+  });
+  if (resolved && !resolved.startsWith("visiteur-")) return resolved;
+  if (row.nickname) return row.nickname;
+  if (row.firstname) return row.firstname;
+  return resolved || row.id.slice(0, 8);
 }
 
 function timeAgo(iso: string): string {

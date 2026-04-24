@@ -24,10 +24,13 @@ export async function GET(_req: NextRequest) {
     return NextResponse.json({ error: "DB not configured" }, { status: 500 });
   }
 
+  // NB 2026-04-24 — colonnes réelles uniquement (agence_clients n'a pas
+  // pseudo / display_name / avatar_url). Pseudo humain résolu côté FE via
+  // getConversationPseudo() (src/shared/lib/messaging/conversation-display).
   let q = db
     .from("agence_clients")
     .select(
-      "id, model, pseudo, pseudo_insta, pseudo_snap, avatar_url, display_name, created_at, age_certified, age_certified_at, access_level"
+      "id, model, pseudo_insta, pseudo_snap, nickname, firstname, created_at, age_certified, age_certified_at, access_level"
     )
     .eq("access_level", "pending_upgrade")
     .order("created_at", { ascending: true })
