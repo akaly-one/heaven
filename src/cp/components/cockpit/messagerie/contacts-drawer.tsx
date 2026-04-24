@@ -609,7 +609,26 @@ export function ContactsDrawer({ fanId, open, onClose }: ContactsDrawerProps) {
             </div>
           )}
 
-          {data && !loading && !error && (
+          {data && !loading && !error && (() => {
+            // BRIEF-15 Lot B — infos essentielles + placeholder insights progressifs.
+            const firstClient = data.linked_clients[0] ?? null;
+            const accessMeta = getAccessMeta(firstClient?.access_level);
+            const AccessIcon = accessMeta.Icon;
+            const nickname = firstClient?.nickname || firstClient?.firstname || null;
+            const hasNicknameReadable =
+              !!nickname && !/^(visiteur|guest)/i.test(nickname);
+            const platforms = detectPlatforms(data.fan);
+            const messageCount = data.message_count ?? 0;
+            // Placeholder si pas de tags/envies/demandes/critères.
+            const hasInsights =
+              structured &&
+              ((Array.isArray(structured.tags) && structured.tags.length > 0) ||
+                (Array.isArray(structured.envies) && structured.envies.length > 0) ||
+                (Array.isArray(structured.demandes) && structured.demandes.length > 0) ||
+                !!structured.critères_tchat);
+            const showPlaceholder = !hasInsights;
+
+            return (
             <div className="p-4 space-y-4">
               {/* Identity block */}
               <div className="flex items-center gap-3">
@@ -629,6 +648,14 @@ export function ContactsDrawer({ fanId, open, onClose }: ContactsDrawerProps) {
                   >
                     {primaryHandle(data.fan)}
                   </div>
+                  {hasNicknameReadable && nickname && (
+                    <div
+                      className="text-[10px] truncate"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {nickname}
+                    </div>
+                  )}
                   <div
                     className="text-[10px] mt-0.5"
                     style={{ color: "var(--text-muted)" }}
@@ -646,6 +673,99 @@ export function ContactsDrawer({ fanId, open, onClose }: ContactsDrawerProps) {
                   )}
                 </div>
               </div>
+
+              {/* BRIEF-15 Lot B — Access level badge (toujours visible) */}
+              <div
+                className="flex items-center gap-2 rounded-lg px-2.5 py-2"
+                style={{
+                  background: accessMeta.bg,
+                  border: `1px solid ${accessMeta.border}`,
+                }}
+              >
+                <AccessIcon
+                  className="w-3.5 h-3.5 shrink-0"
+                  style={{ color: accessMeta.color }}
+                  aria-hidden
+                />
+                <div className="min-w-0 flex-1">
+                  <div
+                    className="text-[9px] uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Niveau d'accès
+                  </div>
+                  <div
+                    className="text-[11px] font-semibold truncate"
+                    style={{ color: accessMeta.color }}
+                  >
+                    {accessMeta.label}
+                  </div>
+                </div>
+              </div>
+
+              {/* BRIEF-15 Lot B — Plateformes détectées (même pour pseudo-fan) */}
+              <section>
+                <h4
+                  className="text-[10px] uppercase tracking-wider font-semibold mb-2"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Plateformes détectées
+                </h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {platforms.includes("web") && (
+                    <span
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold"
+                      style={{
+                        background: "rgba(107,114,128,0.12)",
+                        color: "#9CA3AF",
+                        border: "1px solid rgba(107,114,128,0.28)",
+                      }}
+                    >
+                      <Globe className="w-3 h-3" />
+                      Web
+                    </span>
+                  )}
+                  {platforms.includes("insta") && (
+                    <span
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold"
+                      style={{
+                        background: "rgba(225,48,108,0.12)",
+                        color: "#E1306C",
+                        border: "1px solid rgba(225,48,108,0.28)",
+                      }}
+                    >
+                      <Instagram className="w-3 h-3" />
+                      Instagram
+                    </span>
+                  )}
+                  {platforms.includes("snap") && (
+                    <span
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold"
+                      style={{
+                        background: "rgba(255,252,0,0.08)",
+                        color: "#FFFC00",
+                        border: "1px solid rgba(255,252,0,0.25)",
+                      }}
+                    >
+                      <Zap className="w-3 h-3" />
+                      Snap
+                    </span>
+                  )}
+                  {platforms.includes("fanvue") && (
+                    <span
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold"
+                      style={{
+                        background: "rgba(109,99,245,0.12)",
+                        color: "#A78BFA",
+                        border: "1px solid rgba(109,99,245,0.28)",
+                      }}
+                    >
+                      <Heart className="w-3 h-3" />
+                      Fanvue
+                    </span>
+                  )}
+                </div>
+              </section>
 
               {/* Handles */}
               <section>
@@ -690,8 +810,8 @@ export function ContactsDrawer({ fanId, open, onClose }: ContactsDrawerProps) {
                 </div>
               </section>
 
-              {/* KPIs */}
-              <section className="grid grid-cols-2 gap-2">
+              {/* KPIs — BRIEF-15 Lot B : ajout compteur messages */}
+              <section className="grid grid-cols-3 gap-2">
                 <div
                   className="rounded-lg p-2.5"
                   style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}
@@ -700,7 +820,7 @@ export function ContactsDrawer({ fanId, open, onClose }: ContactsDrawerProps) {
                     className="text-[9px] uppercase tracking-wider"
                     style={{ color: "var(--text-muted)" }}
                   >
-                    Total dépensé
+                    Dépensé
                   </div>
                   <div
                     className="text-base font-bold mt-0.5"
@@ -717,7 +837,7 @@ export function ContactsDrawer({ fanId, open, onClose }: ContactsDrawerProps) {
                     className="text-[9px] uppercase tracking-wider"
                     style={{ color: "var(--text-muted)" }}
                   >
-                    Modèles liés
+                    Modèles
                   </div>
                   <div
                     className="text-base font-bold mt-0.5"
@@ -726,7 +846,93 @@ export function ContactsDrawer({ fanId, open, onClose }: ContactsDrawerProps) {
                     {data.linked_clients.length}
                   </div>
                 </div>
+                <div
+                  className="rounded-lg p-2.5"
+                  style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}
+                >
+                  <div
+                    className="text-[9px] uppercase tracking-wider inline-flex items-center gap-0.5"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    <MessageCircle className="w-2.5 h-2.5" />
+                    Msgs
+                  </div>
+                  <div
+                    className="text-base font-bold mt-0.5"
+                    style={{ color: "var(--text)" }}
+                  >
+                    {messageCount}
+                  </div>
+                </div>
               </section>
+
+              {/* BRIEF-15 Lot B — Placeholder insights progressifs */}
+              {showPlaceholder && (
+                <section
+                  className="rounded-lg p-3 space-y-2"
+                  style={{
+                    background: "rgba(201,168,76,0.06)",
+                    border: "1px dashed rgba(201,168,76,0.28)",
+                  }}
+                >
+                  <div className="flex items-start gap-2">
+                    <Info
+                      className="w-3.5 h-3.5 shrink-0 mt-0.5"
+                      style={{ color: "#E6C974" }}
+                      aria-hidden
+                    />
+                    <div className="min-w-0">
+                      <p
+                        className="text-[11px] font-semibold"
+                        style={{ color: "#E6C974" }}
+                      >
+                        Fiche en cours d&apos;enrichissement
+                      </p>
+                      <p
+                        className="text-[10px] mt-1 leading-relaxed"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        Ce fan n&apos;a pas encore partagé d&apos;infos personnelles.
+                        L&apos;agent IA va collecter ses préférences au fil de la
+                        conversation.
+                      </p>
+                      <p
+                        className="text-[10px] mt-1"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        {messageCount > 0
+                          ? `Messages échangés : ${messageCount}`
+                          : "Aucun message échangé pour l'instant."}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Déclenche un event global : un listener (playground Agent IA
+                      // ou persona) peut composer un DM ciblé via Yumi.
+                      if (typeof window !== "undefined") {
+                        window.dispatchEvent(
+                          new CustomEvent("heaven:ai-prompt-questions", {
+                            detail: {
+                              fanId: data.fan.id,
+                              clientId: firstClient?.id || null,
+                            },
+                          })
+                        );
+                      }
+                    }}
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold"
+                    style={{
+                      background: "linear-gradient(135deg, #E6C974, #C9A84C)",
+                      color: "#0A0A0C",
+                    }}
+                  >
+                    <HelpCircle className="w-3 h-3" />
+                    Faire poser des questions par l&apos;IA
+                  </button>
+                </section>
+              )}
 
               {/* BRIEF-10 AG06/AG10 + BRIEF-15 Lot C — Certification + validation handle (copy link/code) */}
               {data.linked_clients.length > 0 && (
@@ -920,7 +1126,12 @@ export function ContactsDrawer({ fanId, open, onClose }: ContactsDrawerProps) {
               {/* Actions */}
               <section className="flex flex-col gap-2 pt-2">
                 <Link
-                  href={`/agence/clients/${data.fan.id}`}
+                  href={`/agence/clients/${
+                    firstClient?.id ||
+                    (data.fan.id.startsWith("pseudo:")
+                      ? data.fan.id.slice("pseudo:".length)
+                      : data.fan.id)
+                  }`}
                   className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-semibold"
                   style={{
                     background: "linear-gradient(135deg, #E6C974, #C9A84C)",
@@ -930,22 +1141,26 @@ export function ContactsDrawer({ fanId, open, onClose }: ContactsDrawerProps) {
                   <ExternalLink className="w-3 h-3" />
                   Voir profil complet
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => setMergeOpen(true)}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-medium"
-                  style={{
-                    background: "rgba(124,58,237,0.1)",
-                    color: "#A78BFA",
-                    border: "1px solid rgba(124,58,237,0.28)",
-                  }}
-                >
-                  <GitMerge className="w-3 h-3" />
-                  Fusionner avec…
-                </button>
+                {/* BRIEF-15 Lot B — Fusionner indisponible pour pseudo-fan (pas de fan_id UUID) */}
+                {!data.fan.id.startsWith("pseudo:") && (
+                  <button
+                    type="button"
+                    onClick={() => setMergeOpen(true)}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-medium"
+                    style={{
+                      background: "rgba(124,58,237,0.1)",
+                      color: "#A78BFA",
+                      border: "1px solid rgba(124,58,237,0.28)",
+                    }}
+                  >
+                    <GitMerge className="w-3 h-3" />
+                    Fusionner avec…
+                  </button>
+                )}
               </section>
             </div>
-          )}
+            );
+          })()}
         </div>
 
         {mergeOpen && data && (

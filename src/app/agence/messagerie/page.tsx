@@ -253,11 +253,12 @@ function MessagingPageInner() {
 
   // B7 : `?view=contacts` — surface the fan drawer on the first conversation
   // loaded (used when redirected from `/agence/clients`).
+  // BRIEF-15 Lot B — pseudo-fans acceptés : drawer se branche sur /clients/[id].
   useEffect(() => {
     const view = searchParams?.get("view");
     if (view === "contacts" && conversations.length > 0 && !drawerOpen) {
       const first = conversations[0];
-      if (first?.fan_id && !first.fan_id.startsWith("pseudo:")) {
+      if (first?.fan_id) {
         setCurrentFanId(first.fan_id);
         setDrawerFanId(first.fan_id);
         setDrawerOpen(true);
@@ -535,8 +536,10 @@ function MessagingPageInner() {
     }
   };
 
+  // BRIEF-15 Lot B — drawer accepte pseudo-fan (visiteur éphémère) via
+  // /api/agence/clients/[id]. Plus de filtre pseudo: ici.
   const openDrawer = (fanId: string | null) => {
-    if (!fanId || fanId.startsWith("pseudo:")) return;
+    if (!fanId) return;
     setDrawerFanId(fanId);
     setDrawerOpen(true);
   };
@@ -552,11 +555,12 @@ function MessagingPageInner() {
       openDrawer(currentFanId);
       return;
     }
-    const firstReal = conversations.find((c) => !c.fan_id.startsWith("pseudo:"));
-    if (firstReal) {
-      setCurrentFanId(firstReal.fan_id);
+    // BRIEF-15 Lot B — on prend la première conversation, même pseudo-fan.
+    const first = conversations[0];
+    if (first?.fan_id) {
+      setCurrentFanId(first.fan_id);
       setMobileShowThread(true);
-      openDrawer(firstReal.fan_id);
+      openDrawer(first.fan_id);
     }
   };
 
@@ -1056,24 +1060,26 @@ function MessagingPageInner() {
                     </div>
                   )}
 
+                  {/* BRIEF-15 Lot B — "Voir la fiche fan" cliquable pour tous
+                      (pseudo-fans inclus). Drawer branche sur /api/agence/clients/[id]
+                      quand fanId préfixé `pseudo:`. */}
                   <button
                     type="button"
-                    onClick={() =>
-                      currentFanId && !currentFanId.startsWith("pseudo:")
-                        ? openDrawer(currentFanId)
-                        : undefined
-                    }
-                    disabled={!currentFanId || currentFanId.startsWith("pseudo:")}
+                    onClick={() => (currentFanId ? openDrawer(currentFanId) : undefined)}
+                    disabled={!currentFanId}
                     aria-label="Ouvrir la fiche fan"
                     className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{
-                      background: "rgba(201,168,76,0.1)",
+                      background: drawerOpen && drawerFanId === currentFanId
+                        ? "rgba(201,168,76,0.2)"
+                        : "rgba(201,168,76,0.1)",
                       color: "#E6C974",
-                      border: "1px solid rgba(201,168,76,0.25)",
+                      border: "1px solid rgba(201,168,76,0.35)",
                     }}
                   >
                     <BookUser className="w-3 h-3" aria-hidden />
-                    <span className="hidden sm:inline">Fiche fan</span>
+                    <span className="hidden sm:inline">Voir la fiche fan</span>
+                    <ChevronRight className="w-3 h-3 opacity-60 hidden sm:inline" />
                   </button>
                 </div>
 
