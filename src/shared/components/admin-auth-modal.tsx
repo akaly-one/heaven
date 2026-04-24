@@ -88,14 +88,19 @@ export function AdminAuthModal({ onClose }: AdminAuthModalProps) {
           <X className="w-4 h-4" style={{ color: "#fff" }} />
         </button>
 
-        <div className="flex items-center justify-center gap-2 mb-5">
-          <Shield className="w-4 h-4" style={{ color: accent }} />
-          <h2 className="text-center text-lg font-medium uppercase tracking-[0.2em]" style={{ color: "#fff" }}>
-            Admin
-          </h2>
+        {/* NB 2026-04-24 ~23:25 : shield seul au centre avec glow services secrets */}
+        <div className="flex items-center justify-center mb-6 mt-2">
+          <Shield
+            className="w-10 h-10"
+            style={{
+              color: accent,
+              filter: `drop-shadow(0 0 10px ${accent}99) drop-shadow(0 0 20px ${accent}40)`,
+            }}
+            aria-label="Admin"
+          />
         </div>
 
-        <div className="relative mb-4 mt-5">
+        <div className="relative mb-4">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: "rgba(255,255,255,0.2)" }}>
             @
           </span>
@@ -150,6 +155,43 @@ export function AdminAuthModal({ onClose }: AdminAuthModalProps) {
         >
           {submitting ? "..." : "Connexion"}
         </button>
+
+        {/* NB 2026-04-24 : affichage masqué style services secrets — valeurs tapées = *
+            avec glow rouge accent (let user confirm visually ce qu'il a tapé sans révéler). */}
+        {(login || code) && (
+          <div
+            className="mt-5 pt-4 space-y-2 font-mono text-[10px]"
+            style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+            aria-hidden="true"
+          >
+            <div className="flex items-center justify-between">
+              <span style={{ color: "rgba(255,255,255,0.3)", letterSpacing: "0.2em" }}>ID</span>
+              <span
+                className="font-bold"
+                style={{
+                  color: accent,
+                  letterSpacing: "0.35em",
+                  textShadow: `0 0 6px ${accent}cc, 0 0 14px ${accent}55`,
+                }}
+              >
+                {login ? "*".repeat(Math.min(login.length, 24)) : "—"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span style={{ color: "rgba(255,255,255,0.3)", letterSpacing: "0.2em" }}>PWD</span>
+              <span
+                className="font-bold"
+                style={{
+                  color: accent,
+                  letterSpacing: "0.35em",
+                  textShadow: `0 0 6px ${accent}cc, 0 0 14px ${accent}55`,
+                }}
+              >
+                {code ? "*".repeat(Math.min(code.length, 24)) : "—"}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
