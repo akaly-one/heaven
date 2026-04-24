@@ -47,18 +47,63 @@
 | Étape | Rôle | Agent type | Livrable |
 |---|---|---|---|
 | **1. DEV** | Produit le code / doc / migration | Spécialiste domaine (FE/BE/DB/AI/Doc/Legal) | Fichiers créés/modifiés, tests basiques (tsc, build) |
-| **2. DEBUG** | Lit le livrable DEV, teste, identifie bugs | QA + agent différent du DEV | Rapport bugs/observations structuré |
+| **2. DEBUG** | **Teste UI/UX + Front + Back + intégration réelle en parallèle** (pas juste relecture code) | QA + agent différent du DEV | Rapport incohérences trouvées en **condition réelle** |
 | **3. CORRECTIF** | Applique les fixes issus de DEBUG | Agent DEV initial OU spécialiste bug | Patchs appliqués, DEBUG rejoué pour confirmer |
 | **4. OPTIMISATION** | Revue performances, standards, cohérence design system | Senior-frontend / Senior-backend / code-review | Optimisations appliquées, metrics before/after si perf |
 
-**Règles d'application** :
-- **Étape 2-3 (DEBUG + CORRECTIF)** : systématique après chaque ticket, **avant validation NB**
-- **Étape 4 (OPTIMISATION)** : appliquée **en fin de phase** (batch sur tous livrables de la phase), PAS après chaque ticket individuel (overhead inutile sur micro-tickets)
-- **Timing CDP** : le CDP juge quand OPTIMISATION est pertinent vs quand skip (ex : hotfix <20L = skip OPTIMISATION, feature UI complexe = OPTIMISATION obligatoire)
-- **Aucun livrable n'est commit + push + validated NB sans avoir traversé au minimum DEV + DEBUG + CORRECTIF**
-- **Documentation systématique** dans le rapport horodaté `plans/_reports/UPDATE-REPORT-*.md` : qui a fait DEV, qui DEBUG, quels bugs trouvés, quels fixes, quelles optim
+### 1.4.bis Standard DEBUG enrichi (NB 2026-04-24 20:45)
 
-**Sanction** : un ticket livré sans DEBUG documenté = refus CDP + cycle DEBUG+CORRECTIF appliqué rétroactivement.
+**Un DEBUG correct teste en INTÉGRATION RÉELLE, pas en relecture statique.**
+
+Un agent DEBUG qui se contente de relire le code produit par le DEV avec les mêmes outils trouvera peu d'incohérences car il fait la même lecture. Les **vraies incohérences** se révèlent quand on teste le flux bout-en-bout.
+
+Tout agent DEBUG doit couvrir **3 couches simultanément** :
+
+#### Couche A — Static Review (lecture code)
+- Lecture fichiers produits
+- TypeScript strict `npx tsc --noEmit`
+- Grep patterns attendus / interdits
+- Vérification imports + types
+- **→ insuffisante seule**
+
+#### Couche B — Live UI/UX Test (en conditions réelles)
+- Utilise `preview_start` + `preview_*` tools pour lancer le dev server
+- Interagit avec l'UI comme un vrai utilisateur :
+  - Navigation (clics, scroll, focus)
+  - Remplissage formulaires
+  - Responsive (mobile + desktop via `preview_resize`)
+  - Keyboard nav (Tab, Enter, Escape)
+- Capture `preview_screenshot` avant/après changements critiques
+- Vérifie `preview_console_logs` (pas d'erreurs JS)
+- Vérifie `preview_network` (bons endpoints appelés, status codes OK)
+
+#### Couche C — End-to-End Integration
+- **Chaque action UI doit déclencher les bonnes modifs Back**
+- Après clic sur bouton → query DB via MCP Supabase pour valider :
+  - Row créée / updated avec les bonnes valeurs ?
+  - Side effects présents (events log, triggers DB) ?
+  - RLS respecté ?
+- Après envoi API → vérifier retour + DB state
+- Flux multi-step : tester le scénario utilisateur complet, pas juste un point
+
+**Exemple DEBUG correct pour "Age Gate Modal"** :
+- Static : lire `age-gate-modal.tsx` → a11y checks OK
+- Live UI : lancer preview, aller sur `/m/yumi`, taper un message → modal doit apparaître → cocher checkbox → cliquer "Je certifie"
+- End-to-End : query DB `SELECT age_certified, access_level FROM agence_clients WHERE id=...` → vérifier UPDATE effectué ; query `agence_age_gate_events` → vérifier event INSERT
+- Re-ouvrir preview dans onglet incognito → modal ne doit pas réapparaître (cookie OK)
+- Cliquer "Je suis mineur" dans autre session → vérifier redirect IG + event logged
+
+**Un DEBUG qui NE fait QUE la Couche A est une revue statique, pas un DEBUG.**
+
+### Règles d'application
+
+- **Étape 2-3 (DEBUG + CORRECTIF)** : systématique après chaque ticket, **avant validation NB**
+- **Étape 4 (OPTIMISATION)** : appliquée **en fin de phase** (batch sur tous livrables de la phase), PAS après chaque ticket individuel
+- **Timing CDP** : le CDP juge quand OPTIMISATION est pertinent vs quand skip (ex : hotfix <20L = skip OPTIMISATION, feature UI complexe = OPTIMISATION obligatoire)
+- **Aucun livrable n'est commit + push + validated NB sans avoir traversé DEV + DEBUG v2 (3 couches) + CORRECTIF**
+- **Documentation systématique** dans le rapport horodaté `plans/_reports/UPDATE-REPORT-*.md` : qui a fait DEV, qui DEBUG, bugs trouvés en Couche A/B/C, fixes, optim
+
+**Sanction** : un DEBUG qui ne couvre pas les 3 couches A+B+C = refus CDP + relance d'un DEBUG v2 complet.
 
 ---
 
