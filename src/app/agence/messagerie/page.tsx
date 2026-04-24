@@ -96,9 +96,14 @@ function truncate(text: string, max: number): string {
 
 function primaryHandle(c: InboxConversation): string {
   if (c.pseudo_insta) return `@${c.pseudo_insta}`;
-  if (c.pseudo_web) return c.pseudo_web;
   if (c.pseudo_snap) return c.pseudo_snap;
+  if (c.pseudo_web) return c.pseudo_web;
   if (c.fanvue_handle) return c.fanvue_handle;
+  // NB 2026-04-24 : jamais "pseudo:xxx" brut. Si fan_id préfixé, extrait le suffix UUID.
+  if (c.fan_id.startsWith("pseudo:")) {
+    const suffix = c.fan_id.slice("pseudo:".length, "pseudo:".length + 4);
+    return `visiteur-${suffix.toLowerCase()}`;
+  }
   return c.fan_id.slice(0, 8);
 }
 

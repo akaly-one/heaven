@@ -33,8 +33,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Invalid source" }, { status: 400 });
   }
   const fanIdParam = params.get("fan_id");
-  // Pseudo-fan keys (when no real fan_id row) : "pseudo:Display Name"
+  // NB 2026-04-24 : pseudo-fan keys pour les conversations sans agence_fans row.
+  // Format : "pseudo:<client_id|ig_conv_id>" — suffix = UUID, unique et lookupable.
   const isPseudoFan = fanIdParam?.startsWith("pseudo:");
+  const pseudoFanSuffix = isPseudoFan ? fanIdParam!.slice("pseudo:".length) : null;
 
   // Resolve model scope
   const requestedModel = params.get("model");
@@ -194,17 +196,36 @@ export async function GET(req: NextRequest) {
       const igConv = g.ig_conversation_id ? igConvMap.get(g.ig_conversation_id) : null;
       const client = g.client_id ? clientsMap.get(g.client_id) : null;
       const sourcesArr = Array.from(g.sources) as ("web" | "instagram")[];
+
+      // NB 2026-04-24 : pseudo-fan key = suffix UUID (client_id ou ig_conv_id),
+      // jamais le display_handle (conflit si 2 clients ont le même nickname "v").
+      const pseudoSuffix = g.client_id || g.ig_conversation_id || g.display_handle;
+      const fan_id = g.fan_id || `pseudo:${pseudoSuffix}`;
+
+      // Pseudo web normalisé — on respecte la norme "visiteur-NNN" partout (header + messagerie + profil).
+      // Priorité : pseudo_web DB (migration 052) → nickname s'il ressemble à visiteur-NNN → fallback
+      // stable "visiteur-<4 derniers chars du client_id>" (pas de collision).
+      const shortId = (g.client_id || g.ig_conversation_id || "").slice(-4).toLowerCase();
+      const normalizedVisitor = shortId ? `visiteur-${shortId}` : "visiteur";
+      const rawNickname = client?.nickname || client?.firstname || null;
+      const nicknameIsPseudo = rawNickname && /^(visiteur|guest)/i.test(rawNickname);
+      const pseudo_web = fan?.pseudo_web
+        || (nicknameIsPseudo ? rawNickname : null)
+        || (!fan?.pseudo_insta && !fan?.pseudo_snap ? normalizedVisitor : null);
+
+      const displayName = fan?.pseudo_insta
+        ? `@${fan.pseudo_insta}`
+        : igConv?.ig_username
+        ? `@${igConv.ig_username}`
+        : pseudo_web || g.display_handle;
+
       return {
-        fan_id: g.fan_id || `pseudo:${g.display_handle}`,
+        fan_id,
         pseudo_insta: fan?.pseudo_insta || igConv?.ig_username || null,
-        pseudo_web:
-          fan?.pseudo_web ||
-          client?.nickname ||
-          client?.firstname ||
-          null,
+        pseudo_web,
         pseudo_snap: fan?.pseudo_snap || null,
         fanvue_handle: fan?.fanvue_handle || null,
-        display_name: g.display_handle,
+        display_name: displayName,
         avatar_url: null,
         sources: sourcesArr,
         last_message: {
@@ -238,6 +259,7 @@ export async function GET(req: NextRequest) {
     display_name: string | null;
   } | null = null;
 
+  // NB 2026-04-24 : 2 chemins — vrai fan (agence_fans) ou pseudo-fan (client_id / ig_conv_id)
   if (fanIdParam && !isPseudoFan) {
     const { data: fan } = await db
       .from("agence_fans")
@@ -271,6 +293,77 @@ export async function GET(req: NextRequest) {
         display_name: fan.pseudo_web || fan.pseudo_insta || null,
       };
     }
+  } else if (isPseudoFan && pseudoFanSuffix) {
+    // Pseudo-fan : suffix = client_id (UUID web) OU ig_conv_id.
+    // On tente agence_messages (web) par client_id, puis instagram_messages par conversation_id.
+    let threadRows: Array<{ source: "web" | "instagram"; id: string | number; text: string; direction: "in" | "out"; created_at: string }> = [];
+    let resolvedClient: { id: string; nickname: string | null; firstname: string | null; pseudo_insta: string | null; pseudo_snap: string | null } | null = null;
+
+    // 1. Essai client_id (web)
+    const { data: webThread } = await db
+      .from("agence_messages_timeline")
+      .select("source, id, text, direction, created_at, client_id")
+      .eq("model", modelId)
+      .eq("client_id", pseudoFanSuffix)
+      .order("created_at", { ascending: true })
+      .limit(200);
+    if (webThread && webThread.length > 0) {
+      threadRows = webThread.map((m) => ({
+        source: m.source as "web" | "instagram",
+        id: m.id,
+        text: m.text,
+        direction: m.direction as "in" | "out",
+        created_at: m.created_at,
+      }));
+      resolvedClient = clientsMap.get(pseudoFanSuffix) || null;
+    }
+
+    // 2. Fallback ig_conversation_id
+    if (threadRows.length === 0) {
+      const { data: igThread } = await db
+        .from("agence_messages_timeline")
+        .select("source, id, text, direction, created_at, ig_conversation_id")
+        .eq("model", modelId)
+        .eq("ig_conversation_id", pseudoFanSuffix)
+        .order("created_at", { ascending: true })
+        .limit(200);
+      if (igThread && igThread.length > 0) {
+        threadRows = igThread.map((m) => ({
+          source: m.source as "web" | "instagram",
+          id: m.id,
+          text: m.text,
+          direction: m.direction as "in" | "out",
+          created_at: m.created_at,
+        }));
+      }
+    }
+
+    messages = threadRows.map((m) => ({
+      id: String(m.id),
+      source: m.source,
+      direction: m.direction,
+      text: m.text,
+      created_at: m.created_at,
+      media_url: null,
+    }));
+    const sourcesSet = new Set<"web" | "instagram">();
+    for (const m of messages) sourcesSet.add(m.source);
+
+    const shortId = pseudoFanSuffix.slice(-4).toLowerCase();
+    const visitorLabel = `visiteur-${shortId}`;
+
+    fanInfo = {
+      id: fanIdParam!,
+      pseudo_insta: resolvedClient?.pseudo_insta || null,
+      pseudo_web: (resolvedClient?.nickname && /^(visiteur|guest)/i.test(resolvedClient.nickname))
+        ? resolvedClient.nickname
+        : visitorLabel,
+      sources: Array.from(sourcesSet),
+      avatar_url: null,
+      display_name: resolvedClient?.pseudo_insta
+        ? `@${resolvedClient.pseudo_insta}`
+        : visitorLabel,
+    };
   }
 
   return NextResponse.json({
