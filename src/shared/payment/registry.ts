@@ -13,6 +13,7 @@ import { manualProvider } from "./providers/manual";
 import { paypalProvider } from "./providers/paypal";
 import { revolutProvider } from "./providers/revolut";
 import { stripeProvider, isStripeAllowed } from "./providers/stripe";
+import { wiseProvider } from "./providers/wise";
 import type { PaymentProvider, PaymentProviderId } from "./types";
 
 const providers: Record<PaymentProviderId, PaymentProvider> = {
@@ -20,6 +21,7 @@ const providers: Record<PaymentProviderId, PaymentProvider> = {
   paypal: paypalProvider,
   revolut: revolutProvider,
   stripe: stripeProvider,
+  wise: wiseProvider,
 };
 
 const VALID_IDS: readonly PaymentProviderId[] = [
@@ -27,6 +29,7 @@ const VALID_IDS: readonly PaymentProviderId[] = [
   "paypal",
   "revolut",
   "stripe",
+  "wise",
 ];
 
 /**

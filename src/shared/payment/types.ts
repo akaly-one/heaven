@@ -3,7 +3,7 @@
    BRIEF-16 (2026-04-25) : Phase C architecture modulaire V2
    ══════════════════════════════════════════════ */
 
-export type PaymentProviderId = "paypal" | "revolut" | "stripe" | "manual";
+export type PaymentProviderId = "paypal" | "revolut" | "stripe" | "manual" | "wise";
 
 export interface CreatePaymentInput {
   amount: number;          // centimes

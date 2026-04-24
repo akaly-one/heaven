@@ -83,6 +83,51 @@ Chaque requête webhook porte un header `PAYPAL-TRANSMISSION-SIG`. Le serveur He
 
 Point clé : **toujours conserver le raw body** dans `agence_webhook_events` (colonne `raw_body JSONB`) pour re-vérification et rejeu si besoin.
 
+### 2.6 JavaScript SDK vs REST API — différence et approche Heaven
+
+PayPal propose **deux méthodes d'intégration** côté développeur :
+
+**A. REST API pure (server-to-server)**
+- Le backend Heaven crée l'ordre via `POST /v2/checkout/orders`
+- Renvoie une `approval_url` au frontend
+- Le fan est **redirigé complètement vers PayPal.com** pour payer
+- Après paiement, PayPal redirige vers Heaven avec `token` + `PayerID`
+- Le backend Heaven capture via `POST /v2/checkout/orders/{id}/capture`
+- **Avantages** : pleinement contrôlé, pas de JS tiers, webhook idempotent
+- **Inconvénients** : fan quitte Heaven pendant 30-60s, friction mobile
+
+**B. JavaScript SDK (client-side button, server-side capture)**
+- Le frontend charge le SDK PayPal : `<script src="https://www.paypal.com/sdk/js?client-id=..."`
+- Un bouton PayPal est rendu **inline dans la page Heaven**
+- Clic sur le bouton → popup PayPal (pas de redirection plein écran)
+- Le SDK appelle `createOrder()` côté backend Heaven → reçoit `orderId`
+- Le fan valide dans la popup PayPal
+- Le SDK appelle `onApprove()` côté backend → capture via REST API
+- **Avantages** : UX fluide, deep-link app PayPal sur mobile, Apple Pay via PayPal
+- **Inconvénients** : dépendance JS tiers, cookies tiers, adblock possible
+
+**Approche Heaven : hybride SDK + REST**
+
+Le composant [`PayPalCheckoutButton`](src/web/components/profile/paypal-checkout-button.tsx) utilise `@paypal/react-paypal-js` (wrapper officiel) :
+- Rend le bouton PayPal inline (SDK côté client)
+- Délègue la création de l'ordre au backend existant `/api/payments/paypal/create` (REST API)
+- Délègue la capture au backend existant `/api/payments/paypal/capture` (REST API)
+- Le fan ne quitte jamais Heaven → meilleure conversion
+- Le backend reste la source de vérité → webhook idempotent possible
+
+**Activation** : il suffit d'ajouter dans Vercel :
+```
+NEXT_PUBLIC_PAYPAL_CLIENT_ID = <même CLIENT_ID que PAYPAL_CLIENT_ID mais exposé au client>
+```
+
+Si cette variable n'est pas définie, le bouton est silencieusement masqué. Le flow V1 manuel PayPal.me reste actif en parallèle comme fallback. Si la variable est définie, le bouton apparaît à côté du bouton manuel dans l'UnlockSheet.
+
+**Tester en local** :
+1. Sandbox PayPal : créer un compte Personal sandbox sur https://developer.paypal.com/dashboard/accounts
+2. Utiliser `NEXT_PUBLIC_PAYPAL_CLIENT_ID` = client ID sandbox
+3. Paiement test avec le compte Personal sandbox (email + password)
+4. Vérifier capture dans `agence_pending_payments` status=`completed`
+
 ---
 
 ## 3. Revolut Merchant — à mettre en place
@@ -193,15 +238,70 @@ Wise Business propose des liens «&nbsp;Request money&nbsp;» partageables. Le c
 
 Utile uniquement si PayPal et Revolut sont tous les deux indisponibles. Fonctionne en mode «&nbsp;manual confirm&nbsp;» comme PayPal.me.
 
-### 4.5 Recommandation concrète pour NB
+### 4.5 Wise Payment Requests API (provider Heaven — BRIEF-16 Phase C)
 
-Pour V1 (maintenant) :
-- **PayPal.me manuel** comme canal principal (déjà en place)
+Un **provider `wise`** est désormais intégré dans le registry Heaven (`src/shared/payment/providers/wise.ts`). Il utilise l'endpoint officiel Wise **Payment Requests** pour générer un lien de paiement direct.
+
+**Ce que le provider fait concrètement** :
+1. Le fan clique «&nbsp;Payer avec Wise&nbsp;» dans l'UnlockSheet
+2. Le backend Heaven appelle `POST /v3/profiles/{profileId}/payment-requests` de Wise
+3. Wise renvoie une URL `wise.com/pay/...`
+4. Le fan est redirigé → paie par carte / virement sur le portail Wise
+5. Wise crédite le compte Heaven — **pas de webhook natif**, il faut poller `getStatus()`
+
+**Étapes pour brancher Wise** :
+
+1. **Ouvrir un compte Wise Business** sur https://wise.com/business
+   - KYB Belgique : pièce ID + RCS + justificatif activité
+   - Choisir le plan `Business` (~8 € / mois) — les Payment Requests ne sont pas dispo sur le plan Personal
+
+2. **Générer un API token** :
+   - Se connecter → `Settings → API tokens`
+   - `Create new token` → scope `Full access` (ou au minimum `read + payment-requests write`)
+   - Copier le token — affiché **une seule fois**, le stocker immédiatement
+
+3. **Récupérer le Business Profile ID** :
+   - Appeler `GET /v2/profiles` avec le token pour lister les profils
+   - Exemple curl :
+     ```bash
+     curl -H "Authorization: Bearer $WISE_API_TOKEN" https://api.wise.com/v2/profiles
+     ```
+   - Noter le `id` du profil de type `business` (pas `personal`)
+
+4. **Env vars Vercel** :
+   ```
+   WISE_API_TOKEN            = <token récupéré étape 2>
+   WISE_BUSINESS_PROFILE_ID  = <id récupéré étape 3>
+   WISE_API_URL              = https://api.wise.com           # prod
+   # Sandbox : https://api.sandbox.transferwise.tech
+   ```
+
+5. **Activer le toggle dans le cockpit root** :
+   - `/cp/root` → settings → Payment Providers → activer `Wise`
+   - Une fois activé, le provider apparaît dans la liste disponible côté fan
+
+**Limites connues Wise Payment Requests** :
+- **Pas de webhook natif sur payment-requests v3** au moment de l'écriture (25/04/2026) → la mise à jour du statut se fait par poll `GET /v3/profiles/{profileId}/payment-requests/{id}` (à ajouter au cron si Wise devient primaire)
+- **Pas d'Apple Pay natif** — le portail Wise accepte cartes + virements mais pas Apple Pay in-flow
+- **Montants > 10 000 €** nécessitent une vérification supplémentaire
+- **Taux de change** : si le fan paie dans une autre devise, Wise applique le taux du marché + petite commission
+
+**Documentation officielle** : https://docs.wise.com/api-docs/api-reference/payment-request
+
+### 4.6 Recommandation concrète pour NB
+
+Pour V1 (maintenant, actif en prod) :
+- **PayPal.me manuel** canal principal
+- **PayPal Checkout SDK** (bouton inline) prêt, à activer dès `NEXT_PUBLIC_PAYPAL_CLIENT_ID` ajouté sur Vercel
 
 Pour V2 (après KYB Revolut) :
-- **Revolut Merchant** comme principal avec Apple Pay
-- **PayPal Checkout auto** comme backup
-- **Wise** comme compte de trésorerie (payout Revolut quotidien)
+- **Revolut Merchant** principal avec Apple Pay / Google Pay
+- **PayPal Checkout auto** (SDK) en backup principal
+- **Wise Payment Requests** en tertiaire (fan sans carte Apple Pay, virement bancaire)
+- **Wise** comme compte de trésorerie (payout Revolut quotidien + consolidation multi-devises)
+
+Pour urgence extrême (PayPal + Revolut simultanément indisponibles) :
+- **Stripe** activé temporairement avec `ALLOW_STRIPE=true` et plan B de payout quotidien vers Wise
 
 ---
 

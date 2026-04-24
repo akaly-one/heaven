@@ -13,7 +13,7 @@
     "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
-    "@paypal/react-paypal-js": "^9.1.0",
+    "@paypal/react-paypal-js": "^9.1.1",
     "@supabase/supabase-js": "^2.99.3",
     "@vercel/analytics": "^2.0.1",
     "cloudinary": "^2.9.0",

@@ -6,6 +6,7 @@ import type { PackConfig, ModelInfo } from "@/types/heaven";
 import { TIER_META, TIER_HEX } from "@/constants/tiers";
 import { PaymentReferenceModal } from "./payment-reference-modal";
 import { CustomCartSheet } from "./custom-cart-sheet";
+import { PayPalCheckoutButton } from "./paypal-checkout-button";
 
 /**
  * BRIEF-16 livrable 1 — MODIF unlock-sheet
@@ -415,7 +416,33 @@ export function UnlockSheet({
                             )}
                           </button>
 
-                          {/* Bouton "checkout auto" (PayPal Checkout + Revolut futur) */}
+                          {/* BRIEF-16 Phase C — PayPal Checkout SDK bouton inline.
+                              Rendu automatiquement si NEXT_PUBLIC_PAYPAL_CLIENT_ID est défini.
+                              Sinon null → fallback bouton "Autres modes" ci-dessous. */}
+                          <div className="pt-1">
+                            <PayPalCheckoutButton
+                              model={slug}
+                              packId={pack.id}
+                              packName={pack.name}
+                              packSlug={pack.id}
+                              amountEur={pack.price}
+                              tier={pack.id}
+                              clientPseudo={clientPseudo || "anonyme"}
+                              clientId={clientId}
+                              onSuccess={(code) => {
+                                onCodeValidated({
+                                  tier: pack.id,
+                                  code,
+                                  expiresAt: new Date(
+                                    Date.now() + 30 * 24 * 3600 * 1000,
+                                  ).toISOString(),
+                                });
+                              }}
+                              onError={(msg) => setPaymentError(msg)}
+                            />
+                          </div>
+
+                          {/* Fallback bouton "checkout auto" si SDK non configuré (legacy handler) */}
                           <button
                             onClick={() => onCheckoutPack(pack)}
                             className="block w-full py-2.5 rounded-xl text-[11px] font-semibold text-center cursor-pointer transition-all hover:brightness-110"
@@ -426,7 +453,7 @@ export function UnlockSheet({
                             }}
                             aria-label="Alternative paiement automatique"
                           >
-                            Autres modes (PayPal Checkout / Revolut)
+                            Autres modes (Revolut / Wise)
                           </button>
                         </div>
                       </div>
