@@ -48,6 +48,15 @@
 |---|---|
 | [`operations/`](./operations/) | SPEC + ROADMAP ponctuelles (4 fichiers actifs : roadmap mise à niveau, spec agent IA, spec Meta App Review, spec navigation refactor) |
 
+### PMO (Project Management Office — ajouté 2026-04-24)
+
+| Chemin | Rôle |
+|---|---|
+| [`PMO/`](./PMO/) | **Chef de projet + intake briefs NB + dispatch multi-agent**. Point d'entrée opérationnel pour toute nouvelle demande. |
+| [`PMO/00-CHARTE.md`](./PMO/00-CHARTE.md) | Constitution : rôles, DoR/DoD, escalation, rituels |
+| [`PMO/01-INTAKE-PROTOCOL.md`](./PMO/01-INTAKE-PROTOCOL.md) | Workflow demande NB → brief → ticket → dispatch |
+| [`PMO/02-BRIEFS-REGISTRY.md`](./PMO/02-BRIEFS-REGISTRY.md) | Registre chronologique des briefs reçus |
+
 ### Référence & archive
 
 | Chemin | Rôle |
