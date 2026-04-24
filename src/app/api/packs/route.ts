@@ -3,6 +3,8 @@ import { getServerSupabase } from "@/lib/supabase-server";
 import { getCorsHeaders, isValidModelSlug } from "@/lib/auth";
 import { getAuthUser } from "@/lib/api-auth";
 import { toModelId } from "@/lib/model-utils";
+// BRIEF-10 AG08 : guard purchase — seuls validated peuvent checkout
+import { computeAccessLevel } from "@/lib/access/tiers";
 
 export const runtime = "nodejs";
 
@@ -28,6 +30,28 @@ export async function GET(req: NextRequest) {
   const model = req.nextUrl.searchParams.get("model");
   if (!isValidModelSlug(model)) {
     return NextResponse.json({ error: "model requis" }, { status: 400, headers: cors });
+  }
+  // BRIEF-10 AG08 : si le caller fournit un client_id ET demande l'accès packs
+  // pour achat (?for=purchase), on vérifie l'access_level. Sans client_id on
+  // laisse la liste publique (visiteurs voient les packs avec overlay UI).
+  const clientIdFilter = req.nextUrl.searchParams.get("client_id");
+  const forFlag = req.nextUrl.searchParams.get("for");
+  if (clientIdFilter && forFlag === "purchase") {
+    const supabaseGuard = getServerSupabase();
+    if (supabaseGuard) {
+      const { data: clientForAccess } = await supabaseGuard
+        .from("agence_clients")
+        .select("age_certified, access_level, pseudo_insta, pseudo_snap, verified_handle")
+        .eq("id", clientIdFilter)
+        .maybeSingle();
+      const decision = computeAccessLevel(clientForAccess || {});
+      if (!decision.allowedContent.includes("packs")) {
+        return NextResponse.json(
+          { error: "Access denied — handle not validated", level: decision.level },
+          { status: 403, headers: cors }
+        );
+      }
+    }
   }
   try {
     const supabase = getServerSupabase();

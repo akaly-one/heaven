@@ -14,8 +14,8 @@
 | Briefs livrés complets | 2 (BRIEF-01, BRIEF-04) |
 | Hotfixes inline livrés | 6 |
 | Briefs cadrés en attente GO | 9 |
-| Tickets livrés | 15 (dont 6 hotfixes, + AG01/AG02/AG03 BRIEF-10 Phase 1) |
-| Tickets estimés restants | ~127 |
+| Tickets livrés | 23 (dont 6 hotfixes, + AG01/AG02/AG03 Phase 1, + AG04-AG11 BRIEF-10 Phase 2) |
+| Tickets estimés restants | ~119 |
 
 ---
 
@@ -105,11 +105,19 @@ Tickets (17 total) — tous pending, 7 questions RGPD bloquantes :
 - [ ] FI01 à FI17
 
 ### BRIEF-10 — Privacy + Age Gate + Accès hiérarchisé (P0 bloquant)
-Tickets (13 total) — 3 livrés Phase 1 :
+Tickets (13 total) — 11 livrés (Phase 1 + Phase 2) :
 - [x] AG01 — Migration DB `066_age_gate_access_level.sql` + `066b_age_gate_events_log.sql` (appliquées prod, backfill validated=4, pending_upgrade=16)
 - [x] AG02 — Refonte `/privacy` page (11 sections RGPD complètes FR, conforme art. 6/15-22)
 - [x] AG03 — `PublicFooter` component persistant (intégré dans `/m/[slug]`, `/privacy`, `/terms`, `/data-deletion`)
-- [ ] AG04 à AG13
+- [x] AG04 — `<AgeGateModal>` shared composant bloquant (focus trap, Escape désactivé, checkbox obligatoire, WCAG 2.2 AA) — `src/shared/components/age-gate-modal.tsx`
+- [x] AG05 — Persistance cookie `heaven_age_certified` (30j) + routes API `/api/age-gate/certify` + `/decline` avec IP/UA hash RGPD — `src/shared/lib/age-gate/persistence.ts`
+- [x] AG06 — `<AgeCertificationSection>` badge vert/rouge + bouton révocation admin root + route `/api/agence/clients/[id]/age-gate/revoke` — `src/cp/components/cockpit/messagerie/age-certification-section.tsx`
+- [x] AG07 — Helper `computeAccessLevel` (matrice 5 niveaux : anonymous/major_visitor/pending_upgrade/validated/rejected) + `canAccess` — `src/shared/lib/access/tiers.ts`
+- [x] AG08 — Inject `maxAiTone` dans prompt persona runtime (`/api/messages` POST) + guard 403 `/api/packs?for=purchase` si non-validated
+- [x] AG09 — `<AgeGateModal>` intégré dans `/m/[slug]` avec gated `sendMessage` (interception 1er message fan, redirect IG mineurs)
+- [x] AG10 — Section validation handle dans drawer admin (Valider / Rejeter raison / Demander preuve) + routes API `/api/agence/clients/[id]/validate` + `/reject`
+- [x] AG11 — Page `/agence/verification-queue` + endpoint `GET /api/agence/verification-queue` (tri ASC created_at, compteur, actions inline)
+- [ ] AG12 à AG13 — audit log RLS root + tests Playwright (Phase 3)
 
 ### BRIEF-11 — Usage meters stack (P1)
 Tickets (15 total) — tous pending :

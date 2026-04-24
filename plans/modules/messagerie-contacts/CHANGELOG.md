@@ -1,5 +1,79 @@
 # Messagerie + Contacts — Changelog
 
+## 2026-04-24 (v5 — Phase 2.2) — BRIEF-10 tickets AG04-AG11 livrés
+
+> Auteur : Agent DEV Phase 2 #3 · Tickets : AG04-AG11 · Brief parent : [BRIEF-2026-04-24-10](../../PMO/briefs/BRIEF-2026-04-24-10-privacy-age-gate-tiered-access.md)
+
+### Age Gate UI + admin validation flow complet
+
+Implémentation de la hiérarchie d'accès fan runtime (matrice 5 niveaux) + modale bloquante de certification âge + flow admin pour valider/rejeter handles + queue dédiée.
+
+#### AG04 — `<AgeGateModal>` shared (`src/shared/components/age-gate-modal.tsx`)
+- Modale bloquante : Escape désactivé, pas de close button, pas de click outside.
+- Focus trap natif (Tab/Shift+Tab reste dans la card) + `role="dialog"` + `aria-modal` + `aria-labelledby`.
+- Checkbox obligatoire "Je certifie avoir 18 ans ou plus + Privacy Policy" — bouton "Je certifie" disabled tant que non cochée.
+- Bouton secondaire "Je suis mineur →" (link style).
+- Warning discret sur fausse déclaration (traçage audit).
+- WCAG 2.2 AA : contraste ≥4.5, focus-visible ring, touch targets ≥44px, body overflow hidden pendant modale.
+
+#### AG05 — Persistance cookie + routes API (`src/shared/lib/age-gate/persistence.ts` + `/api/age-gate/certify` + `/api/age-gate/decline`)
+- Cookie `heaven_age_certified=1` (30j, SameSite=Lax, path=/). Helpers set/has/clear SSR-safe.
+- POST /api/age-gate/certify : UPDATE `agence_clients` (age_certified=true, age_certified_at, age_certified_ip_hash, access_level='major_visitor' si anonymous) + INSERT `agence_age_gate_events` event_type='certified' avec IP+UA hashés (via `hashIpSubnet/hashUserAgent` de BRIEF-13).
+- POST /api/age-gate/decline : INSERT event_type='declared_minor' + retourne `redirect: "https://instagram.com/yumiiiclub"`.
+- Routes whitelisted dans `src/middleware.ts` (PUBLIC_POST).
+
+#### AG06 — `<AgeCertificationSection>` drawer admin (`src/cp/components/cockpit/messagerie/age-certification-section.tsx`)
+- Badge vert "✅ 18+ certifié le {date}" OU rouge "⚠️ Pas certifié".
+- Bouton "Révoquer certification" (root only, confirm natif) → POST `/api/agence/clients/[id]/age-gate/revoke` (UPDATE age_certified=false + access_level='anonymous'/garde 'rejected' + INSERT event 'revoked').
+- Si `access_level='pending_upgrade'` : boutons Valider / Rejeter (avec input raison) / Demander preuve.
+- Intégré dans `contacts-drawer.tsx` : boucle sur `linked_clients` (1 section par model scope), reloadKey pour re-fetch après mutation.
+- Endpoint `/api/agence/fans/[id]` enrichi : expose pseudo_snap + age_certified + age_certified_at + access_level + validated/rejected fields.
+
+#### AG07 — Helper `computeAccessLevel` (`src/shared/lib/access/tiers.ts`)
+- Matrice 5 niveaux : `anonymous` | `major_visitor` | `pending_upgrade` | `validated` | `rejected`.
+- Input `ClientForAccess` (age_certified, pseudo_insta, pseudo_snap, access_level, verified_handle).
+- Output `AccessDecision` { level, allowedContent[], maxAiTone }.
+- Ordre priorité : `access_level` explicit (validated/rejected) > age_certified > handle réel détecté.
+- Filtre pseudo_snap `visiteur-*` / `guest-*` (auto-générés) comme non-handle.
+- Helper additionnel `canAccess(client, content)` pour tests courts.
+
+#### AG08 — Middleware contenu + injection `maxAiTone`
+- `/api/messages POST` : avant `triggerWebAutoReply`, charge le client et `computeAccessLevel` → passe `maxAiTone` au runtime IA.
+- Dans le system prompt persona, injection `[CONTRAINTE ACCÈS FAN]` + texte selon tone (`flirt_light` sage / `flirt_hot` chaud pas explicite / `explicit` autorisé).
+- `/api/packs GET` : guard 403 si `?client_id=X&for=purchase` et decision.allowedContent ne contient pas 'packs' (protège flow achat, pas liste publique).
+
+#### AG09 — UI `/m/[slug]` intégration AgeGateModal
+- State `ageGateOpen` + `ageCertified` hydraté depuis cookie au mount.
+- `sendMessage` wrappé : si fan non certifié, ouvre modal + stocke pending → après certify, déclenche envoi. Admin/model bypass.
+- `onCertify` : POST /certify + setAgeCertifiedCookie + flush pending send.
+- `onMinor` : POST /decline + `window.location.href = "https://instagram.com/yumiiiclub"`.
+- Modal rendue au niveau page (z-[100], hors du ChatPanel).
+
+#### AG10 — Drawer admin : Valider / Rejeter handle + routes API
+- `POST /api/agence/clients/[id]/validate` (root/model scope) : UPDATE access_level='validated', validated_at, validated_by + INSERT event 'certified' actor=admin.
+- `POST /api/agence/clients/[id]/reject` (root/model scope) : body `{ reason }` obligatoire. UPDATE access_level='rejected', rejected_at, rejected_reason + INSERT event 'rejected'.
+- Drawer affiche badges finaux (validated le X par Y / rejeté le X : raison) ou boutons pending.
+- `onRequestProof` callback prêt pour M04 DM auto.
+
+#### AG11 — Page queue admin (`/agence/verification-queue`)
+- `GET /api/agence/verification-queue` : liste `access_level='pending_upgrade'`, tri ASC `created_at`, scope model = own only, max 200.
+- Page standalone avec compteur "X en attente", actions inline Valider/Rejeter/Voir profil, state `rejectFor` pour input raison inline.
+- Gère erreurs réseau + busy state per-row + time ago humain.
+
+### Impacts collatéraux
+- `src/middleware.ts` : PUBLIC_POST enrichi avec /api/age-gate/certify + /decline.
+- `src/app/api/messages/route.ts` : import computeAccessLevel + `toneInstructionFor` helper + pass maxAiTone fire-and-forget.
+- `src/app/api/agence/fans/[id]/route.ts` : SELECT linked_clients étendu (age_certified + access_level + pseudo_snap etc.).
+- `src/app/api/packs/route.ts` : guard 403 conditional sur ?for=purchase.
+- `src/cp/components/cockpit/messagerie/contacts-drawer.tsx` : import AgeCertificationSection + auth role detection + reloadKey post-mutation.
+- `src/app/m/[slug]/page.tsx` : import modal + lib age-gate + state (déplacé avant useChat pour order JS) + sendMessage wrapper + modal rendue.
+
+### Tests
+- `npx tsc --noEmit` : exit 0 (zero error).
+- Aucun `any`, aucun emoji en code, tous les fichiers en TS strict.
+
+---
+
 ## 2026-04-24 (v4 — Phase 2.1) — BRIEF-02 tickets M03 + M04 + M05 livrés
 
 > Auteur : Agent DEV Phase 2 #1 · Tickets : M03 + M04 + M05 · Brief parent : [BRIEF-2026-04-24-02](../../PMO/briefs/BRIEF-2026-04-24-02-messenger-ui-standards.md)

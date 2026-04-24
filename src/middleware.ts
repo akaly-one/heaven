@@ -43,6 +43,9 @@ const PUBLIC_POST = new Set([
   "/api/payments/revolut/create",
   "/api/clients/visit",
   "/api/security/screenshot-alert",
+  // BRIEF-10 AG05 : age gate routes publiques (fan non authentifié)
+  "/api/age-gate/certify",
+  "/api/age-gate/decline",
 ]);
 
 // ── Self-authed routes (have their own auth, skip JWT) ──

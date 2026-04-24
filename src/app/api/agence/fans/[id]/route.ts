@@ -43,10 +43,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   }
 
   // Linked clients (one per model scope)
+  // BRIEF-10 AG06/AG10 : inclure age_certified + access_level pour la section
+  // de certification majorité et validation handle dans le drawer admin.
   const { data: linkedClients } = await db
     .from("agence_clients")
     .select(
-      "id, model, pseudo, pseudo_insta, tier, badge_grade, display_name, avatar_url, last_active, created_at"
+      "id, model, pseudo, pseudo_insta, pseudo_snap, tier, badge_grade, display_name, avatar_url, last_active, created_at, age_certified, age_certified_at, access_level, validated_at, validated_by, rejected_at, rejected_reason"
     )
     .eq("fan_id", id);
 

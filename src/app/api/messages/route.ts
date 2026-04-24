@@ -7,8 +7,24 @@ import { toModelId, isModelId, toSlug } from "@/lib/model-utils";
 import { generateReplyGroq, hasGroqKey, GROQ_DEFAULT_MODEL } from "@/lib/groq";
 import { filterOutbound, humanizeDelay } from "@/lib/ai-agent/safety";
 import { decideForMode, type AgentMode } from "@/lib/ai-agent/modes";
+// BRIEF-10 AG08 : inject max_tone selon access_level du fan
+import { computeAccessLevel, type MaxAiTone } from "@/lib/access/tiers";
 
 export const runtime = "nodejs";
+
+// BRIEF-10 AG08 : contrainte tonale injectée dans le prompt persona runtime.
+// Empêche l'agent IA de partir en mode explicite si le fan n'a pas été validé.
+function toneInstructionFor(maxAiTone: MaxAiTone): string {
+  switch (maxAiTone) {
+    case "explicit":
+      return "Ton explicite autorisé (fan validé).";
+    case "flirt_hot":
+      return "Flirt chaud autorisé, mais PAS explicite (fan age-certifié, handle pas encore validé).";
+    case "flirt_light":
+    default:
+      return "Flirt léger uniquement, garde ça sage (fan non certifié majeur).";
+  }
+}
 
 // NB 2026-04-24 : fire-and-forget auto-reply agent IA sur messages web.
 // Web = filtre permissif (pas NSFW bloqué), mais zero AI leak + zero confidentiality leak.
@@ -17,6 +33,7 @@ async function triggerWebAutoReply(params: {
   modelId: string;
   clientId: string;
   inboundText: string;
+  maxAiTone: MaxAiTone;
 }) {
   if (!hasGroqKey()) return;
   const db = getServerSupabase();
@@ -58,8 +75,11 @@ async function triggerWebAutoReply(params: {
       .limit(5);
     const historyOrdered = (history || []).reverse();
 
-    const systemPrompt = persona?.base_prompt
+    // BRIEF-10 AG08 : injection contrainte tonale basée sur access_level
+    const accessNote = toneInstructionFor(params.maxAiTone);
+    const basePrompt = persona?.base_prompt
       || "Tu es Yumi, créatrice. Réponds court et naturel.";
+    const systemPrompt = `${basePrompt}\n\n[CONTRAINTE ACCÈS FAN] ${accessNote}`;
 
     const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
       { role: "system", content: systemPrompt },
@@ -246,6 +266,15 @@ export async function POST(req: NextRequest) {
     if (sender_type === "client") {
       const slug = toSlug(normalizedModel);
       if (slug) {
+        // BRIEF-10 AG08 : charger le client pour calculer max_tone
+        const { data: clientForAccess } = await supabase
+          .from("agence_clients")
+          .select("age_certified, access_level, pseudo_insta, pseudo_snap, verified_handle")
+          .eq("id", client_id)
+          .maybeSingle();
+        const decision = computeAccessLevel(clientForAccess || {});
+        const maxAiTone = decision.maxAiTone;
+
         after(async () => {
           try {
             await triggerWebAutoReply({
@@ -253,6 +282,7 @@ export async function POST(req: NextRequest) {
               modelId: normalizedModel,
               clientId: client_id,
               inboundText: cleanContent,
+              maxAiTone,
             });
           } catch {
             // silent — déjà loggé dans ai_runs.error_message via le catch interne

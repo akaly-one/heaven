@@ -17,6 +17,8 @@ import {
   Sparkles,
   Package,
 } from "lucide-react";
+// BRIEF-10 AG06/AG10 — section certification âge + validation handle admin
+import { AgeCertificationSection } from "./age-certification-section";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -29,6 +31,14 @@ export interface FanDrawerClient {
   tier?: string | null;
   avatar_url?: string | null;
   display_name?: string | null;
+  // BRIEF-10 AG06/AG10 — certification + validation flow
+  age_certified?: boolean | null;
+  age_certified_at?: string | null;
+  access_level?: string | null;
+  validated_at?: string | null;
+  validated_by?: string | null;
+  rejected_at?: string | null;
+  rejected_reason?: string | null;
 }
 
 export interface FanDrawerData {
@@ -380,6 +390,26 @@ export function ContactsDrawer({ fanId, open, onClose }: ContactsDrawerProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mergeOpen, setMergeOpen] = useState(false);
+  // BRIEF-10 AG06 : détecte si root (affiche bouton révocation)
+  const [isRoot, setIsRoot] = useState(false);
+  // Reload trigger après mutation age gate
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    try {
+      const raw =
+        typeof window !== "undefined"
+          ? localStorage.getItem("heaven_auth") ||
+            sessionStorage.getItem("heaven_auth")
+          : null;
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setIsRoot(parsed?.role === "root");
+      }
+    } catch {
+      // no-op
+    }
+  }, []);
 
   useEffect(() => {
     if (!fanId || !open) {
@@ -411,7 +441,7 @@ export function ContactsDrawer({ fanId, open, onClose }: ContactsDrawerProps) {
       .finally(() => {
         setLoading(false);
       });
-  }, [fanId, open]);
+  }, [fanId, open, reloadKey]);
 
   const totalSpent = useMemo(
     () => (data?.purchases || []).reduce((s, p) => s + (p.price_eur || 0), 0),
@@ -611,6 +641,31 @@ export function ContactsDrawer({ fanId, open, onClose }: ContactsDrawerProps) {
                   </div>
                 </div>
               </section>
+
+              {/* BRIEF-10 AG06/AG10 — Certification majorité + validation handle */}
+              {data.linked_clients.length > 0 && (
+                <>
+                  {data.linked_clients.map((c) => (
+                    <AgeCertificationSection
+                      key={`agc-${c.id}`}
+                      client={{
+                        id: c.id,
+                        age_certified: c.age_certified ?? null,
+                        age_certified_at: c.age_certified_at ?? null,
+                        access_level: c.access_level ?? null,
+                        pseudo_insta: c.pseudo_insta ?? null,
+                        pseudo_snap: c.pseudo_snap ?? null,
+                        validated_at: c.validated_at ?? null,
+                        validated_by: c.validated_by ?? null,
+                        rejected_at: c.rejected_at ?? null,
+                        rejected_reason: c.rejected_reason ?? null,
+                      }}
+                      isRoot={isRoot}
+                      onMutated={() => setReloadKey((k) => k + 1)}
+                    />
+                  ))}
+                </>
+              )}
 
               {/* Structured context (goûts / envies / demandes / tchat) */}
               {structured && (

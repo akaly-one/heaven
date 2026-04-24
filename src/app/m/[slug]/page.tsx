@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import {
   Heart, MessageCircle, Send, Lock, Newspaper, ShoppingBag,
@@ -38,6 +38,13 @@ import { StoryViewer } from "@/components/profile/story-viewer";
 import { PackDetailModal } from "@/components/profile/pack-detail-modal";
 import { ProfileStyles } from "@/components/profile/profile-styles";
 import PublicFooter from "@/components/public-footer";
+// BRIEF-10 AG04/AG05/AG07/AG09 — age gate + access tiers
+import AgeGateModal from "@/components/age-gate-modal";
+import {
+  setAgeCertifiedCookie,
+  hasAgeCertifiedCookie,
+} from "@/lib/age-gate/persistence";
+import { computeAccessLevel } from "@/lib/access/tiers";
 
 // ── CP-domain profile components (Phase 3 Agent 3.B) ──
 import { FeedItemCard } from "@cp/components/profile/feed-item-card";
@@ -134,11 +141,33 @@ export default function ModelPage() {
     setClientId, setVisitorPlatform, setVisitorHandle, setVisitorRegistered, setVisitorVerified,
   } = useVisitorIdentity({ slug, model });
 
+  // ── BRIEF-10 AG04/AG05 — age gate state (déclaré avant useChat pour sendMessage) ──
+  const [ageGateOpen, setAgeGateOpen] = useState(false);
+  const [ageCertified, setAgeCertified] = useState(false);
+
   // ── Chat ──
   const {
     chatMessages, chatInput, setChatInput, chatOpen, setChatOpen,
-    chatUnread, sendMessage, chatEndRef,
+    chatUnread, sendMessage: sendMessageRaw, chatEndRef, guestClientId,
   } = useChat({ slug, clientId, model });
+
+  // ── BRIEF-10 AG05/AG09 : gated sendMessage ──
+  // Intercepte le 1er message fan : si pas certifié, ouvre modal age gate.
+  // La validation/refus déclenche le send pending (ou redirect IG).
+  const pendingSendRef = useRef<boolean>(false);
+  const sendMessage = useCallback(async () => {
+    if (isModelLoggedIn) {
+      // Model/admin n'est pas un fan — bypass gate
+      await sendMessageRaw();
+      return;
+    }
+    if (!ageCertified) {
+      pendingSendRef.current = true;
+      setAgeGateOpen(true);
+      return;
+    }
+    await sendMessageRaw();
+  }, [ageCertified, isModelLoggedIn, sendMessageRaw]);
 
   // ── Wall ──
   const { wallContent, setWallContent, wallPosting } = useWall({
@@ -223,6 +252,11 @@ export default function ModelPage() {
       if (stored) setPurchasedItems(new Set(JSON.parse(stored)));
     } catch {}
   }, [slug]);
+
+  // ── BRIEF-10 AG05 : hydrate age gate certified depuis cookie ──
+  useEffect(() => {
+    if (hasAgeCertifiedCookie()) setAgeCertified(true);
+  }, []);
 
   // ── Fetch Instagram handle (public) for CTA buttons in the hero (B9). ──
   // The feed route is public and safely returns only the handle + active flag,
@@ -581,6 +615,44 @@ export default function ModelPage() {
             isGuest={!visitorRegistered}
             onUpgrade={() => setGateDismissed(false)} />
         )}
+
+        {/* BRIEF-10 AG04 : Age Gate Modal bloquant avant 1er message */}
+        <AgeGateModal
+          open={ageGateOpen}
+          onCertify={async () => {
+            const cid = clientId || guestClientId;
+            try {
+              await fetch("/api/age-gate/certify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(cid ? { client_id: cid } : {}),
+              });
+            } catch { /* non-blocking */ }
+            setAgeCertifiedCookie();
+            setAgeCertified(true);
+            setAgeGateOpen(false);
+            if (pendingSendRef.current) {
+              pendingSendRef.current = false;
+              // Appel direct (pas via sendMessage wrapped — sinon boucle)
+              try { await sendMessageRaw(); } catch { /* silent */ }
+            }
+          }}
+          onMinor={async () => {
+            const cid = clientId || guestClientId;
+            try {
+              await fetch("/api/age-gate/decline", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(cid ? { client_id: cid } : {}),
+              });
+            } catch { /* non-blocking */ }
+            pendingSendRef.current = false;
+            setAgeGateOpen(false);
+            if (typeof window !== "undefined") {
+              window.location.href = "https://instagram.com/yumiiiclub";
+            }
+          }}
+        />
 
         {/* Order History */}
         {orderHistoryOpen && !isModelLoggedIn && (
