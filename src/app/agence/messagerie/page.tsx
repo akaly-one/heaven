@@ -296,6 +296,33 @@ function MessagingPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceFilter]);
 
+  // NB 2026-04-24 : polling 15s aligné header + refresh sur focus tab
+  // → synchro live pseudo upgrade + nouveaux messages sans reload manuel
+  // (ex : visiteur ajoute pseudo_snap via /m/yumi → admin voit la maj en 15s max)
+  useEffect(() => {
+    const poll = () => {
+      if (!document.hidden) {
+        loadInbox(currentFanId, sourceFilter);
+        if (currentFanId) loadThread(currentFanId);
+      }
+    };
+    const iv = setInterval(poll, 15000);
+    const onFocus = () => poll();
+    const onVis = () => { if (!document.hidden) poll(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+    // Refresh aussi quand un handle change (event dispatched par IdentityGate/profile upgrade)
+    const onHandleUpdate = () => poll();
+    window.addEventListener("heaven:client-handle-updated", onHandleUpdate);
+    return () => {
+      clearInterval(iv);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("heaven:client-handle-updated", onHandleUpdate);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentFanId, sourceFilter]);
+
   // Load thread when fan changes
   useEffect(() => {
     if (currentFanId) loadThread(currentFanId);
