@@ -1293,6 +1293,22 @@ function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierVie
                     style={{ background: "#10B981", color: "#fff", boxShadow: "0 0 6px rgba(16,185,129,0.6)" }}>{chatUnread}</span>
                 )}
               </button>
+              {/* NB 2026-04-25 evening : bouton "Éditer profil" inline à côté du chat (admin only).
+                  Remplace l'accordéon standalone qui chevauchait d'autres sections. */}
+              {isEditMode && (
+                <button onClick={() => setProfileEditOpen(v => !v)}
+                  title="Éditer profil"
+                  aria-label="Éditer profil"
+                  aria-expanded={profileEditOpen}
+                  className="relative shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
+                  style={{
+                    background: profileEditOpen ? "var(--accent)" : "rgba(255,255,255,0.08)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    backdropFilter: "blur(8px)",
+                  }}>
+                  <Edit3 className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: profileEditOpen ? "#fff" : "var(--text)" }} />
+                </button>
+              )}
             </div>
               {displayModel?.bio && <p className="profile-stagger-3 text-sm sm:text-base mt-2 sm:mt-3 line-clamp-2 leading-relaxed max-w-lg" style={{ color: "rgba(255,255,255,0.7)" }}>{displayModel.bio}</p>}
               {displayModel?.status_text && !isEditMode && <p className="text-sm sm:text-base mt-2 max-w-md" style={{ color: "rgba(255,255,255,0.8)", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>{displayModel.status_text}</p>}
@@ -1338,40 +1354,57 @@ function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierVie
       {/* BRIEF-18 NB 2026-04-25 — hint "utilise la barre admin" supprimé :
           remplacé par les boutons d'édition au hover directement sur le banner
           et l'avatar (UX in-context plus naturelle). */}
-      {/* NB 2026-04-25 evening : accordéon édition profil (cohérence mobile/desktop +
-          repliable). Default fermé. Visible admin only via isEditMode. */}
-      {isEditMode && (
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 md:px-12 -mt-4 mb-4">
-          <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <button
-              type="button"
-              onClick={() => setProfileEditOpen(v => !v)}
-              aria-expanded={profileEditOpen}
-              className="w-full flex items-center justify-between p-3 sm:p-4 cursor-pointer transition-all hover:bg-white/[0.02] border-none bg-transparent text-left"
-              style={{ minHeight: 44 }}
-            >
+      {/* NB 2026-04-25 evening : édition profil = modal centré, déclenché par
+          le bouton crayon à côté du chat (cf. ligne ~1300). Plus d'accordéon
+          standalone qui chevauchait d'autres sections. */}
+      {isEditMode && profileEditOpen && (
+        <div
+          className="fixed inset-0 z-[55] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.7)", animation: "fadeIn 0.2s ease" }}
+          onClick={() => setProfileEditOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl overflow-hidden"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)", animation: "scaleUp 0.2s ease" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: "var(--border)" }}>
               <span className="flex items-center gap-2">
-                <Edit3 className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
-                <span className="text-xs sm:text-sm font-bold uppercase tracking-wider" style={{ color: "var(--text)" }}>Éditer profil</span>
-                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                  {displayModel?.display_name || ""}
-                </span>
+                <Edit3 className="w-4 h-4" style={{ color: "var(--accent)" }} />
+                <span className="text-sm font-bold uppercase tracking-wider" style={{ color: "var(--text)" }}>Éditer profil</span>
               </span>
-              {profileEditOpen ? <ChevronUp className="w-4 h-4" style={{ color: "var(--text-muted)" }} /> : <ChevronDown className="w-4 h-4" style={{ color: "var(--text-muted)" }} />}
-            </button>
-            {profileEditOpen && (
-              <div className="space-y-3 p-3 sm:p-4 pt-0 border-t" style={{ borderColor: "var(--border)" }}>
+              <button
+                onClick={() => setProfileEditOpen(false)}
+                aria-label="Fermer"
+                className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
+                style={{ background: "transparent", border: "none" }}
+              >
+                <X className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+              </button>
+            </div>
+            <div className="space-y-3 p-4">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Display name</label>
                 <input value={displayModel?.display_name || ""} onChange={e => edit.updateEditField("display_name", e.target.value)}
-                  className="text-lg font-bold bg-transparent outline-none rounded-lg px-3 py-2 w-full mt-3" style={{ color: "var(--text)", border: "1px dashed var(--border3)" }} placeholder="Display name" />
-                <input value={displayModel?.status || ""} onChange={e => edit.updateEditField("status", e.target.value)}
-                  className="w-full text-xs bg-transparent outline-none rounded-lg px-3 py-2" style={{ color: "var(--text-muted)", border: "1px dashed var(--border3)" }} placeholder="Status" />
-                <input value={edit.editProfile.status_text ?? displayModel?.status_text ?? ""} onChange={e => edit.updateEditField("status_text", e.target.value)}
-                  placeholder="Ton humeur, une promo, une annonce..." className="w-full text-sm bg-transparent outline-none rounded-lg px-3 py-2 text-center"
-                  style={{ color: "var(--text)", border: "1px dashed var(--border3)", background: "rgba(0,0,0,0.15)" }} maxLength={200} />
-                <textarea value={displayModel?.bio || ""} onChange={e => edit.updateEditField("bio", e.target.value)}
-                  className="w-full text-sm leading-relaxed bg-transparent outline-none rounded-lg px-3 py-2 resize-none" style={{ color: "var(--text-secondary)", border: "1px dashed var(--border3)" }} placeholder="Bio..." rows={3} />
+                  className="w-full text-sm font-bold bg-transparent outline-none rounded-lg px-3 py-2" style={{ color: "var(--text)", border: "1px solid var(--border)" }} placeholder="Display name" />
               </div>
-            )}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Status</label>
+                <input value={displayModel?.status || ""} onChange={e => edit.updateEditField("status", e.target.value)}
+                  className="w-full text-xs bg-transparent outline-none rounded-lg px-3 py-2" style={{ color: "var(--text)", border: "1px solid var(--border)" }} placeholder="Status" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Humeur / promo</label>
+                <input value={edit.editProfile.status_text ?? displayModel?.status_text ?? ""} onChange={e => edit.updateEditField("status_text", e.target.value)}
+                  placeholder="Ton humeur, une promo, une annonce..." className="w-full text-sm bg-transparent outline-none rounded-lg px-3 py-2"
+                  style={{ color: "var(--text)", border: "1px solid var(--border)" }} maxLength={200} />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Bio</label>
+                <textarea value={displayModel?.bio || ""} onChange={e => edit.updateEditField("bio", e.target.value)}
+                  className="w-full text-sm leading-relaxed bg-transparent outline-none rounded-lg px-3 py-2 resize-none" style={{ color: "var(--text)", border: "1px solid var(--border)" }} placeholder="Bio..." rows={3} />
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1948,76 +1981,91 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
             <div><label className="text-[9px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Badge</label>
               <input value={pack.badge || ""} onChange={e => edit.handleUpdatePack(pack.id, { badge: e.target.value || null })} placeholder="VIP, ★..." className="w-full px-2 py-1.5 rounded-lg text-xs outline-none" style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", minHeight: 36 }} /></div>
           </div>
-          {/* Photo d'aperçu : preview thumbnail + toggle flouté/déflouté côté visiteur */}
-          <div className="space-y-2">
-            <label className="text-[9px] font-bold uppercase tracking-wider block" style={{ color: "var(--text-muted)" }}>Photo aperçu (vue locked)</label>
-            <div className="flex items-center gap-2">
-              <label htmlFor={`pack-cover-${pack.id}`} className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden shrink-0 cursor-pointer" style={{ border: `1px dashed ${tierHex}40`, background: "var(--bg2)" }}>
-                {(pack as { cover_url?: string }).cover_url ? (
-                  <img src={(pack as { cover_url?: string }).cover_url} alt="Cover" className="w-full h-full object-cover" style={{ filter: (pack as { cover_blurred?: boolean }).cover_blurred !== false ? "blur(4px) brightness(0.7)" : "none" }} />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Camera className="w-4 h-4" style={{ color: tierHex }} />
-                  </div>
-                )}
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                id={`pack-cover-${pack.id}`}
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  if (file.size > 10 * 1024 * 1024) { alert("Image > 10 MB"); return; }
-                  const reader = new FileReader();
-                  reader.onload = async (ev) => {
-                    const dataUrl = ev.target?.result as string;
-                    const res = await fetch("/api/upload", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ data: dataUrl, folder: `heaven/${modelId}/packs/${pack.id}` }),
-                    });
-                    const data = await res.json();
-                    if (data?.url) edit.handleUpdatePack(pack.id, { cover_url: data.url } as Partial<PackConfig>);
-                  };
-                  reader.readAsDataURL(file);
-                }}
-              />
-              <input
-                type="text"
-                value={(pack as { cover_url?: string }).cover_url || ""}
-                onChange={e => edit.handleUpdatePack(pack.id, { cover_url: e.target.value } as Partial<PackConfig>)}
-                placeholder="URL Cloudinary ou upload"
-                className="flex-1 px-2 py-1.5 rounded-lg text-[11px] font-mono outline-none"
-                style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", minHeight: 36 }}
-              />
-              <button
-                type="button"
-                onClick={() => edit.handleUpdatePack(pack.id, { cover_blurred: !((pack as { cover_blurred?: boolean }).cover_blurred !== false) } as Partial<PackConfig>)}
-                title={(pack as { cover_blurred?: boolean }).cover_blurred !== false ? "Cover floutée — cliquer pour défloutée" : "Cover claire — cliquer pour floutée"}
-                aria-label="Toggle flou cover"
-                className="w-9 h-9 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06] shrink-0"
-                style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}
-              >
-                {(pack as { cover_blurred?: boolean }).cover_blurred !== false ? <EyeOff className="w-3.5 h-3.5" style={{ color: tierHex }} /> : <Eye className="w-3.5 h-3.5" style={{ color: tierHex }} />}
-              </button>
-            </div>
-          </div>
-          <div><label className="text-[10px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--text-muted)" }}>Avantages inclus</label>
-            <div className="space-y-2">
+          {/* Photo d'aperçu : preview thumbnail = ce que voit le visiteur en locked tier
+              NB 2026-04-25 evening : auto-fallback sur dernière upload du pack si pas de cover_url manuel.
+              Le mode edition est le template WYSIWYG du locked tier. */}
+          {(() => {
+            const tierUploadsLocal = uploads.filter(u => normalizeTier(u.tier) === pack.id && u.dataUrl);
+            const lastUpload = tierUploadsLocal.length > 0 ? tierUploadsLocal[tierUploadsLocal.length - 1] : null;
+            const manualCover = (pack as { cover_url?: string }).cover_url;
+            const effectiveCover = manualCover || lastUpload?.dataUrl || null;
+            const isBlurred = (pack as { cover_blurred?: boolean }).cover_blurred !== false;
+            return (
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-wider block" style={{ color: "var(--text-muted)" }}>
+                  Photo aperçu locked {!manualCover && lastUpload && <span className="font-normal opacity-70">(auto: dernière upload)</span>}
+                </label>
+                <div className="flex items-center gap-2">
+                  <label htmlFor={`pack-cover-${pack.id}`} className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden shrink-0 cursor-pointer" style={{ border: `1px dashed ${tierHex}40`, background: "var(--bg2)" }}>
+                    {effectiveCover ? (
+                      <img src={effectiveCover} alt="Cover" className="w-full h-full object-cover" style={{ filter: isBlurred ? "blur(4px) brightness(0.7)" : "none" }} />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Camera className="w-4 h-4" style={{ color: tierHex }} />
+                      </div>
+                    )}
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id={`pack-cover-${pack.id}`}
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 10 * 1024 * 1024) { alert("Image > 10 MB"); return; }
+                      const reader = new FileReader();
+                      reader.onload = async (ev) => {
+                        const dataUrl = ev.target?.result as string;
+                        const res = await fetch("/api/upload", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ data: dataUrl, folder: `heaven/${modelId}/packs/${pack.id}` }),
+                        });
+                        const data = await res.json();
+                        if (data?.url) edit.handleUpdatePack(pack.id, { cover_url: data.url } as Partial<PackConfig>);
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                  <input
+                    type="text"
+                    value={manualCover || ""}
+                    onChange={e => edit.handleUpdatePack(pack.id, { cover_url: e.target.value } as Partial<PackConfig>)}
+                    placeholder={lastUpload ? "Override (URL ou upload)" : "URL ou upload"}
+                    className="flex-1 px-2 py-1.5 rounded-lg text-[11px] font-mono outline-none"
+                    style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", minHeight: 36 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => edit.handleUpdatePack(pack.id, { cover_blurred: !isBlurred } as Partial<PackConfig>)}
+                    title={isBlurred ? "Cover floutée — cliquer pour défloutée" : "Cover claire — cliquer pour floutée"}
+                    aria-label="Toggle flou cover"
+                    className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06] shrink-0"
+                    style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}
+                  >
+                    {isBlurred ? <EyeOff className="w-3.5 h-3.5" style={{ color: tierHex }} /> : <Eye className="w-3.5 h-3.5" style={{ color: tierHex }} />}
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+          {/* Avantages compacts : grid 2 cols, inputs petits */}
+          <div>
+            <label className="text-[9px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Avantages</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
               {(pack.features || []).map((f: string, j: number) => (
-                <div key={j} className="flex items-center gap-2">
-                  <Check className="w-3.5 h-3.5 shrink-0" style={{ color: tierHex }} />
+                <div key={j} className="flex items-center gap-1.5">
+                  <Check className="w-3 h-3 shrink-0" style={{ color: tierHex }} />
                   <input value={f} onChange={e => { const nf = [...(pack.features || [])]; nf[j] = e.target.value; edit.handleUpdatePack(pack.id, { features: nf }); }}
-                    className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)" }} />
+                    className="flex-1 px-2 py-1 rounded-md text-[11px] outline-none" style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", minHeight: 28 }} />
                   <button onClick={() => edit.handleUpdatePack(pack.id, { features: (pack.features || []).filter((_: string, k: number) => k !== j) })}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-all shrink-0" style={{ background: "rgba(220,38,38,0.08)", color: "var(--danger)" }}><X className="w-3 h-3" /></button>
+                    className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer hover:scale-110 transition-all shrink-0" style={{ background: "rgba(220,38,38,0.08)", color: "var(--danger)" }}><X className="w-2.5 h-2.5" /></button>
                 </div>
               ))}
               <button onClick={() => edit.handleUpdatePack(pack.id, { features: [...(pack.features || []), ""] })}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-medium cursor-pointer transition-all hover:scale-[1.01]"
-                style={{ background: `${tierHex}08`, color: tierHex, border: `1px dashed ${tierHex}30` }}><Plus className="w-3 h-3" /> Ajouter un avantage</button>
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer transition-all hover:scale-[1.01] sm:col-span-2 justify-center"
+                style={{ background: `${tierHex}08`, color: tierHex, border: `1px dashed ${tierHex}30`, minHeight: 28 }}><Plus className="w-2.5 h-2.5" /> Ajouter</button>
             </div>
           </div>
           </div>
@@ -2032,20 +2080,25 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
         const tierUploads = uploads.filter(u => normalizeTier(u.tier) === galleryTier && u.dataUrl);
         const previewImages = [...tierPosts.map(p => p.media_url!), ...tierUploads.map(u => u.dataUrl)].filter(Boolean).slice(0, 6);
         if (!tierPack) return null;
+        // NB 2026-04-25 evening : auto-fallback dernière upload du pack si pas de cover_url manuel
+        const manualCover = (tierPack as { cover_url?: string }).cover_url;
+        const lastUploadCover = tierUploads.length > 0 ? tierUploads[tierUploads.length - 1].dataUrl : null;
+        const isBlurred = (tierPack as { cover_blurred?: boolean }).cover_blurred !== false;
+        const effectiveCover = manualCover || lastUploadCover;
+        const blurFilter = isBlurred ? "blur(14px) brightness(0.4)" : "brightness(0.85)";
         const ctaLink = tierPack.stripe_link || tierPack.wise_url || null;
         const ctaAction = ctaLink ? () => window.open(ctaLink, "_blank") : () => { setFocusPack(galleryTier); setShowUnlock(true); };
         return (
           <div className="mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 rounded-2xl overflow-hidden p-4 md:p-6" style={{ background: "var(--surface)", border: `1px solid ${tierHex}15` }}>
               <div className="relative rounded-xl overflow-hidden" style={{ minHeight: "280px" }}>
-                {/* NB 2026-04-25 evening : si admin a défini un cover_url custom, on l'utilise en priorité (floutée pour aperçu) */}
-                {(tierPack as { cover_url?: string }).cover_url ? (
+                {effectiveCover ? (
                   <div className="w-full h-full relative" style={{ minHeight: "280px" }}>
-                    <img src={(tierPack as { cover_url?: string }).cover_url} alt={tierPack.name} className="w-full h-full object-cover" style={{ filter: "blur(14px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" />
+                    <img src={effectiveCover} alt={tierPack.name} className="w-full h-full object-cover" style={{ filter: blurFilter, transform: "scale(1.15)" }} loading="lazy" />
                   </div>
                 ) : previewImages.length > 0 ? (
                   <div className="grid grid-cols-3 gap-1 h-full">
-                    {previewImages.map((url, i) => <div key={i} className="aspect-[3/4] relative overflow-hidden rounded-lg"><img src={url} alt="" className="w-full h-full object-cover" style={{ filter: "blur(14px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" /></div>)}
+                    {previewImages.map((url, i) => <div key={i} className="aspect-[3/4] relative overflow-hidden rounded-lg"><img src={url} alt="" className="w-full h-full object-cover" style={{ filter: blurFilter, transform: "scale(1.15)" }} loading="lazy" /></div>)}
                   </div>
                 ) : <div className="w-full h-full rounded-xl" style={{ background: `linear-gradient(135deg, ${tierHex}10, ${tierHex}05)`, minHeight: "280px" }} />}
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -2093,12 +2146,15 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
                   >
                     {unlocked ? (
                       <>
+                        {/* NB 2026-04-25 evening : click handler sur le wrapper (pas sur img) pour éviter
+                            que les overlays décoratifs bloquent le click. setLightboxUrl pour fullscreen z-60. */}
+                        <div className="absolute inset-0 z-[1]" onClick={() => setLightboxUrl(item.url)} />
                         <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">
-                          {item.mediaType === "video" ? <video src={item.url} className="w-full h-full object-cover" onClick={() => setZoomedItem(item.id)} data-clickable />
-                            : <img src={item.url} alt="" className="w-full h-full object-cover" onClick={() => setZoomedItem(item.id)} loading="lazy" data-clickable />}
+                          {item.mediaType === "video" ? <video src={item.url} className="w-full h-full object-cover pointer-events-none" data-clickable />
+                            : <img src={item.url} alt="" className="w-full h-full object-cover pointer-events-none" loading="lazy" data-clickable />}
                         </ContentProtection>
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center"><Eye className="w-5 h-5 text-white" /></div>
-                        {item.tier !== "p0" && <span className="absolute top-2.5 right-2.5 text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(0,0,0,0.5)", color: "#fff", backdropFilter: "blur(4px)" }}>{TIER_META[item.tier]?.label || item.tier.toUpperCase()}</span>}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none"><Eye className="w-5 h-5 text-white" /></div>
+                        {item.tier !== "p0" && <span className="absolute top-2.5 right-2.5 text-[9px] font-bold px-2 py-0.5 rounded-full pointer-events-none" style={{ background: "rgba(0,0,0,0.5)", color: "#fff", backdropFilter: "blur(4px)", zIndex: 2 }}>{TIER_META[item.tier]?.label || item.tier.toUpperCase()}</span>}
                       </>
                     ) : (
                       <div className="w-full h-full" onClick={() => setGalleryTier(item.tier)}>
@@ -2108,11 +2164,12 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
                       </div>
                     )}
                     {isEditMode && (
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                        <button onClick={async () => {
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 pointer-events-none" style={{ zIndex: 3 }}>
+                        <button onClick={async (e) => {
+                          e.stopPropagation();
                           if (item.type === "upload") { if (confirm("Supprimer ce contenu ?")) { await fetch(`/api/uploads?model=${modelId}&id=${item.id}`, { method: "DELETE" }); setUploads(prev => prev.filter(u => u.id !== item.id)); } }
                           else { if (confirm("Supprimer ce post ?")) { await fetch(`/api/posts?id=${item.id}&model=${modelId}`, { method: "DELETE" }); setPosts(prev => prev.filter(p => p.id !== item.id)); } }
-                        }} className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110" style={{ background: "rgba(220,38,38,0.8)" }}><Trash2 className="w-4 h-4 text-white" /></button>
+                        }} className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 pointer-events-auto" style={{ background: "rgba(220,38,38,0.8)" }}><Trash2 className="w-4 h-4 text-white" /></button>
                       </div>
                     )}
                   </div>

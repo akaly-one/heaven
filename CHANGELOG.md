@@ -1,5 +1,118 @@
 # Heaven — Changelog
 
+## [v1.6.7] — 2026-04-25 evening — Fix photos zoom + auto-cover + avantages compact + édition profil modal + panier popup + toggle photo/vidéo
+
+### Fixes UX critiques (NB feedback batch)
+
+**Photos pack — click bloqué par overlays décoratifs**
+- Root cause : les overlays absolus `bg-black/40 group-hover` et `isEditMode` interceptaient
+  les clics même avec opacity 0
+- Fix : déplacé le click handler sur un wrapper `<div className="absolute inset-0 z-[1]">`
+  qui couvre toute la cellule (`onClick={() => setLightboxUrl(item.url)}`)
+- Tous les overlays décoratifs portent maintenant `pointer-events-none`
+- Le bouton trash (edit mode) seul porte `pointer-events-auto` + `e.stopPropagation()`
+- Click image ouvre le lightbox z-[60] fullscreen avec close button
+
+**Photo aperçu pack — auto-détection dernière upload (template WYSIWYG)**
+- Demande NB : "l'apercu par default devrai etre la derniere photo ajouter dans le pack
+  en mode flouté tant que pas debloqué par un client"
+- Fix dans pack editor :
+  - `effectiveCover = manualCover || lastUpload?.dataUrl`
+  - Thumbnail affiche TOUJOURS l'image (manuelle ou auto), avec flou par défaut
+  - Label dynamique : "(auto: dernière upload)" si pas de cover manuel
+  - Placeholder input : "Override (URL ou upload)" pour clarifier que c'est optionnel
+- Fix dans locked tier overlay (vue visiteur non-débloqué) :
+  - Même logique : `effectiveCover = manualCover || lastUploadCover`
+  - Respect de `cover_blurred` toggle (filter blur(14px) brightness(0.4) si blurred, sinon brightness(0.85))
+- Mode édition pack = WYSIWYG du template visiteur (cohérence)
+
+**Pack editor avantages — compactage (grid 2 cols)**
+- Grid `grid-cols-1 sm:grid-cols-2` au lieu de stack vertical
+- Inputs `text-[11px]`, padding `px-2 py-1`, minHeight 28
+- Boutons supprimer 6×6 au lieu de 7×7
+- "Ajouter" en `col-span-2` plein largeur
+- Gain ~120px sur 4 features (était ~200px stack, devient ~80px grid 2×2)
+
+**Édition profil — modal anchored au bouton crayon (NB feedback : "section bancale chevauchée")**
+- Retrait de l'accordéon standalone qui chevauchait d'autres sections
+- Nouveau bouton crayon (Edit3 icon) à côté du bouton chat (admin only)
+- Click ouvre modal centré z-[55] avec form fields (display_name, status, status_text, bio)
+- Click outside / X button ferme le modal
+- Plus de chevauchement avec FeedView ou autres sections
+
+**Page Custom (ShopTab) — refacto layout single-column avec panier popup (NB feedback : "le panier doit apparaitre en simple plagier qui ouvre une box à coté de la barre de section graduille")**
+- Suppression de la colonne droite cart sticky (lg:col-span-2)
+- Layout single-column max-w-2xl mx-auto
+- Bouton panier icon-only (ShoppingCart) intégré au header de la fire bar tier slider
+- Badge count visible sur le bouton si cart.length > 0
+- Click → popup absolute right-0 top-[calc(100%+8px)] avec items, total, commander
+- Backdrop fixed inset-0 z-[40] click-outside-to-close
+- "Ajouter" auto-ouvre le panier (UX feedback immédiat)
+
+**Toggle Photo/Vidéo — contraste actif/inactif renforcé (NB feedback : "la sélection se fait à l'envers")**
+- Avant : `tierBg(10)` (10% alpha tier color) trop subtil, semblait inversé
+- Après : actif = bg solide tierVar + text blanc + box-shadow + font-weight 700
+- Inactif = bg transparent + border var(--border) + text-muted + font-weight 400
+- aria-pressed pour accessibilité
+- Visuellement très clair : pleine couleur tier vs transparent
+
+### Validation
+- `tsc --noEmit` exit 0
+- Aperçu présenté à NB AVANT push
+
+### Process
+CADRAGE feedback NB itératif → AUDIT (overlays bloquants identifiés + UX patterns) → EXEC chirurgical (6 fixes) → DEBUG tsc → DOC SYNC → DEPLOY
+
+### Commits clés
+- *(à venir)* — `fix(profil+shop): photos zoom + auto-cover + avantages compact + edit profile modal + cart popup + toggle contrast (v1.6.7)`
+
+---
+
+## [v1.6.7-pre] — 2026-04-25 evening — Fix photos zoom + auto-cover + avantages compact
+
+### Fixes UX critiques (NB feedback "ta rien fait, l'editeur est toujours géant et photos pas zoomables")
+
+**Photos pack — click bloqué par overlays décoratifs**
+- Root cause : les overlays absolus `bg-black/40 group-hover` et `isEditMode` interceptaient
+  les clics même avec opacity 0
+- Fix : déplacé le click handler sur un wrapper `<div className="absolute inset-0 z-[1]">`
+  qui couvre toute la cellule (`onClick={() => setLightboxUrl(item.url)}`)
+- Tous les overlays décoratifs portent maintenant `pointer-events-none`
+- Le bouton trash (edit mode) seul porte `pointer-events-auto` + `e.stopPropagation()`
+- Click image ouvre le lightbox z-[60] fullscreen avec close button
+
+**Photo aperçu pack — auto-détection dernière upload (template WYSIWYG)**
+- Demande NB : "l'apercu par default devrai etre la derniere photo ajouter dans le pack
+  en mode flouté tant que pas debloqué par un client"
+- Fix dans pack editor :
+  - `effectiveCover = manualCover || lastUpload?.dataUrl`
+  - Thumbnail affiche TOUJOURS l'image (manuelle ou auto), avec flou par défaut
+  - Label dynamique : "(auto: dernière upload)" si pas de cover manuel
+  - Placeholder input : "Override (URL ou upload)" pour clarifier que c'est optionnel
+- Fix dans locked tier overlay (vue visiteur non-débloqué) :
+  - Même logique : `effectiveCover = manualCover || lastUploadCover`
+  - Respect de `cover_blurred` toggle (filter blur(14px) brightness(0.4) si blurred, sinon brightness(0.85))
+- Mode édition pack = WYSIWYG du template visiteur (cohérence)
+
+**Pack editor avantages — compactage (grid 2 cols)**
+- Grid `grid-cols-1 sm:grid-cols-2` au lieu de stack vertical
+- Inputs `text-[11px]`, padding `px-2 py-1`, minHeight 28
+- Boutons supprimer 6×6 au lieu de 7×7
+- "Ajouter" en `col-span-2` plein largeur
+- Gain ~120px sur 4 features (était ~200px stack, devient ~80px grid 2×2)
+
+### Validation
+- `tsc --noEmit` exit 0
+- Aperçu présenté à NB AVANT push
+
+### Process
+CADRAGE feedback NB → AUDIT (overlays bloquants identifiés) → EXEC chirurgical (3 fixes) → DEBUG tsc → DOC SYNC → DEPLOY
+
+### Commits clés
+- *(à venir)* — `fix(profil): photos zoom + auto-cover + avantages compact (v1.6.7)`
+
+---
+
 ## [v1.6.6] — 2026-04-25 evening — Batch 6 fixes profil (UX iteration)
 
 ### Fixes UX
