@@ -493,14 +493,6 @@ export default function ModelPage() {
           onStoryClick={() => setStoryOpen(true)}
         />
 
-        {/* BRIEF-23 — PostComposer admin inline (Profile-as-Hub).
-            Visible uniquement quand admin connectée, hors mode preview, hors tier view. */}
-        {isModelLoggedInActual && !edit.previewMode && galleryTier === "home" && (
-          <div className="max-w-6xl mx-auto px-3 sm:px-5 md:px-8 lg:px-12 mt-4">
-            <PostComposer canPost={true} slug={slug} />
-          </div>
-        )}
-
         {/* ═══ HERO SECTION ═══ */}
         <HeroSection
           model={model} displayModel={displayModel} posts={posts} uploads={uploads} wallPosts={wallPosts}
@@ -563,16 +555,31 @@ export default function ModelPage() {
 
           {/* ── FEED ── */}
           {(galleryTier === "feed" || galleryTier === "home") && (
-            <FeedView
-              model={model} displayModel={displayModel} posts={posts} uploads={uploads} wallPosts={wallPosts}
-              wallContent={wallContent} setWallContent={setWallContent} wallPosting={wallPosting}
-              isModelLoggedIn={isModelLoggedIn} contentUnlocked={contentUnlocked}
-              unlockedTier={unlockedTier} visitorRegistered={visitorRegistered}
-              visitorHandle={visitorHandle} visitorPlatform={visitorPlatform} clientId={clientId}
-              subscriberUsername={subscriberUsername} hasSubscriberIdentity={hasSubscriberIdentity}
-              purchasedItems={purchasedItems} modelId={modelId} slug={slug}
-              setLightboxUrl={setLightboxUrl} setGalleryTier={setGalleryTier} setWallPosts={setWallPosts} setPosts={setPosts}
-            />
+            <>
+              {/* BRIEF-22+23 — Gestion packs/contenu admin : intégration native
+                  ContenuPanel existant en attente cadrage NB (Phase 3 — refacto
+                  pour découpler les 30+ props du shell agence/page.tsx, soit ~4-6h
+                  de travail). Pour l'instant, l'admin doit utiliser /agence/contenu
+                  (legacy) pour gérer prix/photos/features. */}
+              {/* BRIEF-23 — PostComposer admin DANS le feed (in-context publishing).
+                  Visible uniquement admin connectée, hors mode preview. Position
+                  corrigée 2026-04-25 evening (NB feedback : était au-dessus du cover). */}
+              {isModelLoggedInActual && !edit.previewMode && (
+                <div className="max-w-6xl mx-auto px-3 sm:px-5 md:px-8 lg:px-12 pt-4">
+                  <PostComposer canPost={true} slug={slug} />
+                </div>
+              )}
+              <FeedView
+                model={model} displayModel={displayModel} posts={posts} uploads={uploads} wallPosts={wallPosts}
+                wallContent={wallContent} setWallContent={setWallContent} wallPosting={wallPosting}
+                isModelLoggedIn={isModelLoggedIn} contentUnlocked={contentUnlocked}
+                unlockedTier={unlockedTier} visitorRegistered={visitorRegistered}
+                visitorHandle={visitorHandle} visitorPlatform={visitorPlatform} clientId={clientId}
+                subscriberUsername={subscriberUsername} hasSubscriberIdentity={hasSubscriberIdentity}
+                purchasedItems={purchasedItems} modelId={modelId} slug={slug}
+                setLightboxUrl={setLightboxUrl} setGalleryTier={setGalleryTier} setWallPosts={setWallPosts} setPosts={setPosts}
+              />
+            </>
           )}
 
           {/* ── TIER CONTENT ── */}
