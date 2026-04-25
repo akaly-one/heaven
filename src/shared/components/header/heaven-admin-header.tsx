@@ -17,9 +17,10 @@
  * lien direct, il voit le même header (pas le HeaderBar visiteur).
  */
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { LogOut } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { ChevronDown, LayoutDashboard, LogOut, User } from "lucide-react";
 import { useModel } from "@/lib/model-context";
 import { RootCpSelector } from "@/components/cockpit/root-cp-selector";
 import {
@@ -64,20 +65,8 @@ export function HeavenAdminHeader(props: HeavenAdminHeaderProps) {
 // ════════════════════════════════════════════════════════════════════════════
 
 function ProfilePublicAdminHeader({ modelSlug, extraActions }: HeavenAdminHeaderProps) {
-  const { auth, isRoot } = useModel();
+  const { auth, isRoot, currentModel } = useModel();
   const displayName = auth?.display_name || modelSlug?.toUpperCase() || "HEAVEN";
-
-  const handleLogout = () => {
-    if (typeof window === "undefined") return;
-    try {
-      localStorage.removeItem("heaven_auth");
-      sessionStorage.removeItem("heaven_auth");
-      window.dispatchEvent(new Event("heaven:auth-changed"));
-      window.location.href = "/agence";
-    } catch {
-      window.location.href = "/agence";
-    }
-  };
 
   return (
     <div
@@ -90,22 +79,17 @@ function ProfilePublicAdminHeader({ modelSlug, extraActions }: HeavenAdminHeader
       }}
     >
       <div className="flex items-center gap-3">
-        {/* LEFT : Retour CP + Logo + Selector si root */}
+        {/* LEFT : Logo + UserNameDropdown (pseudo cliquable → menu Voir CP/Profil) */}
         <div className="flex items-center gap-2 min-w-0 shrink-0">
-          <Link
-            href="/agence"
-            aria-label="Retour cockpit"
-            className="text-sm font-bold no-underline shrink-0 transition-opacity hover:opacity-80"
-            style={{ color: "var(--accent)" }}
-          >
-            ←
-          </Link>
-          <span
-            className="text-xs sm:text-sm font-bold tracking-wide uppercase truncate"
-            style={{ color: "var(--text)", letterSpacing: "0.08em" }}
-          >
-            {isRoot ? <RootCpSelector variant="inline" fallbackLabel={displayName} /> : displayName}
-          </span>
+          {isRoot && (
+            <RootCpSelector variant="inline" fallbackLabel={displayName} />
+          )}
+          {!isRoot && (
+            <UserNameDropdown
+              displayName={displayName}
+              modelSlug={modelSlug || currentModel || auth?.model_slug || undefined}
+            />
+          )}
           <span
             className="hidden sm:inline-block text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md shrink-0"
             style={{
@@ -124,24 +108,148 @@ function ProfilePublicAdminHeader({ modelSlug, extraActions }: HeavenAdminHeader
           {extraActions}
         </div>
 
-        {/* RIGHT : Avatar + Logout (position fixe — même endroit que login client) */}
-        <div className="flex items-center gap-1 shrink-0">
+        {/* RIGHT : (espace réservé pour notifications/messages future Phase 3) */}
+        <div className="flex items-center gap-1 shrink-0" />
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// UserNameDropdown — pseudo cliquable avec menu "Voir CP" / "Voir Profil" / Logout
+// NB 2026-04-25 : "manque un bouton important c'est voir cp quand la modele est
+// connecté et se trouve en profil ou inversement et ca doit etre un sous bouton
+// qui apparait en apuyant sur le pseado en header"
+// ════════════════════════════════════════════════════════════════════════════
+
+interface UserNameDropdownProps {
+  displayName: string;
+  /** Slug pour construire le lien /m/[slug]. Si omis, "Voir Profil" est masqué. */
+  modelSlug?: string;
+}
+
+function UserNameDropdown({ displayName, modelSlug }: UserNameDropdownProps) {
+  const pathname = usePathname() || "";
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Détecte le contexte courant pour décider quelle option proposer
+  const onProfile = pathname.startsWith("/m/");
+  const onCockpit = pathname.startsWith("/agence");
+  const profileHref = modelSlug ? `/m/${modelSlug.toLowerCase()}` : null;
+
+  // Click outside → fermeture
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  // Echap → fermeture
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  const handleLogout = () => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.removeItem("heaven_auth");
+      sessionStorage.removeItem("heaven_auth");
+      window.dispatchEvent(new Event("heaven:auth-changed"));
+      window.location.href = "/agence";
+    } catch {
+      window.location.href = "/agence";
+    }
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="flex items-center gap-1 text-xs sm:text-sm font-bold tracking-wide uppercase truncate cursor-pointer bg-transparent border-none p-0 transition-opacity hover:opacity-80"
+        style={{ color: "var(--text)", letterSpacing: "0.08em" }}
+      >
+        {displayName}
+        <ChevronDown
+          className="w-3 h-3 opacity-50 transition-transform"
+          style={{ transform: open ? "rotate(180deg)" : "none" }}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute top-full left-0 mt-2 min-w-[180px] rounded-xl py-1 z-50"
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+            animation: "fadeUp 0.15s ease-out",
+          }}
+        >
+          {/* Voir CP — visible si on n'est PAS dans /agence */}
+          {!onCockpit && (
+            <Link
+              href="/agence"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 text-[12px] font-medium no-underline transition-colors hover:bg-white/[0.04]"
+              style={{ color: "var(--text)" }}
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
+              <span>Voir le CP</span>
+            </Link>
+          )}
+
+          {/* Voir Profil — visible si on n'est PAS dans /m/[slug] et qu'on a un slug */}
+          {!onProfile && profileHref && (
+            <Link
+              href={profileHref}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 text-[12px] font-medium no-underline transition-colors hover:bg-white/[0.04]"
+              style={{ color: "var(--text)" }}
+            >
+              <User className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
+              <span>Voir le profil public</span>
+            </Link>
+          )}
+
+          {/* Séparateur */}
+          {(!onCockpit || (!onProfile && profileHref)) && (
+            <div className="my-1 mx-3" style={{ borderTop: "1px solid var(--border)" }} />
+          )}
+
+          {/* Logout */}
           <button
-            onClick={handleLogout}
-            aria-label="Déconnexion"
-            title="Déconnexion"
-            className="px-2.5 py-1.5 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer transition-all hover:brightness-110 active:scale-95"
-            style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid var(--border)",
-              color: "var(--text-muted)",
-            }}
+            role="menuitem"
+            onClick={() => { setOpen(false); handleLogout(); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium cursor-pointer bg-transparent border-none transition-colors hover:bg-white/[0.04]"
+            style={{ color: "var(--text-muted)" }}
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Logout</span>
+            <span>Déconnexion</span>
           </button>
         </div>
-      </div>
+      )}
+
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
