@@ -7,7 +7,7 @@ import {
   Coins, Camera, X, Check,
   Instagram, Ghost, Key, Sparkles, AlertTriangle, Eye, Trash2,
   Edit3, Plus, ToggleLeft, ToggleRight, RotateCcw, Save, Shield,
-  Image as ImageIcon, Loader2, UserCog, LogOut,
+  Image as ImageIcon, Loader2, UserCog, LogOut, ChevronUp, ChevronDown,
 } from "lucide-react";
 import { toModelId } from "@/lib/model-utils";
 import { normalizeTier, tierIncludes } from "@/lib/tier-utils";
@@ -1492,7 +1492,19 @@ function FeedView({ model, displayModel, posts, uploads, wallPosts, wallContent,
     return false;
   });
   const modelPosts = filteredModelPosts.map(p => ({ type: "post" as const, id: p.id, created_at: p.created_at, data: p }));
-  const legacyItems = [...visitorPosts, ...modelPosts].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  // NB 2026-04-25 evening : afficher aussi les uploads (manual content) dans le feed
+  // avec mêmes règles de visibilité que les packs (tier-gated). Visible quand
+  // dataUrl présent + tier respecté (idem packs).
+  const uploadsAsFeed = uploads.filter(u => {
+    if (!u.dataUrl) return false;
+    const tier = normalizeTier(u.tier || "p0");
+    if (!tier || tier === "p0") return true;
+    if (contentUnlocked) return true;
+    if (unlockedTier && tierIncludes(unlockedTier, tier)) return true;
+    // Visible flouté pour visiteur non-validé : on inclut quand même mais avec flag locked
+    return true;
+  }).map(u => ({ type: "upload" as const, id: u.id, created_at: (u as { uploadedAt?: string; created_at?: string }).uploadedAt || (u as { created_at?: string }).created_at || new Date().toISOString(), data: u }));
+  const legacyItems = [...visitorPosts, ...modelPosts, ...uploadsAsFeed].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   // Unified items (IG = public, wall = public, manual = tier-gated via card).
   const unifiedItems = useMemo(() => {
@@ -1598,6 +1610,51 @@ function FeedView({ model, displayModel, posts, uploads, wallPosts, wallContent,
                 <p className="text-sm" style={{ color: "var(--text-muted)" }}>Pas encore de publications</p>
               </div>
             ) : legacyItems.map((item, idx) => {
+            // NB 2026-04-25 evening : render uploads comme posts dans le feed
+            // avec mêmes règles tier (visibilité + flou si pas unlocked).
+            if (item.type === "upload") {
+              const u = item.data as UploadedContent;
+              const uTier = normalizeTier(u.tier || "p0");
+              const uMediaUnlocked = uTier === "p0" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, uTier));
+              const uTierHex = TIER_HEX[uTier] || "#64748B";
+              return (
+                <div key={`upload-${u.id}`} className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)", animation: `slideUp 0.4s ease-out ${idx * 0.04}s both` }}>
+                  <div className="flex items-start gap-3 sm:gap-4 p-5 sm:p-6 pb-3 sm:pb-4">
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 overflow-hidden" style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff" }}>
+                      {model.avatar ? <img src={model.avatar} alt="" className="w-full h-full object-cover" /> : model.display_name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold" style={{ color: "var(--text)" }}>{model.display_name}</span>
+                          {uTier !== "p0" && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${uTierHex}12`, color: uTierHex }}>{TIER_META[uTier]?.label || uTier.toUpperCase()}</span>}
+                        </div>
+                        <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{timeAgo(item.created_at)}</span>
+                      </div>
+                      {u.label && <p className="text-base mt-2 leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text)" }}>{u.label}</p>}
+                    </div>
+                  </div>
+                  {u.dataUrl && (uMediaUnlocked ? (
+                    <div className="cursor-pointer mx-5 sm:mx-6 mb-4 rounded-xl overflow-hidden" onClick={() => setLightboxUrl(u.dataUrl)}>
+                      <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn}>
+                        {u.type === "video" ? <video src={u.dataUrl} className="w-full max-h-[400px] sm:max-h-[500px] object-cover" controls /> : <img src={u.dataUrl} alt="" className="w-full max-h-[400px] sm:max-h-[500px] object-cover" loading="lazy" />}
+                      </ContentProtection>
+                    </div>
+                  ) : (
+                    <div className="relative cursor-pointer mx-5 sm:mx-6 mb-4 rounded-xl overflow-hidden" onClick={() => setGalleryTier(uTier)}>
+                      <div className="w-full h-[300px] sm:h-[400px] relative">
+                        <img src={u.dataUrl} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ filter: "blur(14px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" />
+                        <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${uTierHex}20 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.7) 100%)` }} />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                          <Lock className="w-6 h-6" style={{ color: uTierHex }} />
+                          <span className="text-xs font-bold uppercase tracking-wider" style={{ color: uTierHex }}>{TIER_META[uTier]?.label || uTier}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            }
             if (item.type === "wall") {
               const w = item.data as WallPost;
               return (
@@ -1741,18 +1798,64 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
   const filteredPosts = allImagePosts.filter(p => normalizeTier(p.tier_required || "public") === galleryTier);
   const filteredUploads = uploads.filter(u => normalizeTier(u.tier) === galleryTier && u.dataUrl);
 
+  // NB 2026-04-25 evening : drag&drop des photos entre packs (tiers).
+  // Quand admin drag une image upload, on affiche une floating bar avec les
+  // autres tiers comme drop targets. Drop = PUT /api/uploads pour changer tier.
+  const [dragItem, setDragItem] = useState<{ id: string; sourceTier: string } | null>(null);
+  // NB 2026-04-25 evening : éditeur pack repliable (default fermé pour vue propre).
+  const [packEditOpen, setPackEditOpen] = useState(false);
+  const moveUploadTier = async (uploadId: string, newTier: string) => {
+    try {
+      const res = await fetch("/api/uploads", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: modelId, id: uploadId, updates: { tier: newTier } }),
+      });
+      if (!res.ok) throw new Error("Move tier échoué");
+      // Optimistic update local state
+      setUploads(prev => prev.map(u => u.id === uploadId ? { ...u, tier: newTier } : u));
+    } catch (err) {
+      console.error("[TierView] moveUploadTier:", err);
+      alert("Déplacement échoué");
+    }
+  };
+
   return (
     <div className="fade-up">
-      {/* Pack editor (edit mode) */}
+      {/* Pack editor — visible UNIQUEMENT admin connectée (isEditMode), repliable.
+          NB 2026-04-25 evening : default fermé pour vue propre, click header = expand. */}
       {isEditMode && pack && (
-        <div className="mb-6 rounded-2xl p-5 sm:p-6" style={{ background: "var(--surface)", border: `1.5px solid ${tierHex}25` }}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2"><Edit3 className="w-4 h-4" style={{ color: tierHex }} /><span className="text-sm font-bold" style={{ color: tierHex }}>Éditer le pack</span></div>
-            <button onClick={() => edit.handleUpdatePack(pack.id, { active: !pack.active })}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all"
-              style={{ background: pack.active ? `${tierHex}15` : "var(--bg3)", color: pack.active ? tierHex : "var(--text-muted)", border: `1px solid ${pack.active ? `${tierHex}30` : "var(--border)"}` }}>
-              {pack.active ? <ToggleRight className="w-3.5 h-3.5" /> : <ToggleLeft className="w-3.5 h-3.5" />} {pack.active ? "Actif" : "Désactivé"}
-            </button>
+        <div className="mb-6 rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: `1.5px solid ${tierHex}25` }}>
+          <button
+            type="button"
+            onClick={() => setPackEditOpen(v => !v)}
+            aria-expanded={packEditOpen}
+            className="w-full flex items-center justify-between p-4 sm:p-5 cursor-pointer transition-all hover:bg-white/[0.02] border-none bg-transparent text-left"
+            style={{ minHeight: 44 }}
+          >
+            <div className="flex items-center gap-2">
+              <Edit3 className="w-4 h-4" style={{ color: tierHex }} />
+              <span className="text-sm font-bold" style={{ color: tierHex }}>Éditer le pack</span>
+              <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+                {pack.name || pack.id} — {pack.price}€
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                onClick={(e) => { e.stopPropagation(); edit.handleUpdatePack(pack.id, { active: !pack.active }); }}
+                role="button"
+                tabIndex={0}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all"
+                style={{ background: pack.active ? `${tierHex}15` : "var(--bg3)", color: pack.active ? tierHex : "var(--text-muted)", border: `1px solid ${pack.active ? `${tierHex}30` : "var(--border)"}` }}>
+                {pack.active ? <ToggleRight className="w-3.5 h-3.5" /> : <ToggleLeft className="w-3.5 h-3.5" />} {pack.active ? "Actif" : "Désactivé"}
+              </span>
+              {packEditOpen ? <ChevronUp className="w-4 h-4" style={{ color: "var(--text-muted)" }} /> : <ChevronDown className="w-4 h-4" style={{ color: "var(--text-muted)" }} />}
+            </div>
+          </button>
+          {packEditOpen && (
+          <div className="p-5 sm:p-6 pt-0 border-t" style={{ borderColor: "var(--border)" }}>
+          <div className="flex items-center justify-between mb-4 pt-4">
+            <div className="flex items-center gap-2"><Edit3 className="w-4 h-4" style={{ color: tierHex }} /><span className="text-sm font-bold" style={{ color: tierHex }}>Détails</span></div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div><label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={{ color: "var(--text-muted)" }}>Nom du pack</label>
@@ -1821,6 +1924,8 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
                 style={{ background: `${tierHex}08`, color: tierHex, border: `1px dashed ${tierHex}30` }}><Plus className="w-3 h-3" /> Ajouter un avantage</button>
             </div>
           </div>
+          </div>
+          )}
         </div>
       )}
 
@@ -1878,7 +1983,18 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
                 const hex = TIER_HEX[item.tier] || "var(--text-muted)";
                 const unlocked = item.tier === "p0" || isModelLoggedIn || (unlockedTier && tierIncludes(unlockedTier, item.tier));
                 return (
-                  <div key={`${item.type}-${item.id}`} className={`break-inside-avoid mb-1 sm:mb-2 relative ${aspect} overflow-hidden rounded-lg sm:rounded-xl cursor-pointer group transition-all duration-300 hover:scale-[1.02] hover:shadow-lg`} style={{ animation: `slideUp 0.4s ease-out ${i * 0.03}s both` }}>
+                  <div
+                    key={`${item.type}-${item.id}`}
+                    draggable={isEditMode && item.type === "upload"}
+                    onDragStart={(e) => {
+                      if (!isEditMode || item.type !== "upload") return;
+                      setDragItem({ id: item.id, sourceTier: galleryTier });
+                      e.dataTransfer.effectAllowed = "move";
+                    }}
+                    onDragEnd={() => setDragItem(null)}
+                    className={`break-inside-avoid mb-1 sm:mb-2 relative ${aspect} overflow-hidden rounded-lg sm:rounded-xl cursor-pointer group transition-all duration-300 hover:scale-[1.02] hover:shadow-lg`}
+                    style={{ animation: `slideUp 0.4s ease-out ${i * 0.03}s both`, opacity: dragItem?.id === item.id ? 0.4 : 1 }}
+                  >
                     {unlocked ? (
                       <>
                         <ContentProtection username={subscriberUsername} enabled={hasSubscriberIdentity && !isModelLoggedIn} className="w-full h-full">
@@ -1907,6 +2023,36 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
                 );
               })}
             </div>
+            {/* NB 2026-04-25 evening : drag&drop floating bar — tiers cibles
+                pour déplacer une upload entre packs. Visible uniquement quand
+                drag actif (admin a commencé à dragger une image upload). */}
+            {isEditMode && dragItem && (
+              <div
+                className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3 py-2.5 rounded-2xl shadow-2xl"
+                style={{ background: "rgba(20,20,24,0.96)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.15)" }}
+              >
+                <span className="text-[10px] uppercase tracking-wider mr-1 hidden sm:inline" style={{ color: "var(--text-muted)" }}>Déposer dans :</span>
+                {activePacks.filter(p => p.id !== dragItem.sourceTier).map(p => {
+                  const dropHex = TIER_HEX[p.id] || "var(--accent)";
+                  return (
+                    <button
+                      key={p.id}
+                      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+                      onDrop={async (e) => {
+                        e.preventDefault();
+                        await moveUploadTier(dragItem.id, p.id);
+                        setDragItem(null);
+                      }}
+                      className="px-3 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider cursor-pointer transition-all hover:scale-105 active:scale-95 border bg-transparent"
+                      style={{ color: dropHex, borderColor: `${dropHex}40`, background: `${dropHex}08`, minHeight: 44, minWidth: 44 }}
+                    >
+                      {p.badge || p.name || p.id}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {zoomedItem && (() => {
               const zItem = allMedia.find(x => x.id === zoomedItem);
               if (!zItem?.url) return null;
