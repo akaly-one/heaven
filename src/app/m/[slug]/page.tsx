@@ -1762,6 +1762,49 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
           </div>
           <div className="mb-4"><label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={{ color: "var(--text-muted)" }}>Badge (optionnel)</label>
             <input value={pack.badge || ""} onChange={e => edit.handleUpdatePack(pack.id, { badge: e.target.value || null })} placeholder="ex: Populaire, Nouveau..." className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)" }} /></div>
+          {/* NB 2026-04-25 evening : photo d'aperçu pack (cover image affichée
+              à côté des détails locked tier). URL ou upload Cloudinary. */}
+          <div className="mb-4"><label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={{ color: "var(--text-muted)" }}>Photo d&apos;aperçu</label>
+            <div className="flex items-center gap-2">
+              {(pack as { cover_url?: string }).cover_url && (
+                <img src={(pack as { cover_url?: string }).cover_url} alt="Cover" className="w-14 h-14 rounded-lg object-cover shrink-0" style={{ border: `1px solid ${tierHex}40` }} />
+              )}
+              <input
+                type="text"
+                value={(pack as { cover_url?: string }).cover_url || ""}
+                onChange={e => edit.handleUpdatePack(pack.id, { cover_url: e.target.value } as Partial<PackConfig>)}
+                placeholder="URL Cloudinary ou upload via les boutons ci-dessous"
+                className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none"
+                style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)" }}
+              />
+              <input
+                type="file"
+                accept="image/*"
+                id={`pack-cover-${pack.id}`}
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (file.size > 10 * 1024 * 1024) { alert("Image > 10 MB"); return; }
+                  const reader = new FileReader();
+                  reader.onload = async (ev) => {
+                    const dataUrl = ev.target?.result as string;
+                    const res = await fetch("/api/upload", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ data: dataUrl, folder: `heaven/${modelId}/packs/${pack.id}` }),
+                    });
+                    const data = await res.json();
+                    if (data?.url) edit.handleUpdatePack(pack.id, { cover_url: data.url } as Partial<PackConfig>);
+                  };
+                  reader.readAsDataURL(file);
+                }}
+              />
+              <label htmlFor={`pack-cover-${pack.id}`} className="px-3 py-2.5 rounded-xl text-[11px] font-bold cursor-pointer transition-all hover:brightness-110 shrink-0" style={{ background: `${tierHex}15`, color: tierHex, border: `1px solid ${tierHex}30`, minHeight: 44 }}>
+                Upload
+              </label>
+            </div>
+          </div>
           <div><label className="text-[10px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--text-muted)" }}>Avantages inclus</label>
             <div className="space-y-2">
               {(pack.features || []).map((f: string, j: number) => (
@@ -1794,7 +1837,12 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
           <div className="mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 rounded-2xl overflow-hidden p-4 md:p-6" style={{ background: "var(--surface)", border: `1px solid ${tierHex}15` }}>
               <div className="relative rounded-xl overflow-hidden" style={{ minHeight: "280px" }}>
-                {previewImages.length > 0 ? (
+                {/* NB 2026-04-25 evening : si admin a défini un cover_url custom, on l'utilise en priorité (floutée pour aperçu) */}
+                {(tierPack as { cover_url?: string }).cover_url ? (
+                  <div className="w-full h-full relative" style={{ minHeight: "280px" }}>
+                    <img src={(tierPack as { cover_url?: string }).cover_url} alt={tierPack.name} className="w-full h-full object-cover" style={{ filter: "blur(14px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" />
+                  </div>
+                ) : previewImages.length > 0 ? (
                   <div className="grid grid-cols-3 gap-1 h-full">
                     {previewImages.map((url, i) => <div key={i} className="aspect-[3/4] relative overflow-hidden rounded-lg"><img src={url} alt="" className="w-full h-full object-cover" style={{ filter: "blur(14px) brightness(0.4)", transform: "scale(1.15)" }} loading="lazy" /></div>)}
                   </div>
