@@ -1,5 +1,32 @@
 # Heaven — Changelog
 
+## [v1.6.3] — 2026-04-25 evening — Header profil : pseudo en premier (NB feedback)
+
+> Mode chef de projet protocole strict appliqué : CADRAGE → AUDIT → PLAN → EXEC → DEBUG → DOC SYNC → DEPLOY.
+
+### Fix UX
+
+- **Pseudo modèle (YUMICLUB) déplacé en première position** dans le HeaderBar profil
+- Ordre cible respecté : `[YUMICLUB] [● online] [tier badge] | [← retour] [👁🔗🔑🎬] [📷🖼💾✕👁preview]`
+- Plus de mismatch ergonomique : l'identité est annoncée avant les outils admin
+
+### Validation
+- `tsc --noEmit` exit 0
+- Verify visuel preview : pseudo + dot online en premier, boutons admin après → conforme
+
+### Reste à faire (plan correctif 6 bugs en attente validation NB)
+1. Section "Éditer le pack" gigantesque → compacter
+2. Photo aperçu pack : preview thumbnail + toggle flouté/déflouté
+3. Photos pack zoom (à vérifier)
+4. Section feed n'affiche rien → debug legacyItems render
+5. PostComposer centré → aligner avec posts
+6. Page custom gigantesque → compacter
+
+### Commits clés
+- *(à venir)* — `feat(profile/header): pseudo modèle en première position`
+
+---
+
 ## [v1.6.2] — 2026-04-25 evening — Profile-as-Hub Phase 2 fixes (NB DEBUG feedback)
 
 > Session multi-fixes après NB feedback "tu n'a pas fait les phases adequat de debug".

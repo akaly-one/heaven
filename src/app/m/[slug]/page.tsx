@@ -900,17 +900,29 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, isModelLoggedInActual
     <div className="sticky top-0 left-0 right-0 z-40 px-3 sm:px-5 md:px-8 lg:px-12 py-2"
       style={{ background: "color-mix(in srgb, var(--bg) 90%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderBottom: "1px solid var(--border)" }}>
       <div className="flex items-center">
-        {/* LEFT: Back + Admin tools + Model name */}
+        {/* LEFT: Pseudo + Admin tools + Back
+            NB 2026-04-25 evening : pseudo AVANT tous les boutons admin (ordre demandé). */}
         <div className="flex items-center gap-2 min-w-0 shrink-0">
-          {isModelLoggedInActual && <a href="/agence" className="text-sm font-bold no-underline shrink-0" style={{ color: "var(--accent)" }}>&#8592;</a>}
+          {/* 1. PSEUDO modèle (toujours d'abord) */}
+          <button onClick={() => setGalleryTier("home")}
+            className="text-xs sm:text-sm font-bold tracking-wide uppercase truncate bg-transparent border-none cursor-pointer transition-all hover:opacity-80 active:scale-95 p-0"
+            style={{ color: "var(--text)", letterSpacing: "0.08em" }}>{model.display_name}</button>
+          {displayModel?.online && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }} />}
+          {galleryTier !== "home" && (
+            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md shrink-0"
+              style={{ background: `${TIER_HEX[galleryTier] || "var(--accent)"}20`, color: TIER_HEX[galleryTier] || "var(--accent)" }}>
+              {TIER_META[galleryTier]?.symbol} {TIER_META[galleryTier]?.label || galleryTier}
+            </span>
+          )}
+
+          {/* 2. Boutons admin (après le pseudo) — visibles uniquement admin connectée hors preview */}
+          {isModelLoggedInActual && <a href="/agence" className="text-sm font-bold no-underline shrink-0 ml-1" style={{ color: "var(--accent)" }} title="Retour cockpit">&#8592;</a>}
           {galleryTier !== "home" && (
             <button onClick={() => setGalleryTier("home")}
               className="text-sm font-bold shrink-0 cursor-pointer bg-transparent border-none transition-all hover:scale-105 active:scale-95"
-              style={{ color: "var(--accent)" }}>&#8592;</button>
+              style={{ color: "var(--accent)" }} title="Retour accueil profil">&#8592;</button>
           )}
-          {/* BRIEF-19+21 (Session 2026-04-25 evening) — 4 boutons synergie CP↔Profil
-              (Eye/Link2/Key/Story) visibles dans le HeaderBar profil quand admin connecté.
-              Cohérence cross-vue : mêmes 4 boutons que dans le header CP global. */}
+          {/* BRIEF-19+21 — 4 boutons synergie CP↔Profil (Eye/Link2/Key/Story) */}
           {isModelLoggedInActual && !previewMode && (
             <HeavenAdminActions
               modelSlug={slug}
@@ -979,16 +991,6 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, isModelLoggedInActual
               <UserCog className="w-3 h-3" />
               ADMIN
             </button>
-          )}
-          <button onClick={() => setGalleryTier("home")}
-            className="text-xs sm:text-sm font-bold tracking-wide uppercase truncate bg-transparent border-none cursor-pointer transition-all hover:opacity-80 active:scale-95 p-0"
-            style={{ color: "var(--text)", letterSpacing: "0.08em" }}>{model.display_name}</button>
-          {displayModel?.online && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }} />}
-          {galleryTier !== "home" && (
-            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md shrink-0"
-              style={{ background: `${TIER_HEX[galleryTier] || "var(--accent)"}20`, color: TIER_HEX[galleryTier] || "var(--accent)" }}>
-              {TIER_META[galleryTier]?.symbol} {TIER_META[galleryTier]?.label || galleryTier}
-            </span>
           )}
         </div>
         {/* CENTER: spacer */}
