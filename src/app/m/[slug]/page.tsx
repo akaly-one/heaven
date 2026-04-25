@@ -1010,23 +1010,10 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, isModelLoggedInActual
                 compact={true}
               />
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => avatarInputRef.current?.click()}
-                  title="Changer photo profil"
-                  aria-label="Changer photo profil"
-                  className="w-9 h-9 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
-                >
-                  <Camera className="w-3.5 h-3.5" style={{ color: "var(--w3)" }} />
-                </button>
+                {/* NB 2026-04-25 late : boutons Camera (photo profil) + ImageIcon (banner) du header
+                    retirés — obsolètes depuis BRIEF-18 (hover overlay direct sur avatar + banner).
+                    Les inputs file restent montés (refs utilisés par les overlays hover Hero). */}
                 <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-                <button
-                  onClick={() => bannerInputRef.current?.click()}
-                  title="Changer banner"
-                  aria-label="Changer banner"
-                  className="w-9 h-9 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
-                >
-                  <ImageIcon className="w-3.5 h-3.5" style={{ color: "var(--w3)" }} />
-                </button>
                 <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} />
                 {editDirty && (
                   <button
