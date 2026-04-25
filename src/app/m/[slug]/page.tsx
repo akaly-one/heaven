@@ -2243,7 +2243,7 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
                 drag actif (admin a commencé à dragger une image upload). */}
             {isEditMode && dragItem && (
               <div
-                className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3 py-2.5 rounded-2xl shadow-2xl"
+                className="fixed bottom-20 sm:bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3 py-2.5 rounded-2xl shadow-2xl flex-wrap max-w-[calc(100vw-32px)] justify-center"
                 style={{ background: "rgba(20,20,24,0.96)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.15)" }}
               >
                 <span className="text-[10px] uppercase tracking-wider mr-1 hidden sm:inline" style={{ color: "var(--text-muted)" }}>Déposer dans :</span>
@@ -2293,7 +2293,7 @@ function ChatPanel({ model, chatMessages, chatInput, setChatInput, sendMessage, 
   isGuest?: boolean; onUpgrade?: () => void;
 }) {
   return (
-    <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-[380px] z-50 rounded-2xl overflow-hidden shadow-2xl"
+    <div className="fixed bottom-20 sm:bottom-4 right-4 left-4 sm:left-auto sm:w-[380px] z-50 rounded-2xl overflow-hidden shadow-2xl"
       style={{ background: "var(--surface)", border: "1px solid var(--border2)", maxHeight: "min(500px, 70vh)", animation: "slideUp 0.3s ease-out", boxShadow: "0 8px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)" }}>
       <div className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border2)", background: "var(--bg2)" }}>
         <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden" style={{ background: "linear-gradient(135deg, var(--rose), var(--accent))", color: "#fff" }}>

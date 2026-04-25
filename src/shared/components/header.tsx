@@ -436,8 +436,8 @@ export function Header() {
           )}
         </div>
         {pageTitle && <>
-          <span className="text-[10px]" style={{ color: "var(--text-muted)", opacity: 0.4 }}>/</span>
-          <span className="text-xs font-medium truncate capitalize" style={{ color: "var(--text-muted)" }}>{pageTitle}</span>
+          <span className="hidden sm:inline text-[10px]" style={{ color: "var(--text-muted)", opacity: 0.4 }}>/</span>
+          <span className="hidden sm:inline text-xs font-medium truncate capitalize" style={{ color: "var(--text-muted)" }}>{pageTitle}</span>
         </>}
       </div>
 
