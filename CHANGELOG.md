@@ -1,5 +1,44 @@
 # Heaven — Changelog
 
+## [v1.5.2] — 2026-04-25 — BRIEF-18 Header unifié Root / Modèle Admin / Client
+
+### Features
+- **`<HeavenHeader>` wrapper auto-detect** : composant unifié qui détecte automatiquement le rôle utilisateur via `useModel()` et rend le header approprié (admin OU client). Évite hydration mismatch via guard `ready`.
+- **`<HeavenAdminHeader>` context-aware** : header admin unifié pour root (m0) + modèles (m1=Yumi, m2=Paloma, m3=Ruby...). Cohérent en CP `/agence/*` et profil `/m/[slug]` quand admin connecté. Délègue vers `<AgenceHeader>` legacy en context "cockpit" pour zero régression.
+- **Header admin sur `/m/[slug]`** : quand admin connecté navigue sur le profil public, voit désormais le header admin unifié (logo HEAVEN + display_name + RootCpSelector si root + slot extraActions + bouton Logout). Plus de confusion avec le HeaderBar visiteur.
+- **`<HeavenClientHeader>`** : wrapper minimal qui délègue vers `<ModelHeaderBar>` legacy (visiteurs/fans). Phase 3 inlinera le markup.
+- **Cohérence cross-vue** : même header admin partout (CP + profil), bouton login/logout position fixe (extrême droite), label adaptatif selon état.
+- **AdminEditToolbox** : boutons photo/banner/save/cancel/preview de BRIEF-17 désormais hébergés dans le slot `extraActions` du HeavenAdminHeader (cohérent partout).
+
+### Fixes
+- Bouton Eye 👁 "Voir profil public" supprimé d'`agence-header.tsx:290` (devenu redondant car header admin unifié rend la navigation cross-vue cohérente sans raccourci dédié)
+- Import `Eye` retiré du fichier agence-header
+
+### Technical
+- Nouveau dossier `src/shared/components/header/` (préparation extraction future :
+  - `heaven-header.tsx` (50 LOC) — wrapper auto-detect avec `useModel()`
+  - `heaven-admin-header.tsx` (146 LOC) — context-aware (cockpit / profile-public / messagerie / stats / settings)
+  - `heaven-client-header.tsx` (78 LOC) — wrapper ModelHeaderBar
+- Approche **adapter pattern** : zero breaking change. Anciens composants (`header.tsx`, `agence-header.tsx`, `model-header-bar.tsx`) restent fonctionnels — Phase 3 fusionnera progressivement.
+- `/m/[slug]/page.tsx` : ternaire conditionnel `isModelLoggedInActual && !previewMode` → `<HeavenAdminHeader>` sinon HeaderBar inline visiteur (préservé pour rollback safe).
+- Mode preview admin : HeaderBar visiteur reste rendu mais avec bouton "ADMIN" pour sortir (logique déjà en place depuis BRIEF-17).
+
+### Architecture
+- **Adapter pattern** Phase 1+2 livré (zero régression confirmée tsc + grep imports)
+- Phase 3 différée : extraction `<HeaderTabs>` et `<HeaderActions>` config-driven, suppression effective des legacy headers, doc `docs/architecture/HEADER-SYSTEM.md`
+
+### TODO post-merge
+- Migrer `<AgenceHeader>` call-site (`src/app/agence/page.tsx:894`) vers `<HeavenAdminHeader context="cockpit">` quand stable
+- Marquer `model-header-bar.tsx` `@deprecated` (déjà sans call-site externe)
+- Retirer HeaderBar inline (`/m/[slug]/page.tsx` L823-1037) une fois Phase 2 stabilisée
+- Doc architecture HEADER-SYSTEM.md
+
+### Commits clés
+- `d9ead8f` — cadrage BRIEF-18
+- *(à venir)* — application Phase 1+2 (3 nouveaux fichiers + 2 modifs)
+
+---
+
 ## [v1.5.1] — 2026-04-25 — BRIEF-17 Header admin enrichi + Feed IG vignettes + Likes/Commentaires
 
 ### Features

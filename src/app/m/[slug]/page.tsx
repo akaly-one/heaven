@@ -40,6 +40,8 @@ import { PackDetailModal } from "@/components/profile/pack-detail-modal";
 import { ProfileStyles } from "@/components/profile/profile-styles";
 import { InstagramFeedGrid } from "@/components/profile/instagram-feed-grid";
 import PublicFooter from "@/components/public-footer";
+// BRIEF-18 — Header admin unifié (mounté quand admin connecté sur /m/[slug])
+import { HeavenAdminHeader } from "@/components/header/heaven-admin-header";
 // BRIEF-10 AG04/AG05/AG07/AG09 — age gate + access tiers
 import AgeGateModal from "@/components/age-gate-modal";
 import {
@@ -436,30 +438,107 @@ export default function ModelPage() {
 
       <div className="relative z-10">
 
-        {/* ═══ HEADER BAR ═══ */}
-        <HeaderBar
-          model={model} displayModel={displayModel} isModelLoggedIn={isModelLoggedIn}
-          isModelLoggedInActual={isModelLoggedInActual}
-          visitorRegistered={visitorRegistered} visitorPlatform={visitorPlatform} visitorHandle={visitorHandle} visitorVerified={visitorVerified}
-          unlockedTier={unlockedTier} activeCode={activeCode}
-          chatOpen={chatOpen} setChatOpen={setChatOpen} chatUnread={chatUnread}
-          newNotifications={newNotifications} orderHistoryOpen={orderHistoryOpen} setOrderHistoryOpen={setOrderHistoryOpen} clearNotifications={clearNotifications}
-          codeSheetOpen={codeSheetOpen} setCodeSheetOpen={setCodeSheetOpen}
-          handleCodeValidation={handleCodeValidation} modelId={modelId} slug={slug}
-          galleryTier={galleryTier} setGalleryTier={setGalleryTier}
-          onReopenGate={() => setGateDismissed(false)}
-          onAdminLogin={() => setShowAdminModal(true)}
-          editDirty={edit.editDirty}
-          editSaving={edit.editSaving}
-          previewMode={edit.previewMode}
-          setPreviewMode={edit.setPreviewMode}
-          avatarInputRef={edit.avatarInputRef}
-          bannerInputRef={edit.bannerInputRef}
-          handleAvatarUpload={edit.handleAvatarUpload}
-          handleBannerUpload={edit.handleBannerUpload}
-          saveAllEdits={edit.saveAllEdits}
-          cancelEdits={edit.cancelEdits}
-        />
+        {/* ═══ HEADER BAR ═══
+            BRIEF-18 — Header admin unifié quand admin connecté (yumi/paloma/ruby/root).
+            Sinon, HeaderBar visiteur conservé tel quel. Le mode preview admin désactive
+            isModelLoggedIn (false) mais isModelLoggedInActual reste true → on continue
+            d'afficher le header admin avec bouton "ADMIN" pour sortir du preview. */}
+        {isModelLoggedInActual && !edit.previewMode ? (
+          <HeavenAdminHeader
+            context="profile-public"
+            modelSlug={slug}
+            extraActions={
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => edit.avatarInputRef.current?.click()}
+                  title="Changer photo profil"
+                  aria-label="Changer photo profil"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
+                >
+                  <Camera className="w-3.5 h-3.5" style={{ color: "var(--w3)" }} />
+                </button>
+                <input
+                  ref={edit.avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={edit.handleAvatarUpload}
+                />
+                <button
+                  onClick={() => edit.bannerInputRef.current?.click()}
+                  title="Changer banner"
+                  aria-label="Changer banner"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
+                >
+                  <ImageIcon className="w-3.5 h-3.5" style={{ color: "var(--w3)" }} />
+                </button>
+                <input
+                  ref={edit.bannerInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={edit.handleBannerUpload}
+                />
+                {edit.editDirty && (
+                  <>
+                    <button
+                      onClick={edit.saveAllEdits}
+                      disabled={edit.editSaving}
+                      title="Sauvegarder"
+                      className="px-2 h-7 rounded-lg text-[10px] font-bold cursor-pointer flex items-center gap-1 transition-all hover:brightness-110 disabled:opacity-50"
+                      style={{ background: "var(--accent)", color: "#fff" }}
+                    >
+                      {edit.editSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                      SAVE
+                    </button>
+                    <button
+                      onClick={edit.cancelEdits}
+                      title="Annuler"
+                      aria-label="Annuler"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
+                      style={{ color: "var(--w3)" }}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={() => edit.setPreviewMode(true)}
+                  title="Mode visiteur (preview)"
+                  aria-label="Mode visiteur (preview)"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
+                  style={{ color: "var(--w3)" }}
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            }
+          />
+        ) : (
+          <HeaderBar
+            model={model} displayModel={displayModel} isModelLoggedIn={isModelLoggedIn}
+            isModelLoggedInActual={isModelLoggedInActual}
+            visitorRegistered={visitorRegistered} visitorPlatform={visitorPlatform} visitorHandle={visitorHandle} visitorVerified={visitorVerified}
+            unlockedTier={unlockedTier} activeCode={activeCode}
+            chatOpen={chatOpen} setChatOpen={setChatOpen} chatUnread={chatUnread}
+            newNotifications={newNotifications} orderHistoryOpen={orderHistoryOpen} setOrderHistoryOpen={setOrderHistoryOpen} clearNotifications={clearNotifications}
+            codeSheetOpen={codeSheetOpen} setCodeSheetOpen={setCodeSheetOpen}
+            handleCodeValidation={handleCodeValidation} modelId={modelId} slug={slug}
+            galleryTier={galleryTier} setGalleryTier={setGalleryTier}
+            onReopenGate={() => setGateDismissed(false)}
+            onAdminLogin={() => setShowAdminModal(true)}
+            editDirty={edit.editDirty}
+            editSaving={edit.editSaving}
+            previewMode={edit.previewMode}
+            setPreviewMode={edit.setPreviewMode}
+            avatarInputRef={edit.avatarInputRef}
+            bannerInputRef={edit.bannerInputRef}
+            handleAvatarUpload={edit.handleAvatarUpload}
+            handleBannerUpload={edit.handleBannerUpload}
+            saveAllEdits={edit.saveAllEdits}
+            cancelEdits={edit.cancelEdits}
+          />
+        )}
 
         {/* ═══ HERO SECTION ═══ */}
         <HeroSection

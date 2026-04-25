@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { Eye, Link2, RefreshCw, MessageCircle, Send } from "lucide-react";
+import { Link2, RefreshCw, MessageCircle, Send } from "lucide-react";
 import type { FeedPost, HeavenAuth, AccessCode } from "@/types/heaven";
 
 const fmt = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
@@ -287,15 +287,9 @@ export function AgenceHeader(p: AgenceHeaderProps) {
         </div>
         <div className="flex-1 min-w-0" />
         <div className="flex items-center gap-0.5 pb-1 shrink-0">
-          <a
-            href={`/m/${p.modelSlug}`}
-            target="_blank"
-            rel="noopener"
-            className="p-1.5 rounded-md no-underline transition-all hover:bg-white/[0.06]"
-            title="Voir profil public"
-          >
-            <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" style={{ color: "var(--w3)" }} />
-          </a>
+          {/* BRIEF-18 — Eye 👁 retiré : header admin unifié entre CP et /m/[slug]
+              rend le raccourci "Voir profil public" redondant. L'admin connecté
+              peut naviguer librement avec la même cohérence visuelle. */}
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("heaven:toggle-socials"))}
             className="p-1.5 rounded-md transition-all hover:bg-white/[0.06] cursor-pointer border-none bg-transparent"
