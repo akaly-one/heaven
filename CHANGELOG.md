@@ -1,5 +1,46 @@
 # Heaven — Changelog
 
+## [v1.6.2] — 2026-04-25 evening — Profile-as-Hub Phase 2 fixes (NB DEBUG feedback)
+
+> Session multi-fixes après NB feedback "tu n'a pas fait les phases adequat de debug".
+> Mode chef de projet repris strict.
+
+### Fixes UX rapportés par NB
+
+- **PostComposer position** : était au-dessus du Hero, déplacé DANS le FeedView
+  (in-context publishing, style Instagram +Post inline) — commit `069c8d0`
+- **Photo d'aperçu pack** : nouveau champ `cover_url` dans l'éditeur pack TierView
+  (URL ou upload Cloudinary via /api/upload). Affiché flouté en locked tier overlay
+  (priorité sur le calcul auto des 3 premières images) — commit `0c4d66e`
+- **Drag&drop photos entre packs** : images upload draggable={isEditMode}, floating
+  bar bottom-center avec tiers cibles (drop = PUT /api/uploads pour changer tier)
+  — commit `1ddca0f`
+- **Uploads visibles dans le feed** : legacyItems étendu avec uploadsAsFeed (filtré
+  par tier visibility), render upload type avec mêmes règles que packs (locked/blur
+  si tier non débloqué) — commit `1ddca0f`
+- **Éditeur pack repliable** : ajout state `packEditOpen` + header avec ChevronUp/Down,
+  default fermé pour vue propre. Toggle Actif/Désactivé reste accessible dans header
+  même replié — commit `1ddca0f`
+- **PacksManagerInline supprimé** (réinvention rejetée par NB) : extension du TierView
+  existant retenue à la place
+
+### Méthodologie reconnue
+- Erreur process : phases DEBUG sautées entre implémentations
+- Erreur process : Doc Sync différé au lieu de synchro continue
+- Reprise protocole §1.4 (DEV → DEBUG → CORRECTIF → DOC SYNC) strict
+
+### Validation
+- `tsc --noEmit` exit 0 sur les 3 commits
+- Build prod OK (Vercel deploy auto)
+- Mobile-first responsive sur tous les ajouts
+
+### Commits clés
+- `069c8d0` — fix PostComposer position FeedView
+- `0c4d66e` — feat champ Photo aperçu pack TierView
+- `1ddca0f` — feat drag&drop entre packs + uploads dans feed + éditeur repliable
+
+---
+
 ## [v1.6.1] — 2026-04-25 evening — Profile-as-Hub Phase 2 (MessagerieEmbedded + BlurPreviewToggle)
 
 > Suite de v1.6.0 — extraction MessagingPageInner + drawer admin floutage.

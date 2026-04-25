@@ -41,14 +41,15 @@
 | BRIEF-2026-04-25-20 | 2026-04-25 | Bouton Clé Générer fonctionnel (codes d'accès manuels via GenerateModal existant) | feature wiring | P1 | FE | 🟢 livré (déjà fonctionnel via dispatch event `heaven:generate` — aucune modif BE nécessaire) | [briefs/BRIEF-2026-04-25-20-bouton-cle-generer-fonctionnel.md](./briefs/BRIEF-2026-04-25-20-bouton-cle-generer-fonctionnel.md) |
 | BRIEF-2026-04-25-21 | 2026-04-25 | Bouton Story Générateur image téléchargeable (canvas 1080×1920 + image bg + flou + code optionnel + preview) | feature majeure | P1 | FE | 🟢 livré (`<StoryGeneratorModal>` complet, 4 customisations, output PNG, responsive mobile-first, tsc 0) | [briefs/BRIEF-2026-04-25-21-bouton-story-generateur-image.md](./briefs/BRIEF-2026-04-25-21-bouton-story-generateur-image.md) |
 | BRIEF-2026-04-25-22+23 | 2026-04-25 | Profile-as-Hub (fusion Contenu+Feed CP→Profil, pattern SPRBP Instagram-style) + Cockpit simplifié 2 tabs (Messagerie+Stratégie) | refactor archi MAJEUR | P0 | FE refactor + Doc | 🟢 partial livré V1 (overlay admin + PostComposer + cockpit 2 tabs + contenu-panel @deprecated, tsc 0). Phase 2 différée : PacksEditorInline + BlurPreviewToggle + suppression legacy + extraction MessagingPageInner | [briefs/BRIEF-2026-04-25-22-23-profile-as-hub-fusion.md](./briefs/BRIEF-2026-04-25-22-23-profile-as-hub-fusion.md) |
+| BRIEF-2026-04-25-24 | 2026-04-25 | Profile DEBUG fixes cumulatifs (PostComposer position + photo aperçu + drag&drop entre packs + uploads dans feed + éditeur repliable) | fixes UX + correctif méthodo | P0 | FE | 🟢 livré (3 commits 069c8d0/0c4d66e/1ddca0f, tsc 0, build prod OK) | [briefs/BRIEF-2026-04-25-24-profile-debug-fixes.md](./briefs/BRIEF-2026-04-25-24-profile-debug-fixes.md) |
 
 ---
 
 ## Compteur
 
-- Total reçus : 22 (+4 session 2026-04-25 evening : BRIEF-19/20/21/22+23)
-- Livrés totaux : 6 (BRIEF-01 + BRIEF-04 + BRIEF-17 + **BRIEF-19** + **BRIEF-20** + **BRIEF-21**)
-- Livrés partial : 5 (BRIEF-10 11/13, BRIEF-13 4/20, BRIEF-16 phases A-I sauf E1, BRIEF-18 phase 1+2 ⚠️ partiellement révisé par 22+23, **BRIEF-22+23 V1**)
+- Total reçus : 23 (+5 session 2026-04-25 evening : BRIEF-19/20/21/22+23/24)
+- Livrés totaux : 7 (BRIEF-01 + BRIEF-04 + BRIEF-17 + BRIEF-19 + BRIEF-20 + BRIEF-21 + **BRIEF-24**)
+- Livrés partial : 5 (BRIEF-10 11/13, BRIEF-13 4/20, BRIEF-16 phases A-I sauf E1, BRIEF-18 phase 1+2 ⚠️ partiellement révisé par 22+23, BRIEF-22+23 V1)
 - Cadrés en attente GO : 8 (BRIEF-05/06/07/08/09/11/12/14)
 - Dispatched en cours : 1 (BRIEF-15)
 - Hotfixes inline session 25/04 : 3 (commit `1387047` mark_read POST→PATCH + fan localStorage | commit `a599f5d` hover taglines IdentityGate | commit `cdb03df` PayPal SDK + Wise)
