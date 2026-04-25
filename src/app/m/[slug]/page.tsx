@@ -42,6 +42,12 @@ import { InstagramFeedGrid } from "@/components/profile/instagram-feed-grid";
 import PublicFooter from "@/components/public-footer";
 // BRIEF-18 — Header admin unifié (mounté quand admin connecté sur /m/[slug])
 import { HeavenAdminHeader } from "@/components/header/heaven-admin-header";
+// BRIEF-19+21 (Session 2026-04-25 evening) — 4 boutons admin synergie CP↔Profil
+// + générateur Story canvas téléchargeable
+import { HeavenAdminActions } from "@/components/header/heaven-admin-actions";
+import { StoryGeneratorModal } from "@/components/profile/story-generator-modal";
+// BRIEF-23 — Post composer text + photo inline profil admin (Profile-as-Hub)
+import { PostComposer } from "@/components/profile/post-composer";
 // BRIEF-10 AG04/AG05/AG07/AG09 — age gate + access tiers
 import AgeGateModal from "@/components/age-gate-modal";
 import {
@@ -120,6 +126,8 @@ export default function ModelPage() {
 
   // ── Admin auth modal ──
   const [showAdminModal, setShowAdminModal] = useState(false);
+  // BRIEF-21 — state pour ouverture StoryGeneratorModal depuis HeaderBar admin
+  const [storyOpen, setStoryOpen] = useState(false);
 
   // ── Gate dismissed : visiteur anonyme peut voir le profil (publics only, le reste flouté) ──
   const [gateDismissed, setGateDismissed] = useState(false);
@@ -434,6 +442,15 @@ export default function ModelPage() {
         />
       )}
       {showAdminModal && <AdminAuthModal onClose={() => setShowAdminModal(false)} />}
+      {/* BRIEF-21 — StoryGeneratorModal admin (mount conditionnel via state local) */}
+      {storyOpen && (
+        <StoryGeneratorModal
+          open={storyOpen}
+          onClose={() => setStoryOpen(false)}
+          modelSlug={slug}
+          packs={packs}
+        />
+      )}
       <ProfileStyles />
 
       <div className="relative z-10">
@@ -468,7 +485,16 @@ export default function ModelPage() {
           handleBannerUpload={edit.handleBannerUpload}
           saveAllEdits={edit.saveAllEdits}
           cancelEdits={edit.cancelEdits}
+          onStoryClick={() => setStoryOpen(true)}
         />
+
+        {/* BRIEF-23 — PostComposer admin inline (Profile-as-Hub).
+            Visible uniquement quand admin connectée, hors mode preview, hors tier view. */}
+        {isModelLoggedInActual && !edit.previewMode && galleryTier === "home" && (
+          <div className="max-w-6xl mx-auto px-3 sm:px-5 md:px-8 lg:px-12 mt-4">
+            <PostComposer canPost={true} slug={slug} />
+          </div>
+        )}
 
         {/* ═══ HERO SECTION ═══ */}
         <HeroSection
@@ -829,7 +855,7 @@ export default function ModelPage() {
 // ═══════════════════════════════════════════
 
 // ── Header Bar ──
-function HeaderBar({ model, displayModel, isModelLoggedIn, isModelLoggedInActual, visitorRegistered, visitorPlatform, visitorHandle, visitorVerified, unlockedTier, activeCode, chatOpen, setChatOpen, chatUnread, newNotifications, orderHistoryOpen, setOrderHistoryOpen, clearNotifications, codeSheetOpen, setCodeSheetOpen, handleCodeValidation, modelId, slug, galleryTier, setGalleryTier, onReopenGate, onAdminLogin, editDirty, editSaving, previewMode, setPreviewMode, avatarInputRef, bannerInputRef, handleAvatarUpload, handleBannerUpload, saveAllEdits, cancelEdits }: {
+function HeaderBar({ model, displayModel, isModelLoggedIn, isModelLoggedInActual, visitorRegistered, visitorPlatform, visitorHandle, visitorVerified, unlockedTier, activeCode, chatOpen, setChatOpen, chatUnread, newNotifications, orderHistoryOpen, setOrderHistoryOpen, clearNotifications, codeSheetOpen, setCodeSheetOpen, handleCodeValidation, modelId, slug, galleryTier, setGalleryTier, onReopenGate, onAdminLogin, editDirty, editSaving, previewMode, setPreviewMode, avatarInputRef, bannerInputRef, handleAvatarUpload, handleBannerUpload, saveAllEdits, cancelEdits, onStoryClick }: {
   model: ModelInfo; displayModel: ModelInfo | null; isModelLoggedIn: boolean;
   /** Real admin session flag, ignoring previewMode. Used to show admin tools while letting children behave as visitor. */
   isModelLoggedInActual: boolean;
@@ -855,6 +881,8 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, isModelLoggedInActual
   handleBannerUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
   saveAllEdits: () => Promise<void>;
   cancelEdits: () => void;
+  // BRIEF-19+21 — callback ouverture StoryGeneratorModal.
+  onStoryClick: () => void;
 }) {
   return (
     <div className="sticky top-0 left-0 right-0 z-40 px-3 sm:px-5 md:px-8 lg:px-12 py-2"
@@ -867,6 +895,16 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, isModelLoggedInActual
             <button onClick={() => setGalleryTier("home")}
               className="text-sm font-bold shrink-0 cursor-pointer bg-transparent border-none transition-all hover:scale-105 active:scale-95"
               style={{ color: "var(--accent)" }}>&#8592;</button>
+          )}
+          {/* BRIEF-19+21 (Session 2026-04-25 evening) — 4 boutons synergie CP↔Profil
+              (Eye/Link2/Key/Story) visibles dans le HeaderBar profil quand admin connecté.
+              Cohérence cross-vue : mêmes 4 boutons que dans le header CP global. */}
+          {isModelLoggedInActual && !previewMode && (
+            <HeavenAdminActions
+              modelSlug={slug}
+              onStoryClick={onStoryClick}
+              compact={true}
+            />
           )}
           {/* BRIEF-17 — Admin edit toolbox (photo/banner/save/cancel/preview) */}
           {isModelLoggedInActual && !previewMode && (

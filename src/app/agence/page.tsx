@@ -62,12 +62,13 @@ function Skeleton({ className = "", style }: { className?: string; style?: React
 }
 
 // ── Tab definitions ──
-// Brief NB B7 (2026-04-21) : tab "Clients" supprimée — les contacts/fans sont
-// gérés dans la Messagerie (drawer). Redirect /agence?tab=clients → middleware
-// middleware.ts → /agence/messagerie?view=contacts.
+// BRIEF-23 (Session 2026-04-25 evening) — Cockpit simplifié 2 tabs :
+// - "messagerie" : redirige vers /agence/messagerie (vue principale dashboard)
+// - "strategie" : KPIs + palier + analytics (inline)
+// Les anciens tabs "dashboard" et "contenu" sont retirés (fusion contenu vers
+// /m/[slug] admin overlay — pattern Profile-as-Hub).
 const TABS = [
-  { id: "dashboard", label: "Dashboard" },
-  { id: "contenu", label: "Contenu" },
+  { id: "messagerie", label: "Messagerie" },
   { id: "strategie", label: "Stratégie" },
 ] as const;
 
@@ -90,10 +91,11 @@ function AgenceDashboard() {
   const searchParams = useSearchParams();
 
   // ── Tab state — read from ?tab= query param on mount ──
+  // BRIEF-23 : default = "strategie" (le tab Messagerie redirige vers /agence/messagerie)
   const [activeTab, setActiveTab] = useState<TabId>(() => {
     const tab = searchParams.get("tab");
     if (tab && TABS.some(t => t.id === tab)) return tab as TabId;
-    return "dashboard";
+    return "strategie";
   });
 
   // ── State ──
@@ -904,13 +906,24 @@ function AgenceDashboard() {
             retentionRate={retentionRate}
             tabs={[...TABS]}
             activeTab={activeTab}
-            onTabChange={(id) => setActiveTab(id as TabId)}
+            onTabChange={(id) => {
+              // BRIEF-23 : tab Messagerie redirige vers /agence/messagerie
+              if (id === "messagerie") {
+                window.location.href = "/agence/messagerie";
+                return;
+              }
+              setActiveTab(id as TabId);
+            }}
             onAvatarUpload={handleAvatarUpload}
             onToggleStatus={handleToggleStatus}
           />
 
           {/* ══════════ TAB PANELS ══════════ */}
-          {activeTab === "dashboard" && (
+          {/* BRIEF-23 : tabs "dashboard" et "contenu" retirés (TabId ne les inclut plus).
+              Composants HomePanel + ContenuPanel conservés non-mountés pour rollback rapide.
+              Le cast `as string` désactive le narrow type check pour éviter erreur TS sur
+              les comparaisons "always false" — supprimer ces blocs au cycle suivant. */}
+          {(activeTab as string) === "dashboard" && (
             <HomePanel
               modelSlug={modelSlug}
               modelInfo={modelInfo}
@@ -944,7 +957,7 @@ function AgenceDashboard() {
             />
           )}
 
-          {activeTab === "contenu" && (
+          {(activeTab as string) === "contenu" && (
             <ContenuPanel
               modelSlug={modelSlug}
               packs={packs}

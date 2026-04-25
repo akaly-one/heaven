@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import { MessageCircle, Users, Link2, Globe, Instagram, KeyRound, ImagePlus, Eye, Pencil } from "lucide-react";
-import { StoryGenerator } from "@/components/profile/story-generator";
+import { MessageCircle, Users, Globe, Instagram } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useModel } from "@/lib/model-context";
 import { toModelId } from "@/lib/model-utils";
@@ -12,6 +11,11 @@ import { MessagesDropdown } from "@/components/header/messages-dropdown";
 import { ClientsDropdown } from "@/components/header/clients-dropdown";
 import { SocialsDropdown } from "@/components/header/socials-dropdown";
 import { RootCpSelector } from "@/components/cockpit/root-cp-selector";
+// BRIEF-19+20+21 (Session 2026-04-25 evening) — header CP centralisé fonctionnel
+import { HeavenAdminActions } from "@/components/header/heaven-admin-actions";
+import { StoryGeneratorModal } from "@/components/profile/story-generator-modal";
+// Legacy StoryGenerator @deprecated — remplacé par StoryGeneratorModal
+// (gardé non-importé : à supprimer cycle suivant après vérif zéro usage)
 
 // ── Page titles ──
 const PAGE_TITLES: Record<string, string> = {
@@ -442,23 +446,17 @@ export function Header() {
         <ThemeToggle size="sm" />
       </div>
 
-      {/* Center — Générer */}
-      <button onClick={() => window.dispatchEvent(new Event("heaven:generate"))}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold cursor-pointer transition-all hover:scale-105 active:scale-95 shrink-0 mx-2"
-        style={{ background: "linear-gradient(135deg, var(--accent), #F43F5E)", color: "#fff", border: "none",
-          boxShadow: "0 2px 8px rgba(230,51,41,0.25)" }}>
-        <KeyRound className="w-3.5 h-3.5" />
-        <span className="hidden sm:inline">Générer</span>
-      </button>
-
-      {/* Story Generator button — model/root only */}
+      {/* BRIEF-19+20+21 — 4 boutons admin centrés (Eye / Link2 / Key / Story).
+          Visible uniquement pour model/root. Centrage via flex-1 + justify-center.
+          Mobile-first : touch targets 44×44 préservés via padding adaptatif. */}
       {auth?.role && (auth.role === "model" || auth.role === "root") && (
-        <button onClick={() => setShowStoryGen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold cursor-pointer transition-all hover:scale-105 active:scale-95 shrink-0 mr-1"
-          style={{ background: "rgba(168,85,247,0.12)", color: "#A855F7", border: "1px solid rgba(168,85,247,0.2)" }}>
-          <ImagePlus className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Story</span>
-        </button>
+        <div className="flex-1 flex items-center justify-center min-w-0 px-1">
+          <HeavenAdminActions
+            modelSlug={currentModel || modelSlug}
+            onStoryClick={() => setShowStoryGen(true)}
+            compact={true}
+          />
+        </div>
       )}
 
       {/* Right — 2 buttons with dropdowns */}
@@ -554,12 +552,14 @@ export function Header() {
 
       </div>
 
-      {/* Story Generator Modal */}
+      {/* Story Generator Modal — BRIEF-21 nouveau composant complet
+          (image bg + flou slider + code accès + canvas 1080x1920 + download PNG) */}
       {showStoryGen && (
-        <StoryGenerator
-          modelName={modelInfo?.display_name || auth?.display_name || modelSlug.toUpperCase() || ""}
-          accentColor="#E63329"
+        <StoryGeneratorModal
+          open={showStoryGen}
           onClose={() => setShowStoryGen(false)}
+          modelSlug={currentModel || modelSlug}
+          packs={[]}
         />
       )}
     </header>

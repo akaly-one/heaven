@@ -325,7 +325,7 @@ Au signal "terminer" → Phases 3-10 enchaînées automatiquement.
 > dispatch, à chaque review. Il prime sur les autres considérations (sauf
 > sécurité critique et confidentialité Heaven↔SQWENSY).
 
-### 13.1 Objectif transversal #1 — Synergie CP ↔ Profil + Ergonomie
+### 13.1 Objectif transversal #1 — Synergie CP ↔ Profil + Ergonomie + Responsive
 
 Chaque feature, chaque fix, chaque refactor doit servir cet objectif :
 
@@ -344,6 +344,26 @@ Chaque feature, chaque fix, chaque refactor doit servir cet objectif :
 - **Cohérence front ↔ back-end** : contrats API typés strictement (TS interfaces
   partagées), data flow unidirectionnel quand possible, pas de "shadow state"
   divergent entre composants.
+- **🆕 Responsive mobile-first (ajouté NB 2026-04-25 evening)** : TOUS les
+  ajustements du plan doivent être responsive. UX, UI, FE pour la version
+  mobile (375px-414px iPhone, 360px Android, 768px iPad). Touch targets
+  minimum 44×44px. Pas de hover-only sans fallback tap. Tester avec DevTools
+  responsive avant chaque commit.
+
+### Patterns responsive obligatoires
+
+| Pattern | Usage |
+|---|---|
+| `flex-col sm:flex-row` | Stack mobile, row desktop |
+| `text-xs sm:text-sm md:text-base` | Typographie progressive |
+| `gap-1 sm:gap-2 md:gap-3` | Espacements adaptatifs |
+| `hidden sm:inline` / `inline sm:hidden` | Révéler/cacher selon viewport |
+| `w-full sm:w-auto` | Bouton full-width mobile |
+| `max-w-full sm:max-w-md md:max-w-2xl` | Modal/card adaptatifs |
+| `p-3 sm:p-5 md:p-8` | Padding progressif |
+| `grid-cols-2 sm:grid-cols-3 md:grid-cols-4` | Grilles adaptatives |
+| `aspect-square` ou `aspect-video` | Conserve ratio sur tous viewports |
+| Drawer → bottom sheet mobile / sidebar desktop | Pattern UX adaptatif |
 
 **Application opérationnelle** : avant chaque dispatch d'agent, je vérifie
 mentalement que le brief est compatible avec ce mandat. Si un brief crée un

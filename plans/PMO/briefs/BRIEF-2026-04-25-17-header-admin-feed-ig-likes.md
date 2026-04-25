@@ -1,5 +1,12 @@
 # BRIEF-2026-04-25-17 — Header admin enrichi + Feed IG vignettes + Likes/Commentaires
 
+> ⚠️ **Partiellement révisé 2026-04-25 evening** — La section HeaderBar admin enrichi
+> a été rolled back (commit `f09298c`). Le profil admin = profil visiteur intact +
+> couche admin overlay (pas de header séparé). Les boutons admin Camera/Image/Save/
+> Cancel/Eye preview restent actifs via overlay hover BRIEF-18. Les autres parties
+> (likes/comments, feed IG, drawer) restent valides.
+> Voir BRIEF-22+23 Profile-as-Hub pour la nouvelle direction.
+
 > **Date** : 2026-04-25 ~01:50
 > **Émetteur** : NB
 > **Type** : feature + UX + DB

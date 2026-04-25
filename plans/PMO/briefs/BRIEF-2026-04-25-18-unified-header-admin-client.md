@@ -1,5 +1,13 @@
 # BRIEF-2026-04-25-18 — Header unifié Root / Modèle Admin / Client
 
+> ⚠️ **Partiellement révisé 2026-04-25 evening** — Phase 1+2 livrée mais
+> `<HeavenAdminHeader>` n'a pas été activé en profil (revert vers HeaderBar
+> visiteur intact + overlay admin couches). Composants `heaven-header.tsx`,
+> `heaven-admin-header.tsx`, `heaven-client-header.tsx` conservés pour Phase 3
+> future si la fusion CP↔Profil le justifie. La direction privilégiée est
+> désormais le pattern Profile-as-Hub (BRIEF-22+23) — overlay admin sur la
+> même page profil sans header séparé.
+
 > **Date** : 2026-04-25 ~02:30
 > **Émetteur** : NB
 > **Type** : refactor archi UI majeur

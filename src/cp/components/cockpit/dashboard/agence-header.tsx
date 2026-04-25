@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { Eye, Link2, RefreshCw, MessageCircle, Send } from "lucide-react";
+import { RefreshCw, MessageCircle, Send } from "lucide-react";
 import type { FeedPost, HeavenAuth, AccessCode } from "@/types/heaven";
 
 const fmt = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
@@ -287,26 +287,9 @@ export function AgenceHeader(p: AgenceHeaderProps) {
         </div>
         <div className="flex-1 min-w-0" />
         <div className="flex items-center gap-0.5 pb-1 shrink-0">
-          {/* BRIEF-18 fix NB 2026-04-25 : Eye 👁 conservé comme raccourci visible
-              vers le profil public depuis le CP. Tant que <HeavenAdminHeader> n'est
-              pas mounté en context "cockpit" (Phase 3), c'est le SEUL chemin clair
-              pour la modèle d'aller voir/tester son profil depuis son cockpit. */}
-          <a
-            href={`/m/${p.modelSlug}`}
-            target="_blank"
-            rel="noopener"
-            className="p-1.5 rounded-md no-underline transition-all hover:bg-white/[0.06]"
-            title="Voir profil public"
-          >
-            <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" style={{ color: "var(--w3)" }} />
-          </a>
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent("heaven:toggle-socials"))}
-            className="p-1.5 rounded-md transition-all hover:bg-white/[0.06] cursor-pointer border-none bg-transparent"
-            title="Liens sociaux"
-          >
-            <Link2 className="w-3.5 h-3.5 md:w-4 md:h-4" style={{ color: "var(--w3)" }} />
-          </button>
+          {/* BRIEF-19 (Session 2026-04-25 evening) — Eye + Link2 retirés.
+              Désormais hébergés dans le header CP global (HeavenAdminActions)
+              centré, accessibles partout dans le CP (pas juste sur le dashboard). */}
         </div>
       </div>
     </>

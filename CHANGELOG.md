@@ -1,5 +1,67 @@
 # Heaven — Changelog
 
+## [v1.6.0] — 2026-04-25 evening — BRIEF-19/20/21/22+23 Profile-as-Hub + Header CP centralisé
+
+> Session multi-briefs en mode chef d'équipe — vision macro NB : pattern SPRBP
+> (Single Page Role-Based Permissions) style Instagram/TikTok. Profil = hub unique
+> de gestion contenu/feed/packs avec couches admin overlayées si propriétaire connecté.
+
+### Features
+
+- **BRIEF-19** — Header CP global centralisé : 4 boutons icônes seules `[👁 Eye] [🔗 Link2] [🔑 Key] [🎬 Story]` centrés, retrait labels textes "Générer"/"Story". Eye + Link2 retirés de `agence-header.tsx` (déplacés vers header global, accessibles partout dans le CP).
+- **BRIEF-20** — Bouton Clé Générer fonctionnel (déjà câblé via dispatch event `heaven:generate` → ouvre `<GenerateModal>` existant). Aucune modif BE nécessaire.
+- **BRIEF-21** — Bouton Story Générateur image téléchargeable : nouveau `<StoryGeneratorModal>` (~330 LOC) avec 4 customisations :
+  1. Image bg : default = dernière photo upload modèle (GET /api/uploads), toggle "Choisir autre" → file input local (max 10 MB)
+  2. Slider flou 0-20px (filter CSS)
+  3. Toggle code d'accès inline (durée jours + pack/tier, généré via POST /api/codes existant)
+  4. Aperçu canvas 1080×1920 redessiné temps réel + output PNG téléchargeable
+- **BRIEF-22+23** — Profile-as-Hub V1 (pattern SPRBP) :
+  - Overlay admin sur `/m/[slug]` quand propriétaire connecté (visible uniquement si `isModelLoggedInActual && !previewMode`)
+  - 4 boutons admin (Eye/Link2/Key/Story) via `<HeavenAdminActions>` réutilisable
+  - `<PostComposer>` inline (text + photo upload Cloudinary + POST /api/wall)
+  - Mount `<StoryGeneratorModal>` admin
+  - Mode preview admin (`previewMode=true`) masque toute la couche admin
+- **Cockpit `/agence` simplifié** : passage de 3 tabs (Dashboard/Contenu/Stratégie) à **2 tabs** (Messagerie/Stratégie). Tab Messagerie redirige vers `/agence/messagerie`. Onglet Contenu retiré.
+
+### Refactor
+
+- `src/cp/components/cockpit/contenu/contenu-panel.tsx` (1432 LOC) annoté `@deprecated` (conservé pour rollback rapide, suppression cycle suivant)
+- `src/shared/components/header.tsx` : retrait imports `Eye`, `Link2`, `KeyRound`, `ImagePlus`, `Pencil`, `StoryGenerator` legacy → mount `<HeavenAdminActions>` + `<StoryGeneratorModal>`
+- `src/cp/components/cockpit/dashboard/agence-header.tsx` : retrait Eye/Link2 inline + imports
+- `src/app/agence/page.tsx` : TABS const 3→2, default activeTab = "strategie", onTabChange Messagerie redirect, cast `as string` sur conditions panels devenus dead code
+
+### Architecture
+
+- **Pattern SPRBP** adopté : Single Page (`/m/[slug]`) avec Role-Based Permissions overlay
+- **ADR-001** Profile-as-Hub : `plans/modules/profile/DECISIONS.md`
+- **ADR-002** Responsive mobile-first transversal : tous les nouveaux composants respectent touch targets 44+ + patterns Tailwind responsive
+- Anti-patterns formellement bannis : pages dupliquées CP/Profil, composants miroirs, routes API dédoublées, hooks parallèles
+
+### Docs
+
+- 4 briefs formalisés `plans/PMO/briefs/BRIEF-2026-04-25-{19,20,21,22-23}-*.md`
+- `plans/PMO/02-BRIEFS-REGISTRY.md` mis à jour : 22 briefs reçus, 6 livrés totaux, 5 partial
+- `plans/PMO/04-PROTOCOLE-CHEF-EQUIPE-MULTIAGENT.md` v1.1 : §13.1 enrichi avec critère responsive mobile-first transversal
+- `plans/PMO/_drafts/SESSION-2026-04-25-evening-briefs.md` : buffer briefs accumulés pendant phase intake
+- `plans/PMO/plan-global-v2-profile-as-hub.md` : plan global session
+- `plans/modules/profile/CONTEXT.md` (NOUVEAU) : architecture en couches + hooks + routes API
+- `plans/modules/profile/DECISIONS.md` (NOUVEAU) : ADR-001 + ADR-002
+- BRIEF-17 et BRIEF-18 annotés `⚠️ Partiellement révisé par BRIEF-22+23 Profile-as-Hub`
+
+### Phase 2 différée
+
+- `<PacksEditorInline>` édit prix/details/photo cover inline (existant TierView L1697 couvre 90%)
+- `<BlurPreviewToggle>` drawer admin "vue floutée vs débloquée"
+- Extraction `MessagingPageInner` exportable pour mount inline cockpit (vs redirect actuel)
+- Suppression effective `contenu-panel.tsx`, `home-panel.tsx`, `story-generator.tsx` legacy après vérif zéro imports
+- Décomposition `/m/[slug]/page.tsx` 2050 LOC → composants extraits
+
+### Commits clés
+
+- À venir post-livraison (consolidation Wave 2 — tsc + commit + push)
+
+---
+
 ## [v1.5.2] — 2026-04-25 — BRIEF-18 Header unifié Root / Modèle Admin / Client
 
 ### Features

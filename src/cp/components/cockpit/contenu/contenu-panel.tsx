@@ -1,6 +1,14 @@
 "use client";
 
 /**
+ * @deprecated 2026-04-25 evening (BRIEF-22+23 Profile-as-Hub) —
+ * Fonctionnalité migrée vers `/m/[slug]` admin overlay (pattern SPRBP).
+ * Le cockpit CP est désormais simplifié à 2 tabs (Messagerie + Stratégie).
+ * Ce fichier sera supprimé dans le cycle suivant après vérification 0 imports
+ * actifs. Conservé pour rollback rapide si besoin.
+ *
+ * ──────────────────────────────────────────────────────────────────────────
+ *
  * ContenuPanel — Phase 2 Agent 2.B
  *
  * Extrait du monolithe `src/app/agence/page.tsx` (P0-7). Ce composant encapsule
