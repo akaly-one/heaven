@@ -1955,11 +1955,9 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
             style={{ minHeight: 44 }}
           >
             <div className="flex items-center gap-2">
-              <Edit3 className="w-4 h-4" style={{ color: tierHex }} />
-              <span className="text-sm font-bold" style={{ color: tierHex }}>Éditer le pack</span>
-              <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-                {pack.name || pack.id} — {pack.price}€
-              </span>
+              <span className="text-base" style={{ color: tierHex }}>{tierSymbol}</span>
+              <span className="text-sm font-bold" style={{ color: "var(--text)" }}>{pack.name || pack.id}</span>
+              <span className="text-[11px] font-bold" style={{ color: tierHex }}>{pack.price}€</span>
             </div>
             <div className="flex items-center gap-2">
               <span
