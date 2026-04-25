@@ -79,8 +79,21 @@ function ProfilePublicAdminHeader({ modelSlug, extraActions }: HeavenAdminHeader
       }}
     >
       <div className="flex items-center gap-3">
-        {/* LEFT : Logo + UserNameDropdown (pseudo cliquable → menu Voir CP/Profil) */}
+        {/* LEFT : Retour CP (raccourci visible) + Logo + UserNameDropdown */}
         <div className="flex items-center gap-2 min-w-0 shrink-0">
+          {/* NB 2026-04-25 : raccourci visible ← vers le CP — la modèle doit
+              pouvoir retourner à son cockpit en 1 clic (sans passer par le
+              dropdown qui est moins évident). Cohérent avec Eye 👁 dans le CP
+              qui mène au profil. */}
+          <Link
+            href="/agence"
+            aria-label="Retour cockpit"
+            title="Retour au cockpit"
+            className="p-1.5 rounded-md no-underline transition-all hover:bg-white/[0.06] shrink-0"
+            style={{ color: "var(--accent)" }}
+          >
+            <span className="text-sm font-bold">←</span>
+          </Link>
           {isRoot && (
             <RootCpSelector variant="inline" fallbackLabel={displayName} />
           )}
