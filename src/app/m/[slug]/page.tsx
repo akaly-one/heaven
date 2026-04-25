@@ -1134,7 +1134,7 @@ function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierVie
       transition: "max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease",
       opacity: isTierView ? 0 : 1,
     }}>
-      <div className="min-h-[40vh] sm:min-h-[55vh] md:min-h-[70vh] relative overflow-hidden" style={{
+      <div className="min-h-[40vh] sm:min-h-[55vh] md:min-h-[70vh] relative overflow-hidden group/banner" style={{
         background: bannerUrl ? `url(${bannerUrl}) center/cover no-repeat` : "linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 40%, #16213e 70%, #0f3460 100%)",
       }}>
         <div className="absolute inset-0" style={{ background: "linear-gradient(to top, var(--bg) 0%, rgba(0,0,0,0.6) 30%, rgba(0,0,0,0.2) 60%, transparent 100%), radial-gradient(ellipse at 20% 80%, rgba(0,0,0,0.4), transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(0,0,0,0.2), transparent 60%)" }} />
@@ -1145,10 +1145,32 @@ function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierVie
             <div className="absolute inset-0 heaven-grid-overlay" />
           </>
         )}
+        {/* NB 2026-04-25 : bouton edit banner au hover (admin only — isEditMode auto-true).
+            Refs vivent dans HeaderBar / HeavenAdminHeader → click sur ref existante,
+            pas de duplication d'input file. */}
+        {isEditMode && (
+          <button
+            type="button"
+            onClick={() => edit.bannerInputRef.current?.click()}
+            aria-label="Modifier la bannière"
+            title="Modifier la bannière"
+            className="absolute top-4 right-4 z-20 px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-[11px] font-semibold opacity-0 group-hover/banner:opacity-100 transition-opacity cursor-pointer border-none"
+            style={{
+              background: "rgba(0,0,0,0.65)",
+              color: "#fff",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              border: "1px solid rgba(255,255,255,0.15)",
+            }}
+          >
+            <ImageIcon className="w-3.5 h-3.5" />
+            <span>Modifier la bannière</span>
+          </button>
+        )}
         <div className="absolute bottom-0 left-0 right-0 px-5 sm:px-8 md:px-12 pb-6 sm:pb-14 md:pb-16 max-w-6xl mx-auto">
           <div className="flex items-end gap-5 sm:gap-6 md:gap-8">
             {/* Avatar */}
-            <div className="relative shrink-0 profile-stagger-1">
+            <div className="relative shrink-0 profile-stagger-1 group/avatar">
               <div className={`rounded-full p-[3px] ${activeStories.length > 0 ? "cursor-pointer" : ""}`}
                 style={{ background: activeStories.length > 0 ? "linear-gradient(135deg, var(--accent), #F43F5E, #D946EF, #F59E0B)" : "var(--bg)" }}
                 onClick={() => { if (activeStories.length > 0) setStoryViewIdx(0); }}>
@@ -1160,6 +1182,28 @@ function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierVie
               </div>
               {!isEditMode && displayModel?.online && (
                 <span className="absolute bottom-2 right-2 w-4 h-4 rounded-full" style={{ background: "var(--success)", border: "2px solid var(--bg)", boxShadow: "0 0 10px rgba(16,185,129,0.6)" }} />
+              )}
+              {/* NB 2026-04-25 : bouton edit photo profil au hover (admin only).
+                  Click → trigger ref input file qui vit dans HeaderBar / HeavenAdminHeader. */}
+              {isEditMode && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation(); // ne pas trigger story view
+                    edit.avatarInputRef.current?.click();
+                  }}
+                  aria-label="Modifier la photo de profil"
+                  title="Modifier la photo de profil"
+                  className="absolute inset-[3px] rounded-full flex flex-col items-center justify-center gap-0.5 opacity-0 group-hover/avatar:opacity-100 transition-opacity cursor-pointer border-none"
+                  style={{
+                    background: "rgba(0,0,0,0.55)",
+                    backdropFilter: "blur(4px)",
+                    WebkitBackdropFilter: "blur(4px)",
+                  }}
+                >
+                  <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-white">Modifier</span>
+                </button>
               )}
             </div>
             {/* Name + bio + stats */}
@@ -1221,18 +1265,9 @@ function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierVie
           </div>
         </div>
       </div>
-      {/* BRIEF-17 — Photo/banner buttons relocated to HeaderBar admin toolbox.
-          Keep a discreet fallback hint (no inputs — refs live in HeaderBar) only
-          when admin hasn't started editing yet, so the call-to-action stays
-          discoverable without distracting once edits begin. */}
-      {isEditMode && !edit.editDirty && (
-        <div className="absolute top-14 right-4 z-20 flex gap-2 opacity-50 hover:opacity-90 transition-opacity pointer-events-none">
-          <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-medium"
-            style={{ background: "rgba(0,0,0,0.55)", color: "#fff", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)" }}>
-            <Camera className="w-3 h-3" /> Banniere/Avatar : utilise la barre admin
-          </span>
-        </div>
-      )}
+      {/* BRIEF-18 NB 2026-04-25 — hint "utilise la barre admin" supprimé :
+          remplacé par les boutons d'édition au hover directement sur le banner
+          et l'avatar (UX in-context plus naturelle). */}
       {isEditMode && (
         <div className="max-w-6xl mx-auto px-5 sm:px-8 md:px-12 -mt-4 mb-4">
           <div className="space-y-3 p-5 rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
