@@ -1191,6 +1191,8 @@ function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierVie
 }) {
   const latestImagePost = posts.find(p => p.media_url);
   const bannerUrl = displayModel?.banner || latestImagePost?.media_url || null;
+  // NB 2026-04-25 evening : accordéon édition profil (default fermé pour vue propre)
+  const [profileEditOpen, setProfileEditOpen] = useState(false);
 
   return (
     <div className="relative" style={{
@@ -1337,18 +1339,40 @@ function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierVie
       {/* BRIEF-18 NB 2026-04-25 — hint "utilise la barre admin" supprimé :
           remplacé par les boutons d'édition au hover directement sur le banner
           et l'avatar (UX in-context plus naturelle). */}
+      {/* NB 2026-04-25 evening : accordéon édition profil (cohérence mobile/desktop +
+          repliable). Default fermé. Visible admin only via isEditMode. */}
       {isEditMode && (
         <div className="max-w-6xl mx-auto px-5 sm:px-8 md:px-12 -mt-4 mb-4">
-          <div className="space-y-3 p-5 rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <input value={displayModel?.display_name || ""} onChange={e => edit.updateEditField("display_name", e.target.value)}
-              className="text-lg font-bold bg-transparent outline-none rounded-lg px-3 py-2 w-full" style={{ color: "var(--text)", border: "1px dashed var(--border3)" }} placeholder="Display name" />
-            <input value={displayModel?.status || ""} onChange={e => edit.updateEditField("status", e.target.value)}
-              className="w-full text-xs bg-transparent outline-none rounded-lg px-3 py-2" style={{ color: "var(--text-muted)", border: "1px dashed var(--border3)" }} placeholder="Status" />
-            <input value={edit.editProfile.status_text ?? displayModel?.status_text ?? ""} onChange={e => edit.updateEditField("status_text", e.target.value)}
-              placeholder="Ton humeur, une promo, une annonce..." className="w-full text-sm bg-transparent outline-none rounded-lg px-3 py-2 text-center"
-              style={{ color: "var(--text)", border: "1px dashed var(--border3)", background: "rgba(0,0,0,0.15)" }} maxLength={200} />
-            <textarea value={displayModel?.bio || ""} onChange={e => edit.updateEditField("bio", e.target.value)}
-              className="w-full text-sm leading-relaxed bg-transparent outline-none rounded-lg px-3 py-2 resize-none" style={{ color: "var(--text-secondary)", border: "1px dashed var(--border3)" }} placeholder="Bio..." rows={3} />
+          <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <button
+              type="button"
+              onClick={() => setProfileEditOpen(v => !v)}
+              aria-expanded={profileEditOpen}
+              className="w-full flex items-center justify-between p-3 sm:p-4 cursor-pointer transition-all hover:bg-white/[0.02] border-none bg-transparent text-left"
+              style={{ minHeight: 44 }}
+            >
+              <span className="flex items-center gap-2">
+                <Edit3 className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
+                <span className="text-xs sm:text-sm font-bold uppercase tracking-wider" style={{ color: "var(--text)" }}>Éditer profil</span>
+                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                  {displayModel?.display_name || ""}
+                </span>
+              </span>
+              {profileEditOpen ? <ChevronUp className="w-4 h-4" style={{ color: "var(--text-muted)" }} /> : <ChevronDown className="w-4 h-4" style={{ color: "var(--text-muted)" }} />}
+            </button>
+            {profileEditOpen && (
+              <div className="space-y-3 p-3 sm:p-4 pt-0 border-t" style={{ borderColor: "var(--border)" }}>
+                <input value={displayModel?.display_name || ""} onChange={e => edit.updateEditField("display_name", e.target.value)}
+                  className="text-lg font-bold bg-transparent outline-none rounded-lg px-3 py-2 w-full mt-3" style={{ color: "var(--text)", border: "1px dashed var(--border3)" }} placeholder="Display name" />
+                <input value={displayModel?.status || ""} onChange={e => edit.updateEditField("status", e.target.value)}
+                  className="w-full text-xs bg-transparent outline-none rounded-lg px-3 py-2" style={{ color: "var(--text-muted)", border: "1px dashed var(--border3)" }} placeholder="Status" />
+                <input value={edit.editProfile.status_text ?? displayModel?.status_text ?? ""} onChange={e => edit.updateEditField("status_text", e.target.value)}
+                  placeholder="Ton humeur, une promo, une annonce..." className="w-full text-sm bg-transparent outline-none rounded-lg px-3 py-2 text-center"
+                  style={{ color: "var(--text)", border: "1px dashed var(--border3)", background: "rgba(0,0,0,0.15)" }} maxLength={200} />
+                <textarea value={displayModel?.bio || ""} onChange={e => edit.updateEditField("bio", e.target.value)}
+                  className="w-full text-sm leading-relaxed bg-transparent outline-none rounded-lg px-3 py-2 resize-none" style={{ color: "var(--text-secondary)", border: "1px dashed var(--border3)" }} placeholder="Bio..." rows={3} />
+              </div>
+            )}
           </div>
         </div>
       )}
