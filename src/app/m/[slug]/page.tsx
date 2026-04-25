@@ -7,7 +7,7 @@ import {
   Coins, Camera, X, Check,
   Instagram, Ghost, Key, Sparkles, AlertTriangle, Eye, Trash2,
   Edit3, Plus, ToggleLeft, ToggleRight, RotateCcw, Save, Shield,
-  Image as ImageIcon, Loader2, UserCog,
+  Image as ImageIcon, Loader2, UserCog, LogOut,
 } from "lucide-react";
 import { toModelId } from "@/lib/model-utils";
 import { normalizeTier, tierIncludes } from "@/lib/tier-utils";
@@ -439,106 +439,36 @@ export default function ModelPage() {
       <div className="relative z-10">
 
         {/* ═══ HEADER BAR ═══
-            BRIEF-18 — Header admin unifié quand admin connecté (yumi/paloma/ruby/root).
-            Sinon, HeaderBar visiteur conservé tel quel. Le mode preview admin désactive
-            isModelLoggedIn (false) mais isModelLoggedInActual reste true → on continue
-            d'afficher le header admin avec bouton "ADMIN" pour sortir du preview. */}
-        {isModelLoggedInActual && !edit.previewMode ? (
-          <HeavenAdminHeader
-            context="profile-public"
-            modelSlug={slug}
-            extraActions={
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => edit.avatarInputRef.current?.click()}
-                  title="Changer photo profil"
-                  aria-label="Changer photo profil"
-                  className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
-                >
-                  <Camera className="w-3.5 h-3.5" style={{ color: "var(--w3)" }} />
-                </button>
-                <input
-                  ref={edit.avatarInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={edit.handleAvatarUpload}
-                />
-                <button
-                  onClick={() => edit.bannerInputRef.current?.click()}
-                  title="Changer banner"
-                  aria-label="Changer banner"
-                  className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
-                >
-                  <ImageIcon className="w-3.5 h-3.5" style={{ color: "var(--w3)" }} />
-                </button>
-                <input
-                  ref={edit.bannerInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={edit.handleBannerUpload}
-                />
-                {edit.editDirty && (
-                  <>
-                    <button
-                      onClick={edit.saveAllEdits}
-                      disabled={edit.editSaving}
-                      title="Sauvegarder"
-                      className="px-2 h-7 rounded-lg text-[10px] font-bold cursor-pointer flex items-center gap-1 transition-all hover:brightness-110 disabled:opacity-50"
-                      style={{ background: "var(--accent)", color: "#fff" }}
-                    >
-                      {edit.editSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                      SAVE
-                    </button>
-                    <button
-                      onClick={edit.cancelEdits}
-                      title="Annuler"
-                      aria-label="Annuler"
-                      className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
-                      style={{ color: "var(--w3)" }}
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </>
-                )}
-                <button
-                  onClick={() => edit.setPreviewMode(true)}
-                  title="Mode visiteur (preview)"
-                  aria-label="Mode visiteur (preview)"
-                  className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
-                  style={{ color: "var(--w3)" }}
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            }
-          />
-        ) : (
-          <HeaderBar
-            model={model} displayModel={displayModel} isModelLoggedIn={isModelLoggedIn}
-            isModelLoggedInActual={isModelLoggedInActual}
-            visitorRegistered={visitorRegistered} visitorPlatform={visitorPlatform} visitorHandle={visitorHandle} visitorVerified={visitorVerified}
-            unlockedTier={unlockedTier} activeCode={activeCode}
-            chatOpen={chatOpen} setChatOpen={setChatOpen} chatUnread={chatUnread}
-            newNotifications={newNotifications} orderHistoryOpen={orderHistoryOpen} setOrderHistoryOpen={setOrderHistoryOpen} clearNotifications={clearNotifications}
-            codeSheetOpen={codeSheetOpen} setCodeSheetOpen={setCodeSheetOpen}
-            handleCodeValidation={handleCodeValidation} modelId={modelId} slug={slug}
-            galleryTier={galleryTier} setGalleryTier={setGalleryTier}
-            onReopenGate={() => setGateDismissed(false)}
-            onAdminLogin={() => setShowAdminModal(true)}
-            editDirty={edit.editDirty}
-            editSaving={edit.editSaving}
-            previewMode={edit.previewMode}
-            setPreviewMode={edit.setPreviewMode}
-            avatarInputRef={edit.avatarInputRef}
-            bannerInputRef={edit.bannerInputRef}
-            handleAvatarUpload={edit.handleAvatarUpload}
-            handleBannerUpload={edit.handleBannerUpload}
-            saveAllEdits={edit.saveAllEdits}
-            cancelEdits={edit.cancelEdits}
-          />
-        )}
+            NB 2026-04-25 (rappel direct) : "le profil connecté ou non par la modele
+            au cp doit afficher EXACTEMENT la même chose en version modèle comme
+            version client". Le HeaderBar visiteur est toujours rendu intégralement
+            (message, code, login, tier, beacon...). Les boutons admin (Camera,
+            Image, Save, Cancel, Eye preview) sont ajoutés DANS le même HeaderBar
+            via les props BRIEF-17, pas dans un header séparé. Aucune info sacrifiée
+            pour la modèle connectée. */}
+        <HeaderBar
+          model={model} displayModel={displayModel} isModelLoggedIn={isModelLoggedIn}
+          isModelLoggedInActual={isModelLoggedInActual}
+          visitorRegistered={visitorRegistered} visitorPlatform={visitorPlatform} visitorHandle={visitorHandle} visitorVerified={visitorVerified}
+          unlockedTier={unlockedTier} activeCode={activeCode}
+          chatOpen={chatOpen} setChatOpen={setChatOpen} chatUnread={chatUnread}
+          newNotifications={newNotifications} orderHistoryOpen={orderHistoryOpen} setOrderHistoryOpen={setOrderHistoryOpen} clearNotifications={clearNotifications}
+          codeSheetOpen={codeSheetOpen} setCodeSheetOpen={setCodeSheetOpen}
+          handleCodeValidation={handleCodeValidation} modelId={modelId} slug={slug}
+          galleryTier={galleryTier} setGalleryTier={setGalleryTier}
+          onReopenGate={() => setGateDismissed(false)}
+          onAdminLogin={() => setShowAdminModal(true)}
+          editDirty={edit.editDirty}
+          editSaving={edit.editSaving}
+          previewMode={edit.previewMode}
+          setPreviewMode={edit.setPreviewMode}
+          avatarInputRef={edit.avatarInputRef}
+          bannerInputRef={edit.bannerInputRef}
+          handleAvatarUpload={edit.handleAvatarUpload}
+          handleBannerUpload={edit.handleBannerUpload}
+          saveAllEdits={edit.saveAllEdits}
+          cancelEdits={edit.cancelEdits}
+        />
 
         {/* ═══ HERO SECTION ═══ */}
         <HeroSection
@@ -1075,8 +1005,7 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, isModelLoggedInActual
             </>
           )}
           <ThemeToggle size="sm" />
-          {/* Login button: for anonymous visitors, re-open the identity gate.
-              Resolves P0-10: Access admin / Login toujours visible sur /m/{slug}. */}
+          {/* Login / Upgrade — visiteur anonyme uniquement */}
           {!visitorRegistered && !isModelLoggedIn && onReopenGate && (
             <button
               onClick={onReopenGate}
@@ -1091,8 +1020,7 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, isModelLoggedInActual
               Upgrade
             </button>
           )}
-          {/* Admin access: small shield icon, always visible for non-admin users.
-              Opens the AdminAuthModal — dedicated path for yumi/paloma/ruby/root. */}
+          {/* Admin access: shield icon, visible pour non-admin */}
           {!isModelLoggedIn && onAdminLogin && (
             <button
               type="button"
@@ -1107,6 +1035,36 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, isModelLoggedInActual
               }}
             >
               <Shield className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {/* NB 2026-04-25 : Logout admin à la MÊME position visuelle que Upgrade.
+              Le profil affiche tout ce que voit le visiteur — admin ne sacrifie aucune
+              info. Le bouton change juste de label/action selon l'état de connexion. */}
+          {isModelLoggedInActual && (
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window === "undefined") return;
+                try {
+                  localStorage.removeItem("heaven_auth");
+                  sessionStorage.removeItem("heaven_auth");
+                  window.dispatchEvent(new Event("heaven:auth-changed"));
+                  window.location.href = "/agence";
+                } catch {
+                  window.location.href = "/agence";
+                }
+              }}
+              title="Déconnexion"
+              aria-label="Déconnexion"
+              className="px-3 py-1.5 rounded-xl text-[11px] font-semibold uppercase tracking-wider cursor-pointer transition-all hover:brightness-110 active:scale-95 shrink-0 flex items-center gap-1.5"
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                color: "var(--text-muted)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              <LogOut className="w-3 h-3" />
+              <span className="hidden sm:inline">Logout</span>
             </button>
           )}
         </div>
@@ -1211,21 +1169,23 @@ function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierVie
               <div className="flex items-center gap-3 sm:gap-4">
               <h1 className="profile-stagger-2 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light uppercase truncate"
                 style={{ color: "#fff", letterSpacing: "0.12em", textShadow: "0 2px 20px rgba(0,0,0,0.5)" }}>{displayModel?.display_name}</h1>
-              {!isModelLoggedIn && (
-                <button onClick={() => setChatOpen(!chatOpen)}
-                  className="relative shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
-                  style={{
-                    background: "linear-gradient(135deg, var(--rose), var(--accent))", border: "none",
-                    boxShadow: chatUnread > 0 ? "0 0 8px rgba(230,51,41,0.5), 0 0 16px rgba(16,185,129,0.3)" : "0 2px 8px rgba(230,51,41,0.3)",
-                    animation: chatUnread > 0 ? "chatBubbleGlow 1.5s ease-in-out infinite" : "none",
-                  }}>
-                  <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                  {chatUnread > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[20px] h-[20px] rounded-full text-[10px] font-bold flex items-center justify-center"
-                      style={{ background: "#10B981", color: "#fff", boxShadow: "0 0 6px rgba(16,185,129,0.6)" }}>{chatUnread}</span>
-                  )}
-                </button>
-              )}
+              {/* NB 2026-04-25 : bouton chat TOUJOURS visible (admin + visiteur).
+                  Admin voit la même UI pour preview en temps réel — la modèle ne va
+                  pas s'envoyer de message à elle-même mais le bouton reste visible
+                  pour que l'aperçu soit fidèle à ce que voit le client. */}
+              <button onClick={() => setChatOpen(!chatOpen)}
+                className="relative shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
+                style={{
+                  background: "linear-gradient(135deg, var(--rose), var(--accent))", border: "none",
+                  boxShadow: chatUnread > 0 ? "0 0 8px rgba(230,51,41,0.5), 0 0 16px rgba(16,185,129,0.3)" : "0 2px 8px rgba(230,51,41,0.3)",
+                  animation: chatUnread > 0 ? "chatBubbleGlow 1.5s ease-in-out infinite" : "none",
+                }}>
+                <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                {chatUnread > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[20px] h-[20px] rounded-full text-[10px] font-bold flex items-center justify-center"
+                    style={{ background: "#10B981", color: "#fff", boxShadow: "0 0 6px rgba(16,185,129,0.6)" }}>{chatUnread}</span>
+                )}
+              </button>
             </div>
               {displayModel?.bio && <p className="profile-stagger-3 text-sm sm:text-base mt-2 sm:mt-3 line-clamp-2 leading-relaxed max-w-lg" style={{ color: "rgba(255,255,255,0.7)" }}>{displayModel.bio}</p>}
               {displayModel?.status_text && !isEditMode && <p className="text-sm sm:text-base mt-2 max-w-md" style={{ color: "rgba(255,255,255,0.8)", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>{displayModel.status_text}</p>}
