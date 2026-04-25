@@ -7,7 +7,7 @@ import {
   Coins, Camera, X, Check,
   Instagram, Ghost, Key, Sparkles, AlertTriangle, Eye, Trash2,
   Edit3, Plus, ToggleLeft, ToggleRight, RotateCcw, Save, Shield,
-  Image as ImageIcon, Loader2, UserCog, LogOut, ChevronUp, ChevronDown,
+  Image as ImageIcon, Loader2, UserCog, LogOut, ChevronUp, ChevronDown, EyeOff,
 } from "lucide-react";
 import { toModelId } from "@/lib/model-utils";
 import { normalizeTier, tierIncludes } from "@/lib/tier-utils";
@@ -562,12 +562,11 @@ export default function ModelPage() {
                   de travail). Pour l'instant, l'admin doit utiliser /agence/contenu
                   (legacy) pour gérer prix/photos/features. */}
               {/* BRIEF-23 — PostComposer admin DANS le feed (in-context publishing).
-                  Visible uniquement admin connectée, hors mode preview. Position
-                  corrigée 2026-04-25 evening (NB feedback : était au-dessus du cover). */}
+                  NB 2026-04-25 evening : PostComposer aligné avec les posts du feed
+                  (pas de wrapper max-w-6xl séparé). Le PostComposer interne a déjà
+                  son max-w-2xl pour matcher la largeur des posts. */}
               {isModelLoggedInActual && !edit.previewMode && (
-                <div className="max-w-6xl mx-auto px-3 sm:px-5 md:px-8 lg:px-12 pt-4">
-                  <PostComposer canPost={true} slug={slug} />
-                </div>
+                <PostComposer canPost={true} slug={slug} />
               )}
               <FeedView
                 model={model} displayModel={displayModel} posts={posts} uploads={uploads} wallPosts={wallPosts}
@@ -1552,7 +1551,10 @@ function FeedView({ model, displayModel, posts, uploads, wallPosts, wallContent,
     };
   }, [slug, modelId, clientId]);
 
-  const useUnified = (feedItems?.length || 0) > 0;
+  // NB 2026-04-25 evening : forcer legacyItems qui contient TOUTES les sources
+  // (wall + posts + uploads). unifiedItems (feedItems API) n'inclut pas les uploads
+  // manuels — donc le feed paraissait vide pour les modèles n'ayant que des uploads.
+  const useUnified = false;
 
   const quickPost = async (content: string) => {
     const pseudo = visitorHandle || "Anonyme";
@@ -1936,33 +1938,29 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
             </div>
           </button>
           {packEditOpen && (
-          <div className="p-5 sm:p-6 pt-0 border-t" style={{ borderColor: "var(--border)" }}>
-          <div className="flex items-center justify-between mb-4 pt-4">
-            <div className="flex items-center gap-2"><Edit3 className="w-4 h-4" style={{ color: tierHex }} /><span className="text-sm font-bold" style={{ color: tierHex }}>Détails</span></div>
+          <div className="p-3 sm:p-4 pt-0 border-t space-y-2" style={{ borderColor: "var(--border)" }}>
+          {/* NB 2026-04-25 evening : compacté — retrait redondance "Détails", grid 3 cols, padding réduit */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
+            <div><label className="text-[9px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Nom</label>
+              <input value={pack.name} onChange={e => edit.handleUpdatePack(pack.id, { name: e.target.value })} className="w-full px-2 py-1.5 rounded-lg text-xs font-medium outline-none" style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", minHeight: 36 }} /></div>
+            <div><label className="text-[9px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Prix €</label>
+              <input type="number" value={pack.price} onChange={e => edit.handleUpdatePack(pack.id, { price: Number(e.target.value) })} className="w-full px-2 py-1.5 rounded-lg text-xs font-bold outline-none" style={{ background: "var(--bg2)", color: tierHex, border: "1px solid var(--border)", minHeight: 36 }} /></div>
+            <div><label className="text-[9px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Badge</label>
+              <input value={pack.badge || ""} onChange={e => edit.handleUpdatePack(pack.id, { badge: e.target.value || null })} placeholder="VIP, ★..." className="w-full px-2 py-1.5 rounded-lg text-xs outline-none" style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", minHeight: 36 }} /></div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <div><label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={{ color: "var(--text-muted)" }}>Nom du pack</label>
-              <input value={pack.name} onChange={e => edit.handleUpdatePack(pack.id, { name: e.target.value })} className="w-full px-3 py-2.5 rounded-xl text-sm font-medium outline-none" style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)" }} /></div>
-            <div><label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={{ color: "var(--text-muted)" }}>Prix (€)</label>
-              <input type="number" value={pack.price} onChange={e => edit.handleUpdatePack(pack.id, { price: Number(e.target.value) })} className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none" style={{ background: "var(--bg2)", color: tierHex, border: "1px solid var(--border)" }} /></div>
-          </div>
-          <div className="mb-4"><label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={{ color: "var(--text-muted)" }}>Badge (optionnel)</label>
-            <input value={pack.badge || ""} onChange={e => edit.handleUpdatePack(pack.id, { badge: e.target.value || null })} placeholder="ex: Populaire, Nouveau..." className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)" }} /></div>
-          {/* NB 2026-04-25 evening : photo d'aperçu pack (cover image affichée
-              à côté des détails locked tier). URL ou upload Cloudinary. */}
-          <div className="mb-4"><label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={{ color: "var(--text-muted)" }}>Photo d&apos;aperçu</label>
+          {/* Photo d'aperçu : preview thumbnail + toggle flouté/déflouté côté visiteur */}
+          <div className="space-y-2">
+            <label className="text-[9px] font-bold uppercase tracking-wider block" style={{ color: "var(--text-muted)" }}>Photo aperçu (vue locked)</label>
             <div className="flex items-center gap-2">
-              {(pack as { cover_url?: string }).cover_url && (
-                <img src={(pack as { cover_url?: string }).cover_url} alt="Cover" className="w-14 h-14 rounded-lg object-cover shrink-0" style={{ border: `1px solid ${tierHex}40` }} />
-              )}
-              <input
-                type="text"
-                value={(pack as { cover_url?: string }).cover_url || ""}
-                onChange={e => edit.handleUpdatePack(pack.id, { cover_url: e.target.value } as Partial<PackConfig>)}
-                placeholder="URL Cloudinary ou upload via les boutons ci-dessous"
-                className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none"
-                style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)" }}
-              />
+              <label htmlFor={`pack-cover-${pack.id}`} className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden shrink-0 cursor-pointer" style={{ border: `1px dashed ${tierHex}40`, background: "var(--bg2)" }}>
+                {(pack as { cover_url?: string }).cover_url ? (
+                  <img src={(pack as { cover_url?: string }).cover_url} alt="Cover" className="w-full h-full object-cover" style={{ filter: (pack as { cover_blurred?: boolean }).cover_blurred !== false ? "blur(4px) brightness(0.7)" : "none" }} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Camera className="w-4 h-4" style={{ color: tierHex }} />
+                  </div>
+                )}
+              </label>
               <input
                 type="file"
                 accept="image/*"
@@ -1986,9 +1984,24 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
                   reader.readAsDataURL(file);
                 }}
               />
-              <label htmlFor={`pack-cover-${pack.id}`} className="px-3 py-2.5 rounded-xl text-[11px] font-bold cursor-pointer transition-all hover:brightness-110 shrink-0" style={{ background: `${tierHex}15`, color: tierHex, border: `1px solid ${tierHex}30`, minHeight: 44 }}>
-                Upload
-              </label>
+              <input
+                type="text"
+                value={(pack as { cover_url?: string }).cover_url || ""}
+                onChange={e => edit.handleUpdatePack(pack.id, { cover_url: e.target.value } as Partial<PackConfig>)}
+                placeholder="URL Cloudinary ou upload"
+                className="flex-1 px-2 py-1.5 rounded-lg text-[11px] font-mono outline-none"
+                style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", minHeight: 36 }}
+              />
+              <button
+                type="button"
+                onClick={() => edit.handleUpdatePack(pack.id, { cover_blurred: !((pack as { cover_blurred?: boolean }).cover_blurred !== false) } as Partial<PackConfig>)}
+                title={(pack as { cover_blurred?: boolean }).cover_blurred !== false ? "Cover floutée — cliquer pour défloutée" : "Cover claire — cliquer pour floutée"}
+                aria-label="Toggle flou cover"
+                className="w-9 h-9 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06] shrink-0"
+                style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}
+              >
+                {(pack as { cover_blurred?: boolean }).cover_blurred !== false ? <EyeOff className="w-3.5 h-3.5" style={{ color: tierHex }} /> : <Eye className="w-3.5 h-3.5" style={{ color: tierHex }} />}
+              </button>
             </div>
           </div>
           <div><label className="text-[10px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--text-muted)" }}>Avantages inclus</label>

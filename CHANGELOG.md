@@ -1,5 +1,58 @@
 # Heaven — Changelog
 
+## [v1.6.6] — 2026-04-25 evening — Batch 6 fixes profil (UX iteration)
+
+### Fixes UX
+
+NB feedback : "la page est entièrement cassée avec des incohérences partout..."
+6 bugs adressés en mode chef de projet strict (CADRAGE → AUDIT → EXEC → DEBUG → DOC SYNC).
+
+**Bug #1 — Pack editor compacté** (`src/app/m/[slug]/page.tsx` TierView)
+- Padding `p-5 sm:p-6` → `p-3 sm:p-4`
+- Grid 3 colonnes (Nom / Prix / Badge) au lieu de stacks séparés
+- Retrait du sous-titre "Détails" redondant
+- Inputs `text-xs` au lieu de `text-sm`, `minHeight: 36`
+
+**Bug #2 — Photo aperçu pack : thumbnail + toggle flouté/déflouté**
+- Preview cliquable (12×12 / 14×14 sm) avec image floutée par défaut
+- Nouveau toggle `EyeOff/Eye` : permet de basculer cover floutée vs déflouée côté visiteur (vue locked)
+- Champ `cover_blurred` (default `true`) géré dans le pack config (cast inline)
+- Upload Cloudinary direct depuis le thumbnail (label cliquable wrappant `<input type="file">`)
+
+**Bug #3 — Photos pack zoom** : déjà en place (lightbox onClick L2095-2096), aucune modif
+
+**Bug #4 — Feed render fix** (`FeedView`)
+- Forcé `useUnified = false` car `feedItems` API n'incluait pas les uploads manuels
+- Le feed utilise maintenant `legacyItems` (wallPosts + visitorPosts + modelPosts + uploadsAsFeed)
+- Résout le bug "feed vide" pour les modèles n'ayant que des uploads
+
+**Bug #5 — PostComposer alignement**
+- Retrait du wrapper externe `<div className="max-w-6xl mx-auto px-3 sm:px-5...">`
+- Le `PostComposer` interne porte déjà son `max-w-2xl` qui matche la largeur des posts du feed
+
+**Bug #6 — Page Custom (ShopTab) compactée** (`src/web/components/profile/shop-tab.tsx`)
+- Paddings `p-5` → `p-3 sm:p-4` (4 cards) — gain ~80px vertical
+- Gaps `mb-5/gap-5` → `mb-3/gap-3`
+- Toggle Photo/Vidéo : flex-row au lieu de flex-col (compact)
+- Quantité : icones 9×9 au lieu de 10×10, font-black `text-3xl` → `text-xl`
+- Textarea : `rows={3}` → `rows={2}`, `text-sm` → `text-xs`
+- Bouton Add to cart : `py-4` → `py-3` (touch target 44 préservé)
+- Panier : padding `px-5 py-5` → `px-3 sm:px-4 py-3`, fonts compactés
+
+### Validation
+
+- `tsc --noEmit` exit 0
+- Aperçu présenté à NB AVANT push (règle protocole)
+
+### Process protocole strict appliqué
+
+CADRAGE (6 bugs identifiés via screenshot prod) → AUDIT (page.tsx + shop-tab.tsx + post-composer + edit hook) → PLAN (priorité Bug #4 feed = bloquant produit) → EXEC chirurgical → DEBUG (tsc + lint + visuel) → DOC SYNC immédiat → DEPLOY
+
+### Commits clés
+- *(à venir)* — `fix(profil): batch 6 bugs UX (pack editor / cover blur toggle / feed legacy / shop compact)`
+
+---
+
 ## [v1.6.5] — 2026-04-25 evening — Header refacto 3 zones (NB feedback)
 
 ### Refacto

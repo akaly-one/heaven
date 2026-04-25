@@ -130,7 +130,7 @@ export function ShopTab({
 
       {/* ── Delivery indicator ── */}
       {visitorHandle && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl mb-5" style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl mb-3" style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}>
           <Send className="w-3.5 h-3.5" style={{ color: deliveryPlatform === "snapchat" ? "#FFFC00" : "#E4405F" }} />
           <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
             Envoyé via <strong style={{ color: deliveryPlatform === "snapchat" ? "#FFFC00" : "#E4405F" }}>
@@ -141,25 +141,26 @@ export function ShopTab({
       )}
 
       {/* ── 2-column desktop: builder left + cart right ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 lg:gap-6">
+      {/* NB 2026-04-25 evening : compacté — paddings p-5→p-3 sm:p-4, gaps mb-5→mb-3, textarea rows 3→2 */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 lg:gap-4">
 
         {/* ══════ LEFT — Configurateur (3 cols) ══════ */}
-        <div className="lg:col-span-3 space-y-5">
+        <div className="lg:col-span-3 space-y-3">
 
           {/* ── FIRE BAR — Tier slider ── */}
-          <div className="rounded-2xl p-5 relative overflow-hidden" style={{ background: "var(--surface)", border: `1.5px solid ${tierBg(15)}` }}>
+          <div className="rounded-2xl p-3 sm:p-4 relative overflow-hidden" style={{ background: "var(--surface)", border: `1.5px solid ${tierBg(15)}` }}>
             <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${tierVar}, transparent)` }} />
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl" style={{ color: tierVar }}>{tierSymbol}</span>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl" style={{ color: tierVar }}>{tierSymbol}</span>
                 <div>
-                  <span className="text-base font-black block" style={{ color: tierVar }}>{TIER_META[selTier]?.label}</span>
-                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  <span className="text-sm font-black block" style={{ color: tierVar }}>{TIER_META[selTier]?.label}</span>
+                  <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                     {pricing.photo}€/photo · {pricing.videoPerMin}€/min vidéo
                   </span>
                 </div>
               </div>
-              <Flame className="w-6 h-6" style={{ color: tierVar, opacity: 0.6 + (tierIdx * 0.13) }} />
+              <Flame className="w-5 h-5" style={{ color: tierVar, opacity: 0.6 + (tierIdx * 0.13) }} />
             </div>
             {/* Slider + labels — same px-[10px] so thumb center aligns with label center */}
             <div className="relative px-[10px]">
@@ -183,96 +184,98 @@ export function ShopTab({
             </div>
           </div>
 
-          {/* ── TYPE + QUANTITY ── */}
-          <div className="rounded-2xl p-5" style={{ background: "var(--surface)", border: `1px solid ${tierBg(12)}` }}>
-            {/* Photo / Video toggle */}
-            <div className="grid grid-cols-2 gap-3 mb-5">
+          {/* ── TYPE + QUANTITY (fusion : type + qty + description + bouton dans un seul card) ── */}
+          <div className="rounded-2xl p-3 sm:p-4" style={{ background: "var(--surface)", border: `1px solid ${tierBg(12)}` }}>
+            {/* Photo / Video toggle compact */}
+            <div className="grid grid-cols-2 gap-2 mb-3">
               <button onClick={() => setSelType("photo")}
-                className="py-4 rounded-xl cursor-pointer transition-all flex flex-col items-center gap-2"
+                className="py-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2"
                 style={{
                   background: selType === "photo" ? tierBg(10) : "var(--bg2)",
                   border: `1.5px solid ${selType === "photo" ? tierVar : "var(--border)"}`,
                   color: selType === "photo" ? tierVar : "var(--text-muted)",
+                  minHeight: 44,
                 }}>
-                <Camera className="w-6 h-6" />
+                <Camera className="w-4 h-4" />
                 <span className="text-sm font-bold">Photo</span>
-                <span className="text-xs opacity-70">{pricing.photo}€ / photo</span>
+                <span className="text-[10px] opacity-70">{pricing.photo}€</span>
               </button>
               <button onClick={() => setSelType("video")}
-                className="py-4 rounded-xl cursor-pointer transition-all flex flex-col items-center gap-2"
+                className="py-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2"
                 style={{
                   background: selType === "video" ? tierBg(10) : "var(--bg2)",
                   border: `1.5px solid ${selType === "video" ? tierVar : "var(--border)"}`,
                   color: selType === "video" ? tierVar : "var(--text-muted)",
+                  minHeight: 44,
                 }}>
-                <Play className="w-6 h-6" />
+                <Play className="w-4 h-4" />
                 <span className="text-sm font-bold">Vidéo</span>
-                <span className="text-xs opacity-70">{pricing.videoPerMin}€ / min</span>
+                <span className="text-[10px] opacity-70">{pricing.videoPerMin}€/min</span>
               </button>
             </div>
 
-            {/* Quantity */}
+            {/* Quantity / Durée compact */}
             {selType === "photo" ? (
-              <div className="flex items-center justify-between mb-5">
-                <span className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Quantité</span>
-                <div className="flex items-center gap-4">
+              <div className="flex items-center justify-between mb-3 px-1">
+                <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>Qté</span>
+                <div className="flex items-center gap-2">
                   <button onClick={() => setPhotoQty(Math.max(1, photoQty - 1))}
-                    className="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
+                    className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
                     style={{ background: tierBg(8), border: `1px solid ${tierBg(20)}`, color: tierVar }}>
-                    <Minus className="w-4 h-4" />
+                    <Minus className="w-3.5 h-3.5" />
                   </button>
-                  <span className="text-3xl font-black tabular-nums w-12 text-center" style={{ color: tierVar }}>{photoQty}</span>
+                  <span className="text-xl font-black tabular-nums w-9 text-center" style={{ color: tierVar }}>{photoQty}</span>
                   <button onClick={() => setPhotoQty(photoQty + 1)}
-                    className="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
+                    className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
                     style={{ background: tierBg(8), border: `1px solid ${tierBg(20)}`, color: tierVar }}>
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                <span className="text-xl font-black tabular-nums" style={{ color: tierVar }}>{currentPrice}€</span>
+                <span className="text-base font-black tabular-nums" style={{ color: tierVar }}>{currentPrice}€</span>
               </div>
             ) : (
-              <div className="mb-5">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Durée</span>
-                  <span className="text-xl font-black tabular-nums" style={{ color: tierVar }}>{videoMin} min — {currentPrice}€</span>
+              <div className="mb-3 px-1">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>Durée</span>
+                  <span className="text-base font-black tabular-nums" style={{ color: tierVar }}>{videoMin} min — {currentPrice}€</span>
                 </div>
                 <input type="range" min={1} max={10} value={videoMin}
                   onChange={e => setVideoMin(Number(e.target.value))}
-                  className="w-full h-2.5 rounded-full appearance-none cursor-pointer"
+                  className="w-full h-2 rounded-full appearance-none cursor-pointer"
                   style={{ background: `linear-gradient(to right, ${tierVar} ${(videoMin / 10) * 100}%, var(--border) ${(videoMin / 10) * 100}%)` }} />
-                <div className="flex justify-between text-[10px] mt-1.5" style={{ color: "var(--text-muted)" }}>
+                <div className="flex justify-between text-[9px] mt-1" style={{ color: "var(--text-muted)" }}>
                   <span>1 min</span><span>5 min</span><span>10 min</span>
                 </div>
               </div>
             )}
 
-            {/* Description */}
-            <div className="mb-5">
-              <div className="flex items-center gap-1.5 mb-2">
-                <MessageSquare className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
-                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Décris ce que tu veux</span>
+            {/* Description compact */}
+            <div className="mb-3">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <MessageSquare className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Décris ce que tu veux</span>
               </div>
               <textarea
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                placeholder="Ex: photo en lingerie rouge, pose allongée..."
-                rows={3}
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none transition-all focus:ring-1"
+                placeholder="Ex: lingerie rouge, pose allongée..."
+                rows={2}
+                className="w-full px-3 py-2 rounded-xl text-xs outline-none resize-none transition-all focus:ring-1"
                 style={{
                   background: "var(--bg2)",
                   color: "var(--text)",
                   border: "1px solid var(--border)",
                   "--tw-ring-color": tierVar,
                 } as React.CSSProperties} />
-              <p className="text-[10px] mt-1.5" style={{ color: "var(--text-muted)" }}>
-                ⚠️ Contenu sexy et explicite uniquement — la modèle valide chaque demande
+              <p className="text-[9px] mt-1" style={{ color: "var(--text-muted)" }}>
+                ⚠️ Contenu sexy/explicite uniquement — validation modèle
               </p>
             </div>
 
             {/* Add to cart */}
             <button onClick={addToCart}
-              className="w-full py-4 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2"
-              style={{ background: tierVar, color: "#fff", border: "none", boxShadow: `0 4px 20px ${tierBg(30)}` }}>
+              className="w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2"
+              style={{ background: tierVar, color: "#fff", border: "none", boxShadow: `0 4px 20px ${tierBg(30)}`, minHeight: 44 }}>
               <ShoppingCart className="w-4 h-4" />
               Ajouter — {currentPrice}€
             </button>
@@ -282,10 +285,10 @@ export function ShopTab({
         {/* ══════ RIGHT — Panier (2 cols) ══════ */}
         <div className="lg:col-span-2">
           <div className="rounded-2xl overflow-hidden lg:sticky lg:top-[100px]" style={{ border: "1px solid var(--border)", background: "var(--surface)" }}>
-            {/* Header */}
-            <div className="flex items-center gap-2 px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+            {/* Header compact */}
+            <div className="flex items-center gap-2 px-3 sm:px-4 py-2.5" style={{ borderBottom: "1px solid var(--border)" }}>
               <ShoppingCart className="w-4 h-4" style={{ color: "var(--accent)" }} />
-              <span className="text-sm font-bold flex-1" style={{ color: "var(--text)" }}>
+              <span className="text-xs sm:text-sm font-bold flex-1" style={{ color: "var(--text)" }}>
                 {cart.length > 0 ? `Ma commande (${cart.length})` : "Mon panier"}
               </span>
               {cart.length > 0 && (
@@ -296,37 +299,37 @@ export function ShopTab({
             </div>
 
             {cart.length === 0 ? (
-              <div className="py-12 text-center">
-                <ShoppingCart className="w-8 h-8 mx-auto mb-2" style={{ color: "var(--text-muted)", opacity: 0.25 }} />
-                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Ton panier est vide</p>
-                <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)", opacity: 0.6 }}>Configure ton contenu et ajoute-le ici</p>
+              <div className="py-6 text-center">
+                <ShoppingCart className="w-7 h-7 mx-auto mb-1.5" style={{ color: "var(--text-muted)", opacity: 0.25 }} />
+                <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>Ton panier est vide</p>
+                <p className="text-[9px] mt-0.5" style={{ color: "var(--text-muted)", opacity: 0.6 }}>Configure ton contenu et ajoute-le ici</p>
               </div>
             ) : (
               <>
-                {/* Items */}
+                {/* Items compact */}
                 <div>
                   {cart.map(item => {
                     const itemVar = `var(--tier-${item.tier})`;
                     const symbol = TIER_META[item.tier]?.symbol || "•";
                     return (
-                      <div key={item.id} className="px-5 py-3.5" style={{ borderBottom: "1px solid var(--border)" }}>
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                      <div key={item.id} className="px-3 sm:px-4 py-2.5" style={{ borderBottom: "1px solid var(--border)" }}>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                             style={{ background: `color-mix(in srgb, var(--tier-${item.tier}) 10%, transparent)` }}>
-                            {item.type === "photo" ? <Camera className="w-4 h-4" style={{ color: itemVar }} /> : <Play className="w-4 h-4" style={{ color: itemVar }} />}
+                            {item.type === "photo" ? <Camera className="w-3.5 h-3.5" style={{ color: itemVar }} /> : <Play className="w-3.5 h-3.5" style={{ color: itemVar }} />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <span className="text-xs font-semibold block" style={{ color: "var(--text)" }}>
+                            <span className="text-[11px] font-semibold block" style={{ color: "var(--text)" }}>
                               {item.qty}x {item.type === "photo" ? "Photo" : `Vidéo ${item.videoMin}min`} {symbol} {TIER_META[item.tier]?.label}
                             </span>
-                            <span className="text-[11px] font-bold" style={{ color: itemVar }}>{item.unitPrice * item.qty}€</span>
+                            <span className="text-[10px] font-bold" style={{ color: itemVar }}>{item.unitPrice * item.qty}€</span>
                           </div>
-                          <button onClick={() => removeFromCart(item.id)} className="cursor-pointer p-1.5 rounded-lg transition-colors hover:bg-red-50" style={{ background: "none", border: "none" }}>
+                          <button onClick={() => removeFromCart(item.id)} className="cursor-pointer p-1 rounded-lg transition-colors hover:bg-red-50" style={{ background: "none", border: "none" }}>
                             <X className="w-3.5 h-3.5" style={{ color: "#EF4444" }} />
                           </button>
                         </div>
                         {item.description && (
-                          <p className="text-[10px] mt-1.5 ml-12 leading-snug" style={{ color: "var(--text-muted)" }}>
+                          <p className="text-[9px] mt-1 ml-11 leading-snug" style={{ color: "var(--text-muted)" }}>
                             📝 {item.description}
                           </p>
                         )}
@@ -335,14 +338,14 @@ export function ShopTab({
                   })}
                 </div>
 
-                {/* Total + Pay */}
-                <div className="px-5 py-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Total</span>
-                    <span className="text-2xl font-black tabular-nums" style={{ color: "var(--accent)" }}>{cartTotal}€</span>
+                {/* Total + Pay compact */}
+                <div className="px-3 sm:px-4 py-3">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>Total</span>
+                    <span className="text-xl font-black tabular-nums" style={{ color: "var(--accent)" }}>{cartTotal}€</span>
                   </div>
                   {visitorHandle && (
-                    <p className="text-[10px] mb-3 flex items-center gap-1.5" style={{ color: "var(--text-muted)" }}>
+                    <p className="text-[10px] mb-2 flex items-center gap-1.5" style={{ color: "var(--text-muted)" }}>
                       <Send className="w-3 h-3" style={{ color: deliveryPlatform === "snapchat" ? "#FFFC00" : "#E4405F" }} />
                       Envoyé via {deliveryPlatform === "snapchat" ? "Snap" : "Insta"} à {visitorHandle}
                     </p>
@@ -355,8 +358,8 @@ export function ShopTab({
                     }).join(", ");
                     createPendingPurchase(modelSlug || "", pseudo, desc, cartTotal, cart.map(c => c.description).filter(Boolean).join(" | "), paypalHandle);
                   }}
-                    className="w-full py-4 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2"
-                    style={{ background: "var(--accent)", color: "#fff", border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>
+                    className="w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2"
+                    style={{ background: "var(--accent)", color: "#fff", border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.15)", minHeight: 44 }}>
                     <ShoppingCart className="w-4 h-4" />
                     Commander — {cartTotal}€
                   </button>
