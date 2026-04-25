@@ -1241,8 +1241,11 @@ function HeroSection({ model, displayModel, posts, uploads, wallPosts, isTierVie
             </div>
               {displayModel?.bio && <p className="profile-stagger-3 text-sm sm:text-base mt-2 sm:mt-3 line-clamp-2 leading-relaxed max-w-lg" style={{ color: "rgba(255,255,255,0.7)" }}>{displayModel.bio}</p>}
               {displayModel?.status_text && !isEditMode && <p className="text-sm sm:text-base mt-2 max-w-md" style={{ color: "rgba(255,255,255,0.8)", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>{displayModel.status_text}</p>}
-              {/* Profile CTAs (B9 + NB 2026-04-24 Fanvue button) — follow IG + DM + Fanvue */}
-              {!isEditMode && !isModelLoggedIn && (instagramHandle || (model as { fanvue_url?: string | null })?.fanvue_url || (model as { fanvue_handle?: string | null })?.fanvue_handle) && (
+              {/* Profile CTAs (B9 + NB 2026-04-24 Fanvue button) — follow IG + DM + Fanvue
+                  NB 2026-04-25 evening : retrait conditions !isEditMode && !isModelLoggedIn
+                  → CTAs TOUJOURS visibles (admin doit voir exactement comme visiteur, pas
+                  de sacrifice d'info quand admin connectée — règle SPRBP). */}
+              {(instagramHandle || (model as { fanvue_url?: string | null })?.fanvue_url || (model as { fanvue_handle?: string | null })?.fanvue_handle) && (
                 <div className="profile-stagger-3 mt-3 sm:mt-4">
                   <ProfileCta
                     handle={instagramHandle}
