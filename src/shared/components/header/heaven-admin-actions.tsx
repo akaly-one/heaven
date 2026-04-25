@@ -3,17 +3,22 @@
 /**
  * HeavenAdminActions — BRIEF-19 (Session 2026-04-25 evening)
  * ──────────────────────────────────────────────────────────
- * Sous-composant 4 boutons icon-only réutilisable dans :
+ * Sous-composant 3 boutons icon-only réutilisable dans :
  * - Header CP global (`src/shared/components/header.tsx`)
  * - HeaderBar profil admin (`src/app/m/[slug]/page.tsx` quand `isModelLoggedInActual`)
  *
- * Cohérence cross-vue (synergie CP↔Profil §13.1 protocole) : les mêmes 4 boutons
+ * Cohérence cross-vue (synergie CP↔Profil §13.1 protocole) : les mêmes 3 boutons
  * apparaissent partout où l'admin a besoin d'agir rapidement.
+ *
+ * NB 2026-04-25 evening : Link2 (header socials dropdown) retiré — redondant car
+ * les CTAs sociaux Suivre IG / DM / Fanvue sont déjà natifs sur le profil via
+ * <ProfileCta> (à côté de la photo profil dans HeroSection). NE PAS confondre :
+ * ce retrait concerne uniquement le bouton Link2 du HEADER, pas les CTAs Hero.
  *
  * Responsive mobile-first : touch targets 44×44 minimum, icônes adaptatives.
  */
 
-import { Eye, Link2, KeyRound, ImagePlus } from "lucide-react";
+import { Eye, KeyRound, ImagePlus } from "lucide-react";
 
 interface HeavenAdminActionsProps {
   /** Slug du modèle actuel (pour le lien Eye → /m/[slug]). */
@@ -49,17 +54,6 @@ export function HeavenAdminActions({
       >
         <Eye className={iconSize} style={{ color: "var(--w3)" }} />
       </a>
-
-      {/* Liens sociaux (toggle SocialsDropdown via event) */}
-      <button
-        type="button"
-        onClick={() => window.dispatchEvent(new CustomEvent("heaven:toggle-socials"))}
-        title="Liens sociaux"
-        aria-label="Liens sociaux"
-        className={`${btnSize} rounded-md transition-all hover:bg-white/[0.06] cursor-pointer border-none bg-transparent`}
-      >
-        <Link2 className={iconSize} style={{ color: "var(--w3)" }} />
-      </button>
 
       {/* Générer code d'accès (ouvre GenerateModal via event existant) */}
       <button

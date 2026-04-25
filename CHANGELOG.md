@@ -1,5 +1,25 @@
 # Heaven — Changelog
 
+## [v1.6.4] — 2026-04-25 evening — Cleanup header : Link2 retiré (CTAs Hero préservés)
+
+### Fix UX
+
+- **Bouton Link2 (liens sociaux dropdown) retiré du header** — `<HeavenAdminActions>`
+  passe de 4 à 3 boutons : `[👁 Eye] [🔑 Key] [🎬 Story]`
+- **CTAs Suivre IG / DM / Fanvue préservés** dans `<ProfileCta>` à côté de la photo
+  profil (HeroSection) — NB confirme qu'ils sont nécessaires côté visiteur
+- Distinction claire : Link2 header (obsolète) ≠ ProfileCta Hero (essentiel)
+
+### Validation
+- `tsc --noEmit` exit 0
+- Verify visuel preview : header allégé (3 boutons), Hero CTAs intacts
+- Aperçu présenté à NB avant push
+
+### Commits clés
+- *(à venir)* — `feat(header): retrait bouton Link2 obsolète`
+
+---
+
 ## [v1.6.3] — 2026-04-25 evening — Header profil : pseudo en premier (NB feedback)
 
 > Mode chef de projet protocole strict appliqué : CADRAGE → AUDIT → PLAN → EXEC → DEBUG → DOC SYNC → DEPLOY.
