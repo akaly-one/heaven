@@ -1008,6 +1008,7 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, isModelLoggedInActual
                 modelSlug={slug}
                 onStoryClick={onStoryClick}
                 compact={true}
+                hideViewProfile={true}
               />
               <div className="flex items-center gap-1">
                 {/* NB 2026-04-25 late : boutons Camera (photo profil) + ImageIcon (banner) du header

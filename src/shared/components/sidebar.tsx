@@ -35,17 +35,17 @@ const NAV_ROOT = [
   { id: "ops", label: "Ops", icon: Activity, href: "/agence/ops", color: "#06B6D4", rootOnly: true },
 ] as const;
 
-// Mobile bottom nav — alignée avec desktop.
+// Mobile bottom nav — NB 2026-04-25 late : 4 items only (app-like UX).
+// Dash / Messages / Insta / Paramètres. Pas de Contenu (fusionné dans /m/[slug]
+// admin overlay BRIEF-22+23) ni Stratégie (déplacée en tab desktop seulement).
 const MOBILE_NAV_MAIN = [
-  { id: "dashboard", label: "Home", icon: LayoutDashboard, href: "/agence" },
+  { id: "dashboard", label: "Dash", icon: LayoutDashboard, href: "/agence" },
   { id: "messagerie", label: "Messages", icon: MessageCircle, href: "/agence/messagerie" },
   { id: "instagram", label: "Insta", icon: Instagram, href: "/agence/instagram" },
-  { id: "contenu", label: "Contenu", icon: Images, href: "/agence/contenu" },
-  { id: "strategie", label: "Stratégie", icon: Target, href: "/agence/strategie" },
   { id: "settings", label: "Paramètres", icon: Settings, href: "/agence/settings" },
 ] as const;
 
-// Mobile root-only : Ops uniquement.
+// Mobile root-only : Ops uniquement (admin Heaven uniquement).
 const MOBILE_NAV_ROOT = [
   { id: "ops", label: "Ops", icon: Activity, href: "/agence/ops" },
 ] as const;
@@ -247,13 +247,13 @@ export function Sidebar() {
           style={{ background: "rgba(0,0,0,0.04)" }} />
       )}
 
-      {/* Mobile bottom nav — scroll horizontal pour accommoder 6-8 items sans déformation */}
+      {/* Mobile bottom nav — NB 2026-04-25 late : 4 items, plus grands (app-like UX).
+          Items distribués à parts égales (flex-1) au lieu de min-width fixe.
+          Touch target ≥ 56×56 (style iOS/Android tab bar). Logout déplacé dans
+          settings page (plus dans bottom-nav). Root Ops accessible via desktop only. */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden safe-area-bottom"
         style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
-        <div
-          className="flex items-center gap-0.5 py-1.5 overflow-x-auto scroll-smooth snap-x snap-mandatory px-2"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-        >
+        <div className="flex items-stretch px-1 pt-1.5 pb-2">
           {MOBILE_NAV_MAIN.map((item) => {
             const isDashboard = item.href === "/agence";
             const active = isDashboard
@@ -261,40 +261,17 @@ export function Sidebar() {
               : pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <a key={item.id} href={item.href}
-                className="flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg no-underline transition-colors flex-shrink-0 snap-start"
+                className="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl no-underline transition-all"
                 style={{
                   color: active ? "var(--accent)" : "var(--text-muted)",
-                  background: active ? "rgba(230,51,41,0.08)" : "transparent",
-                  minWidth: 58,
+                  background: active ? "rgba(230,51,41,0.10)" : "transparent",
+                  minHeight: 56,
                 }}>
-                <item.icon className="w-5 h-5" />
-                <span className="text-[10px] font-semibold leading-none whitespace-nowrap">{item.label}</span>
+                <item.icon className={`transition-transform ${active ? "scale-110" : ""}`} style={{ width: 24, height: 24 }} />
+                <span className="text-[11px] font-semibold leading-none whitespace-nowrap">{item.label}</span>
               </a>
             );
           })}
-          {/* Root tools inline */}
-          {isRoot && MOBILE_NAV_ROOT.map((item) => {
-            const active = pathname === item.href || pathname.startsWith(item.href + "/");
-            return (
-              <a key={item.id} href={item.href}
-                className="flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg no-underline transition-colors flex-shrink-0 snap-start"
-                style={{
-                  color: active ? "var(--accent)" : "var(--text-muted)",
-                  background: active ? "rgba(230,51,41,0.08)" : "transparent",
-                  minWidth: 58,
-                }}>
-                <item.icon className="w-5 h-5" />
-                <span className="text-[10px] font-semibold leading-none whitespace-nowrap">{item.label}</span>
-              </a>
-            );
-          })}
-          {/* Logout */}
-          <button onClick={handleLogout}
-            className="flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg transition-colors cursor-pointer flex-shrink-0 snap-start"
-            style={{ color: "var(--text-muted)", background: "none", border: "none", minWidth: 58 }}>
-            <LogOut className="w-5 h-5" />
-            <span className="text-[10px] font-semibold leading-none whitespace-nowrap">Quitter</span>
-          </button>
         </div>
       </nav>
     </>

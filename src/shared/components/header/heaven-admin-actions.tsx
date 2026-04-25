@@ -29,6 +29,8 @@ interface HeavenAdminActionsProps {
   onStoryClick?: () => void;
   /** Espacement compact pour profil mobile (default true). */
   compact?: boolean;
+  /** Cacher le bouton "Voir profil" quand on est déjà sur le profil (NB feedback : redondant). */
+  hideViewProfile?: boolean;
 }
 
 export function HeavenAdminActions({
@@ -36,6 +38,7 @@ export function HeavenAdminActions({
   onKeyClick,
   onStoryClick,
   compact = true,
+  hideViewProfile = false,
 }: HeavenAdminActionsProps) {
   const gap = compact ? "gap-0.5 sm:gap-1" : "gap-1 sm:gap-1.5";
   const btnSize = "p-2 sm:p-1.5"; // touch target 44×44 mobile, plus compact desktop
@@ -43,17 +46,19 @@ export function HeavenAdminActions({
 
   return (
     <div className={`flex items-center ${gap}`} role="group" aria-label="Actions admin">
-      {/* Voir profil public */}
-      <a
-        href={`/m/${modelSlug.toLowerCase()}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        title="Voir profil public"
-        aria-label="Voir profil public"
-        className={`${btnSize} rounded-md no-underline transition-all hover:bg-white/[0.06]`}
-      >
-        <Eye className={iconSize} style={{ color: "var(--w3)" }} />
-      </a>
+      {/* Voir profil public — caché sur le profil lui-même (NB 2026-04-25 late : redondant) */}
+      {!hideViewProfile && (
+        <a
+          href={`/m/${modelSlug.toLowerCase()}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Voir profil public"
+          aria-label="Voir profil public"
+          className={`${btnSize} rounded-md no-underline transition-all hover:bg-white/[0.06]`}
+        >
+          <Eye className={iconSize} style={{ color: "var(--w3)" }} />
+        </a>
+      )}
 
       {/* Générer code d'accès (ouvre GenerateModal via event existant) */}
       <button
