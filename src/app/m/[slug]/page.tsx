@@ -1922,6 +1922,9 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
   const [dragItem, setDragItem] = useState<{ id: string; sourceTier: string } | null>(null);
   // NB 2026-04-25 evening : éditeur pack repliable (default fermé pour vue propre).
   const [packEditOpen, setPackEditOpen] = useState(false);
+  // NB 2026-04-25 evening : 2 modes accordéon — "info" (read-only display) | "edit" (form fields).
+  // Default "info" pour cohérence avec le CP legacy (l'admin voit d'abord les infos puis clique "Edit").
+  const [packDetailMode, setPackDetailMode] = useState<"info" | "edit">("info");
   const moveUploadTier = async (uploadId: string, newTier: string) => {
     try {
       const res = await fetch("/api/uploads", {
@@ -1970,106 +1973,179 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
               {packEditOpen ? <ChevronUp className="w-4 h-4" style={{ color: "var(--text-muted)" }} /> : <ChevronDown className="w-4 h-4" style={{ color: "var(--text-muted)" }} />}
             </div>
           </button>
-          {packEditOpen && (
-          <div className="p-3 sm:p-4 pt-0 border-t space-y-2" style={{ borderColor: "var(--border)" }}>
-          {/* NB 2026-04-25 evening : compacté — retrait redondance "Détails", grid 3 cols, padding réduit */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
-            <div><label className="text-[9px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Nom</label>
-              <input value={pack.name} onChange={e => edit.handleUpdatePack(pack.id, { name: e.target.value })} className="w-full px-2 py-1.5 rounded-lg text-xs font-medium outline-none" style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", minHeight: 36 }} /></div>
-            <div><label className="text-[9px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Prix €</label>
-              <input type="number" value={pack.price} onChange={e => edit.handleUpdatePack(pack.id, { price: Number(e.target.value) })} className="w-full px-2 py-1.5 rounded-lg text-xs font-bold outline-none" style={{ background: "var(--bg2)", color: tierHex, border: "1px solid var(--border)", minHeight: 36 }} /></div>
-            <div><label className="text-[9px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Badge</label>
-              <input value={pack.badge || ""} onChange={e => edit.handleUpdatePack(pack.id, { badge: e.target.value || null })} placeholder="VIP, ★..." className="w-full px-2 py-1.5 rounded-lg text-xs outline-none" style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", minHeight: 36 }} /></div>
-          </div>
-          {/* Photo d'aperçu : preview thumbnail = ce que voit le visiteur en locked tier
-              NB 2026-04-25 evening : auto-fallback sur dernière upload du pack si pas de cover_url manuel.
-              Le mode edition est le template WYSIWYG du locked tier. */}
-          {(() => {
+          {packEditOpen && (() => {
+            // NB 2026-04-25 evening : layout 2 cols — preview profil (gauche) + info/edit (droite)
+            // Pattern repris du CP legacy : "VUE CLIENT SUR LE PROFIL" + détails
             const tierUploadsLocal = uploads.filter(u => normalizeTier(u.tier) === pack.id && u.dataUrl);
             const lastUpload = tierUploadsLocal.length > 0 ? tierUploadsLocal[tierUploadsLocal.length - 1] : null;
             const manualCover = (pack as { cover_url?: string }).cover_url;
             const effectiveCover = manualCover || lastUpload?.dataUrl || null;
             const isBlurred = (pack as { cover_blurred?: boolean }).cover_blurred !== false;
+            const features = pack.features || [];
             return (
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-bold uppercase tracking-wider block" style={{ color: "var(--text-muted)" }}>
-                  Photo aperçu locked {!manualCover && lastUpload && <span className="font-normal opacity-70">(auto: dernière upload)</span>}
-                </label>
-                <div className="flex items-center gap-2">
-                  <label htmlFor={`pack-cover-${pack.id}`} className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden shrink-0 cursor-pointer" style={{ border: `1px dashed ${tierHex}40`, background: "var(--bg2)" }}>
+              <div className="p-3 sm:p-4 pt-0 border-t" style={{ borderColor: "var(--border)" }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                  {/* ══════ LEFT — VUE CLIENT SUR LE PROFIL (preview WYSIWYG) ══════ */}
+                  <div className="rounded-xl overflow-hidden relative" style={{ background: "var(--bg2)", border: `1px solid ${tierHex}20`, minHeight: 200 }}>
+                    <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider" style={{ background: "rgba(0,0,0,0.6)", color: "#fff", backdropFilter: "blur(4px)" }}>
+                      Vue client sur le profil
+                    </div>
                     {effectiveCover ? (
-                      <img src={effectiveCover} alt="Cover" className="w-full h-full object-cover" style={{ filter: isBlurred ? "blur(4px) brightness(0.7)" : "none" }} />
+                      <div className="w-full h-full relative" style={{ minHeight: 200 }}>
+                        <img src={effectiveCover} alt={pack.name} className="w-full h-full object-cover" style={{ filter: isBlurred ? "blur(14px) brightness(0.4)" : "brightness(0.85)", transform: "scale(1.15)" }} loading="lazy" />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                          <div className="w-12 h-12 rounded-2xl flex items-center justify-center backdrop-blur-sm" style={{ background: `${tierHex}25`, border: `1.5px solid ${tierHex}40` }}>
+                            {isBlurred ? <Lock className="w-5 h-5" style={{ color: "#fff" }} /> : <span className="text-2xl">{tierSymbol}</span>}
+                          </div>
+                          <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>{pack.name}</span>
+                          <span className="text-[10px] font-bold" style={{ color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>{pack.price}€</span>
+                        </div>
+                      </div>
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Camera className="w-4 h-4" style={{ color: tierHex }} />
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-center px-4" style={{ minHeight: 200 }}>
+                        <Camera className="w-7 h-7" style={{ color: tierHex, opacity: 0.5 }} />
+                        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Aucune photo</span>
+                        <span className="text-[9px]" style={{ color: "var(--text-muted)", opacity: 0.6 }}>Upload une photo dans ce pack ou définis une cover URL</span>
                       </div>
                     )}
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    id={`pack-cover-${pack.id}`}
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      if (file.size > 10 * 1024 * 1024) { alert("Image > 10 MB"); return; }
-                      const reader = new FileReader();
-                      reader.onload = async (ev) => {
-                        const dataUrl = ev.target?.result as string;
-                        const res = await fetch("/api/upload", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ data: dataUrl, folder: `heaven/${modelId}/packs/${pack.id}` }),
-                        });
-                        const data = await res.json();
-                        if (data?.url) edit.handleUpdatePack(pack.id, { cover_url: data.url } as Partial<PackConfig>);
-                      };
-                      reader.readAsDataURL(file);
-                    }}
-                  />
-                  <input
-                    type="text"
-                    value={manualCover || ""}
-                    onChange={e => edit.handleUpdatePack(pack.id, { cover_url: e.target.value } as Partial<PackConfig>)}
-                    placeholder={lastUpload ? "Override (URL ou upload)" : "URL ou upload"}
-                    className="flex-1 px-2 py-1.5 rounded-lg text-[11px] font-mono outline-none"
-                    style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", minHeight: 36 }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => edit.handleUpdatePack(pack.id, { cover_blurred: !isBlurred } as Partial<PackConfig>)}
-                    title={isBlurred ? "Cover floutée — cliquer pour défloutée" : "Cover claire — cliquer pour floutée"}
-                    aria-label="Toggle flou cover"
-                    className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06] shrink-0"
-                    style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}
-                  >
-                    {isBlurred ? <EyeOff className="w-3.5 h-3.5" style={{ color: tierHex }} /> : <Eye className="w-3.5 h-3.5" style={{ color: tierHex }} />}
-                  </button>
+                  </div>
+
+                  {/* ══════ RIGHT — INFO ou EDIT ══════ */}
+                  <div className="space-y-2">
+                    {packDetailMode === "info" ? (
+                      <>
+                        {/* Header info */}
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="text-base font-bold" style={{ color: "var(--text)" }}>{pack.name}</h4>
+                              <span className="text-base font-black" style={{ color: tierHex }}>{pack.price}€</span>
+                            </div>
+                            {pack.badge && (
+                              <span className="inline-block px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider" style={{ background: `${tierHex}15`, color: tierHex, border: `1px solid ${tierHex}30` }}>
+                                {pack.badge}
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => setPackDetailMode("edit")}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:scale-[1.02] shrink-0"
+                            style={{ background: `${tierHex}12`, color: tierHex, border: `1px solid ${tierHex}30`, minHeight: 32 }}
+                          >
+                            <Edit3 className="w-3 h-3" /> Edit
+                          </button>
+                        </div>
+
+                        {/* Visibility status */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: pack.active === false ? "var(--text-muted)" : "#10B981" }} />
+                          <span className="text-[10px] font-medium" style={{ color: pack.active === false ? "var(--text-muted)" : "#10B981" }}>
+                            {pack.active === false ? "Désactivé" : "Visible sur profil"}
+                          </span>
+                        </div>
+
+                        {/* Features list (read-only) */}
+                        {features.length > 0 && (
+                          <div className="pt-1.5 border-t" style={{ borderColor: "var(--border)" }}>
+                            <span className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Contenu inclus</span>
+                            <div className="space-y-1">
+                              {features.map((f: string, j: number) => (
+                                <div key={j} className="flex items-center gap-1.5">
+                                  <Check className="w-3 h-3 shrink-0" style={{ color: tierHex }} />
+                                  <span className="text-[11px] leading-snug" style={{ color: "var(--text-secondary)" }}>{f}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {/* EDIT FORM */}
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: tierHex }}>Édition</span>
+                          <button
+                            onClick={() => setPackDetailMode("info")}
+                            className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer transition-all hover:scale-[1.02]"
+                            style={{ background: "var(--bg2)", color: "var(--text-muted)", border: "1px solid var(--border)" }}
+                          >
+                            <Check className="w-3 h-3" /> Terminé
+                          </button>
+                        </div>
+                        {/* Nom / Prix / Badge */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          <div><label className="text-[9px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Nom</label>
+                            <input value={pack.name} onChange={e => edit.handleUpdatePack(pack.id, { name: e.target.value })} className="w-full px-2 py-1.5 rounded-lg text-xs font-medium outline-none" style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", minHeight: 36 }} /></div>
+                          <div><label className="text-[9px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Prix €</label>
+                            <input type="number" value={pack.price} onChange={e => edit.handleUpdatePack(pack.id, { price: Number(e.target.value) })} className="w-full px-2 py-1.5 rounded-lg text-xs font-bold outline-none" style={{ background: "var(--bg2)", color: tierHex, border: "1px solid var(--border)", minHeight: 36 }} /></div>
+                          <div><label className="text-[9px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Badge</label>
+                            <input value={pack.badge || ""} onChange={e => edit.handleUpdatePack(pack.id, { badge: e.target.value || null })} placeholder="VIP, ★..." className="w-full px-2 py-1.5 rounded-lg text-xs outline-none" style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", minHeight: 36 }} /></div>
+                        </div>
+                        {/* Photo aperçu */}
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-bold uppercase tracking-wider block" style={{ color: "var(--text-muted)" }}>
+                            Photo aperçu locked {!manualCover && lastUpload && <span className="font-normal opacity-70">(auto: dernière upload)</span>}
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <label htmlFor={`pack-cover-${pack.id}`} className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden shrink-0 cursor-pointer" style={{ border: `1px dashed ${tierHex}40`, background: "var(--bg2)" }}>
+                              {effectiveCover ? (
+                                <img src={effectiveCover} alt="Cover" className="w-full h-full object-cover" style={{ filter: isBlurred ? "blur(4px) brightness(0.7)" : "none" }} />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center"><Camera className="w-4 h-4" style={{ color: tierHex }} /></div>
+                              )}
+                            </label>
+                            <input type="file" accept="image/*" id={`pack-cover-${pack.id}`} className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                if (file.size > 10 * 1024 * 1024) { alert("Image > 10 MB"); return; }
+                                const reader = new FileReader();
+                                reader.onload = async (ev) => {
+                                  const dataUrl = ev.target?.result as string;
+                                  const res = await fetch("/api/upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: dataUrl, folder: `heaven/${modelId}/packs/${pack.id}` }) });
+                                  const data = await res.json();
+                                  if (data?.url) edit.handleUpdatePack(pack.id, { cover_url: data.url } as Partial<PackConfig>);
+                                };
+                                reader.readAsDataURL(file);
+                              }} />
+                            <input type="text" value={manualCover || ""} onChange={e => edit.handleUpdatePack(pack.id, { cover_url: e.target.value } as Partial<PackConfig>)}
+                              placeholder={lastUpload ? "Override (URL ou upload)" : "URL ou upload"}
+                              className="flex-1 px-2 py-1.5 rounded-lg text-[11px] font-mono outline-none"
+                              style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", minHeight: 36 }} />
+                            <button type="button" onClick={() => edit.handleUpdatePack(pack.id, { cover_blurred: !isBlurred } as Partial<PackConfig>)}
+                              title={isBlurred ? "Cover floutée — cliquer pour défloutée" : "Cover claire — cliquer pour floutée"}
+                              aria-label="Toggle flou cover"
+                              className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06] shrink-0"
+                              style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}>
+                              {isBlurred ? <EyeOff className="w-3.5 h-3.5" style={{ color: tierHex }} /> : <Eye className="w-3.5 h-3.5" style={{ color: tierHex }} />}
+                            </button>
+                          </div>
+                        </div>
+                        {/* Avantages */}
+                        <div>
+                          <label className="text-[9px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Avantages</label>
+                          <div className="space-y-1">
+                            {features.map((f: string, j: number) => (
+                              <div key={j} className="flex items-center gap-1.5">
+                                <Check className="w-3 h-3 shrink-0" style={{ color: tierHex }} />
+                                <input value={f} onChange={e => { const nf = [...features]; nf[j] = e.target.value; edit.handleUpdatePack(pack.id, { features: nf }); }}
+                                  className="flex-1 px-2 py-1 rounded-md text-[11px] outline-none" style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", minHeight: 28 }} />
+                                <button onClick={() => edit.handleUpdatePack(pack.id, { features: features.filter((_: string, k: number) => k !== j) })}
+                                  className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer hover:scale-110 transition-all shrink-0" style={{ background: "rgba(220,38,38,0.08)", color: "var(--danger)" }}><X className="w-2.5 h-2.5" /></button>
+                              </div>
+                            ))}
+                            <button onClick={() => edit.handleUpdatePack(pack.id, { features: [...features, ""] })}
+                              className="w-full flex items-center justify-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer transition-all hover:scale-[1.01]"
+                              style={{ background: `${tierHex}08`, color: tierHex, border: `1px dashed ${tierHex}30`, minHeight: 28 }}><Plus className="w-2.5 h-2.5" /> Ajouter</button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             );
           })()}
-          {/* Avantages compacts : grid 2 cols, inputs petits */}
-          <div>
-            <label className="text-[9px] font-bold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Avantages</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-              {(pack.features || []).map((f: string, j: number) => (
-                <div key={j} className="flex items-center gap-1.5">
-                  <Check className="w-3 h-3 shrink-0" style={{ color: tierHex }} />
-                  <input value={f} onChange={e => { const nf = [...(pack.features || [])]; nf[j] = e.target.value; edit.handleUpdatePack(pack.id, { features: nf }); }}
-                    className="flex-1 px-2 py-1 rounded-md text-[11px] outline-none" style={{ background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", minHeight: 28 }} />
-                  <button onClick={() => edit.handleUpdatePack(pack.id, { features: (pack.features || []).filter((_: string, k: number) => k !== j) })}
-                    className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer hover:scale-110 transition-all shrink-0" style={{ background: "rgba(220,38,38,0.08)", color: "var(--danger)" }}><X className="w-2.5 h-2.5" /></button>
-                </div>
-              ))}
-              <button onClick={() => edit.handleUpdatePack(pack.id, { features: [...(pack.features || []), ""] })}
-                className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer transition-all hover:scale-[1.01] sm:col-span-2 justify-center"
-                style={{ background: `${tierHex}08`, color: tierHex, border: `1px dashed ${tierHex}30`, minHeight: 28 }}><Plus className="w-2.5 h-2.5" /> Ajouter</button>
-            </div>
-          </div>
-          </div>
-          )}
         </div>
       )}
 

@@ -1,5 +1,45 @@
 # Heaven — Changelog
 
+## [v1.6.8] — 2026-04-25 evening — Pack accordion 2 cols (Vue client + Info/Edit toggle)
+
+### Refacto pack accordion (NB feedback : "il manque la version aperçu profil dans l'editeur de pack" + "section infos qui doit apparaitre avant de passer en mode edition")
+
+**Problème** : L'accordéon pack ouvrait directement sur le formulaire d'édition, sans
+afficher d'abord les infos en lecture seule, et sans preview WYSIWYG du rendu visiteur.
+NB a partagé un screenshot du CP legacy avec le pattern attendu :
+- LEFT : "VUE CLIENT SUR LE PROFIL" (preview locked tier card)
+- RIGHT : Info read-only (badge "Visible sur profil" + features list + bouton "Edit")
+
+**Fix** : Pack accordion refactoré en 2 colonnes (`grid-cols-1 md:grid-cols-2`)
+- Nouveau state `packDetailMode: "info" | "edit"` (default "info")
+- **LEFT col — Vue client sur le profil** :
+  - Mini preview locked tier card (cover image floutée + lock icon + nom pack + prix)
+  - Badge "Vue client sur le profil" en overlay top-left
+  - Use effectiveCover (manualCover || lastUpload) avec respect cover_blurred toggle
+  - Si pas de cover : placeholder Camera + hint "Aucune photo"
+- **RIGHT col mode Info** (default) :
+  - Header : pack.name + prix (couleur tier) + badge optionnel
+  - Bouton "Edit" Edit3 icon → switch vers mode edit
+  - Statut visibilité : dot vert "Visible sur profil" ou gris "Désactivé"
+  - Features list read-only (Check icons + texte secondary)
+- **RIGHT col mode Edit** :
+  - Bouton "Terminé" pour repasser en mode info
+  - Form fields (Nom/Prix/Badge) en grid 3 cols
+  - Photo aperçu (thumbnail + URL + flou toggle)
+  - Avantages list editable
+
+### Validation
+- `tsc --noEmit` exit 0
+- Pack `is_active` → corrigé en `pack.active` (PackConfig schema)
+
+### Process
+CADRAGE feedback NB (screenshot CP legacy) → PLAN (2 cols + state info/edit) → EXEC chirurgical → DEBUG tsc → DOC SYNC
+
+### Commits clés
+- *(à venir)* — `feat(profil/pack): accordion 2 cols (Vue client preview + Info/Edit toggle) v1.6.8`
+
+---
+
 ## [v1.6.7] — 2026-04-25 evening — Fix photos zoom + auto-cover + avantages compact + édition profil modal + panier popup + toggle photo/vidéo
 
 ### Fixes UX critiques (NB feedback batch)
