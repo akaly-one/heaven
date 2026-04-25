@@ -1,5 +1,44 @@
 # Heaven — Changelog
 
+## [v1.6.5] — 2026-04-25 evening — Header refacto 3 zones (NB feedback)
+
+### Refacto
+
+**3 zones header** structurées (NB feedback : "tous les boutons header doivent être
+centrés, il y a juste le pseudo qui apparait à gauche, avec le bouton logout ou cp
+qui s'affichent quand on clique dessus") :
+
+- **LEFT** : `<ProfilePseudoDropdown>` — pseudo cliquable seul + dot online + tier badge
+  - Click admin → dropdown menu : `Voir le CP` (lien /agence) + `Déconnexion`
+  - Click visiteur → retour home (setGalleryTier)
+  - Pattern click outside / click pour ouvrir
+- **CENTER** : tous les boutons admin **centrés** via `flex-1 justify-center` :
+  - Retour gallery `←` (si tier view)
+  - HeavenAdminActions (👁 Eye / 🔑 Key / 🎬 Story)
+  - Edit toolbox (📷 Camera / 🖼 Image / 💾 Save / ✕ Cancel / 👁 Preview)
+  - Bouton ADMIN sortir preview
+- **RIGHT** : visiteur uniquement (badge tier registered + ShoppingBag + Code + Theme + Upgrade)
+  - Logout admin **retiré** du RIGHT (déplacé dans dropdown pseudo gauche)
+
+### Composants
+
+- Nouveau sous-composant inline `<ProfilePseudoDropdown>` dans `m/[slug]/page.tsx`
+- Touch targets 44+ mobile préservés (boutons admin `w-9 h-9 sm:w-7 sm:h-7`)
+
+### Validation
+
+- `tsc --noEmit` exit 0
+- Aperçu visuel preview présenté à NB AVANT push : conforme demande
+
+### Process protocole strict appliqué
+
+CADRAGE → AUDIT → PLAN → EXEC → DEBUG (tsc + screenshot preview validé NB) → DOC SYNC → DEPLOY
+
+### Commits clés
+- *(à venir)* — `refactor(header): 3 zones pseudo dropdown / admin centrés / visiteur droite`
+
+---
+
 ## [v1.6.4] — 2026-04-25 evening — Cleanup header : Link2 retiré (CTAs Hero préservés)
 
 ### Fix UX

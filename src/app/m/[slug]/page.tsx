@@ -867,6 +867,90 @@ export default function ModelPage() {
 // ═══════════════════════════════════════════
 
 // ── Header Bar ──
+// ProfilePseudoDropdown — pseudo cliquable avec menu admin (Voir CP / Logout).
+// NB 2026-04-25 evening : pseudo seul à gauche, click ouvre dropdown.
+function ProfilePseudoDropdown({ displayName, isOnline, tierBadge, isAdmin, onPseudoClick }: {
+  displayName: string;
+  isOnline: boolean;
+  tierBadge: { hex: string; symbol: string; label: string } | null;
+  isAdmin: boolean;
+  onPseudoClick: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const handleLogout = () => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.removeItem("heaven_auth");
+      sessionStorage.removeItem("heaven_auth");
+      window.dispatchEvent(new Event("heaven:auth-changed"));
+      window.location.href = "/agence";
+    } catch {
+      window.location.href = "/agence";
+    }
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => {
+          if (isAdmin) setOpen((v) => !v);
+          else onPseudoClick();
+        }}
+        aria-haspopup={isAdmin ? "menu" : undefined}
+        aria-expanded={isAdmin ? open : undefined}
+        className="flex items-center gap-2 cursor-pointer bg-transparent border-none p-0 transition-opacity hover:opacity-80"
+      >
+        <span className="text-xs sm:text-sm font-bold tracking-wide uppercase truncate" style={{ color: "var(--text)", letterSpacing: "0.08em" }}>
+          {displayName}
+        </span>
+        {isOnline && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }} />}
+        {tierBadge && (
+          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md shrink-0"
+            style={{ background: `${tierBadge.hex}20`, color: tierBadge.hex }}>
+            {tierBadge.symbol} {tierBadge.label}
+          </span>
+        )}
+      </button>
+
+      {isAdmin && open && (
+        <div role="menu" className="absolute top-full left-0 mt-2 min-w-[180px] rounded-xl py-1 z-50"
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+            animation: "fadeUp 0.15s ease-out",
+          }}>
+          <a href="/agence" role="menuitem" onClick={() => setOpen(false)}
+            className="flex items-center gap-2 px-3 py-2 text-[12px] font-medium no-underline transition-colors hover:bg-white/[0.04]"
+            style={{ color: "var(--text)" }}>
+            <UserCog className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
+            <span>Voir le CP</span>
+          </a>
+          <div className="my-1 mx-3" style={{ borderTop: "1px solid var(--border)" }} />
+          <button role="menuitem" onClick={() => { setOpen(false); handleLogout(); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium cursor-pointer bg-transparent border-none transition-colors hover:bg-white/[0.04]"
+            style={{ color: "var(--text-muted)" }}>
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Déconnexion</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HeaderBar({ model, displayModel, isModelLoggedIn, isModelLoggedInActual, visitorRegistered, visitorPlatform, visitorHandle, visitorVerified, unlockedTier, activeCode, chatOpen, setChatOpen, chatUnread, newNotifications, orderHistoryOpen, setOrderHistoryOpen, clearNotifications, codeSheetOpen, setCodeSheetOpen, handleCodeValidation, modelId, slug, galleryTier, setGalleryTier, onReopenGate, onAdminLogin, editDirty, editSaving, previewMode, setPreviewMode, avatarInputRef, bannerInputRef, handleAvatarUpload, handleBannerUpload, saveAllEdits, cancelEdits, onStoryClick }: {
   model: ModelInfo; displayModel: ModelInfo | null; isModelLoggedIn: boolean;
   /** Real admin session flag, ignoring previewMode. Used to show admin tools while letting children behave as visitor. */
@@ -900,92 +984,91 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, isModelLoggedInActual
     <div className="sticky top-0 left-0 right-0 z-40 px-3 sm:px-5 md:px-8 lg:px-12 py-2"
       style={{ background: "color-mix(in srgb, var(--bg) 90%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderBottom: "1px solid var(--border)" }}>
       <div className="flex items-center">
-        {/* LEFT: Pseudo + Admin tools + Back
-            NB 2026-04-25 evening : pseudo AVANT tous les boutons admin (ordre demandé). */}
+        {/* LEFT: Pseudo cliquable seul (dropdown contient Voir CP + Logout)
+            NB 2026-04-25 evening : structure 3 zones — pseudo gauche / admin tools centrés / visiteur droite */}
         <div className="flex items-center gap-2 min-w-0 shrink-0">
-          {/* 1. PSEUDO modèle (toujours d'abord) */}
-          <button onClick={() => setGalleryTier("home")}
-            className="text-xs sm:text-sm font-bold tracking-wide uppercase truncate bg-transparent border-none cursor-pointer transition-all hover:opacity-80 active:scale-95 p-0"
-            style={{ color: "var(--text)", letterSpacing: "0.08em" }}>{model.display_name}</button>
-          {displayModel?.online && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--success)", boxShadow: "0 0 6px rgba(16,185,129,0.5)" }} />}
-          {galleryTier !== "home" && (
-            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md shrink-0"
-              style={{ background: `${TIER_HEX[galleryTier] || "var(--accent)"}20`, color: TIER_HEX[galleryTier] || "var(--accent)" }}>
-              {TIER_META[galleryTier]?.symbol} {TIER_META[galleryTier]?.label || galleryTier}
-            </span>
-          )}
+          <ProfilePseudoDropdown
+            displayName={model.display_name}
+            isOnline={!!displayModel?.online}
+            tierBadge={galleryTier !== "home" ? { hex: TIER_HEX[galleryTier] || "var(--accent)", symbol: TIER_META[galleryTier]?.symbol || "", label: TIER_META[galleryTier]?.label || galleryTier } : null}
+            isAdmin={isModelLoggedInActual}
+            onPseudoClick={() => setGalleryTier("home")}
+          />
+        </div>
 
-          {/* 2. Boutons admin (après le pseudo) — visibles uniquement admin connectée hors preview */}
-          {isModelLoggedInActual && <a href="/agence" className="text-sm font-bold no-underline shrink-0 ml-1" style={{ color: "var(--accent)" }} title="Retour cockpit">&#8592;</a>}
+        {/* CENTER: tous les boutons admin centrés (visible admin only hors preview) */}
+        <div className="flex-1 flex items-center justify-center gap-1 min-w-0 px-2 overflow-x-auto no-scrollbar">
           {galleryTier !== "home" && (
             <button onClick={() => setGalleryTier("home")}
-              className="text-sm font-bold shrink-0 cursor-pointer bg-transparent border-none transition-all hover:scale-105 active:scale-95"
+              className="text-sm font-bold shrink-0 cursor-pointer bg-transparent border-none transition-all hover:scale-105 active:scale-95 p-2"
               style={{ color: "var(--accent)" }} title="Retour accueil profil">&#8592;</button>
           )}
-          {/* BRIEF-19+21 — 4 boutons synergie CP↔Profil (Eye/Link2/Key/Story) */}
           {isModelLoggedInActual && !previewMode && (
-            <HeavenAdminActions
-              modelSlug={slug}
-              onStoryClick={onStoryClick}
-              compact={true}
-            />
-          )}
-          {/* BRIEF-17 — Admin edit toolbox (photo/banner/save/cancel/preview) */}
-          {isModelLoggedInActual && !previewMode && (
-            <div className="flex items-center gap-1 ml-1 mr-2">
-              <button
-                onClick={() => avatarInputRef.current?.click()}
-                title="Changer photo profil"
-                className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
-              >
-                <Camera className="w-3.5 h-3.5" style={{ color: "var(--w3)" }} />
-              </button>
-              <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-              <button
-                onClick={() => bannerInputRef.current?.click()}
-                title="Changer banner"
-                className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
-              >
-                <ImageIcon className="w-3.5 h-3.5" style={{ color: "var(--w3)" }} />
-              </button>
-              <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} />
-              {editDirty && (
+            <>
+              <HeavenAdminActions
+                modelSlug={slug}
+                onStoryClick={onStoryClick}
+                compact={true}
+              />
+              <div className="flex items-center gap-1">
                 <button
-                  onClick={saveAllEdits}
-                  disabled={editSaving}
-                  title="Sauvegarder"
-                  className="px-2 h-7 rounded-lg text-[10px] font-bold cursor-pointer flex items-center gap-1"
-                  style={{ background: "var(--accent)", color: "#fff" }}
+                  onClick={() => avatarInputRef.current?.click()}
+                  title="Changer photo profil"
+                  aria-label="Changer photo profil"
+                  className="w-9 h-9 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
                 >
-                  {editSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                  SAVE
+                  <Camera className="w-3.5 h-3.5" style={{ color: "var(--w3)" }} />
                 </button>
-              )}
-              {editDirty && (
+                <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
                 <button
-                  onClick={cancelEdits}
-                  title="Annuler"
-                  className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
+                  onClick={() => bannerInputRef.current?.click()}
+                  title="Changer banner"
+                  aria-label="Changer banner"
+                  className="w-9 h-9 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
+                >
+                  <ImageIcon className="w-3.5 h-3.5" style={{ color: "var(--w3)" }} />
+                </button>
+                <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} />
+                {editDirty && (
+                  <button
+                    onClick={saveAllEdits}
+                    disabled={editSaving}
+                    title="Sauvegarder"
+                    className="px-2 h-9 sm:h-7 rounded-lg text-[10px] font-bold cursor-pointer flex items-center gap-1"
+                    style={{ background: "var(--accent)", color: "#fff" }}
+                  >
+                    {editSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                    SAVE
+                  </button>
+                )}
+                {editDirty && (
+                  <button
+                    onClick={cancelEdits}
+                    title="Annuler"
+                    aria-label="Annuler"
+                    className="w-9 h-9 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
+                    style={{ color: "var(--w3)" }}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <button
+                  onClick={() => setPreviewMode(true)}
+                  title="Mode visiteur (preview)"
+                  aria-label="Mode visiteur (preview)"
+                  className="w-9 h-9 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
                   style={{ color: "var(--w3)" }}
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <Eye className="w-3.5 h-3.5" />
                 </button>
-              )}
-              <button
-                onClick={() => setPreviewMode(true)}
-                title="Mode visiteur (preview)"
-                className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/[0.06]"
-                style={{ color: "var(--w3)" }}
-              >
-                <Eye className="w-3.5 h-3.5" />
-              </button>
-            </div>
+              </div>
+            </>
           )}
           {isModelLoggedInActual && previewMode && (
             <button
               onClick={() => setPreviewMode(false)}
               title="Retour mode admin"
-              className="px-2 h-7 rounded-lg text-[10px] font-bold cursor-pointer flex items-center gap-1 ml-1 mr-2"
+              className="px-2 h-9 sm:h-7 rounded-lg text-[10px] font-bold cursor-pointer flex items-center gap-1"
               style={{ background: "var(--w3)", color: "var(--bg)" }}
             >
               <UserCog className="w-3 h-3" />
@@ -993,8 +1076,6 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, isModelLoggedInActual
             </button>
           )}
         </div>
-        {/* CENTER: spacer */}
-        <div className="flex-1" />
         {/* RIGHT: Visitor info */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {visitorRegistered && (
@@ -1089,36 +1170,9 @@ function HeaderBar({ model, displayModel, isModelLoggedIn, isModelLoggedInActual
               <Shield className="w-3.5 h-3.5" />
             </button>
           )}
-          {/* NB 2026-04-25 : Logout admin à la MÊME position visuelle que Upgrade.
-              Le profil affiche tout ce que voit le visiteur — admin ne sacrifie aucune
-              info. Le bouton change juste de label/action selon l'état de connexion. */}
-          {isModelLoggedInActual && (
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof window === "undefined") return;
-                try {
-                  localStorage.removeItem("heaven_auth");
-                  sessionStorage.removeItem("heaven_auth");
-                  window.dispatchEvent(new Event("heaven:auth-changed"));
-                  window.location.href = "/agence";
-                } catch {
-                  window.location.href = "/agence";
-                }
-              }}
-              title="Déconnexion"
-              aria-label="Déconnexion"
-              className="px-3 py-1.5 rounded-xl text-[11px] font-semibold uppercase tracking-wider cursor-pointer transition-all hover:brightness-110 active:scale-95 shrink-0 flex items-center gap-1.5"
-              style={{
-                background: "rgba(255,255,255,0.05)",
-                color: "var(--text-muted)",
-                border: "1px solid var(--border)",
-              }}
-            >
-              <LogOut className="w-3 h-3" />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
-          )}
+          {/* NB 2026-04-25 evening : Logout admin déplacé dans le dropdown du pseudo
+              (cf. <ProfilePseudoDropdown> à gauche). RIGHT cluster reste pour
+              fonctions visiteur (badge tier, code input, theme, Upgrade). */}
         </div>
       </div>
     </div>
