@@ -48,6 +48,8 @@ import { HeavenAdminActions } from "@/components/header/heaven-admin-actions";
 import { StoryGeneratorModal } from "@/components/profile/story-generator-modal";
 // BRIEF-23 — Post composer text + photo inline profil admin (Profile-as-Hub)
 import { PostComposer } from "@/components/profile/post-composer";
+// BRIEF-22+23 Phase 2.2 — Drawer admin "vue floutée vs débloquée"
+import { BlurPreviewToggle } from "@/components/profile/blur-preview-toggle";
 // BRIEF-10 AG04/AG05/AG07/AG09 — age gate + access tiers
 import AgeGateModal from "@/components/age-gate-modal";
 import {
@@ -442,6 +444,9 @@ export default function ModelPage() {
         />
       )}
       {showAdminModal && <AdminAuthModal onClose={() => setShowAdminModal(false)} />}
+      {/* BRIEF-22+23 Phase 2.2 — BlurPreviewToggle admin (drawer FAB bottom-right
+          pour basculer simulation vue floutée vs débloquée). Visible admin only. */}
+      <BlurPreviewToggle canToggle={isModelLoggedInActual && !edit.previewMode} />
       {/* BRIEF-21 — StoryGeneratorModal admin (mount conditionnel via state local) */}
       {storyOpen && (
         <StoryGeneratorModal

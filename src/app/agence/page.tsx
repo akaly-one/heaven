@@ -21,6 +21,9 @@ import { OsLayout } from "@/components/os-layout";
 import { useModel } from "@/lib/model-context";
 import { GenerateModal } from "@/components/cockpit/generate-modal";
 import { ClientsPanel } from "@/components/cockpit/clients-panel";
+// BRIEF-22+23 Phase 2.1 — MessagerieEmbedded : variante inline messagerie pour mount
+// dans le cockpit (tab Messagerie) sans wrapper OsLayout dupliqué
+import { MessagerieEmbedded } from "@/app/agence/messagerie/page";
 // NB 2026-04-24 : StrategiePanel legacy (monolithe ~660L avec realData props) remplacé
 // par la version 3-plans A/B/C utilisée aussi dans /agence/strategie (unification).
 import StrategiePanel from "@/components/cockpit/strategie/strategie-panel";
@@ -91,11 +94,11 @@ function AgenceDashboard() {
   const searchParams = useSearchParams();
 
   // ── Tab state — read from ?tab= query param on mount ──
-  // BRIEF-23 : default = "strategie" (le tab Messagerie redirige vers /agence/messagerie)
+  // BRIEF-22+23 Phase 2.1 : default "messagerie" (mount inline, plus de redirect)
   const [activeTab, setActiveTab] = useState<TabId>(() => {
     const tab = searchParams.get("tab");
     if (tab && TABS.some(t => t.id === tab)) return tab as TabId;
-    return "strategie";
+    return "messagerie";
   });
 
   // ── State ──
@@ -906,19 +909,17 @@ function AgenceDashboard() {
             retentionRate={retentionRate}
             tabs={[...TABS]}
             activeTab={activeTab}
-            onTabChange={(id) => {
-              // BRIEF-23 : tab Messagerie redirige vers /agence/messagerie
-              if (id === "messagerie") {
-                window.location.href = "/agence/messagerie";
-                return;
-              }
-              setActiveTab(id as TabId);
-            }}
+            onTabChange={(id) => setActiveTab(id as TabId)}
             onAvatarUpload={handleAvatarUpload}
             onToggleStatus={handleToggleStatus}
           />
 
           {/* ══════════ TAB PANELS ══════════ */}
+          {/* BRIEF-22+23 Phase 2.1 — Tab Messagerie mount inline via MessagerieEmbedded
+              (pas de redirect vers /agence/messagerie). Hauteur ajustée pour rester
+              sous le AgenceHeader sticky (96px = 48 OsHeader + 48 AgenceHeader nav). */}
+          {activeTab === "messagerie" && <MessagerieEmbedded />}
+
           {/* BRIEF-23 : tabs "dashboard" et "contenu" retirés (TabId ne les inclut plus).
               Composants HomePanel + ContenuPanel conservés non-mountés pour rollback rapide.
               Le cast `as string` désactive le narrow type check pour éviter erreur TS sur

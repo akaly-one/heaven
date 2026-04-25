@@ -1,5 +1,44 @@
 # Heaven — Changelog
 
+## [v1.6.1] — 2026-04-25 evening — Profile-as-Hub Phase 2 (MessagerieEmbedded + BlurPreviewToggle)
+
+> Suite de v1.6.0 — extraction MessagingPageInner + drawer admin floutage.
+
+### Features
+
+- **Phase 2.1 — `<MessagerieEmbedded>`** : variante exportable de la page messagerie
+  pour mount inline dans le cockpit (vs redirect Phase 1). Hauteur ajustée
+  (`calc(100vh - 96px)` en embedded vs `calc(100vh - 48px)` standalone) pour rester
+  sous le AgenceHeader sticky. Tab Messagerie default activée au mount.
+- **Phase 2.2 — `<BlurPreviewToggle>`** : drawer FAB admin bottom-right pour basculer
+  simulation vue floutée (8px blur) vs débloquée. Apply via classe body
+  `heaven-blur-preview` + selectors `.heaven-blur-target` / `.heaven-blur-target-strong`.
+  Dispatch event `heaven:blur-preview-toggle` pour synchronisation autres composants.
+  Touch target 44+ FAB pinned bottom-right tous viewports.
+
+### Refactor
+
+- `src/app/agence/messagerie/page.tsx` : `MessagingPageInner` étendu avec prop
+  `embedded?: boolean`. Si true, skip wrapper `<OsLayout>` (déjà fourni par parent).
+  Export `MessagerieEmbedded` ajouté avec Suspense pour usage inline cockpit.
+- `src/app/agence/page.tsx` : tab Messagerie mount inline `<MessagerieEmbedded />`
+  au lieu de redirect `window.location.href`. Default activeTab = "messagerie".
+
+### Phase 2 livrée (sur les items reportés v1.6.0)
+
+- ✅ Extraction `MessagingPageInner` exportable
+- ✅ `<BlurPreviewToggle>` drawer admin
+- ⏸ `<PacksEditorInline>` reporté (l'existant TierView L1697 couvre 90% — édit déjà inline)
+- ⏸ Suppression effective `contenu-panel.tsx` / `home-panel.tsx` reportée (vérif imports cycle suivant)
+- ⏸ Décomposition `/m/[slug]/page.tsx` 2050 LOC reportée (gros refacto, hors scope session)
+
+### Commits clés
+
+- `b01ec27` — v1.6.0 Profile-as-Hub V1 + Header CP centralisé
+- *(à venir)* — v1.6.1 Phase 2 MessagerieEmbedded + BlurPreviewToggle
+
+---
+
 ## [v1.6.0] — 2026-04-25 evening — BRIEF-19/20/21/22+23 Profile-as-Hub + Header CP centralisé
 
 > Session multi-briefs en mode chef d'équipe — vision macro NB : pattern SPRBP

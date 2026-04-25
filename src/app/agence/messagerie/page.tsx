@@ -147,7 +147,20 @@ export default function MessagingPage() {
   );
 }
 
-function MessagingPageInner() {
+/**
+ * Variante embedded — BRIEF-22+23 Phase 2.1 : permet de mount la messagerie
+ * inline dans le cockpit `/agence` (tab Messagerie) sans wrapper OsLayout
+ * (qui serait dupliqué). Usage : `<MessagerieEmbedded />` depuis `agence/page.tsx`.
+ */
+export function MessagerieEmbedded() {
+  return (
+    <Suspense fallback={null}>
+      <MessagingPageInner embedded={true} />
+    </Suspense>
+  );
+}
+
+function MessagingPageInner({ embedded = false }: { embedded?: boolean }) {
   const { auth, currentModel } = useModel();
   const searchParams = useSearchParams();
 
@@ -568,12 +581,13 @@ function MessagingPageInner() {
   };
 
   // ── Render ──────────────────────────────────────────────────────────────────
+  // BRIEF-22+23 Phase 2.1 : si embedded=true, on skip le wrapper <OsLayout>
+  // (déjà fourni par le parent — agence/page.tsx). Sinon usage standalone.
 
-  return (
-    <OsLayout cpId="agence">
+  const content = (
       <div
         className="flex flex-col"
-        style={{ height: "calc(100vh - 48px)", background: "var(--bg)" }}
+        style={{ height: embedded ? "calc(100vh - 96px)" : "calc(100vh - 48px)", background: "var(--bg)" }}
       >
         {/* Top bar — source filter */}
         <div
@@ -1191,6 +1205,8 @@ function MessagingPageInner() {
         </div>
         )}
       </div>
-    </OsLayout>
   );
+
+  if (embedded) return content;
+  return <OsLayout cpId="agence">{content}</OsLayout>;
 }
