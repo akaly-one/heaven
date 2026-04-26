@@ -42,14 +42,16 @@
 | BRIEF-2026-04-25-21 | 2026-04-25 | Bouton Story Générateur image téléchargeable (canvas 1080×1920 + image bg + flou + code optionnel + preview) | feature majeure | P1 | FE | 🟢 livré (`<StoryGeneratorModal>` complet, 4 customisations, output PNG, responsive mobile-first, tsc 0) | [briefs/BRIEF-2026-04-25-21-bouton-story-generateur-image.md](./briefs/BRIEF-2026-04-25-21-bouton-story-generateur-image.md) |
 | BRIEF-2026-04-25-22+23 | 2026-04-25 | Profile-as-Hub (fusion Contenu+Feed CP→Profil, pattern SPRBP Instagram-style) + Cockpit simplifié 2 tabs (Messagerie+Stratégie) | refactor archi MAJEUR | P0 | FE refactor + Doc | 🟢 partial livré V1 (overlay admin + PostComposer + cockpit 2 tabs + contenu-panel @deprecated, tsc 0). Phase 2 différée : PacksEditorInline + BlurPreviewToggle + suppression legacy + extraction MessagingPageInner | [briefs/BRIEF-2026-04-25-22-23-profile-as-hub-fusion.md](./briefs/BRIEF-2026-04-25-22-23-profile-as-hub-fusion.md) |
 | BRIEF-2026-04-25-24 | 2026-04-25 | Profile DEBUG fixes cumulatifs (PostComposer position + photo aperçu + drag&drop entre packs + uploads dans feed + éditeur repliable) | fixes UX + correctif méthodo | P0 | FE | 🟢 livré (3 commits 069c8d0/0c4d66e/1ddca0f, tsc 0, build prod OK) | [briefs/BRIEF-2026-04-25-24-profile-debug-fixes.md](./briefs/BRIEF-2026-04-25-24-profile-debug-fixes.md) |
-| BRIEF-2026-04-25-25 | 2026-04-25 | Batch 6 fixes profil V2 (pack editor compact + cover blur toggle + feed legacy fix + PostComposer aligned + ShopTab compactée) | fixes UX cumulatifs | P0 | FE | 🟢 livré (commit `(à venir)` v1.6.6, tsc 0) | [briefs/BRIEF-2026-04-25-25-batch-6-fixes-profil-v2.md](./briefs/BRIEF-2026-04-25-25-batch-6-fixes-profil-v2.md) |
+| BRIEF-2026-04-25-25 | 2026-04-25 | Batch 6 fixes profil V2 (pack editor compact + cover blur toggle + feed legacy fix + PostComposer aligned + ShopTab compactée) | fixes UX cumulatifs | P0 | FE | 🟢 livré (commit `dcc3130` v1.6.6, tsc 0) | [briefs/BRIEF-2026-04-25-25-batch-6-fixes-profil-v2.md](./briefs/BRIEF-2026-04-25-25-batch-6-fixes-profil-v2.md) |
+| BRIEF-2026-04-26-26 | 2026-04-26 | Batch UX itératif profil + ShopTab + Pack accordion 2 cols + édition profil modal + panier popup fixed + toggle segment + bouton header obsolètes + Eye doublon + bottom-nav app-like + overlaps mobile | fixes UX itératifs cumulatifs | P0 | FE | 🟢 livré (commits `705477f` v1.6.7 → `1eb4ed0` v1.6.12, tsc 0, build prod OK) | [briefs/BRIEF-2026-04-26-26-batch-ux-iteratif-profil-cp-mobile.md](./briefs/BRIEF-2026-04-26-26-batch-ux-iteratif-profil-cp-mobile.md) |
+| BRIEF-2026-04-26-27 | 2026-04-26 | Refacto Dashboard CP (KPIs + widget clients par tag + agent IA) + nettoyage liens nav cassés vers tabs supprimés | refactor archi + cleanup | P0 | FE + Middleware | 🟢 livré (commits `a9423c3` v1.6.13 + `a2bf03d` v1.6.14 + `25a9995` v1.6.15, tsc 0, build prod OK) | [briefs/BRIEF-2026-04-26-27-refacto-dashboard-nav-cleanup.md](./briefs/BRIEF-2026-04-26-27-refacto-dashboard-nav-cleanup.md) |
 
 ---
 
 ## Compteur
 
-- Total reçus : 24 (+6 session 2026-04-25 evening : BRIEF-19/20/21/22+23/24/25)
-- Livrés totaux : 8 (BRIEF-01 + BRIEF-04 + BRIEF-17 + BRIEF-19 + BRIEF-20 + BRIEF-21 + BRIEF-24 + **BRIEF-25**)
+- Total reçus : 26 (+8 session 2026-04-25 evening + 2026-04-26 : BRIEF-19/20/21/22+23/24/25/26/27)
+- Livrés totaux : 10 (BRIEF-01 + BRIEF-04 + BRIEF-17 + BRIEF-19 + BRIEF-20 + BRIEF-21 + BRIEF-24 + BRIEF-25 + **BRIEF-26** + **BRIEF-27**)
 - Livrés partial : 5 (BRIEF-10 11/13, BRIEF-13 4/20, BRIEF-16 phases A-I sauf E1, BRIEF-18 phase 1+2 ⚠️ partiellement révisé par 22+23, BRIEF-22+23 V1)
 - Cadrés en attente GO : 8 (BRIEF-05/06/07/08/09/11/12/14)
 - Dispatched en cours : 1 (BRIEF-15)

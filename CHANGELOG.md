@@ -1,5 +1,119 @@
 # Heaven — Changelog
 
+## [v1.6.15] — 2026-04-26 — Nettoyage liens nav cassés (commit `25a9995`)
+
+NB feedback : "etudie les boutons cassé en nav et netoie"
+
+Audit + fix systématique des liens orphelins post-suppressions des tabs (clients/contenu/messagerie).
+
+- `agence/contenu/page.tsx` : redirect `/agence` au lieu de `?tab=contenu` (tab disparu)
+- `middleware.ts` : whitelist tabs étendue (clients/contenu/messagerie/strategie) avec routes cibles correctes
+- `sidebar.tsx` NAV_MAIN : item "Contenu" retiré (5 items au lieu de 6), import `Images` retiré
+- `agence/clients/[fanId]/page.tsx` ×3 : `?tab=clients` → `/agence/messagerie?view=contacts`
+- `clients-dropdown.tsx` + `codes-list.tsx` : idem
+
+Validation : tsc --noEmit exit 0, build prod OK
+Aucun lien `/agence?tab=clients` ou `/agence/contenu` orphelin restant dans src/.
+
+---
+
+## [v1.6.14] — 2026-04-26 — DashboardOverview = KPIs + widget tag + agent IA (commit `a2bf03d`)
+
+NB feedback (correctif structurel) : "le feed doit plus etre en cp car on la unifier en profil, et l'onglet messagerie je te demandé un widget qui resumé les types de clients et demandé classé par tag"
+
+Refacto chirurgical du tab Dashboard /agence :
+
+- Nouveau composant `DashboardOverview` (remplace HomePanel) :
+  - 5 KPIs cards grand format : Revenu / Clients / Codes actifs / Posts / Rétention
+  - Widget "Clients par tag" : aggregation `clients.tag` avec count + total spent + bar progress
+    - Tags : VIP / Hot lead / Récurrent / À relancer / Custom / Nouveau / Sans tag
+    - Classification heuristique fallback si client.tag vide (basée sur total_spent)
+  - BotActivityPanel (récap activité agent IA + conversions)
+- Composer/feed/timeline RETIRÉS (doublon avec /m/[slug] admin overlay BRIEF-22+23)
+- Tab "Messagerie" RETIRÉ du CP (TABS = [dashboard, strategie] uniquement)
+  - La liste full conversations reste accessible via dropdown header chat icon (popup widget compact)
+- HomePanel + MessagerieEmbedded conservés non-mountés (rollback rapide)
+
+Validation : tsc --noEmit exit 0
+
+---
+
+## [v1.6.13] — 2026-04-26 — Dashboard tab remis en default (commit `a9423c3`)
+
+NB feedback : "de base le dash doit afficher les kpis et les dernier stats et infos recolté par l'agent ia"
+
+- TABS étendu à [dashboard, messagerie, strategie] avec dashboard en premier
+- activeTab default = "dashboard" (au lieu de "messagerie")
+- HomePanel mount sur activeTab === "dashboard" (cast `as string` retiré)
+
+(Évolué dans v1.6.14 : HomePanel remplacé par DashboardOverview pour retirer feed/composer)
+
+---
+
+## [v1.6.12] — 2026-04-26 — Fix overlaps mobile critiques (commit `1eb4ed0`)
+
+NB feedback : "des boutons et texte se chauvauchent dans les pages version mobile"
+
+Audit mobile (375×812) → 10 overlaps identifiés. Top 3 critiques fixés :
+
+- **Header CP** (h-12 packé sur 375px) : pageTitle `/` + label cachés en mobile (`hidden sm:inline`)
+- **FAB drag&drop** : `bottom-4 → bottom-20 sm:bottom-4` + `flex-wrap` + `max-w-[calc(100vw-32px)]`
+- **ChatPanel mobile** : `bottom-4 → bottom-20 sm:bottom-4` (plus tangent à bottom-nav)
+
+Audit complet (10 issues) conservé pour itérations suivantes.
+
+Validation : tsc --noEmit exit 0
+
+---
+
+## [v1.6.11] — 2026-04-26 — Eye doublon retiré + bottom-nav 4 items app-like (commit `7312c53`)
+
+NB feedback :
+- "il y a 2 bouton oeuil dans le header hors on est deja dans le profil donc incoerent"
+- "le bouton navigation en bas en cp doit y avoir uniquement dash messages, insta et parametre"
+- "et doivent etre plus grand comme pour une application"
+
+- HeavenAdminActions : prop `hideViewProfile?: boolean` (caché sur /m/[slug])
+- MOBILE_NAV_MAIN : 6 → 4 items (Dash / Messages / Insta / Paramètres)
+- Touch targets : 56px minHeight, icons 24×24, scale-110 sur active
+- Logout retiré du bottom-nav (déjà dans Paramètres)
+- MOBILE_NAV_ROOT supprimé (Ops desktop only)
+
+---
+
+## [v1.6.10] — 2026-04-26 — Panier popup fixed + toggle segment + retrait boutons header (commit `fb2b3ab`)
+
+NB feedback :
+- "la box du panier en custom est chevauché par les autre section"
+- "la sélection se fait à l'envers" (Photo/Vidéo)
+- "le bouton photo de profil et baniere dans le header son obsolette retire"
+
+Panier popup — fixed positioning hors fire bar (échappe au overflow-hidden parent)
+- cartBtnRef + getBoundingClientRect → coordonnées viewport
+- useEffect listener resize/scroll pour repositionner
+- z-50 backdrop + z-51 popup
+
+Toggle Photo/Vidéo — segment-control style (iOS pattern)
+- Container parent rounded-xl bg2 + 2 boutons no-border
+- Actif : bg solide tier + text blanc + box-shadow + opacity 1
+- Inactif : bg transparent + text muted + opacity 0.7
+
+Retrait boutons photo profil + bannière du header
+- BRIEF-18 hover overlays direct sur avatar/banner = boutons header redondants
+- Inputs file restent montés (refs utilisés par les overlays)
+
+---
+
+## [v1.6.9] — 2026-04-26 — Header pack accordion simplifié (commit `4836d73`)
+
+NB feedback : "pas besoin de le nomer editer le pack le bouton edit suffit, tu laisse just le nom du pack en titre"
+
+- Avant : [Edit3 icon] "Éditer le pack" + "Gold — 200€" en sous-titre
+- Après : [tier symbol] "Gold" + "200€" (sobre)
+- Le bouton "Edit" déjà présent dans la section Info à droite suffit
+
+---
+
 ## [v1.6.8] — 2026-04-25 evening — Pack accordion 2 cols (Vue client + Info/Edit toggle)
 
 ### Refacto pack accordion (NB feedback : "il manque la version aperçu profil dans l'editeur de pack" + "section infos qui doit apparaitre avant de passer en mode edition")
