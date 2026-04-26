@@ -496,7 +496,7 @@ export default function FanDetailPage() {
             {error || "Fan introuvable"}
           </p>
           <Link
-            href="/agence?tab=clients"
+            href="/agence/messagerie?view=contacts"
             className="mt-4 text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
             style={{
               background: "rgba(201,168,76,0.1)",
@@ -539,7 +539,7 @@ export default function FanDetailPage() {
             className="text-[11px] flex items-center gap-1.5 min-w-0"
             style={{ color: "var(--text-muted)" }}
           >
-            <Link href="/agence?tab=clients" className="hover:underline truncate">
+            <Link href="/agence/messagerie?view=contacts" className="hover:underline truncate">
               Clients
             </Link>
             <span>/</span>
@@ -831,7 +831,7 @@ export default function FanDetailPage() {
           onClose={() => setMergeOpen(false)}
           onMerged={() => {
             // After merge, nav back to clients list (this fan is gone)
-            router.push("/agence?tab=clients");
+            router.push("/agence/messagerie?view=contacts");
           }}
         />
       )}

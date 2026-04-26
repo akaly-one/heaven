@@ -104,21 +104,25 @@ export async function middleware(req: NextRequest) {
   }
 
   // ── Backcompat sidebar D-1 (ADR-013) : /agence?tab=X → /agence/X ──
-  // Bookmarks et liens profonds existants (`?tab=clients|contenu|strategie`)
-  // sont redirigés vers les nouvelles routes dédiées. `clients` va vers
-  // messagerie?view=contacts (B7). `contenu` et `strategie` vont vers leurs
-  // pages dédiées (shells redirigeant vers le monolithe en attendant Phase 2.B).
+  // NB 2026-04-26 : tabs valides = strategie uniquement. Les tabs supprimés sont :
+  // - "clients" → redirection vers /agence/messagerie?view=contacts (B7)
+  // - "contenu" → redirection vers /agence (Profile-as-Hub BRIEF-22+23)
+  // - "messagerie" → redirection vers /agence/messagerie (route dédiée)
   if (pathname === "/agence") {
     const tab = req.nextUrl.searchParams.get("tab");
-    if (tab && ["clients", "contenu", "strategie"].includes(tab)) {
+    if (tab && ["clients", "contenu", "messagerie", "strategie"].includes(tab)) {
       // Garde-fou : si on vient déjà d'un shell `_from=route`, on NE redirige PAS
-      // (évite boucle infinie shell → middleware → shell).
       const fromRoute = req.nextUrl.searchParams.get("_from") === "route";
       if (!fromRoute) {
         const url = req.nextUrl.clone();
         if (tab === "clients") {
           url.pathname = "/agence/messagerie";
           url.searchParams.set("view", "contacts");
+        } else if (tab === "contenu") {
+          // Tab Contenu retiré → redirect dashboard (gestion contenu vit dans /m/[slug] admin)
+          url.pathname = "/agence";
+        } else if (tab === "messagerie") {
+          url.pathname = "/agence/messagerie";
         } else {
           url.pathname = `/agence/${tab}`;
         }

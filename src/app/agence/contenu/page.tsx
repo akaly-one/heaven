@@ -1,19 +1,16 @@
 import { redirect } from "next/navigation";
 
 /**
- * Phase 2 — Agent 2.A (D-1 Option 1 sidebar 1:1 pages).
+ * /agence/contenu — DEPRECATED (NB 2026-04-26).
  *
- * Shell temporaire pour la route dédiée « Contenu ». Le contenu réel vit
- * encore dans le monolithe `/agence/page.tsx` (état `tab=contenu`). Tant
- * que Phase 2.B n'a pas extrait `PackComposer` et consorts en composants
- * autonomes, on redirige ici vers `?tab=contenu&_from=route`.
+ * Le tab "Contenu" du CP a été retiré (BRIEF-22+23 Profile-as-Hub) :
+ * la gestion du contenu (uploads, packs, feed) est unifiée sur le profil
+ * admin overlay `/m/[slug]` (modèle voit son profil avec couche admin).
  *
- * Le flag `_from=route` empêche le middleware de re-rediriger vers la
- * route dédiée (évite la boucle).
- *
- * Remplacer ce shell par un import direct du composant dès que l'extraction
- * de Phase 2.B aura livré le sous-module correspondant.
+ * Cette route legacy redirige vers le Dashboard (/agence). Les bookmarks
+ * existants `/agence/contenu` ou `/agence?tab=contenu` arrivent ici, on
+ * les renvoie au dashboard plutôt que vers une tab disparue.
  */
-export default function ContenuPage() {
-  redirect("/agence?tab=contenu&_from=route");
+export default function ContenuPageDeprecated() {
+  redirect("/agence");
 }

@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, ChevronLeft, ChevronRight,
   Crown, Settings, LogOut,
-  MessageCircle, Instagram, Images, Target, Activity,
+  MessageCircle, Instagram, Target, Activity,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import type { HeavenAuth } from "./auth-guard";
@@ -20,11 +20,12 @@ import { ThemeToggle } from "./theme-toggle";
 //  - model (paloma/ruby) : Général + Finances + Agent DM
 //  - admin (root/yumi) : Général + Comptes + Dev Center
 // Le scoping intra-page est géré dans /agence/settings (visibleTabs filter).
+// NB 2026-04-26 : "Contenu" retiré (route deprecated, fusionné dans /m/[slug] admin
+// via Profile-as-Hub BRIEF-22+23). Mobile_NAV_MAIN garde 4 items minimaux.
 const NAV_MAIN = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/agence", color: "#E63329" },
   { id: "messagerie", label: "Messagerie", icon: MessageCircle, href: "/agence/messagerie", color: "#8B5CF6" },
   { id: "instagram", label: "Instagram", icon: Instagram, href: "/agence/instagram", color: "#E1306C" },
-  { id: "contenu", label: "Contenu", icon: Images, href: "/agence/contenu", color: "#D4AF37" },
   { id: "strategie", label: "Stratégie", icon: Target, href: "/agence/strategie", color: "#10B981" },
   { id: "settings", label: "Paramètres", icon: Settings, href: "/agence/settings", color: "#94A3B8" },
 ] as const;
