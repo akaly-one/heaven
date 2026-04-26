@@ -28,6 +28,7 @@ import { MessagerieEmbedded } from "@/app/agence/messagerie/page";
 // par la version 3-plans A/B/C utilisée aussi dans /agence/strategie (unification).
 import StrategiePanel from "@/components/cockpit/strategie/strategie-panel";
 import { HomePanel } from "@/components/cockpit/dashboard/home-panel";
+import { DashboardOverview } from "@/components/cockpit/dashboard/dashboard-overview";
 import { AgenceHeader } from "@/components/cockpit/dashboard/agence-header";
 import { ContenuPanel, type ContenuContentItem } from "@/components/cockpit/contenu/contenu-panel";
 import type { PackConfig, AccessCode, ClientInfo, FeedPost, WallPost, UploadedContent, FeedItem } from "@/types/heaven";
@@ -70,11 +71,12 @@ function Skeleton({ className = "", style }: { className?: string; style?: React
 // - "strategie" : KPIs + palier + analytics (inline)
 // Les anciens tabs "dashboard" et "contenu" sont retirés (fusion contenu vers
 // /m/[slug] admin overlay — pattern Profile-as-Hub).
-// NB 2026-04-26 : dashboard remis en default tab (KPIs + Agent IA insights via HomePanel).
-// La messagerie devient secondary tab (déjà accessible via dropdown header chat icon).
+// NB 2026-04-26 (correctif) : tab Messagerie retirée du CP — la liste full conversations
+// est accessible via le dropdown header chat icon (popup widget compact). Le dashboard
+// affiche un widget classification clients par tag (vue stratégique). Plus de feed/composer
+// dans le CP : ces fonctions vivent dans /m/[slug] admin overlay (Profile-as-Hub BRIEF-22+23).
 const TABS = [
   { id: "dashboard", label: "Dashboard" },
-  { id: "messagerie", label: "Messagerie" },
   { id: "strategie", label: "Stratégie" },
 ] as const;
 
@@ -919,44 +921,19 @@ function AgenceDashboard() {
           />
 
           {/* ══════════ TAB PANELS ══════════ */}
-          {/* BRIEF-22+23 Phase 2.1 — Tab Messagerie mount inline via MessagerieEmbedded
-              (pas de redirect vers /agence/messagerie). Hauteur ajustée pour rester
-              sous le AgenceHeader sticky (96px = 48 OsHeader + 48 AgenceHeader nav). */}
-          {activeTab === "messagerie" && <MessagerieEmbedded />}
-
-          {/* NB 2026-04-26 : tab "dashboard" remis en default — KPIs + Agent IA insights via HomePanel.
-              Affiche : Instagram stats live + feed timeline + composer + BotActivityPanel (agent IA récap). */}
+          {/* NB 2026-04-26 (correctif) : tab "dashboard" = vue stratégique pure
+              (KPIs grands + widget clients par tag + récap agent IA).
+              Plus de composer/feed (doublon avec /m/[slug] admin overlay BRIEF-22+23).
+              Plus de tab Messagerie (accessible via dropdown header chat icon). */}
           {activeTab === "dashboard" && (
-            <HomePanel
+            <DashboardOverview
               modelSlug={modelSlug}
-              modelInfo={modelInfo}
               revenue={revenue}
-              activeCodes={activeCodes}
-              modelCodes={modelCodes}
-              packs={packs}
-              clients={clients}
               uniqueClients={uniqueClients}
+              activeCodes={activeCodes.length}
               retentionRate={retentionRate}
-              stories={stories}
-              feedPosts={feedPosts}
-              wallPosts={wallPosts}
-              newPostContent={newPostContent}
-              setNewPostContent={setNewPostContent}
-              newPostTier={newPostTier}
-              setNewPostTier={setNewPostTier}
-              newPostImage={newPostImage}
-              setNewPostImage={setNewPostImage}
-              newPostType={newPostType}
-              setNewPostType={setNewPostType}
-              posting={posting}
-              tierOptions={TIER_OPTIONS}
-              showMobileOverview={showMobileOverview}
-              setShowMobileOverview={setShowMobileOverview}
-              deleteConfirm={deleteConfirm}
-              setDeleteConfirm={setDeleteConfirm}
-              onCreatePost={handleCreatePost}
-              onDeletePost={handleDeletePost}
-              onPostImageChange={handlePostImageChange}
+              postsCount={feedPosts.length}
+              clients={clients}
             />
           )}
 
