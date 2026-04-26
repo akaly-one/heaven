@@ -70,7 +70,10 @@ function Skeleton({ className = "", style }: { className?: string; style?: React
 // - "strategie" : KPIs + palier + analytics (inline)
 // Les anciens tabs "dashboard" et "contenu" sont retirés (fusion contenu vers
 // /m/[slug] admin overlay — pattern Profile-as-Hub).
+// NB 2026-04-26 : dashboard remis en default tab (KPIs + Agent IA insights via HomePanel).
+// La messagerie devient secondary tab (déjà accessible via dropdown header chat icon).
 const TABS = [
+  { id: "dashboard", label: "Dashboard" },
   { id: "messagerie", label: "Messagerie" },
   { id: "strategie", label: "Stratégie" },
 ] as const;
@@ -94,11 +97,12 @@ function AgenceDashboard() {
   const searchParams = useSearchParams();
 
   // ── Tab state — read from ?tab= query param on mount ──
-  // BRIEF-22+23 Phase 2.1 : default "messagerie" (mount inline, plus de redirect)
+  // NB 2026-04-26 : default "dashboard" (KPIs + Agent IA insights via HomePanel).
+  // Messagerie accessible via tab + dropdown header chat icon (popup widget).
   const [activeTab, setActiveTab] = useState<TabId>(() => {
     const tab = searchParams.get("tab");
     if (tab && TABS.some(t => t.id === tab)) return tab as TabId;
-    return "messagerie";
+    return "dashboard";
   });
 
   // ── State ──
@@ -920,11 +924,9 @@ function AgenceDashboard() {
               sous le AgenceHeader sticky (96px = 48 OsHeader + 48 AgenceHeader nav). */}
           {activeTab === "messagerie" && <MessagerieEmbedded />}
 
-          {/* BRIEF-23 : tabs "dashboard" et "contenu" retirés (TabId ne les inclut plus).
-              Composants HomePanel + ContenuPanel conservés non-mountés pour rollback rapide.
-              Le cast `as string` désactive le narrow type check pour éviter erreur TS sur
-              les comparaisons "always false" — supprimer ces blocs au cycle suivant. */}
-          {(activeTab as string) === "dashboard" && (
+          {/* NB 2026-04-26 : tab "dashboard" remis en default — KPIs + Agent IA insights via HomePanel.
+              Affiche : Instagram stats live + feed timeline + composer + BotActivityPanel (agent IA récap). */}
+          {activeTab === "dashboard" && (
             <HomePanel
               modelSlug={modelSlug}
               modelInfo={modelInfo}
