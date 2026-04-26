@@ -1,5 +1,52 @@
 # Heaven — Changelog
 
+## [v1.6.17] — 2026-04-26 — Aperçu promo dynamique pack (commit `26ab436`)
+
+NB feedback : "la vue client sur le profil du pack devrai afficher la dernier photo ajouté au pack et dans la vue client du profil devrai permetre de shoisir entre flouté ou non, car c'est un apercu promo, et ce meme effet devrait apparait aussi en flouté en arriere plan de boutons de la tuile"
+
+3 changements alignés WYSIWYG promo pack :
+
+1. **Tri uploads par date desc** (la plus récente = aperçu promo dynamique)
+   - Pack accordion preview : tierUploadsLocal trié par `uploadedAt` desc, prend `[0]`
+   - Locked tier overlay : même tri
+   - Avant : ordre arbitraire de l'API → potentiellement vieille photo
+   - Après : `sort((a,b) => Date(b.uploadedAt) - Date(a.uploadedAt))`
+
+2. **Toggle EyeOff/Eye overlay** direct sur la Vue client preview
+   - Bouton flottant top-right de la preview "Vue client sur le profil"
+   - Visible en mode info ET edit (plus besoin d'aller dans le form)
+   - Click → toggle `pack.cover_blurred` via `edit.handleUpdatePack`
+   - `aria-pressed` reflète l'état pour a11y
+
+3. **Tier picker tile background** respecte `cover_blurred`
+   - `tilePack` lookup via `activePacks.find(p => p.id === t)`
+   - `tilePackCover` = manuel || dernière upload triée
+   - Si admin a défini `cover_blurred` → respecté (true → blur, false → net) MAIS
+     seulement si visiteur locked (admin/unlocked toujours net)
+   - Si pas défini → fallback `isLocked` (pattern existant)
+   - Filter brightness 0.45 (au lieu de 0.35) quand non-flouté pour meilleur contraste
+
+Cohérence WYSIWYG : l'admin contrôle le rendu promo depuis la preview du pack accordion,
+l'effet s'applique partout (preview + tile + locked overlay).
+
+Validation : tsc --noEmit exit 0, build prod OK.
+
+---
+
+## [v1.6.16] — 2026-04-26 — Doc sync rétroactif v1.6.9 → v1.6.15 (commit `547c87e`)
+
+NB feedback : "ta lancer tout les phases en mide chef de projet"
+Reconnaissance manquement : DOC SYNC partial sur v1.6.9 → v1.6.15. Rattrapage immédiat.
+
+- CHANGELOG.md : 7 entrées rétroactives (v1.6.9 → v1.6.15) avec descriptifs détaillés
+- BRIEFS-REGISTRY.md : 2 nouvelles entrées (BRIEF-26 + BRIEF-27)
+- 2 briefs cumulatifs formalisés
+- VERIFY routes : 0 chemin cassé (curl test 7 routes principales)
+
+Phases protocole §1.4 maintenant complètes pour toute la session.
+
+---
+
 ## [v1.6.15] — 2026-04-26 — Nettoyage liens nav cassés (commit `25a9995`)
 
 NB feedback : "etudie les boutons cassé en nav et netoie"
