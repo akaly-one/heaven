@@ -1433,7 +1433,17 @@ function DesktopTierNav({ galleryTier, setGalleryTier, setFocusPack, activePacks
             const tierSymbol = TIER_META[t]?.symbol || "";
             const isLocked = !isModelLoggedIn && !(unlockedTier && tierIncludes(unlockedTier, t));
             const isActive = galleryTier === t;
-            const previewImg = uploads.find(u => normalizeTier(u.tier) === t && u.dataUrl && u.type === "photo")?.dataUrl;
+            // NB 2026-04-26 : background tile = cover du pack (manuel ou dernière upload triée par date desc)
+            const tilePack = activePacks.find(p => p.id === t);
+            const tilePackCover = tilePack ? (tilePack as { cover_url?: string }).cover_url : null;
+            const tileLastUpload = uploads
+              .filter(u => normalizeTier(u.tier) === t && u.dataUrl && u.type === "photo")
+              .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())[0];
+            const previewImg = tilePackCover || tileLastUpload?.dataUrl;
+            // NB 2026-04-26 : respecter cover_blurred si défini (l'admin choisit le rendu promo).
+            // Si admin n'a pas choisi → blur si locked, net si unlocked (pattern existant).
+            const tileBlurChoice = tilePack ? (tilePack as { cover_blurred?: boolean }).cover_blurred : undefined;
+            const tileIsBlurred = tileBlurChoice === undefined ? isLocked : (tileBlurChoice && isLocked);
             return (
               <button
                 key={t}
@@ -1446,7 +1456,7 @@ function DesktopTierNav({ galleryTier, setGalleryTier, setFocusPack, activePacks
                 className="relative flex-1 rounded-xl cursor-pointer poker-tile group overflow-hidden"
                 style={{ minWidth: "70px", height: "72px", background: isActive ? `linear-gradient(135deg, ${tierHex}, ${tierHex}CC)` : "var(--surface)", border: isActive ? `2px solid ${tierHex}` : "1px solid var(--border)", boxShadow: isActive ? `0 4px 20px ${tierHex}40` : "none", opacity: isLocked && !isActive ? 0.7 : 1 }}>
                 <div className="absolute inset-0" aria-hidden="true">
-                  {previewImg && !isActive ? <img src={previewImg} alt="" draggable={false} className="w-full h-full object-cover" style={{ filter: isLocked ? "blur(8px) brightness(0.3)" : "brightness(0.35)", transform: isLocked ? "scale(1.1)" : "none" }} />
+                  {previewImg && !isActive ? <img src={previewImg} alt="" draggable={false} className="w-full h-full object-cover" style={{ filter: tileIsBlurred ? "blur(8px) brightness(0.3)" : "brightness(0.45)", transform: tileIsBlurred ? "scale(1.1)" : "none" }} />
                     : !isActive ? <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${tierHex}12, ${tierHex}06)` }} /> : null}
                 </div>
                 <div className="relative flex flex-col items-center justify-center h-full gap-0.5 px-3">
@@ -1962,8 +1972,12 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
           {packEditOpen && (() => {
             // NB 2026-04-25 evening : layout 2 cols — preview profil (gauche) + info/edit (droite)
             // Pattern repris du CP legacy : "VUE CLIENT SUR LE PROFIL" + détails
-            const tierUploadsLocal = uploads.filter(u => normalizeTier(u.tier) === pack.id && u.dataUrl);
-            const lastUpload = tierUploadsLocal.length > 0 ? tierUploadsLocal[tierUploadsLocal.length - 1] : null;
+            // NB 2026-04-26 : tri par uploadedAt desc — la PLUS RÉCENTE upload du pack
+            // est la cover par défaut (aperçu promo dynamique).
+            const tierUploadsLocal = uploads
+              .filter(u => normalizeTier(u.tier) === pack.id && u.dataUrl)
+              .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime());
+            const lastUpload = tierUploadsLocal[0] || null;
             const manualCover = (pack as { cover_url?: string }).cover_url;
             const effectiveCover = manualCover || lastUpload?.dataUrl || null;
             const isBlurred = (pack as { cover_blurred?: boolean }).cover_blurred !== false;
@@ -1976,6 +1990,22 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
                     <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider" style={{ background: "rgba(0,0,0,0.6)", color: "#fff", backdropFilter: "blur(4px)" }}>
                       Vue client sur le profil
                     </div>
+                    {/* NB 2026-04-26 : toggle flouté/déflouté en overlay sur la preview directement
+                        (visible en mode info ET edit). Cliquable depuis la vue preview, plus besoin
+                        d'aller dans le form. */}
+                    {effectiveCover && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); edit.handleUpdatePack(pack.id, { cover_blurred: !isBlurred } as Partial<PackConfig>); }}
+                        title={isBlurred ? "Aperçu flouté — cliquer pour défloutée" : "Aperçu net — cliquer pour flouter"}
+                        aria-label="Toggle flou aperçu promo"
+                        aria-pressed={!isBlurred}
+                        className="absolute top-2 right-2 z-10 w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
+                        style={{ background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.15)", backdropFilter: "blur(4px)" }}
+                      >
+                        {isBlurred ? <EyeOff className="w-3.5 h-3.5 text-white" /> : <Eye className="w-3.5 h-3.5 text-white" />}
+                      </button>
+                    )}
                     {effectiveCover ? (
                       <div className="w-full h-full relative" style={{ minHeight: 200 }}>
                         <img src={effectiveCover} alt={pack.name} className="w-full h-full object-cover" style={{ filter: isBlurred ? "blur(14px) brightness(0.4)" : "brightness(0.85)", transform: "scale(1.15)" }} loading="lazy" />
@@ -2139,12 +2169,15 @@ function TierView({ galleryTier, posts, uploads, packs, activePacks, displayPack
       {isLockedTier && (() => {
         const tierPack = activePacks.find(p => p.id === galleryTier);
         const tierPosts = allImagePosts.filter(p => normalizeTier(p.tier_required || "public") === galleryTier);
-        const tierUploads = uploads.filter(u => normalizeTier(u.tier) === galleryTier && u.dataUrl);
+        // NB 2026-04-26 : tri par uploadedAt desc (la plus récente = aperçu promo dynamique)
+        const tierUploads = uploads
+          .filter(u => normalizeTier(u.tier) === galleryTier && u.dataUrl)
+          .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime());
         const previewImages = [...tierPosts.map(p => p.media_url!), ...tierUploads.map(u => u.dataUrl)].filter(Boolean).slice(0, 6);
         if (!tierPack) return null;
         // NB 2026-04-25 evening : auto-fallback dernière upload du pack si pas de cover_url manuel
         const manualCover = (tierPack as { cover_url?: string }).cover_url;
-        const lastUploadCover = tierUploads.length > 0 ? tierUploads[tierUploads.length - 1].dataUrl : null;
+        const lastUploadCover = tierUploads[0]?.dataUrl || null;
         const isBlurred = (tierPack as { cover_blurred?: boolean }).cover_blurred !== false;
         const effectiveCover = manualCover || lastUploadCover;
         const blurFilter = isBlurred ? "blur(14px) brightness(0.4)" : "brightness(0.85)";
