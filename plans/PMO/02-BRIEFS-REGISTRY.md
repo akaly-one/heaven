@@ -45,13 +45,15 @@
 | BRIEF-2026-04-25-25 | 2026-04-25 | Batch 6 fixes profil V2 (pack editor compact + cover blur toggle + feed legacy fix + PostComposer aligned + ShopTab compactée) | fixes UX cumulatifs | P0 | FE | 🟢 livré (commit `dcc3130` v1.6.6, tsc 0) | [briefs/BRIEF-2026-04-25-25-batch-6-fixes-profil-v2.md](./briefs/BRIEF-2026-04-25-25-batch-6-fixes-profil-v2.md) |
 | BRIEF-2026-04-26-26 | 2026-04-26 | Batch UX itératif profil + ShopTab + Pack accordion 2 cols + édition profil modal + panier popup fixed + toggle segment + bouton header obsolètes + Eye doublon + bottom-nav app-like + overlaps mobile | fixes UX itératifs cumulatifs | P0 | FE | 🟢 livré (commits `705477f` v1.6.7 → `1eb4ed0` v1.6.12, tsc 0, build prod OK) | [briefs/BRIEF-2026-04-26-26-batch-ux-iteratif-profil-cp-mobile.md](./briefs/BRIEF-2026-04-26-26-batch-ux-iteratif-profil-cp-mobile.md) |
 | BRIEF-2026-04-26-27 | 2026-04-26 | Refacto Dashboard CP (KPIs + widget clients par tag + agent IA) + nettoyage liens nav cassés vers tabs supprimés | refactor archi + cleanup | P0 | FE + Middleware | 🟢 livré (commits `a9423c3` v1.6.13 + `a2bf03d` v1.6.14 + `25a9995` v1.6.15, tsc 0, build prod OK) | [briefs/BRIEF-2026-04-26-27-refacto-dashboard-nav-cleanup.md](./briefs/BRIEF-2026-04-26-27-refacto-dashboard-nav-cleanup.md) |
+| BRIEF-2026-04-27-28 | 2026-04-27 | Programme Ambassadeur — système viral parrainage + actions IG + agent IA marketing + paliers récompense (plan formalisé `plans/marketing/01-ambassadeur-program.md`) | feature majeure marketing/growth | P1 | FE + BE + IA + DB + UX | 🟡 brainstorm (plan formalisé selon TEMPLATE marketing, en attente GO NB pour passage cadré 🟠) | [briefs/BRIEF-2026-04-27-28-ambassadeur-program-formalise.md](./briefs/BRIEF-2026-04-27-28-ambassadeur-program-formalise.md) (à créer après GO) |
 
 ---
 
 ## Compteur
 
-- Total reçus : 26 (+8 session 2026-04-25 evening + 2026-04-26 : BRIEF-19/20/21/22+23/24/25/26/27)
+- Total reçus : 27 (+9 session 2026-04-25 evening + 2026-04-26/27 : BRIEF-19/20/21/22+23/24/25/26/27/28)
 - Livrés totaux : 10 (BRIEF-01 + BRIEF-04 + BRIEF-17 + BRIEF-19 + BRIEF-20 + BRIEF-21 + BRIEF-24 + BRIEF-25 + **BRIEF-26** + **BRIEF-27**)
+- Brainstorm formalisé en attente GO : 1 (BRIEF-28 ambassadeur — plan détaillé dans `plans/marketing/01-ambassadeur-program.md`)
 - Livrés partial : 5 (BRIEF-10 11/13, BRIEF-13 4/20, BRIEF-16 phases A-I sauf E1, BRIEF-18 phase 1+2 ⚠️ partiellement révisé par 22+23, BRIEF-22+23 V1)
 - Cadrés en attente GO : 8 (BRIEF-05/06/07/08/09/11/12/14)
 - Dispatched en cours : 1 (BRIEF-15)

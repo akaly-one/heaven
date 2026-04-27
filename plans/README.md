@@ -35,6 +35,15 @@
 | *ops-maintenance* | ⏳ à créer (si distinct de 04-ops/) | — |
 | *design* | ⏳ à créer (si distinct de 02-design/) | — |
 
+### Marketing (plans growth / acquisition / fidélisation — ajouté 2026-04-27)
+
+| Chemin | Rôle |
+|---|---|
+| [`marketing/`](./marketing/) | **Plans marketing & growth** sous pattern standardisé (TEMPLATE.md). Adaptables au CP existant sans casser. |
+| [`marketing/README.md`](./marketing/README.md) | Index plans actifs + statuts + standard intégration CP |
+| [`marketing/_TEMPLATE.md`](./marketing/_TEMPLATE.md) | Template standard à copier pour chaque nouveau plan |
+| [`marketing/01-ambassadeur-program.md`](./marketing/01-ambassadeur-program.md) | 🟡 Programme Ambassadeur (parrainage + actions IG + agent IA marketing) |
+
 ### Sources externes datées
 
 | Chemin | Contenu |
